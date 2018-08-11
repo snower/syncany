@@ -56,26 +56,29 @@ class DBJoinLoader(DBLoader):
             for name, valuer in self.schema.items():
                 for field in valuer.get_fields():
                     fields.add(field)
-            query = self.db.query(self.name, *list(fields))
 
-            for key, exp, value in self.filters:
-                getattr(query, "filter_%s" % exp)(key, value)
+            unload_primary_keys = list(self.unload_primary_keys)
+            for i in range(int(len(unload_primary_keys) / 1000.0 + 1)):
+                query = self.db.query(self.name, *list(fields))
+                for key, exp, value in self.filters:
+                    getattr(query, "filter_%s" % exp)(key, value)
 
-            query.filter_in(self.primary_keys[0], list(self.unload_primary_keys))
+                query.filter_in(self.primary_keys[0], unload_primary_keys[i * 1000: (i + 1) * 1000])
+                datas = query.commit()
+                for data in datas:
+                    primary_key = self.get_data_primary_key(data)
 
-            datas = query.commit()
-            for data in datas:
-                primary_key = self.get_data_primary_key(data)
+                    values = {}
+                    for key, field in self.schema.items():
+                        values[key] = field.clone().fill(data)
 
-                values = {}
-                for key, field in self.schema.items():
-                    values[key] = field.clone().fill(data)
+                    self.data_keys[primary_key] = values
+                    self.datas.append(values)
 
-                self.data_keys[primary_key] = values
-                self.datas.append(values)
+                self.querys.append(query)
 
             self.unload_primary_keys = set([])
-            self.querys.append(query)
+
 
         if self.matchers:
             for data in self.datas:
