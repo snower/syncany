@@ -79,7 +79,6 @@ class DBJoinLoader(DBLoader):
 
             self.unload_primary_keys = set([])
 
-
         if self.matchers:
             for data in self.datas:
                 value = data[self.primary_keys[0]].get()
