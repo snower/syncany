@@ -2,15 +2,21 @@
 # 18/8/6
 # create by: snower
 
-import argparse
+import sys
 from .taskers.json_tasker import JsonTasker
 
 def main():
-    parser = argparse.ArgumentParser(description='syncany')
-    parser.add_argument("json", type=str, nargs=1, help="json filename")
-    args = parser.parse_args()
+    if len(sys.argv) < 2:
+        print("usage: syncany [-h] json")
+        print("syncany: error: too few arguments")
+        exit()
 
-    tasker = JsonTasker(args.json[0])
+    if not sys.argv[1].endswith("json"):
+        print("usage: syncany [-h] json")
+        print("syncany: error: require json file")
+        exit()
+
+    tasker = JsonTasker(sys.argv[1])
     tasker.run()
 
 if __name__ == "__main__":
