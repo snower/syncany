@@ -226,10 +226,6 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     self.load_json(config["extends"])
             self.config.update(config)
 
-        self.name = self.config["name"]
-        self.input = self.config["input"]
-        self.output = self.config["output"]
-
     def load_databases(self):
         for config in self.config["databases"]:
             database_cls = find_database(config.pop("driver"))
@@ -283,7 +279,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         filter, filter_args = None, None
         if len(key_filters) >= 2:
-            filters, filter = key_filters[1].split(" ")
+            filters = key_filters[1].split(" ")
             filter = filters[0]
             if len(filters) >= 2:
                 filter_args = "".join(filters[1]) + "".join(key_filters[2:])
@@ -339,7 +335,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         return None
 
     def create_valuer(self, config, join_loaders = None):
-        if "name" not in config or config["name"]:
+        if "name" not in config or not config["name"]:
             return None
 
         if config["name"] not in self.valuer_creater:
@@ -348,7 +344,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         return self.valuer_creater[config["name"]](config, join_loaders)
 
     def create_loader(self, config, primary_keys):
-        if "name" not in config or config["name"]:
+        if "name" not in config or not config["name"]:
             return None
 
         if config["name"] not in self.loader_creater:
@@ -357,7 +353,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         return self.loader_creater[config["name"]](config, primary_keys)
 
     def create_outputer(self, config, primary_keys):
-        if "name" not in config or config["name"]:
+        if "name" not in config or not config["name"]:
             return None
 
         if config["name"] not in self.outputer_creater:
@@ -450,6 +446,10 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
     def run(self):
         try:
             self.load_json(self.json_filename)
+            self.name = self.config["name"]
+            self.input = self.config["input"]
+            self.output = self.config["output"]
+
             self.compile_logging()
             self.compile_filters()
             super(JsonTasker, self).run()
