@@ -3,7 +3,10 @@
 # create by: snower
 
 import datetime
-from bson.objectid import ObjectId
+try:
+    from bson.objectid import ObjectId
+except ImportError:
+    ObjectId = None
 from .filter import Filter
 
 class IntFilter(Filter):
@@ -30,6 +33,12 @@ class StringFilter(Filter):
             return ""
 
 class ObjectIdFilter(Filter):
+    def __init__(self, *args, **kwargs):
+        if ObjectId is None:
+            raise ImportError(u"bson required")
+
+        super(ObjectIdFilter, self).__init__(*args, **kwargs)
+
     def filter(self, value):
         try:
             return ObjectId(value)
