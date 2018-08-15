@@ -27,6 +27,7 @@ setup(
     extras_require = {
         "pymongo": ['pymongo>=3.6.1'],
         "pymysql": ['PyMySQL>=0.8.1'],
+        "openpyxl": ["openpyxl>=2.5.0"],
     },
     package_data={
         '': ['README.md'],

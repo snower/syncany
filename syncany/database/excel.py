@@ -200,13 +200,20 @@ class ExeclSheet(object):
             self.execl_fp.remove(self.execl_sheet)
             self.execl_sheet = self.execl_fp.create_sheet(self.sheet_name, sheet_index)
             fields = self.get_fields()
+
+            for field_index in range(len(fields)):
+                field = fields[field_index]
+                if isinstance(field, str):
+                    field = field.encode("utf-8")
+                self.execl_sheet.cell(1, field_index + 1, field)
+
             for row_index in range(len(self.sheet_datas)):
                 row = self.sheet_datas[row_index]
                 for col_index in range(len(fields)):
                     col = row[fields[col_index]]
                     if isinstance(col, str):
                         col = col.encode("utf-8")
-                    self.execl_sheet.cell(row_index + 1, col_index + 1, col)
+                    self.execl_sheet.cell(row_index + 2, col_index + 1, col)
 
 class ExeclDB(DataBase):
     DEFAULT_CONFIG = {
@@ -241,11 +248,11 @@ class ExeclDB(DataBase):
         if not name:
             raise ExeclFileNotFound()
 
-        filename, sheet_name = self.parse_filename(name)
-        if not filename:
-            raise ExeclFileNotFound()
+        if name not in self.execls:
+            filename, sheet_name = self.parse_filename(name)
+            if not filename:
+                raise ExeclFileNotFound()
 
-        if filename not in self.execls:
             if openpyxl is None:
                 raise ImportError("openpyxl>=2.5.0 is required")
 
