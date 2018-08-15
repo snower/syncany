@@ -28,6 +28,8 @@ setup(
         "pymongo": ['pymongo>=3.6.1'],
         "pymysql": ['PyMySQL>=0.8.1'],
         "openpyxl": ["openpyxl>=2.5.0"],
+        "postgresql": ["psycopg2>=2.7.4"],
+        "elasticsearch": ["elasticsearch>=6.3.1"],
     },
     package_data={
         '': ['README.md'],
