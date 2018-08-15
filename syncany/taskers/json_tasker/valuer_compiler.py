@@ -47,7 +47,7 @@ class ValuerCompiler(object):
                 case_valuers[index] = self.compile_schema_field(case[index])
         else:
             for key, field in case.items():
-                case_valuers[key] = self.compile_schema_field(case[field])
+                case_valuers[key] = self.compile_schema_field(field)
 
         if default_case:
             default_case = self.compile_schema_field(default_case)
@@ -71,4 +71,15 @@ class ValuerCompiler(object):
             "name": "calculate_valuer",
             "key": key,
             "args": args_valuers,
+        }
+
+    def compile_schema_valuer(self, schema={}):
+        schema_valuers = {}
+        for key, field in schema.items():
+            schema_valuers[key] = self.compile_schema_field(field)
+
+        return {
+            "name": "schema_valuer",
+            "key": "",
+            "schema": schema_valuers,
         }

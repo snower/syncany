@@ -2,17 +2,39 @@
 # 18/8/6
 # create by: snower
 
+import re
+
+class KeyMatcher(object):
+    def __init__(self, matcher, valuer):
+        if isinstance(matcher, str):
+            self.matcher = re.compile(matcher)
+        else:
+            self.matcher = matcher
+        self.valuer = valuer
+
+    def match(self, key):
+        return self.matcher.match(key)
+
+    def clone_valuer(self):
+        return self.valuer.clone()
+
 class Loader(object):
     def __init__(self, primary_keys):
         self.primary_keys = primary_keys
         self.schema = {}
         self.filters = []
+        self.key_matchers = []
         self.datas = []
         self.data_keys = {}
         self.loaded = False
 
     def add_valuer(self, name, valuer):
         self.schema[name] = valuer
+
+    def add_key_matcher(self, matcher, valuer):
+        matcher = KeyMatcher(matcher, valuer)
+        self.key_matchers.append(matcher)
+        return matcher
 
     def get_data_primary_key(self, data):
         if len(self.primary_keys) == 1:

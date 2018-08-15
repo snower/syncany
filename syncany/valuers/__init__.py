@@ -8,6 +8,7 @@ from .db import DBValuer
 from .db_join import DBJoinValuer
 from .case import CaseValuer
 from .calculate import CalculateValuer
+from .schema import SchemaValuer
 
 VALUERS = {
     "const_valuer": ConstValuer,
@@ -16,6 +17,7 @@ VALUERS = {
     "db_join_valuer": DBJoinValuer,
     "case_valuer": CaseValuer,
     "calculate_valuer": CalculateValuer,
+    "schema_valuer": SchemaValuer,
 }
 
 def find_valuer(name):

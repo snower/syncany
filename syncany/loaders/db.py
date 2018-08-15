@@ -18,12 +18,14 @@ class DBLoader(Loader):
             return
 
         fields = set([])
-        for key, exp, value in self.filters:
-            fields.add(key)
+        if not self.key_matchers:
+            for key, exp, value in self.filters:
+                fields.add(key)
 
-        for name, valuer in self.schema.items():
-            for field in valuer.get_fields():
-                fields.add(field)
+            for name, valuer in self.schema.items():
+                for field in valuer.get_fields():
+                    fields.add(field)
+
         query = self.db.query(self.name, *list(fields))
 
         in_exps = defaultdict(list)
@@ -50,8 +52,20 @@ class DBLoader(Loader):
             primary_key = self.get_data_primary_key(data)
 
             values = {}
-            for key, field in self.schema.items():
-                values[key] = field.clone().fill(data)
+            if not self.key_matchers:
+                for key, field in self.schema.items():
+                    values[key] = field.clone().fill(data)
+            else:
+                for key, value in data.items():
+                    if key in self.schema:
+                        values[key] = self.schema[key].clone().fill(data)
+                    else:
+                        for key_matcher in self.key_matchers:
+                            if key_matcher.match(key):
+                                valuer = key_matcher.clone_valuer()
+                                valuer.key = key
+                                self.schema[key] = valuer
+                                values[key] = valuer.clone().fill(data)
 
             self.data_keys[primary_key] = values
             self.datas.append(values)

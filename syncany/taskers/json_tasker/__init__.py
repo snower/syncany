@@ -37,6 +37,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "db_join_valuer": self.compile_db_join_valuer,
             "case_valuer": self.compile_case_valuer,
             "calculate_valuer": self.compile_calculate_valuer,
+            "schema_valuer": self.compile_schema_valuer,
         }
 
         self.valuer_creater = {
@@ -46,6 +47,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "db_join_valuer": self.create_db_join_valuer,
             "case_valuer": self.create_case_valuer,
             "calculate_valuer": self.create_calculate_valuer,
+            "schema_valuer": self.create_schema_valuer,
         }
 
         self.loader_creater = {
@@ -172,8 +174,13 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         }
 
     def compile_schema(self):
-        for name, field in self.config["schema"].items():
-            self.schema[name] = self.compile_schema_field(field)
+        if isinstance(self.config["schema"], str):
+            if self.config["schema"] == "$.*":
+                self.schema = ".*"
+        else:
+            self.schema = {}
+            for name, field in self.config["schema"].items():
+                self.schema[name] = self.compile_schema_field(field)
 
     def compile_schema_field(self, field):
         if isinstance(field, dict):
@@ -263,10 +270,13 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         }
         self.loader = self.create_loader(loader_config, [input_loader["foreign_key"]])
 
-        for name, valuer in self.schema.items():
-            valuer = self.create_valuer(valuer, self.join_loaders)
-            if valuer:
-                self.loader.add_valuer(name, valuer)
+        if isinstance(self.schema, dict):
+            for name, valuer in self.schema.items():
+                valuer = self.create_valuer(valuer, self.join_loaders)
+                if valuer:
+                    self.loader.add_valuer(name, valuer)
+        elif self.schema == ".*":
+            self.loader.add_key_matcher(".*", self.create_valuer(self.compile_db_valuer("", None)))
 
         for filter in self.config["querys"]:
             if "exps" in filter:
@@ -295,10 +305,11 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         }
         self.outputer = self.create_outputer(outputer_config, [output_outputer["foreign_key"]])
 
-        for name, valuer in self.schema.items():
-            valuer = self.create_valuer(self.compile_db_valuer(name, None))
-            if valuer:
-                self.outputer.add_valuer(name, valuer)
+        if isinstance(self.schema, dict):
+            for name, valuer in self.schema.items():
+                valuer = self.create_valuer(self.compile_db_valuer(name, None))
+                if valuer:
+                    self.outputer.add_valuer(name, valuer)
 
         for filter in self.config["querys"]:
             if "exps" in filter:

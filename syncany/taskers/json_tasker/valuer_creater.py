@@ -87,3 +87,12 @@ class ValuerCreater(object):
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
 
         return valuer_cls(calculater, args_valuers, "", filter)
+
+    def create_schema_valuer(self, config, join_loaders=None):
+        valuer_cls = find_valuer(config["name"])
+        if not valuer_cls:
+            return
+        schema_valuers = {}
+        for key, valuer_config in config["schema"].items():
+            schema_valuers[key] = self.create_valuer(valuer_config, join_loaders)
+        return valuer_cls(schema_valuers, config["key"], None)
