@@ -14,6 +14,7 @@ from ..database import find_database
 from ..loaders import find_loader
 from ..valuers import find_valuer
 from ..filters import find_filter
+from ..calculaters import find_calculater
 from ..outputers import find_outputer
 from ..utils import get_expression_name
 
@@ -72,6 +73,20 @@ class ValuerCompiler(object):
             "key": key,
             "case": case_valuers,
             "default_case": default_case,
+        }
+
+    def compile_calculate_valuer(self, key="", args=[], filter = None):
+        args_valuers = []
+        if isinstance(args, list):
+            for arg in args:
+                args_valuers.append(self.compile_schema_field(arg))
+        else:
+            args_valuers.append(args)
+
+        return {
+            "name": "calculate_valuer",
+            "key": key,
+            "args": args_valuers,
         }
 
 class ValuerCreater(object):
@@ -141,6 +156,21 @@ class ValuerCreater(object):
             if "default_case" in config and config["default_case"] else None
         return valuer_cls(case_valuers, default_case_valuer, config["key"], None)
 
+    def create_calculate_valuer(self, config, join_loaders=None):
+        valuer_cls = find_valuer(config["name"])
+        if not valuer_cls:
+            return
+
+        args_valuers = []
+        for valuer_config in config["args"]:
+            args_valuers.append(self.create_valuer(valuer_config, join_loaders))
+        calculater = find_calculater(config["key"])
+
+        filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
+        filter = filter_cls(config["filter"]["args"]) if filter_cls else None
+
+        return valuer_cls(calculater, args_valuers, "", filter)
+
 class LoaderCreater(object):
     def create_const_loader(self, config, primary_keys):
         loader_cls = find_loader(config["name"])
@@ -194,6 +224,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "const_join_valuer": self.compile_const_join_valuer,
             "db_join_valuer": self.compile_db_join_valuer,
             "case_valuer": self.compile_case_valuer,
+            "calculate_valuer": self.compile_calculate_valuer,
         }
 
         self.valuer_creater = {
@@ -202,6 +233,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "const_join_valuer": self.create_const_join_valuer,
             "db_join_valuer": self.create_db_join_valuer,
             "case_valuer": self.create_case_valuer,
+            "calculate_valuer": self.create_calculate_valuer,
         }
 
         self.loader_creater = {
@@ -244,8 +276,25 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "date": lambda v: datetime.datetime.strptime(v, "%Y-%m-%d"),
         }
 
+        if isinstance(self.config["querys"], str):
+            keys = self.config["querys"].split("|")
+            self.config["querys"] = [{
+                "name": keys[0],
+                "type": keys[1] if len(keys) >= 2 else "str",
+            }]
+        elif isinstance(self.config["querys"], dict):
+            querys = []
+            for name, exps in self.config["querys"].items():
+                keys = name.split("|")
+                querys.append({
+                    "name": keys[0],
+                    "exps": exps,
+                    "type": keys[1] if len(keys) >= 2 else "str",
+                })
+            self.config["querys"] = querys
+
         self.argparse.add_argument("json", type=str, nargs=argparse.OPTIONAL, help="json filename")
-        for filter in self.config["filters"]:
+        for filter in self.config["querys"]:
             if "exps" in filter:
                 if isinstance(filter["exps"], str):
                     filter["exps"] = [filter["exps"]]
@@ -267,12 +316,16 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         if not isinstance(key, str) or key == "":
             return {"instance": None, "key": "", "value": key, "filter": None}
 
-        if key[0] == "$":
-            instance, key = "$", key[2:]
-        elif key[0] == "&":
-            instance, key = "&", key[2:]
-        else:
+        if key[0] not in ("&", "$", "@", "|"):
             return {"instance": None, "key": "", "value": key, "filter": None}
+
+        if key[0] in ("&", "$"):
+            tokens = key.split(".")
+            instance = tokens[0]
+            key = ".".join(tokens[1:])
+        else:
+            instance = key[0]
+            key = key[1:]
 
         key_filters = key.split("|")
         key = key_filters[0]
@@ -295,8 +348,10 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         }
 
     def compile_foreign_key(self, foreign_key):
-        if foreign_key[0] == "&":
-            foreign_key = foreign_key[2:]
+        if foreign_key[0] != "&":
+            return None
+
+        foreign_key = ".".join(foreign_key.split(".")[1:])
         foreign_key = foreign_key.split("::")
 
         return {
@@ -317,14 +372,23 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             key = self.compile_key(field[0])
             if key["instance"] is None:
                 foreign_key = self.compile_foreign_key(field[1])
+                if foreign_key is None:
+                    return self.compile_const_valuer(key["value"])
+
                 loader = {"name": "db_join_loader", "database": foreign_key["database"]}
                 return self.compile_const_join_valuer(key["key"], key["value"], loader, foreign_key["foreign_key"], field[2])
 
             if key["instance"] == "$":
                 foreign_key = self.compile_foreign_key(field[1])
+                if foreign_key is None:
+                    return self.compile_const_valuer(key["value"])
+
                 loader = {"name": "db_join_loader", "database": foreign_key["database"]}
                 return self.compile_db_join_valuer(key["key"], loader, foreign_key["foreign_key"], key["filter"], field[2])
-            return None
+
+            if key["instance"] == "@":
+                return self.compile_calculate_valuer(key["key"], field[1:], key["filter"])
+            return self.compile_const_valuer(field)
 
         key = self.compile_key(field)
         if key["instance"] is None:
@@ -332,14 +396,21 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         if key["instance"] == "$":
             return self.compile_db_valuer(key["key"], key["filter"])
-        return None
+
+        if key["instance"] == "@":
+            return self.compile_const_valuer(field)
+        return self.compile_const_valuer(field)
 
     def create_valuer(self, config, join_loaders = None):
         if "name" not in config or not config["name"]:
             return None
 
         if config["name"] not in self.valuer_creater:
-            return None
+            valuer_cls = find_valuer(config["name"])
+            if not valuer_cls:
+                return
+            config = {key: value for key, value in config.items() if key != "name"}
+            return valuer_cls(**config)
 
         return self.valuer_creater[config["name"]](config, join_loaders)
 
@@ -348,7 +419,11 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             return None
 
         if config["name"] not in self.loader_creater:
-            return None
+            loader_cls = find_loader(config["name"])
+            if not loader_cls:
+                return None
+            config = {key: value for key, value in config.items() if key != "name"}
+            return loader_cls(**config)
 
         return self.loader_creater[config["name"]](config, primary_keys)
 
@@ -357,7 +432,11 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             return None
 
         if config["name"] not in self.outputer_creater:
-            return None
+            outputer_cls = find_outputer(config["name"])
+            if not outputer_cls:
+                return None
+            config = {key: value for key, value in config.items() if key != "name"}
+            return outputer_cls(**config)
 
         return self.outputer_creater[config["name"]](config, primary_keys)
 
@@ -377,7 +456,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             if valuer:
                 self.loader.add_valuer(name, valuer)
 
-        for filter in self.config["filters"]:
+        for filter in self.config["querys"]:
             if "exps" in filter:
                 if isinstance(filter["exps"], str):
                     exps = [filter["exps"]]
@@ -409,7 +488,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             if valuer:
                 self.outputer.add_valuer(name, valuer)
 
-        for filter in self.config["filters"]:
+        for filter in self.config["querys"]:
             if "exps" in filter:
                 if isinstance(filter["exps"], str):
                     exps = [filter["exps"]]
