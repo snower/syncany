@@ -3,9 +3,10 @@
 # create by: snower
 
 class QueryBuilder(object):
-    def __init__(self, db, name, fields):
+    def __init__(self, db, name, primary_keys, fields):
         self.db = db
         self.name = name
+        self.primary_keys = primary_keys or []
         self.fields = fields
         self.query = {}
         self.orders = []
@@ -38,18 +39,20 @@ class QueryBuilder(object):
         raise NotImplementedError()
 
 class InsertBuilder(object):
-    def __init__(self, db, name, datas):
+    def __init__(self, db, name, primary_keys, datas):
         self.db = db
         self.name = name
+        self.primary_keys = primary_keys or []
         self.datas = datas
 
     def commit(self):
         raise NotImplementedError()
 
 class UpdateBuilder(object):
-    def __init__(self, db, name, update):
+    def __init__(self, db, name, primary_keys, update):
         self.db = db
         self.name = name
+        self.primary_keys = primary_keys or []
         self.query = {}
         self.update = update
 
@@ -78,9 +81,10 @@ class UpdateBuilder(object):
         raise NotImplementedError()
 
 class DeleteBuilder(object):
-    def __init__(self, db, name):
+    def __init__(self, db, name, primary_keys):
         self.db = db
         self.name = name
+        self.primary_keys = primary_keys or []
         self.query = {}
 
     def filter_gt(self, key, value):
@@ -112,17 +116,17 @@ class DataBase(object):
         self.name = config.pop("name")
         self.config = config
 
-    def query(self, name, *fields):
-        return QueryBuilder(self, name, fields)
+    def query(self, name, primary_keys = None, *fields):
+        return QueryBuilder(self, name, primary_keys, fields)
 
-    def insert(self, name, datas):
-        return InsertBuilder(self, name, datas)
+    def insert(self, name, primary_keys = None, datas = None):
+        return InsertBuilder(self, name, primary_keys, datas)
 
-    def update(self, name, **update):
-        return UpdateBuilder(self, name, update)
+    def update(self, name, primary_keys = None, **update):
+        return UpdateBuilder(self, name, primary_keys, update)
 
-    def delete(self, name):
-        return InsertBuilder(self, name)
+    def delete(self, name, primary_keys = None):
+        return DeleteBuilder(self, name, primary_keys)
 
     def close(self):
         pass

@@ -26,7 +26,7 @@ class DBLoader(Loader):
                 for field in valuer.get_fields():
                     fields.add(field)
 
-        query = self.db.query(self.name, *list(fields))
+        query = self.db.query(self.name, self.primary_keys, *list(fields))
 
         in_exps = defaultdict(list)
         for key, exp, value in self.filters:

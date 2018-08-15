@@ -11,7 +11,7 @@ class DBUpdateInsertOutputer(DBOutputer):
         for name, valuer in self.schema.items():
             for key in valuer.get_fields():
                 fields.add(key)
-        query = self.db.query(self.name, *list(fields))
+        query = self.db.query(self.name, self.primary_keys, *list(fields))
 
         in_exps = defaultdict(list)
         for key, exp, value in self.filters:
@@ -48,7 +48,7 @@ class DBUpdateInsertOutputer(DBOutputer):
         for i in range(int(len(datas) / 500.0 + 1)):
             bdatas = datas[i * 500: (i + 1) * 500]
             if bdatas:
-                insert = self.db.insert(self.name, bdatas)
+                insert = self.db.insert(self.name, self.primary_keys, bdatas)
                 insert.commit()
                 self.operators.append(insert)
 
@@ -61,7 +61,7 @@ class DBUpdateInsertOutputer(DBOutputer):
         if eq:
             return
 
-        update = self.db.update(self.name, **data)
+        update = self.db.update(self.name, self.primary_keys, **data)
         for primary_key in self.primary_keys:
             update.filter_eq(primary_key, data[primary_key])
         update.commit()
@@ -72,13 +72,13 @@ class DBUpdateInsertOutputer(DBOutputer):
             primary_keys = []
             for data in datas:
                 primary_keys.append(self.get_data_primary_key(data))
-            delete = self.db.delete(self.name)
+            delete = self.db.delete(self.name, self.primary_keys)
             delete.filter_in(self.primary_keys[0], primary_keys)
             delete.commit()
             self.operators.append(delete)
         else:
             for data in datas:
-                delete = self.db.delete(self.name)
+                delete = self.db.delete(self.name, self.primary_keys)
                 for primary_key in self.primary_keys:
                     delete.filter_eq(primary_key, data[primary_key])
                 delete.commit()

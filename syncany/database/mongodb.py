@@ -192,17 +192,17 @@ class MongoDB(DataBase):
             self.connection = pymongo.MongoClient(**self.config)
         return self.connection
 
-    def query(self, name, *fields):
-        return MongoQueryBuilder(self, name, fields)
+    def query(self, name, primary_keys = None, *fields):
+        return MongoQueryBuilder(self, name, primary_keys, fields)
 
-    def insert(self, name, datas):
-        return MongoInsertBuilder(self, name, datas)
+    def insert(self, name, primary_keys = None, datas = None):
+        return MongoInsertBuilder(self, name, primary_keys, datas)
 
-    def update(self, name, **update):
-        return MongoUpdateBuilder(self, name, update)
+    def update(self, name, primary_keys = None, **update):
+        return MongoUpdateBuilder(self, name, primary_keys, update)
 
-    def delete(self, name):
-        return MongoDeleteBuilder(self, name)
+    def delete(self, name, primary_keys = None):
+        return MongoDeleteBuilder(self, name, primary_keys)
 
     def close(self):
         if self.connection:

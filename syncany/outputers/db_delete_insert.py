@@ -7,7 +7,7 @@ from .db import DBOutputer
 
 class DBDeleteInsertOutputer(DBOutputer):
     def remove(self):
-        delete = self.db.delete(self.name)
+        delete = self.db.delete(self.name, self.primary_keys)
 
         in_exps = defaultdict(list)
         for key, exp, value in self.filters:
@@ -35,7 +35,7 @@ class DBDeleteInsertOutputer(DBOutputer):
         for i in range(int(len(datas) / 500.0 + 1)):
             bdatas = datas[i * 500: (i + 1) * 500]
             if bdatas:
-                insert = self.db.insert(self.name, bdatas)
+                insert = self.db.insert(self.name, self.primary_keys, bdatas)
                 insert.commit()
                 self.operators.append(insert)
 

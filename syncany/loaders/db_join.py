@@ -60,7 +60,7 @@ class DBJoinLoader(DBLoader):
 
             unload_primary_keys = list(self.unload_primary_keys)
             for i in range(int(len(unload_primary_keys) / 1000.0 + 1)):
-                query = self.db.query(self.name, *list(fields))
+                query = self.db.query(self.name, self.primary_keys, *list(fields))
                 for key, exp, value in self.filters:
                     getattr(query, "filter_%s" % exp)(key, value)
 

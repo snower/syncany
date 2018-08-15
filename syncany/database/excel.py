@@ -291,17 +291,17 @@ class ExeclDB(DataBase):
 
         return self.execls[name]
 
-    def query(self, name, *fields):
-        return ExeclQueryBuilder(self, name, fields)
+    def query(self, name, primary_keys = None, *fields):
+        return ExeclQueryBuilder(self, name, primary_keys, fields)
 
-    def insert(self, name, datas):
-        return ExeclInsertBuilder(self, name, datas)
+    def insert(self, name, primary_keys = None, datas = None):
+        return ExeclInsertBuilder(self, name, primary_keys, datas)
 
-    def update(self, name, **update):
-        return ExeclUpdateBuilder(self, name, update)
+    def update(self, name, primary_keys = None, **update):
+        return ExeclUpdateBuilder(self, name, primary_keys, update)
 
-    def delete(self, name):
-        return ExeclDeleteBuilder(self, name)
+    def delete(self, name, primary_keys = None):
+        return ExeclDeleteBuilder(self, name, primary_keys)
 
     def close(self):
         if self.execls:

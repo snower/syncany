@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
-# 18/8/6
+# 18/8/15
 # create by: snower
 
 try:
-    import pymysql
-    from pymysql.cursors import DictCursor
+    import psycopg2
 except ImportError:
-    pymysql = None
+    psycopg2 = None
 
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
-class MysqlQueryBuilder(QueryBuilder):
+class PostgresqlQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
-        super(MysqlQueryBuilder, self).__init__(*args, **kwargs)
+        super(PostgresqlQueryBuilder, self).__init__(*args, **kwargs)
 
         self.query = []
         self.query_values = []
@@ -58,19 +57,18 @@ class MysqlQueryBuilder(QueryBuilder):
         order_by = (" ORDER BY " + ",".join(self.orders)) if self.orders else ""
         self.sql = "SELECT %s FROM %s%s%s" % (fields, db_name, where, order_by)
         connection = self.db.ensure_connection()
-        cursor = connection.cursor(DictCursor)
+        cursor = connection.cursor(cursor_factory = psycopg2.extras.DictCursor)
         try:
             cursor.execute(self.sql, self.query_values)
-            datas = cursor.fetchall()
+            datas = [data for data in cursor]
         finally:
             cursor.close()
-            if connection.autocommit_mode == False:
-                connection.commit()
+            connection.commit()
         return datas
 
-class MysqlInsertBuilder(InsertBuilder):
+class PostgresqlInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
-        super(MysqlInsertBuilder, self).__init__(*args, **kwargs)
+        super(PostgresqlInsertBuilder, self).__init__(*args, **kwargs)
 
         if isinstance(self.datas, dict):
             self.datas = [self.datas]
@@ -95,7 +93,7 @@ class MysqlInsertBuilder(InsertBuilder):
         db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
         self.sql = "INSERT INTO %s (%s) VALUES (%s)" % (db_name, ",".join(['`' + field + '`' for field in fields]), ",".join(["%s" for _ in fields]))
         connection = self.db.ensure_connection()
-        cursor = connection.cursor(DictCursor)
+        cursor = connection.cursor()
         try:
             cursor.executemany(self.sql, datas)
         finally:
@@ -103,9 +101,9 @@ class MysqlInsertBuilder(InsertBuilder):
             connection.commit()
         return cursor
 
-class MysqlUpdateBuilder(UpdateBuilder):
+class PostgresqlUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
-        super(MysqlUpdateBuilder, self).__init__(*args, **kwargs)
+        super(PostgresqlUpdateBuilder, self).__init__(*args, **kwargs)
 
         self.query = []
         self.query_values = []
@@ -151,7 +149,7 @@ class MysqlUpdateBuilder(UpdateBuilder):
         db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
         self.sql = "UPDATE %s SET %s WHERE %s" % (db_name, ",".join(update), " AND ".join(self.query))
         connection = self.db.ensure_connection()
-        cursor = connection.cursor(DictCursor)
+        cursor = connection.cursor()
         try:
             cursor.execute(self.sql, values)
         finally:
@@ -159,9 +157,9 @@ class MysqlUpdateBuilder(UpdateBuilder):
             connection.commit()
         return cursor
 
-class MysqlDeleteBuilder(DeleteBuilder):
+class PostgresqlDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
-        super(MysqlDeleteBuilder, self).__init__(*args, **kwargs)
+        super(PostgresqlDeleteBuilder, self).__init__(*args, **kwargs)
 
         self.query = []
         self.query_values = []
@@ -200,7 +198,7 @@ class MysqlDeleteBuilder(DeleteBuilder):
         db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
         self.sql = "DELETE * FROM %s WHERE %s" % (db_name, " AND ".join(self.query))
         connection = self.db.ensure_connection()
-        cursor = connection.cursor(DictCursor)
+        cursor = connection.cursor()
         try:
             cursor.execute(self.sql, self.query_values)
         finally:
@@ -208,46 +206,51 @@ class MysqlDeleteBuilder(DeleteBuilder):
             connection.commit()
         return cursor
 
-class MysqlDB(DataBase):
+class PostgresqlDB(DataBase):
     DEFAULT_CONFIG = {
         "host": "127.0.0.1",
-        "port": 3306,
+        "port": 5432,
         "user": "root",
-        "passwd": "",
-        "db": "",
-        "charset": "utf8mb4"
+        "password": "",
+        "dbname": "",
     }
 
     def __init__(self, config):
+        if "db" in config:
+            config["dbname"] = config.pop("db")
+
+        if "passwd" in config:
+            config["password"] = config.pop("passwd")
+
         all_config = {}
         all_config.update(self.DEFAULT_CONFIG)
         all_config.update(config)
 
-        self.db_name = all_config["db"] if "db" in all_config else all_config["name"]
+        self.db_name = all_config["dbname"] if "dbname" in all_config else all_config["name"]
 
-        super(MysqlDB, self).__init__(all_config)
+        super(PostgresqlDB, self).__init__(all_config)
 
         self.connection = None
 
     def ensure_connection(self):
         if not self.connection:
-            if pymysql is None:
-                raise ImportError("PyMySQL>=0.8.1 is required")
+            if psycopg2 is None:
+                raise ImportError("psycopg2>=2.7.4 is required")
 
-            self.connection = pymysql.Connection(**self.config)
+            self.connection = psycopg2.connect(**self.config)
         return self.connection
 
     def query(self, name, primary_keys = None, *fields):
-        return MysqlQueryBuilder(self, name, primary_keys, fields)
+        return PostgresqlQueryBuilder(self, name, primary_keys, fields)
 
     def insert(self, name, primary_keys = None, datas = None):
-        return MysqlInsertBuilder(self, name, primary_keys, datas)
+        return PostgresqlInsertBuilder(self, name, primary_keys, datas)
 
     def update(self, name, primary_keys = None, **update):
-        return MysqlUpdateBuilder(self, name, primary_keys, update)
+        return PostgresqlUpdateBuilder(self, name, primary_keys, update)
 
     def delete(self, name, primary_keys = None):
-        return MysqlDeleteBuilder(self, name, primary_keys)
+        return PostgresqlDeleteBuilder(self, name, primary_keys)
 
     def close(self):
         if self.connection:
