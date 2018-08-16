@@ -206,14 +206,14 @@ class ElasticsearchDB(DataBase):
             self.connection = elasticsearch.Elasticsearch(**self.config)
         return self.connection
 
-    def query(self, name, primary_keys = None, *fields):
+    def query(self, name, primary_keys = None, fields = ()):
         return ElasticsearchQueryBuilder(self, name, primary_keys, fields)
 
-    def insert(self, name, primary_keys = None, datas = None):
-        return ElasticsearchInsertBuilder(self, name, primary_keys, datas)
+    def insert(self, name, primary_keys = None, fields =(), datas = None):
+        return ElasticsearchInsertBuilder(self, name, primary_keys, fields, datas)
 
-    def update(self, name, primary_keys= None, **update):
-        return ElasticsearchUpdateBuilder(self, name, primary_keys, update)
+    def update(self, name, primary_keys= None, fields = (), update = None):
+        return ElasticsearchUpdateBuilder(self, name, primary_keys, fields, update)
 
     def delete(self, name, primary_keys = None):
         return ElasticsearchDeleteBuilder(self, name, primary_keys)

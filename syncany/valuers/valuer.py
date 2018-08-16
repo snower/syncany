@@ -47,7 +47,7 @@ class Valuer(object):
                     break
 
                 data = data[key]
-                
+
             self.value = data
             if self.filter:
                 if isinstance(self.value, (list, tuple, set)):

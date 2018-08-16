@@ -84,7 +84,7 @@ class PostgresqlInsertBuilder(InsertBuilder):
         return tuple(fields) if fields else tuple()
 
     def commit(self):
-        fields = self.get_fields()
+        fields = self.get_fields() if not self.fields else self.fields
         datas = []
         for data in self.datas:
             datas.append([data[field] for field in fields])
@@ -240,14 +240,14 @@ class PostgresqlDB(DataBase):
             self.connection = psycopg2.connect(**self.config)
         return self.connection
 
-    def query(self, name, primary_keys = None, *fields):
+    def query(self, name, primary_keys = None, fields = ()):
         return PostgresqlQueryBuilder(self, name, primary_keys, fields)
 
-    def insert(self, name, primary_keys = None, datas = None):
-        return PostgresqlInsertBuilder(self, name, primary_keys, datas)
+    def insert(self, name, primary_keys = None, fields = (), datas = None):
+        return PostgresqlInsertBuilder(self, name, primary_keys, fields, datas)
 
-    def update(self, name, primary_keys = None, **update):
-        return PostgresqlUpdateBuilder(self, name, primary_keys, update)
+    def update(self, name, primary_keys = None, fields = (), update = None):
+        return PostgresqlUpdateBuilder(self, name, primary_keys, fields, update)
 
     def delete(self, name, primary_keys = None):
         return PostgresqlDeleteBuilder(self, name, primary_keys)

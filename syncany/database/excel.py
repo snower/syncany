@@ -3,6 +3,7 @@
 # create by: snower
 
 import os
+from collections import OrderedDict
 try:
     import openpyxl
 except ImportError:
@@ -70,6 +71,7 @@ class ExeclInsertBuilder(InsertBuilder):
 
     def commit(self):
         execl_sheet = self.db.ensure_open_file(self.name)
+        execl_sheet.sheet_descriptions = self.fields
         execl_sheet.sheet_datas.extend(self.datas)
 
 class ExeclUpdateBuilder(UpdateBuilder):
@@ -99,6 +101,7 @@ class ExeclUpdateBuilder(UpdateBuilder):
 
     def commit(self):
         execl_sheet = self.db.ensure_open_file(self.name)
+        execl_sheet.sheet_descriptions = self.fields
         datas = []
         for data in execl_sheet.sheet_datas:
             succed = True
@@ -179,13 +182,16 @@ class ExeclSheet(object):
                 for cel in row:
                     self.sheet_descriptions.append(cel.value)
             else:
-                data, index = {}, 0
+                data, index = OrderedDict(), 0
                 for cel in row:
                     data[self.sheet_descriptions[index]] = cel.value
                     index += 1
                 self.sheet_datas.append(data)
 
     def get_fields(self):
+        if self.sheet_descriptions:
+            return self.sheet_descriptions
+
         fields = None
         for data in self.sheet_datas:
             if fields is None:
@@ -241,7 +247,7 @@ class ExeclDB(DataBase):
                 filename = filenames[0]
                 sheet_name = filenames[1]
             else:
-                filename = names[1]
+                filename = filenames[0]
         return filename, sheet_name
 
     def ensure_open_file(self, name):
@@ -291,14 +297,14 @@ class ExeclDB(DataBase):
 
         return self.execls[name]
 
-    def query(self, name, primary_keys = None, *fields):
+    def query(self, name, primary_keys = None, fields = ()):
         return ExeclQueryBuilder(self, name, primary_keys, fields)
 
-    def insert(self, name, primary_keys = None, datas = None):
-        return ExeclInsertBuilder(self, name, primary_keys, datas)
+    def insert(self, name, primary_keys = None, fields = (), datas = None):
+        return ExeclInsertBuilder(self, name, primary_keys, fields, datas)
 
-    def update(self, name, primary_keys = None, **update):
-        return ExeclUpdateBuilder(self, name, primary_keys, update)
+    def update(self, name, primary_keys = None, fields = (), update = None):
+        return ExeclUpdateBuilder(self, name, primary_keys, fields, update)
 
     def delete(self, name, primary_keys = None):
         return ExeclDeleteBuilder(self, name, primary_keys)

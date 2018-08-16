@@ -3,6 +3,7 @@
 # create by: snower
 
 import argparse
+from collections import OrderedDict
 
 class Tasker(object):
     name = ""
@@ -13,7 +14,7 @@ class Tasker(object):
         self.input = ""
         self.output = ""
         self.databases = {}
-        self.schema = {}
+        self.schema = OrderedDict()
         self.loader = None
         self.outputer = None
 

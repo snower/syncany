@@ -3,6 +3,7 @@
 # create by: snower
 
 import re
+from collections import OrderedDict
 
 class KeyMatcher(object):
     def __init__(self, matcher, valuer):
@@ -21,7 +22,7 @@ class KeyMatcher(object):
 class Loader(object):
     def __init__(self, primary_keys):
         self.primary_keys = primary_keys
-        self.schema = {}
+        self.schema = OrderedDict()
         self.filters = []
         self.key_matchers = []
         self.datas = []
@@ -64,8 +65,13 @@ class Loader(object):
 
         datas = []
         for data in self.datas:
-            data = {key: valuer.get() for key, valuer in data.items()}
-            datas.append(data)
+            odata = OrderedDict()
+            for name, valuer in self.schema.items():
+                if name in data:
+                    odata[name] = data[name].get()
+                else:
+                    odata[name] = valuer.get()
+            datas.append(odata)
         return datas
 
     def add_filter(self, key, exp, value):

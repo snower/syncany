@@ -3,6 +3,7 @@
 # create by: snower
 
 import os
+from collections import OrderedDict
 import csv
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
@@ -67,6 +68,7 @@ class CsvInsertBuilder(InsertBuilder):
 
     def commit(self):
         csv_file = self.db.ensure_open_file(self.name)
+        csv_file.fields = self.fields
         csv_file.datas.extend(self.datas)
 
 class CsvUpdateBuilder(UpdateBuilder):
@@ -96,6 +98,7 @@ class CsvUpdateBuilder(UpdateBuilder):
 
     def commit(self):
         csv_file = self.db.ensure_open_file(self.name)
+        csv_file.fields = self.fields
         datas = []
         for data in csv_file.datas:
             succed = True
@@ -163,9 +166,13 @@ class CsvFile(object):
     def __init__(self, name, filename, datas):
         self.name = name
         self.filename = filename
+        self.fields = ()
         self.datas = datas
 
     def get_fields(self):
+        if self.fields:
+            return self.fields
+
         fields = None
         for data in self.datas:
             if fields is None:
@@ -208,21 +215,24 @@ class CsvDB(DataBase):
                         if not descriptions:
                             descriptions = row
                         else:
-                            datas.append({descriptions[i]: row[i] for i in range(len(descriptions))})
+                            data = OrderedDict()
+                            for i in range(len(descriptions)):
+                                data[descriptions[i]] = row[i]
+                            datas.append(data)
                     self.csvs[name] = CsvFile(name, filename, datas)
             else:
                 self.csvs[name] = CsvFile(name, filename, [])
 
         return self.csvs[name]
 
-    def query(self, name, primary_keys = None, *fields):
+    def query(self, name, primary_keys = None, fields = ()):
         return CsvQueryBuilder(self, name, primary_keys, fields)
 
-    def insert(self, name, primary_keys = None, datas = None):
-        return CsvInsertBuilder(self, name, primary_keys, datas)
+    def insert(self, name, primary_keys = None, fields = (), datas = None):
+        return CsvInsertBuilder(self, name, primary_keys, fields, datas)
 
-    def update(self, name, primary_keys = None, **update):
-        return CsvUpdateBuilder(self, name, primary_keys, update)
+    def update(self, name, primary_keys = None, fields = (), update = None):
+        return CsvUpdateBuilder(self, name, primary_keys, fields, update)
 
     def delete(self, name, primary_keys = None):
         return CsvDeleteBuilder(self, name, primary_keys)

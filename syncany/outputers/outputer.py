@@ -2,10 +2,12 @@
 # 18/8/6
 # create by: snower
 
+from collections import OrderedDict
+
 class Outputer(object):
     def __init__(self, primary_keys):
         self.primary_keys = primary_keys
-        self.schema = {}
+        self.schema = OrderedDict()
         self.filters = []
         self.load_datas = []
         self.load_data_keys = {}

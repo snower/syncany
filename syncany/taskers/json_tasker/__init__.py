@@ -9,6 +9,7 @@ import logging
 import logging.config
 import traceback
 import json
+from collections import OrderedDict
 from ..tasker import Tasker
 from ...database import find_database
 from ...loaders import find_loader
@@ -178,9 +179,26 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             if self.config["schema"] == "$.*":
                 self.schema = ".*"
         else:
-            self.schema = {}
+            self.schema = OrderedDict()
+            schema, order_names = {}, [''] * len(self.config["schema"])
             for name, field in self.config["schema"].items():
-                self.schema[name] = self.compile_schema_field(field)
+                if name[0] == "$":
+                    names = name.split(":")
+                    name = ":".join(names[1:])
+                    try:
+                        index = names[0][2:]
+                    except:
+                        self.schema[name] = self.compile_schema_field(field)
+                        continue
+
+                    order_names[index] = name
+                    schema[name] = self.compile_schema_field(field)
+                else:
+                    self.schema[name] = self.compile_schema_field(field)
+
+            for name in order_names:
+                if name:
+                    self.schema[name] = schema[name]
 
     def compile_schema_field(self, field):
         if isinstance(field, dict):

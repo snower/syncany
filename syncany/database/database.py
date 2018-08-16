@@ -39,20 +39,22 @@ class QueryBuilder(object):
         raise NotImplementedError()
 
 class InsertBuilder(object):
-    def __init__(self, db, name, primary_keys, datas):
+    def __init__(self, db, name, primary_keys, fields, datas):
         self.db = db
         self.name = name
         self.primary_keys = primary_keys or []
+        self.fields = fields
         self.datas = datas
 
     def commit(self):
         raise NotImplementedError()
 
 class UpdateBuilder(object):
-    def __init__(self, db, name, primary_keys, update):
+    def __init__(self, db, name, primary_keys, fields, update):
         self.db = db
         self.name = name
         self.primary_keys = primary_keys or []
+        self.fields = fields
         self.query = {}
         self.update = update
 
@@ -116,14 +118,14 @@ class DataBase(object):
         self.name = config.pop("name")
         self.config = config
 
-    def query(self, name, primary_keys = None, *fields):
+    def query(self, name, primary_keys = None, fields = ()):
         return QueryBuilder(self, name, primary_keys, fields)
 
-    def insert(self, name, primary_keys = None, datas = None):
-        return InsertBuilder(self, name, primary_keys, datas)
+    def insert(self, name, primary_keys = None, fields = (), datas = None):
+        return InsertBuilder(self, name, primary_keys, fields, datas)
 
-    def update(self, name, primary_keys = None, **update):
-        return UpdateBuilder(self, name, primary_keys, update)
+    def update(self, name, primary_keys = None, fields = (), update = None):
+        return UpdateBuilder(self, name, primary_keys, fields, update)
 
     def delete(self, name, primary_keys = None):
         return DeleteBuilder(self, name, primary_keys)
