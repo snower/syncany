@@ -32,7 +32,13 @@ class CalculateValuer(Valuer):
         calculater = self.calculater(*values)
         self.value = calculater.calculate()
         if self.filter:
-            self.value = self.filter.filter(self.value)
+            if isinstance(self.value, (list, tuple, set)):
+                values = []
+                for value in self.value:
+                    values.append(self.filter.filter(value))
+                self.value = values
+            else:
+                self.value = self.filter.filter(self.value)
         return self.value
 
     def childs(self):

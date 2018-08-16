@@ -18,16 +18,55 @@ class Valuer(object):
         if self.key not in data:
             keys = self.key.split(".")
             for key in keys:
-                if not isinstance(data, dict) or key not in data:
-                    return self
+                if isinstance(data, (list, tuple, set)):
+                    if key[0] != ":":
+                        break
+
+                    slices = key.split(":")
+                    try: start = int(slices[1])
+                    except: start = 0
+
+                    if len(slices) <= 2:
+                        data = data[start]
+                        continue
+
+                    try: end = int(slices[1])
+                    except: end = len(data)
+
+                    try: step = int(slices[1])
+                    except: step = 1
+
+                    data = data[start: end: step]
+
+                elif isinstance(data, dict):
+                    if key not in data:
+                        break
+                    data = data[key]
+
+                else:
+                    break
+
                 data = data[key]
+                
             self.value = data
             if self.filter:
-                self.value = self.filter.filter(self.value)
+                if isinstance(self.value, (list, tuple, set)):
+                    values = []
+                    for value in self.value:
+                        values.append(self.filter.filter(value))
+                    self.value = values
+                else:
+                    self.value = self.filter.filter(self.value)
         else:
             self.value = data[self.key]
             if self.filter:
-                self.value = self.filter.filter(self.value)
+                if isinstance(self.value, (list, tuple, set)):
+                    values = []
+                    for value in self.value:
+                        values.append(self.filter.filter(value))
+                    self.value = values
+                else:
+                    self.value = self.filter.filter(self.value)
         return self
 
     def get(self):
