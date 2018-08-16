@@ -109,6 +109,11 @@ VALUES ('201806091836318176287421', '5b750a3f943039305a26c1ec', 'groupbuy', 3800
 
 ```
 syncany json/user_order.json --order_at__gte="2018-05-01 00:00:00" --order_at__lt="2018-08-17 00:00:00
+2018-08-16 16:26:43,518 24307 INFO loader: DBLoader <- &.mysql_order.user_order::order_id loader_querys: 1 loader_rows: 1
+2018-08-16 16:26:43,520 24307 INFO join_count: 2 join_querys: 2 join_rows: 15
+2018-08-16 16:26:43,521 24307 INFO outputer: DBUpdateInsertOutputer -> &.exports.用户订单.xlsx#订单列表::订单号 outputer_querys: 1 outputer_operators: 1 outputer_load_rows: 0 outputer_rows: 1
+2018-08-16 16:26:43,521 24307 INFO finish json/user_order.json user_order 569.24ms
+
 ```
 
 ## 导出结果
