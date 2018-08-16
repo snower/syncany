@@ -4,13 +4,13 @@
 
 import time
 import argparse
-import datetime
 import logging
 import logging.config
 import traceback
 import json
 from collections import OrderedDict
 from ..tasker import Tasker
+from ...filters import find_filter
 from ...database import find_database
 from ...loaders import find_loader
 from ...valuers import find_valuer
@@ -83,28 +83,24 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             logging.config.dictConfig(self.config["logging"])
 
     def compile_filters(self):
-        TYPES = {
-            "int": int,
-            "str": str,
-            "float": float,
-            "datetime": lambda v: datetime.datetime.strptime(v, "%Y-%m-%d %H:%M:%S"),
-            "date": lambda v: datetime.datetime.strptime(v, "%Y-%m-%d"),
-        }
-
         if isinstance(self.config["querys"], str):
             keys = self.config["querys"].split("|")
+            filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
             self.config["querys"] = [{
                 "name": keys[0],
-                "type": keys[1] if len(keys) >= 2 else "str",
+                "type": filters[0],
+                'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
             }]
         elif isinstance(self.config["querys"], dict):
             querys = []
             for name, exps in self.config["querys"].items():
                 keys = name.split("|")
+                filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
                 querys.append({
                     "name": keys[0],
                     "exps": exps,
-                    "type": keys[1] if len(keys) >= 2 else "str",
+                    "type": filters[0],
+                    'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
                 })
             self.config["querys"] = querys
 
@@ -117,15 +113,24 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 if isinstance(filter["exps"], list):
                     for exp in filter["exps"]:
                         exp_name = get_expression_name(exp)
+                        filter_cls = find_filter(filter["type"])
+                        if filter_cls is None:
+                            filter_cls = find_filter('str')
                         self.argparse.add_argument('--%s__%s' % (filter["name"], exp_name), dest="%s_%s" % (filter["name"], exp_name),
-                                                   type=TYPES[filter["type"]], required=True, help="%s %s" % (filter["name"], exp))
+                                                   type=filter_cls(filter.get("type_args")), required=True, help="%s %s" % (filter["name"], exp))
                 elif isinstance(filter["exps"], dict):
                     for exp, value in filter["exps"].items():
                         exp_name = get_expression_name(exp)
+                        filter_cls = find_filter(filter["type"])
+                        if filter_cls is None:
+                            filter_cls = find_filter('str')
                         self.argparse.add_argument('--%s__%s' % (filter["name"], exp_name), dest="%s_%s" % (filter["name"], exp_name),
-                                               type=TYPES[filter["type"]], default=value, help="%s %s" % (filter["name"], exp))
+                                               type=filter_cls(filter.get("type_args")), default=value, help="%s %s" % (filter["name"], exp))
             else:
-                self.argparse.add_argument('--%s' % filter["name"], dest="%s" % filter["name"], type=TYPES[filter["type"]], help="%s" % filter["name"])
+                filter_cls = find_filter(filter["type"])
+                if filter_cls is None:
+                    filter_cls = find_filter('str')
+                self.argparse.add_argument('--%s' % filter["name"], dest="%s" % filter["name"], type=filter_cls(filter.get("type_args")), help="%s" % filter["name"])
 
     def compile_key(self, key):
         if not isinstance(key, str) or key == "":
@@ -150,7 +155,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             filters = key_filters[1].split(" ")
             filter = filters[0]
             if len(filters) >= 2:
-                filter_args = "".join(filters[1]) + "".join(key_filters[2:])
+                filter_args = " ".join(filters[1:]) + "|".join(key_filters[2:])
 
         return {
             "instance": instance,
