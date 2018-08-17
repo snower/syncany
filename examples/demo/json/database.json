@@ -1,0 +1,31 @@
+{
+  "databases": [
+    {
+      "name": "mysql_order",
+      "driver": "mysql",
+      "host": "172.16.0.2",
+      "port": 3306,
+      "user": "root",
+      "passwd": "123456",
+      "db": "order",
+      "charset":"utf8"
+    },
+    {
+      "name": "mongo_user",
+      "driver": "mongo",
+      "host": "172.16.0.2",
+      "port": 27017,
+      "db": "user"
+    },
+    {
+      "name": "exports",
+      "driver": "execl",
+      "path": "./exports"
+    },
+    {
+      "name": "json",
+      "driver": "json",
+      "path": "./json"
+    }
+  ]
+}

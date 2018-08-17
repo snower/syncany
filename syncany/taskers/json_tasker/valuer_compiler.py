@@ -46,8 +46,8 @@ class ValuerCompiler(object):
             for index in range(len(case)):
                 case_valuers[index] = self.compile_schema_field(case[index])
         else:
-            for key, field in case.items():
-                case_valuers[key] = self.compile_schema_field(field)
+            for value, field in case.items():
+                case_valuers[value] = self.compile_schema_field(field)
 
         if default_case:
             default_case = self.compile_schema_field(default_case)

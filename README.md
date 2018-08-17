@@ -45,10 +45,10 @@ CREATE TABLE `user_order` (
   `order_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_order_id` (`order_id`),
-  KEY `idx_uid` (`uid`),
+  KEY `idx_uid` (`uid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `user_order `
+INSERT INTO `user_order`
 (`order_id`,`uid`,`order_type`,`total_fee`,`status`,`order_at`)
 VALUES ('201806091836318176287421', '5b750a3f943039305a26c1ec', 'groupbuy', 3800, 2001, '2018-08-16 18:23:12');
 
@@ -88,8 +88,8 @@ VALUES ('201806091836318176287421', '5b750a3f943039305a26c1ec', 'groupbuy', 3800
   "schema": {
     "订单号": "$.order_id",
     "用户ID": "$.uid",
-    "用户名": ["$uid|ObjectId", "&.mongo_user.user._id", "$.username"],
-    "用户昵称": ["$uid|ObjectId", "&.mongo_user.user._id", "$.nickname"],
+    "用户名": ["$.uid|ObjectId", "&.mongo_user.user::_id", "$.username"],
+    "用户昵称": ["$.uid|ObjectId", "&.mongo_user.user::_id", "$.nickname"],
     "订单类型": {
       "name": "case_valuer",
       "key": "order_type",
@@ -108,7 +108,7 @@ VALUES ('201806091836318176287421', '5b750a3f943039305a26c1ec', 'groupbuy', 3800
 ## 运行导出
 
 ```
-syncany json/user_order.json --order_at__gte="2018-05-01 00:00:00" --order_at__lt="2018-08-17 00:00:00
+syncany json/user_order.json --order_at__gte="2018-05-01 00:00:00" --order_at__lt="2018-08-17 00:00:00"
 2018-08-16 16:26:43,518 24307 INFO loader: DBLoader <- &.mysql_order.user_order::order_id loader_querys: 1 loader_rows: 1
 2018-08-16 16:26:43,520 24307 INFO join_count: 2 join_querys: 2 join_rows: 15
 2018-08-16 16:26:43,521 24307 INFO outputer: DBUpdateInsertOutputer -> &.exports.用户订单.xlsx#订单列表::订单号 outputer_querys: 1 outputer_operators: 1 outputer_load_rows: 0 outputer_rows: 1
