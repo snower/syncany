@@ -3,6 +3,7 @@
 # create by: snower
 
 import pytz
+from tzlocal import get_localzone
 import datetime
 from .calculater import Calculater
 
@@ -156,6 +157,6 @@ class JoinCalculater(Calculater):
 class NowCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return datetime.datetime.now(tz=pytz.UTC)
+            return datetime.datetime.now(tz=get_localzone())
 
         return datetime.datetime.now(tz=pytz.timezone(self.args[0]))
