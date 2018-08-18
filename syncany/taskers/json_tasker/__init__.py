@@ -302,6 +302,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             self.loader.add_key_matcher(".*", self.create_valuer(self.compile_db_valuer("", None)))
 
         for filter in self.config["querys"]:
+            filter_name = filter["name"]
             if "exps" in filter:
                 if isinstance(filter["exps"], str):
                     exps = [filter["exps"]]
@@ -310,12 +311,11 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
                 for exp in exps:
                     exp_name = get_expression_name(exp)
-                    if hasattr(self.loader, "filter_%s" % exp_name) and hasattr(self.arguments, "%s_%s" % (filter["name"], exp_name)):
-                        getattr(self.loader, "filter_%s" % exp_name)(filter["name"], getattr(self.arguments, "%s_%s" % (
-                        filter["name"], exp_name)))
+                    if hasattr(self.loader, "filter_%s" % exp_name) and hasattr(self.arguments, "%s_%s" % (filter_name, exp_name)):
+                        getattr(self.loader, "filter_%s" % exp_name)(filter_name, getattr(self.arguments, "%s_%s" % (filter_name, exp_name)))
             else:
-                if hasattr(self.loader, "filter_eq") and hasattr(self.arguments, filter["name"]):
-                    getattr(self.loader, "filter_eq")(filter["name"], getattr(self.arguments, filter["name"]))
+                if hasattr(self.loader, "filter_eq") and hasattr(self.arguments, filter_name):
+                    getattr(self.loader, "filter_eq")(filter_name, getattr(self.arguments, filter_name))
 
     def compile_outputer(self):
         output_outputer = self.compile_foreign_key(self.config["output"])
@@ -335,6 +335,21 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     self.outputer.add_valuer(name, valuer)
 
         for filter in self.config["querys"]:
+            filter_name = filter["name"]
+            value_filter = lambda v : v
+            if filter_name not in self.outputer.schema:
+                for field_name, valuer in self.outputer.schema.items():
+                    fields = valuer.get_fields()
+                    if filter_name in fields:
+                        if not valuer.childs():
+                            filter_name = field_name
+                            if valuer.filter:
+                                value_filter = valuer.filter.filter
+                        break
+
+                if filter_name == filter["name"]:
+                    continue
+
             if "exps" in filter:
                 if isinstance(filter["exps"], str):
                     exps = [filter["exps"]]
@@ -343,11 +358,13 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
                 for exp in exps:
                     exp_name = get_expression_name(exp)
-                    if hasattr(self.outputer, "filter_%s" % exp_name) and hasattr(self.arguments, "%s_%s" % (filter["name"], exp_name)):
-                        getattr(self.outputer, "filter_%s" % exp_name)(filter["name"], getattr(self.arguments, "%s_%s" % (filter["name"], exp_name)))
+                    if hasattr(self.outputer, "filter_%s" % exp_name) and hasattr(self.arguments, "%s_%s" % (filter_name, exp_name)):
+                        value = value_filter(getattr(self.arguments, "%s_%s" % (filter_name, exp_name)))
+                        getattr(self.outputer, "filter_%s" % exp_name)(filter_name, value)
             else:
-                if hasattr(self.outputer, "filter_eq") and hasattr(self.arguments, filter["name"]):
-                    getattr(self.outputer, "filter_eq")(filter["name"], getattr(self.arguments, filter["name"]))
+                if hasattr(self.outputer, "filter_eq") and hasattr(self.arguments, filter_name):
+                    value = value_filter(getattr(self.arguments, filter_name))
+                    getattr(self.outputer, "filter_eq")(filter_name, value)
 
     def print_statistics(self):
         statistics = ["loader_%s: %s" % (key, value) for key, value in self.loader.statistics().items()]

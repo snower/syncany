@@ -89,23 +89,26 @@ class DBUpdateInsertOutputer(DBOutputer):
         self.load()
 
         insert_datas = []
+        update_datas = {}
+        delete_datas = []
+
         for data in datas:
             primary_key = self.get_data_primary_key(data)
             if primary_key in self.load_data_keys:
                 self.update(data, self.load_data_keys[primary_key])
-                self.load_data_keys.pop(primary_key)
+                update_datas[primary_key] = data
             else:
                 insert_datas.append(data)
 
         if insert_datas:
             self.insert(insert_datas)
 
-        delete_datas = []
-        if self.load_data_keys:
-            for data in self.load_datas:
-                primary_key = self.get_data_primary_key(data)
-                if primary_key in self.load_data_keys:
-                    delete_datas.append(data)
+        for data in self.load_datas:
+            primary_key = self.get_data_primary_key(data)
+            if primary_key in update_datas:
+                continue
+
+            delete_datas.append(data)
 
         if delete_datas:
             self.remove(delete_datas)
