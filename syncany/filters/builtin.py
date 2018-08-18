@@ -2,8 +2,9 @@
 # 18/8/9
 # create by: snower
 
-import time
 import datetime
+import pytz
+from tzlocal import get_localzone
 import binascii
 try:
     from bson.objectid import ObjectId
@@ -18,13 +19,13 @@ class IntFilter(Filter):
 
         if isinstance(value, datetime.datetime):
             try:
-                return time.mktime(value.timetuple())
+                return int(value.timestamp())
             except:
                 return 0
 
         if isinstance(value, datetime.date):
             try:
-                return time.mktime(value.timetuple())
+                return int(datetime.datetime(value.year, value.month, value.day).timestamp())
             except:
                 return 0
 
@@ -52,13 +53,13 @@ class FloatFilter(Filter):
 
         if isinstance(value, datetime.datetime):
             try:
-                return time.mktime(value.timetuple())
+                return float(value.timestamp())
             except:
                 return 0.0
 
         if isinstance(value, datetime.date):
             try:
-                return time.mktime(value.timetuple())
+                return float(datetime.datetime(value.year, value.month, value.day).timestamp())
             except:
                 return 0.0
 
@@ -139,12 +140,15 @@ class ObjectIdFilter(Filter):
             return value
 
         if isinstance(value, (int, float)):
-            return ObjectId.from_datetime(datetime.datetime.fromtimestamp(int(value)))
+            return ObjectId.from_datetime(datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC))
 
         try:
             return ObjectId(value)
         except:
-            return ObjectId("000000000000000000000000")
+            try:
+                return datetime.datetime.strptime(value, self.args or "%Y-%m-%d %H:%M:%S").astimezone(tz=get_localzone())
+            except:
+                return ObjectId("000000000000000000000000")
 
 class DateTimeFilter(Filter):
     def filter(self, value):
@@ -152,7 +156,7 @@ class DateTimeFilter(Filter):
             return value
 
         if isinstance(value, (int, float)):
-            return datetime.datetime.utcfromtimestamp(int(value))
+            return datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC)
 
         if isinstance(value, (list, tuple, set)):
             results = []
@@ -164,10 +168,10 @@ class DateTimeFilter(Filter):
             return value
 
         if isinstance(value, datetime.date):
-            return datetime.datetime(value.year, value.month, value.day)
+            return datetime.datetime(value.year, value.month, value.day, tzinfo=pytz.timezone(self.args) if self.args else get_localzone())
 
         try:
-            return datetime.datetime.strptime(value, self.args or "%Y-%m-%d %H:%M:%S")
+            return datetime.datetime.strptime(value, self.args or "%Y-%m-%d %H:%M:%S").astimezone(tz=get_localzone())
         except:
             return "0000-00-00 00:00:00"
 
@@ -177,7 +181,7 @@ class DateFilter(Filter):
             return value
 
         if isinstance(value, (int, float)):
-            dt = datetime.datetime.utcfromtimestamp(int(value))
+            dt = datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC)
             return datetime.date(dt.year, dt.month, dt.day)
 
         if isinstance(value, (list, tuple, set)):
@@ -193,7 +197,7 @@ class DateFilter(Filter):
             return datetime.date(value.year, value.month, value.day)
 
         try:
-            dt = datetime.datetime.strptime(value, self.args or "%Y-%m-%d")
+            dt = datetime.datetime.strptime(value, self.args or "%Y-%m-%d").astimezone(tz=get_localzone())
             return datetime.date(dt.year, dt.month, dt.day)
         except:
             return "0000-00-00"

@@ -2,9 +2,9 @@
 # 18/8/15
 # create by: snower
 
+import datetime
 import pytz
 from tzlocal import get_localzone
-import datetime
 from .calculater import Calculater
 
 class AddCalculater(Calculater):
