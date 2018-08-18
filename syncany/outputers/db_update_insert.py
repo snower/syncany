@@ -103,6 +103,9 @@ class DBUpdateInsertOutputer(DBOutputer):
         if insert_datas:
             self.insert(insert_datas)
 
+        if not self.filters:
+            return
+
         for data in self.load_datas:
             data = {key: valuer.get() for key, valuer in data.items()}
             primary_key = self.get_data_primary_key(data)

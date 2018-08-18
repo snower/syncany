@@ -42,5 +42,6 @@ class DBDeleteInsertOutputer(DBOutputer):
     def store(self, datas):
         super(DBDeleteInsertOutputer, self).store(datas)
 
-        self.remove()
+        if self.filters:
+            self.remove()
         self.insert(datas)
