@@ -69,11 +69,11 @@ class DBUpdateInsertOutputer(DBOutputer):
 
     def remove(self, datas):
         if len(self.primary_keys) == 1:
-            primary_keys = []
+            primary_key_datas = []
             for data in datas:
-                primary_keys.append(self.get_data_primary_key(data))
+                primary_key_datas.append(data[self.primary_keys[0]])
             delete = self.db.delete(self.name, self.primary_keys)
-            delete.filter_in(self.primary_keys[0], primary_keys)
+            delete.filter_in(self.primary_keys[0], primary_key_datas)
             delete.commit()
             self.operators.append(delete)
         else:
@@ -108,7 +108,7 @@ class DBUpdateInsertOutputer(DBOutputer):
             if primary_key in update_datas:
                 continue
 
-            delete_datas.append(data)
+            delete_datas.append({key: valuer.get() for key, valuer in data.items()})
 
         if delete_datas:
             self.remove(delete_datas)
