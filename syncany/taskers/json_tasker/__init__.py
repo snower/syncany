@@ -349,6 +349,11 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
                 if filter_name == filter["name"]:
                     continue
+            else:
+                valuer = self.outputer.schema[filter_name]
+                if valuer.filter:
+                    value_filter = valuer.filter.filter
+
 
             if "exps" in filter:
                 if isinstance(filter["exps"], str):
