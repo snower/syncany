@@ -40,14 +40,17 @@ class ValuerCompiler(object):
             "filter": filter,
         }
 
-    def compile_case_valuer(self, key = "", case = {}, default_case = None):
+    def compile_case_valuer(self, key = "", value = None, case = {}, default_case = None):
+        if isinstance(key, list):
+            key, value = '', self.compile_schema_field(key)
+
         case_valuers = {}
         if isinstance(case, list):
             for index in range(len(case)):
                 case_valuers[index] = self.compile_schema_field(case[index])
         else:
-            for value, field in case.items():
-                case_valuers[value] = self.compile_schema_field(field)
+            for case_value, field in case.items():
+                case_valuers[case_value] = self.compile_schema_field(field)
 
         if default_case:
             default_case = self.compile_schema_field(default_case)
@@ -55,6 +58,7 @@ class ValuerCompiler(object):
         return {
             "name": "case_valuer",
             "key": key,
+            'value': value,
             "case": case_valuers,
             "default_case": default_case,
         }

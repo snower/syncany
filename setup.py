@@ -23,6 +23,7 @@ setup(
     packages=find_packages(),
     zip_safe=False,
     install_requires=[
+        "pytz>=2018.5"
     ],
     extras_require = {
         "pymongo": ['pymongo>=3.6.1'],

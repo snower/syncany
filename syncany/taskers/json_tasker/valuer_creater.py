@@ -66,12 +66,18 @@ class ValuerCreater(object):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
             return
+
+        if "value" in config and config["value"]:
+            value_valuer = self.create_valuer(config["value"], join_loaders)
+        else:
+            value_valuer = None
+
         case_valuers = {}
         for key, valuer_config in config["case"].items():
             case_valuers[key] = self.create_valuer(valuer_config, join_loaders)
         default_case_valuer = self.create_valuer(config["default_case"], join_loaders) \
             if "default_case" in config and config["default_case"] else None
-        return valuer_cls(case_valuers, default_case_valuer, config["key"], None)
+        return valuer_cls(case_valuers, default_case_valuer, value_valuer, config["key"], None)
 
     def create_calculate_valuer(self, config, join_loaders=None):
         valuer_cls = find_valuer(config["name"])

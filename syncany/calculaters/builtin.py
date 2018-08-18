@@ -2,12 +2,21 @@
 # 18/8/15
 # create by: snower
 
+import pytz
+import datetime
 from .calculater import Calculater
 
 class AddCalculater(Calculater):
     def calculate(self):
         if not self.args:
             return 0
+
+        if len(self.args) >= 2:
+            if isinstance(self.args[0], datetime.datetime) and isinstance(self.args[1], (int, float)):
+                return self.args[0] + datetime.timedelta(seconds=int(self.args[1]))
+
+            if isinstance(self.args[0], datetime.date) and isinstance(self.args[1], (int, float)):
+                return self.args[0] + datetime.timedelta(days=int(self.args[1]))
 
         result = self.args[0]
         for i in range(1, len(self.args)):
@@ -19,6 +28,13 @@ class SubCalculater(Calculater):
     def calculate(self):
         if not self.args:
             return 0
+
+        if len(self.args) >= 2:
+            if isinstance(self.args[0], datetime.datetime) and isinstance(self.args[1], (int, float)):
+                return self.args[0] - datetime.timedelta(seconds=int(self.args[1]))
+
+            if isinstance(self.args[0], datetime.date) and isinstance(self.args[1], (int, float)):
+                return self.args[0] - datetime.timedelta(days=int(self.args[1]))
 
         result = self.args[0]
         for i in range(1, len(self.args)):
@@ -135,3 +151,11 @@ class JoinCalculater(Calculater):
         else:
             join_key = str(self.args[0])
         return self.join(self.args[1:], join_key, dict_join_key)
+
+
+class NowCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return datetime.datetime.now(tz=pytz.UTC)
+
+        return datetime.datetime.now(tz=pytz.timezone(self.args[0]))

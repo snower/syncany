@@ -7,4 +7,10 @@ class Calculater(object):
         self.args = args
 
     def calculate(self):
-        return None
+        if not self.args:
+            return None
+
+        if len(self.args) == 1:
+            return self.args[0]
+
+        return self.args

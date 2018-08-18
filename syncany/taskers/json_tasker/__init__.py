@@ -240,7 +240,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             return self.compile_db_valuer(key["key"], key["filter"])
 
         if key["instance"] == "@":
-            return self.compile_const_valuer(field)
+            return self.compile_calculate_valuer(key["key"], [], key["filter"])
         return self.compile_const_valuer(field)
 
     def create_valuer(self, config, join_loaders = None):

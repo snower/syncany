@@ -5,21 +5,26 @@
 from .valuer import Valuer
 
 class CaseValuer(Valuer):
-    def __init__(self, case_valuers, default_case_valuer, *args, **kwargs):
+    def __init__(self, case_valuers, default_case_valuer, value_valuer, *args, **kwargs):
         super(CaseValuer, self).__init__(*args, **kwargs)
 
         self.case_valuers = case_valuers
         self.default_case_valuer = default_case_valuer
+        self.value_valuer = value_valuer or None
 
     def clone(self):
         case_valuers = {}
         for name, valuer in self.case_valuers.items():
             case_valuers[name] = valuer.clone()
         default_case_valuer = self.default_case_valuer.clone() if self.default_case_valuer else None
-        return self.__class__(case_valuers, default_case_valuer, self.key, self.filter)
+        value_valuer = self.value_valuer.clone() if self.value_valuer else None
+        return self.__class__(case_valuers, default_case_valuer, value_valuer, self.key, self.filter)
 
     def fill(self, data):
         super(CaseValuer, self).fill(data)
+
+        if self.value_valuer:
+            self.value_valuer.fill(data)
 
         if self.value in self.case_valuers:
             self.case_valuers[self.value].fill(data)
@@ -28,6 +33,9 @@ class CaseValuer(Valuer):
         return self
 
     def get(self):
+        if self.value_valuer:
+            self.value = self.value_valuer.get()
+
         if self.value in self.case_valuers:
             return self.case_valuers[self.value].get()
         elif self.default_case_valuer:
@@ -35,10 +43,12 @@ class CaseValuer(Valuer):
         return self.value
 
     def childs(self):
-        return list(self.case_valuers.values()) + [self.default_case_valuer]
+        return list(self.case_valuers.values()) \
+               + ([self.default_case_valuer] if self.default_case_valuer else []) \
+               + ([self.value_valuer] if self.value_valuer else [])
 
     def get_fields(self):
-        fields = [self.key]
+        fields = self.value_valuer.get_fields() if self.value_valuer else [self.key]
         for _, valuer in self.case_valuers.items():
             for field in valuer.get_fields():
                 fields.append(field)

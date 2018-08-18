@@ -15,6 +15,9 @@ class Valuer(object):
         return self.__class__(self.key, self.filter)
 
     def fill(self, data):
+        if not self.key:
+            return self
+
         if self.key not in data:
             keys = self.key.split(".")
             for key in keys:
