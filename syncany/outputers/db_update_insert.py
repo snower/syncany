@@ -104,11 +104,12 @@ class DBUpdateInsertOutputer(DBOutputer):
             self.insert(insert_datas)
 
         for data in self.load_datas:
+            data = {key: valuer.get() for key, valuer in data.items()}
             primary_key = self.get_data_primary_key(data)
             if primary_key in update_datas:
                 continue
 
-            delete_datas.append({key: valuer.get() for key, valuer in data.items()})
+            delete_datas.append(data)
 
         if delete_datas:
             self.remove(delete_datas)

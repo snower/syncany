@@ -196,7 +196,7 @@ class PostgresqlDeleteBuilder(DeleteBuilder):
     def commit(self):
         db_name = self.name.split(".")
         db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
-        self.sql = "DELETE * FROM %s WHERE %s" % (db_name, " AND ".join(self.query))
+        self.sql = "DELETE FROM %s WHERE %s" % (db_name, " AND ".join(self.query))
         connection = self.db.ensure_connection()
         cursor = connection.cursor()
         try:
