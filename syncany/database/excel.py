@@ -73,6 +73,7 @@ class ExeclInsertBuilder(InsertBuilder):
         execl_sheet = self.db.ensure_open_file(self.name)
         execl_sheet.sheet_descriptions = self.fields
         execl_sheet.sheet_datas.extend(self.datas)
+        execl_sheet.changed = True
 
 class ExeclUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -119,6 +120,7 @@ class ExeclUpdateBuilder(UpdateBuilder):
                 datas.append(data)
 
         execl_sheet.sheet_datas = datas
+        execl_sheet.changed = True
         return datas
 
 class ExeclDeleteBuilder(DeleteBuilder):
@@ -163,6 +165,7 @@ class ExeclDeleteBuilder(DeleteBuilder):
                 datas.append(data)
 
         execl_sheet.sheet_datas = datas
+        execl_sheet.changed = True
         return datas
 
 class ExeclSheet(object):
@@ -175,6 +178,7 @@ class ExeclSheet(object):
         self.execl_sheet = execl_sheet
         self.sheet_descriptions = []
         self.sheet_datas = []
+        self.changed = False
 
     def load(self):
         for row in self.execl_sheet.rows:
@@ -201,6 +205,9 @@ class ExeclSheet(object):
         return tuple(fields) if fields else tuple()
 
     def close(self):
+        if not self.changed:
+            return
+
         if self.execl_sheet:
             sheet_index = self.execl_fp.index(self.execl_sheet)
             self.execl_fp.remove(self.execl_sheet)

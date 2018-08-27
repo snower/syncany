@@ -70,6 +70,7 @@ class CsvInsertBuilder(InsertBuilder):
         csv_file = self.db.ensure_open_file(self.name)
         csv_file.fields = self.fields
         csv_file.datas.extend(self.datas)
+        csv_file.changed = True
 
 class CsvUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -116,6 +117,7 @@ class CsvUpdateBuilder(UpdateBuilder):
                 datas.append(data)
 
         csv_file.datas = datas
+        csv_file.changed = True
         return datas
 
 class CsvDeleteBuilder(DeleteBuilder):
@@ -160,6 +162,7 @@ class CsvDeleteBuilder(DeleteBuilder):
                 datas.append(data)
 
         csv_file.datas = datas
+        csv_file.changed = True
         return datas
 
 class CsvFile(object):
@@ -168,6 +171,7 @@ class CsvFile(object):
         self.filename = filename
         self.fields = ()
         self.datas = datas
+        self.changed = False
 
     def get_fields(self):
         if self.fields:
@@ -208,7 +212,7 @@ class CsvDB(DataBase):
 
             filename = os.path.join(self.config["path"], ".".join(names[1:]))
             if os.path.exists(filename):
-                with open(filename, "r", newline='') as fp:
+                with open(filename, "r", newline='', encoding="utf-8") as fp:
                     reader = csv.reader(fp, quotechar='"')
                     descriptions, datas = [], []
                     for row in reader:
@@ -240,8 +244,11 @@ class CsvDB(DataBase):
     def close(self):
         if self.csvs:
             for name, csv_file in self.csvs.items():
+                if not csv_file.changed:
+                    continue
+
                 fields = csv_file.get_fields()
-                with open(csv_file.filename, "w", newline='') as fp:
+                with open(csv_file.filename, "w", newline='', encoding="utf-8") as fp:
                     writer = csv.writer(fp, quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
                     writer.writerow(fields)
 

@@ -19,6 +19,7 @@ class Valuer(object):
             return self
 
         if self.key not in data:
+            odata = data
             keys = self.key.split(".")
             for key in keys:
                 if isinstance(data, (list, tuple, set)):
@@ -50,6 +51,9 @@ class Valuer(object):
                     break
 
                 data = data[key]
+
+            if odata == data:
+                return self
 
             self.value = data
             if self.filter:

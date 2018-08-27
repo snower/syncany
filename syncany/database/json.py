@@ -68,6 +68,7 @@ class JsonInsertBuilder(InsertBuilder):
     def commit(self):
         json_file = self.db.ensure_open_file(self.name)
         json_file.datas.extend(self.datas)
+        json_file.changed = True
 
 class JsonUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -113,6 +114,7 @@ class JsonUpdateBuilder(UpdateBuilder):
                 datas.append(data)
 
         json_file.datas = datas
+        json_file.changed = True
         return datas
 
 class JsonDeleteBuilder(DeleteBuilder):
@@ -157,6 +159,7 @@ class JsonDeleteBuilder(DeleteBuilder):
                 datas.append(data)
 
         json_file.datas = datas
+        json_file.changed = True
         return datas
 
 class JsonFile(object):
@@ -164,6 +167,7 @@ class JsonFile(object):
         self.name = name
         self.filename = filename
         self.datas = datas
+        self.changed = False
 
 class JsonDB(DataBase):
     DEFAULT_CONFIG = {
@@ -217,6 +221,9 @@ class JsonDB(DataBase):
     def close(self):
         if self.jsons:
             for name, json_file in self.jsons.items():
+                if not json_file.changed:
+                    continue
+
                 with open(json_file.filename, "w") as fp:
                     json.dump(json_file.datas, fp, default=str, indent = 4, ensure_ascii = False, sort_keys = True)
 
