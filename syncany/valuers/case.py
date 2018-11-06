@@ -25,11 +25,15 @@ class CaseValuer(Valuer):
 
         if self.value_valuer:
             self.value_valuer.fill(data)
-
-        if self.value in self.case_valuers:
-            self.case_valuers[self.value].fill(data)
-        elif self.default_case_valuer:
-            self.default_case_valuer.fill(data)
+            for case_key, case_valuer in self.case_valuers.items():
+                case_valuer.fill(data)
+            if self.default_case_valuer:
+                self.default_case_valuer.fill(data)
+        else:
+            if self.value in self.case_valuers:
+                self.case_valuers[self.value].fill(data)
+            elif self.default_case_valuer:
+                self.default_case_valuer.fill(data)
         return self
 
     def get(self):
