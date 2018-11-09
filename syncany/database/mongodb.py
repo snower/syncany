@@ -49,12 +49,22 @@ class MongoQueryBuilder(QueryBuilder):
             self.query[key] = {}
         self.query[key]["$in"] = value
 
+    def filter_limit(self, count, start=None):
+        if start:
+            self.limit = (0, count)
+        else:
+            self.limit = (start, count)
+
     def order_by(self, key, direct=1):
         self.orders.append((key, 1 if direct else -1))
 
     def commit(self):
         connection = self.db.ensure_connection()
         cursor = connection[self.db_name][self.collection_name].find(self.query, {field: 1 for field in self.fields})
+        if self.limit:
+            if self.limit[0]:
+                cursor.skip(self.limit[0])
+            cursor.limit(self.limit[1])
         if self.orders:
             cursor.sort(self.orders)
         return list(cursor)

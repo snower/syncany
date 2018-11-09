@@ -35,13 +35,22 @@ class CsvQueryBuilder(QueryBuilder):
     def filter_in(self, key, value):
         self.query[(key, "in")] = (value, lambda a, b: a in b)
 
+    def filter_limit(self, count, start=None):
+        if start:
+            self.limit = (0, count)
+        else:
+            self.limit = (start, start + count)
+
     def order_by(self, key, direct=1):
         self.orders.append((key, direct))
 
     def commit(self):
         csv_file = self.db.ensure_open_file(self.name)
-        datas = []
+        index, datas = 0, []
         for data in csv_file.datas:
+            if self.limit and (index < self.limit[0] or index > self.limit[1]):
+                continue
+
             succed = True
             for (key, exp), (value, cmp) in self.query.items():
                 if key not in data:
@@ -53,6 +62,7 @@ class CsvQueryBuilder(QueryBuilder):
 
             if succed:
                 datas.append(data)
+                index += 1
 
         if self.orders:
             datas = sorted(datas, key =  self.orders[0][0], reverse = True if self.orders[0][1] < 0 else False)

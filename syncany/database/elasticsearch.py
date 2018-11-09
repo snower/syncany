@@ -51,6 +51,12 @@ class ElasticsearchQueryBuilder(QueryBuilder):
             self.query[key] = {}
         self.query[key]["in"] = value
 
+    def filter_limit(self, count, start=None):
+        if start:
+            self.limit = (0, count)
+        else:
+            self.limit = (start, count)
+
     def order_by(self, key, direct=1):
         self.orders.append((key, 1 if direct else -1))
 

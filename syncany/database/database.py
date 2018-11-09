@@ -10,6 +10,7 @@ class QueryBuilder(object):
         self.fields = fields
         self.query = {}
         self.orders = []
+        self.limit = None
 
     def filter_gt(self, key, value):
         raise NotImplementedError()
@@ -30,6 +31,9 @@ class QueryBuilder(object):
         raise NotImplementedError()
 
     def filter_in(self, key, value):
+        raise NotImplementedError()
+
+    def filter_limit(self, count, start = None):
         raise NotImplementedError()
 
     def order_by(self, key, direct = 1):

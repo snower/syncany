@@ -132,6 +132,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     filter_cls = find_filter('str')
                 self.argparse.add_argument('--%s' % filter["name"], dest="%s" % filter["name"], type=filter_cls(filter.get("type_args")), help="%s" % filter["name"])
 
+            self.argparse.add_argument('--__batch', dest="config_batch_count", type=int, default=0, help="per sync batch count (default: 0 all)")
+
     def compile_key(self, key):
         if not isinstance(key, str) or key == "":
             return {"instance": None, "key": "", "value": key, "filter": None}
@@ -371,9 +373,9 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     value = value_filter(getattr(self.arguments, filter_name))
                     getattr(self.outputer, "filter_eq")(filter_name, value)
 
-    def print_statistics(self):
-        statistics = ["loader_%s: %s" % (key, value) for key, value in self.loader.statistics().items()]
-        logging.info("loader: %s <- %s %s", self.loader.__class__.__name__, self.input, " ".join(statistics))
+    def print_statistics(self, loader, outputer):
+        statistics = ["loader_%s: %s" % (key, value) for key, value in loader.statistics().items()]
+        logging.info("loader: %s <- %s %s", loader.__class__.__name__, self.input, " ".join(statistics))
 
         statistics = {}
         for name, join_loader in self.join_loaders.items():
@@ -383,12 +385,10 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 else:
                     statistics[key] += value
 
-        logging.info("join_count: %s %s", len(self.join_loaders),
-                     " ".join(["join_%s: %s" % (key, value) for key, value in statistics.items()]))
+        logging.info("join_count: %s %s", len(self.join_loaders), " ".join(["join_%s: %s" % (key, value) for key, value in statistics.items()]))
 
-        statistics = ["outputer_%s: %s" % (key, value) for key, value in self.outputer.statistics().items()]
-        logging.info("outputer: %s -> %s %s", self.outputer.__class__.__name__, self.output, " ".join(statistics))
-        logging.info("finish %s %s %.2fms", self.json_filename, self.config.get("name"), (time.time() - self.start_time) * 1000)
+        statistics = ["outputer_%s: %s" % (key, value) for key, value in outputer.statistics().items()]
+        logging.info("outputer: %s -> %s %s", outputer.__class__.__name__, self.output, " ".join(statistics))
 
     def run(self):
         try:
@@ -406,12 +406,45 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             self.compile_loader()
             self.compile_outputer()
 
-            datas = self.loader.get()
-            if datas:
-                self.outputer.store(datas)
+            config_batch_count = int(getattr(self.arguments, "config_batch_count", 0))
+            if config_batch_count:
+                loader = self.loader.clone()
+                outputer = self.outputer.clone()
+
+                loader.filter_limit(config_batch_count)
+                datas = loader.get()
+                if datas:
+                    cursor_data = datas[-1]
+                    for primary_key in outputer.primary_keys:
+                        outputer.filter_lte(primary_key, cursor_data.get(primary_key, ''))
+                    outputer.store(datas)
+                self.print_statistics(loader, outputer)
+
+                while datas:
+                    loader = self.loader.clone()
+                    outputer = self.outputer.clone()
+
+                    for primary_key in loader.primary_keys:
+                        loader.filter_gt(primary_key, cursor_data.get(primary_key, ''))
+                    loader.filter_limit(config_batch_count)
+                    datas = loader.get()
+                    if not datas:
+                        break
+
+                    cursor_data = datas[-1]
+                    for primary_key in outputer.primary_keys:
+                        outputer.filter_lte(primary_key, cursor_data.get(primary_key, ''))
+                    outputer.store(datas)
+                    self.print_statistics(loader, outputer)
+            else:
+                datas = self.loader.get()
+                if datas:
+                    self.outputer.store(datas)
+                self.print_statistics(self.loader, self.outputer)
+
             for name, database in self.databases.items():
                 database.close()
 
-            self.print_statistics()
+            logging.info("finish %s %s %.2fms", self.json_filename, self.config.get("name"), (time.time() - self.start_time) * 1000)
         except Exception as e:
             logging.error("%s\n%s", e, traceback.format_exc())

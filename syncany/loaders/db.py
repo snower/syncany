@@ -2,7 +2,7 @@
 # 18/8/6
 # create by: snower
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from .loader import Loader
 
 class DBLoader(Loader):
@@ -13,6 +13,16 @@ class DBLoader(Loader):
         self.name = name
         self.querys = []
 
+    def clone(self):
+        loader = self.__class__(self.db, self.name, self.primary_keys)
+        schema = OrderedDict()
+        for key, valuer in self.schema.items():
+            schema[key] = valuer.clone()
+        loader.schema = schema
+        loader.filters = [filter for filter in self.filters]
+        loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
+        return loader
+
     def load(self):
         if self.loaded:
             return
@@ -20,7 +30,7 @@ class DBLoader(Loader):
         fields = set([])
         if not self.key_matchers:
             for key, exp, value in self.filters:
-                fields.add(key)
+                if key: fields.add(key)
 
             for name, valuer in self.schema.items():
                 for field in valuer.get_fields():
@@ -45,9 +55,15 @@ class DBLoader(Loader):
                 if len(in_exps[key]) > 1:
                     exp, value = "in", in_exps.pop(key)
 
-            getattr(query, "filter_%s" % exp)(key, value)
+            if key is None:
+                getattr(query, "filter_%s" % exp)(value)
+            else:
+                getattr(query, "filter_%s" % exp)(key, value)
 
+        for primary_key in self.primary_keys:
+            query.order_by(primary_key)
         datas = query.commit()
+
         for data in datas:
             primary_key = self.get_data_primary_key(data)
 

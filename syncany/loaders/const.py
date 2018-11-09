@@ -2,6 +2,7 @@
 # 18/8/6
 # create by: snower
 
+from collections import OrderedDict
 from .loader import Loader
 
 class ConstLoader(Loader):
@@ -9,6 +10,16 @@ class ConstLoader(Loader):
         super(ConstLoader, self).__init__(*args, **kwargs)
 
         self.const_datas = datas
+
+    def clone(self):
+        loader = self.__class__(self.const_datas, self.primary_keys)
+        schema = OrderedDict()
+        for key, valuer in self.schema.items():
+            schema[key] = valuer.clone()
+        loader.schema = schema
+        loader.filters = [filter for filter in self.filters]
+        loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
+        return loader
 
     def load(self):
         if self.loaded:

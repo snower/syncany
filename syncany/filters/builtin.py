@@ -89,25 +89,25 @@ class StringFilter(Filter):
             try:
                 return value.strftime(self.args or "%Y-%m-%d %H:%M:%S")
             except:
-                return "0000-00-00 00:00:00"
+                return ""
 
         if isinstance(value, datetime.date):
             try:
                 return value.strftime(self.args or "%Y-%m-%d")
             except:
-                return "0000-00-00"
+                return ""
 
         if isinstance(value, int):
             try:
                 return (self.args or "%d" % value)
             except:
-                return 0
+                return "0"
 
         if isinstance(value, float):
             try:
                 return (self.args or "%f" % value)
             except:
-                return 0.0
+                return "0.0"
 
         if isinstance(value, bytes):
             try:
@@ -195,7 +195,7 @@ class DateTimeFormatFilter(DateTimeFilter):
         value = super(DateTimeFormatFilter, self).filter(value)
 
         if value is None:
-            return "0000-00-00 00:00:00"
+            return ""
 
         if isinstance(value, (list, tuple, set)):
             results = []
@@ -249,7 +249,7 @@ class DateFormatFilter(DateFilter):
         value = super(DateFormatFilter, self).filter(value)
 
         if value is None:
-            return "0000-00-00"
+            return ""
 
         if isinstance(value, (list, tuple, set)):
             results = []

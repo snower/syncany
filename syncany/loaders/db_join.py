@@ -13,6 +13,10 @@ class DBJoinMatcher(object):
         self.data = None
         self.valuers = []
 
+    def clone(self):
+        matcher = self.__class__(self.key, self.value)
+        return matcher
+
     def fill(self, values):
         self.data = {key: valuer.get() for key, valuer in values.items()}
         for valuer in self.valuers:
@@ -52,7 +56,7 @@ class DBJoinLoader(DBLoader):
             fields = set([])
             if not self.key_matchers:
                 for key, exp, value in self.filters:
-                    fields.add(key)
+                    if key: fields.add(key)
 
                 for name, valuer in self.schema.items():
                     for field in valuer.get_fields():
@@ -62,7 +66,10 @@ class DBJoinLoader(DBLoader):
             for i in range(int(len(unload_primary_keys) / 1000.0 + 1)):
                 query = self.db.query(self.name, self.primary_keys, list(fields))
                 for key, exp, value in self.filters:
-                    getattr(query, "filter_%s" % exp)(key, value)
+                    if key is None:
+                        getattr(query, "filter_%s" % exp)(value)
+                    else:
+                        getattr(query, "filter_%s" % exp)(key, value)
 
                 query.filter_in(self.primary_keys[0], unload_primary_keys[i * 1000: (i + 1) * 1000])
                 datas = query.commit()
@@ -85,7 +92,10 @@ class DBJoinLoader(DBLoader):
                                         self.schema[key] = valuer
                                         values[key] = valuer.clone().fill(data)
 
-                    self.data_keys[primary_key] = values
+                    if primary_key not in self.data_keys:
+                        self.data_keys[primary_key] = [values]
+                    else:
+                        self.data_keys[primary_key].append(values)
                     self.datas.append(values)
 
                 self.querys.append(query)
@@ -93,11 +103,14 @@ class DBJoinLoader(DBLoader):
             self.unload_primary_keys = set([])
 
         if self.matchers:
-            for data in self.datas:
-                value = data[self.primary_keys[0]].get()
-                if value in self.matchers:
-                    for matcher in self.matchers[value]:
-                        matcher.fill(data)
-                    self.matchers.pop(value)
+            for primary_key, values in self.data_keys.items():
+                if primary_key in self.matchers:
+                    if len(values) == 1:
+                        for matcher in self.matchers[primary_key]:
+                            matcher.fill(values[0])
+                    else:
+                        for matcher in self.matchers[primary_key]:
+                            matcher.fill(values)
+                    self.matchers.pop(primary_key)
 
         self.loaded = True

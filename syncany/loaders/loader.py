@@ -13,6 +13,9 @@ class KeyMatcher(object):
             self.matcher = matcher
         self.valuer = valuer
 
+    def clone(self):
+        return self.__class__(self.matcher, self.clone_valuer())
+
     def match(self, key):
         return self.matcher.match(key)
 
@@ -28,6 +31,16 @@ class Loader(object):
         self.datas = []
         self.data_keys = {}
         self.loaded = False
+
+    def clone(self):
+        loader = self.__class__(self.primary_keys)
+        schema = OrderedDict()
+        for key, valuer in self.schema.items():
+            schema[key] = valuer.clone()
+        loader.schema = schema
+        loader.filters = [filter for filter in self.filters]
+        loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
+        return loader
 
     def add_valuer(self, name, valuer):
         self.schema[name] = valuer
@@ -75,18 +88,38 @@ class Loader(object):
         return datas
 
     def add_filter(self, key, exp, value):
-        self.filters.append((key, exp, value))
+        self.filters.append([key, exp, value])
 
     def filter_gt(self, key, value):
+        for filter in self.filters:
+            if key == filter[0] and "gt" == filter[1]:
+                filter[2] = value
+                return
+
         self.add_filter(key, "gt", value)
 
     def filter_gte(self, key, value):
+        for filter in self.filters:
+            if key == filter[0] and "gte" == filter[1]:
+                filter[2] = value
+                return
+
         self.add_filter(key, "gte", value)
 
     def filter_lt(self, key, value):
+        for filter in self.filters:
+            if key == filter[0] and "lt" == filter[1]:
+                filter[2] = value
+                return
+
         self.add_filter(key, "lt", value)
 
     def filter_lte(self, key, value):
+        for filter in self.filters:
+            if key == filter[0] and "lte" == filter[1]:
+                filter[2] = value
+                return
+
         self.add_filter(key, "lte", value)
 
     def filter_eq(self, key, value):
@@ -97,6 +130,9 @@ class Loader(object):
 
     def filter_in(self, key, value):
         self.add_filter(key, "in", value)
+
+    def filter_limit(self, value):
+        self.add_filter(None, "limit", value)
 
     def statistics(self):
         return {

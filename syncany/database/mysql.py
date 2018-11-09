@@ -46,6 +46,12 @@ class MysqlQueryBuilder(QueryBuilder):
         self.query.append('`' + key + "` in %s")
         self.query_values.append(value)
 
+    def filter_limit(self, count, start=None):
+        if start:
+            self.limit = (0, count)
+        else:
+            self.limit = (start, count)
+
     def order_by(self, key, direct=1):
         self.orders.append(('`' + key + ("` ASC" if direct else "` DESC")))
 
@@ -56,7 +62,8 @@ class MysqlQueryBuilder(QueryBuilder):
 
         where = (" WHERE" + " AND ".join(self.query)) if self.query else ""
         order_by = (" ORDER BY " + ",".join(self.orders)) if self.orders else ""
-        self.sql = "SELECT %s FROM %s%s%s" % (fields, db_name, where, order_by)
+        limit = (" LIMIT %s%s" % (("%s," % self.limit[0]) if self.limit[0] else "", self.limit[1])) if self.limit else ""
+        self.sql = "SELECT %s FROM %s%s%s%s" % (fields, db_name, where, order_by, limit)
         connection = self.db.ensure_connection()
         cursor = connection.cursor(DictCursor)
         try:
