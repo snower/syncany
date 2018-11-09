@@ -153,7 +153,10 @@ class ObjectIdFilter(Filter):
 class DateTimeFilter(Filter):
     def filter(self, value):
         if isinstance(value, datetime.datetime):
-            return value
+            localzone = get_localzone()
+            if localzone == value.tzinfo:
+                return value
+            return value.astimezone(tz=localzone)
 
         if isinstance(value, (int, float)):
             return datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC)
