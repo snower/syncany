@@ -137,6 +137,9 @@ class ObjectIdFilter(Filter):
             return results
 
         if isinstance(value, dict):
+            results = {}
+            for ck, cv in value.items():
+                results[ck] = self.filter(cv)
             return value
 
         if isinstance(value, (int, float)):
@@ -152,14 +155,17 @@ class ObjectIdFilter(Filter):
 
 class DateTimeFilter(Filter):
     def filter(self, value):
+        localzone = get_localzone()
         if isinstance(value, datetime.datetime):
-            localzone = get_localzone()
             if localzone == value.tzinfo:
                 return value
             return value.astimezone(tz=localzone)
 
         if isinstance(value, (int, float)):
-            return datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC)
+            value = datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC)
+            if localzone == value.tzinfo:
+                return value
+            return value.astimezone(tz=localzone)
 
         if isinstance(value, (list, tuple, set)):
             results = []
@@ -168,15 +174,42 @@ class DateTimeFilter(Filter):
             return results
 
         if isinstance(value, dict):
+            results = {}
+            for ck, cv in value.items():
+                results[ck] = self.filter(cv)
             return value
 
         if isinstance(value, datetime.date):
-            return datetime.datetime(value.year, value.month, value.day, tzinfo=pytz.timezone(self.args) if self.args else get_localzone())
+            value = datetime.datetime(value.year, value.month, value.day, tzinfo=pytz.timezone(self.args) if self.args else localzone)
+            if localzone == value.tzinfo:
+                return value
+            return value.astimezone(tz=localzone)
 
         try:
-            return datetime.datetime.strptime(value, self.args or "%Y-%m-%d %H:%M:%S").astimezone(tz=get_localzone())
+            return datetime.datetime.strptime(value, self.args or "%Y-%m-%d %H:%M:%S").astimezone(tz=localzone)
         except:
+            return None
+
+class DateTimeFormatFilter(DateTimeFilter):
+    def filter(self, value):
+        value = super(DateTimeFormatFilter, self).filter(value)
+
+        if value is None:
             return "0000-00-00 00:00:00"
+
+        if isinstance(value, (list, tuple, set)):
+            results = []
+            for cv in value:
+                cv.strftime(self.args or "%Y-%m-%d %H:%M:%S")
+            return results
+
+        if isinstance(value, dict):
+            results = {}
+            for ck, cv in value.items():
+                results[ck] = cv.strftime(self.args or "%Y-%m-%d %H:%M:%S")
+            return value
+
+        return value.strftime(self.args or "%Y-%m-%d %H:%M:%S")
 
 class DateFilter(Filter):
     def filter(self, value):
@@ -184,7 +217,7 @@ class DateFilter(Filter):
             return value
 
         if isinstance(value, (int, float)):
-            dt = datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC)
+            dt = datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC).astimezone(tz=get_localzone())
             return datetime.date(dt.year, dt.month, dt.day)
 
         if isinstance(value, (list, tuple, set)):
@@ -194,13 +227,40 @@ class DateFilter(Filter):
             return results
 
         if isinstance(value, dict):
+            results = {}
+            for ck, cv in value.items():
+                results[ck] = self.filter(cv)
             return value
 
         if isinstance(value, datetime.datetime):
+            localzone = get_localzone()
+            if localzone != value.tzinfo:
+                value = value.astimezone(tz=localzone)
             return datetime.date(value.year, value.month, value.day)
 
         try:
             dt = datetime.datetime.strptime(value, self.args or "%Y-%m-%d").astimezone(tz=get_localzone())
             return datetime.date(dt.year, dt.month, dt.day)
         except:
+            return None
+
+class DateFormatFilter(DateFilter):
+    def filter(self, value):
+        value = super(DateFormatFilter, self).filter(value)
+
+        if value is None:
             return "0000-00-00"
+
+        if isinstance(value, (list, tuple, set)):
+            results = []
+            for cv in value:
+                cv.strftime(self.args or "%Y-%m-%d")
+            return results
+
+        if isinstance(value, dict):
+            results = {}
+            for ck, cv in value.items():
+                results[ck] = cv.strftime(self.args or "%Y-%m-%d")
+            return value
+
+        return value.strftime(self.args or "%Y-%m-%d")

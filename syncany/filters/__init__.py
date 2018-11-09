@@ -10,7 +10,9 @@ FILTERS = {
     "str": StringFilter,
     "ObjectId": ObjectIdFilter,
     "datetime": DateTimeFilter,
+    "datetimef": DateTimeFormatFilter,
     "date": DateFilter,
+    "datef": DateFormatFilter,
 }
 
 def find_filter(name):
