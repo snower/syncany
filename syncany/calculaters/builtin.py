@@ -160,3 +160,123 @@ class NowCalculater(Calculater):
             return datetime.datetime.now(tz=get_localzone())
 
         return datetime.datetime.now(tz=pytz.timezone(self.args[0]))
+
+class GtCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return False
+
+        result = self.args[0]
+        for i in range(1, len(self.args)):
+            if result <= self.args[i]:
+                return False
+
+        return True
+
+class GteCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return False
+
+        result = self.args[0]
+        for i in range(1, len(self.args)):
+            if result < self.args[i]:
+                return False
+
+        return True
+
+class LtCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return False
+
+        result = self.args[0]
+        for i in range(1, len(self.args)):
+            if result >= self.args[i]:
+                return False
+
+        return True
+
+class LteCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return False
+
+        result = self.args[0]
+        for i in range(1, len(self.args)):
+            if result > self.args[i]:
+                return False
+
+        return True
+
+class EqCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return False
+
+        result = self.args[0]
+        for i in range(1, len(self.args)):
+            if result != self.args[i]:
+                return False
+
+        return True
+
+class NeqCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return False
+
+        result = self.args[0]
+        for i in range(1, len(self.args)):
+            if result == self.args[i]:
+                return False
+
+        return True
+
+class InCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return False
+
+        result = self.args[0]
+        for i in range(1, len(self.args)):
+            if result not in self.args[i]:
+                return False
+
+        return True
+
+class MaxCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return None
+
+        if len(self.args) == 2 and \
+                isinstance(self.args[0], (list, tuple, set)) and \
+                isinstance(self.args[1], str):
+            values = {}
+            for data in self.args[0]:
+                key_value = self.get_key_value(self.args[1], data)
+                values[key_value] = data
+
+            max_key_value = max(*tuple(values.keys()))
+            return values[max_key_value]
+
+        return max(*tuple(self.args))
+
+class MinCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return None
+
+        if len(self.args) == 2 and \
+            isinstance(self.args[0], (list, tuple, set)) and \
+            isinstance(self.args[1], str):
+            values = {}
+            for data in self.args[0]:
+                key_value = self.get_key_value(self.args[1], data)
+                values[key_value] = data
+
+            min_key_value = min(*tuple(values.keys()))
+            return values[min_key_value]
+
+        return min(*tuple(self.args))

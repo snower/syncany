@@ -85,6 +85,12 @@ class StringFilter(Filter):
         if value is None:
             return ""
 
+        if value is True:
+            return "true"
+
+        if value is False:
+            return "false"
+
         if isinstance(value, datetime.datetime):
             try:
                 return value.strftime(self.args or "%Y-%m-%d %H:%M:%S")
@@ -130,6 +136,15 @@ class ObjectIdFilter(Filter):
         super(ObjectIdFilter, self).__init__(*args, **kwargs)
 
     def filter(self, value):
+        if value is None:
+            return ObjectId("000000000000000000000000")
+
+        if value is True:
+            return ObjectId("ffffffffffffffffffffffff")
+
+        if value is False:
+            return ObjectId("000000000000000000000000")
+
         if isinstance(value, (list, tuple, set)):
             results = []
             for cv in value:
@@ -197,6 +212,12 @@ class DateTimeFormatFilter(DateTimeFilter):
         if value is None:
             return ""
 
+        if value is True:
+            return ""
+
+        if value is False:
+            return ""
+
         if isinstance(value, (list, tuple, set)):
             results = []
             for cv in value:
@@ -249,6 +270,12 @@ class DateFormatFilter(DateFilter):
         value = super(DateFormatFilter, self).filter(value)
 
         if value is None:
+            return ""
+
+        if value is True:
+            return ""
+
+        if value is False:
             return ""
 
         if isinstance(value, (list, tuple, set)):

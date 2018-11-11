@@ -16,6 +16,15 @@ CALCULATERS = {
     "split": SplitCalculater,
     "join": JoinCalculater,
     "now": NowCalculater,
+    "gt": GtCalculater,
+    "gte": GteCalculater,
+    "lt": LtCalculater,
+    "lte": LteCalculater,
+    "eq": EqCalculater,
+    "neq": NeqCalculater,
+    "in": InCalculater,
+    "max": MaxCalculater,
+    "min": MinCalculater,
 }
 
 def find_calculater(name):

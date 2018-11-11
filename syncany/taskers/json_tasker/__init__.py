@@ -373,22 +373,27 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     value = value_filter(getattr(self.arguments, filter_name))
                     getattr(self.outputer, "filter_eq")(filter_name, value)
 
-    def print_statistics(self, loader, outputer):
-        statistics = ["loader_%s: %s" % (key, value) for key, value in loader.statistics().items()]
-        logging.info("loader: %s <- %s %s", loader.__class__.__name__, self.input, " ".join(statistics))
+    def print_statistics(self, loader_name, loader_statistics, outputer_name, outputer_statistics, join_loader_count, join_loader_statistics):
+        statistics = ["loader_%s: %s" % (key, value) for key, value in loader_statistics().items()]
+        logging.info("loader: %s <- %s %s", loader_name, self.input, " ".join(statistics))
 
-        statistics = {}
-        for name, join_loader in self.join_loaders.items():
-            for key, value in join_loader.statistics().items():
-                if key not in statistics:
-                    statistics[key] = value
-                else:
-                    statistics[key] += value
+        logging.info("join_count: %s %s", join_loader_count, " ".join(["join_%s: %s" % (key, value) for key, value in join_loader_statistics.items()]))
 
-        logging.info("join_count: %s %s", len(self.join_loaders), " ".join(["join_%s: %s" % (key, value) for key, value in statistics.items()]))
+        statistics = ["outputer_%s: %s" % (key, value) for key, value in outputer_statistics().items()]
+        logging.info("outputer: %s -> %s %s", outputer_name, self.output, " ".join(statistics))
 
-        statistics = ["outputer_%s: %s" % (key, value) for key, value in outputer.statistics().items()]
-        logging.info("outputer: %s -> %s %s", outputer.__class__.__name__, self.output, " ".join(statistics))
+    def merge_statistics(self, loader_statistics, outputer_statistics, join_loaders_statistics, loader, outputer, join_loaders):
+        for total_statistics, statisticers in ((loader_statistics, [loader]), (outputer_statistics, [outputer]), (join_loaders_statistics, join_loaders)):
+            for statisticer in statisticers:
+                for key, value in statisticer.statistics().items():
+                    if key not in total_statistics:
+                        total_statistics[key] = value
+                    elif isinstance(value, (int, float)):
+                        total_statistics[key] += value
+                    else:
+                        total_statistics[key] = value
+
+        return loader.__class__.__name__, loader_statistics, outputer.__class__.__name__, outputer_statistics, len(join_loaders), join_loaders_statistics
 
     def run(self):
         try:
@@ -407,25 +412,30 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             self.compile_outputer()
 
             config_batch_count = int(getattr(self.arguments, "config_batch_count", 0))
-            if config_batch_count:
-                loader = self.loader.clone()
-                outputer = self.outputer.clone()
+            if config_batch_count > 0:
+                batch_index = 0
+                loader_statistics = {}
+                outputer_statistics = {}
+                join_loaders_statistics = {}
 
-                loader.filter_limit(config_batch_count)
-                datas = loader.get()
-                if datas:
-                    cursor_data = datas[-1]
-                    for primary_key in outputer.primary_keys:
-                        outputer.filter_lte(primary_key, cursor_data.get(primary_key, ''))
-                    outputer.store(datas)
-                self.print_statistics(loader, outputer)
+                cursor_data = None
+                logging.info("start %s -> %s batch cursor: %s", 1, config_batch_count, "")
 
-                while datas:
+                while True:
+                    batch_index += 1
                     loader = self.loader.clone()
                     outputer = self.outputer.clone()
+                    self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
 
-                    for primary_key in loader.primary_keys:
-                        loader.filter_gt(primary_key, cursor_data.get(primary_key, ''))
+                    if cursor_data:
+                        vcursor = []
+                        for primary_key in loader.primary_keys:
+                            cv = cursor_data.get(primary_key, '')
+                            loader.filter_gt(primary_key, cv)
+                            vcursor.append("%s -> %s" % (primary_key, cv))
+
+                        logging.info("start %s -> %s batch cursor: %s", batch_index, config_batch_count, " ".join(vcursor))
+
                     loader.filter_limit(config_batch_count)
                     datas = loader.get()
                     if not datas:
@@ -435,12 +445,20 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     for primary_key in outputer.primary_keys:
                         outputer.filter_lte(primary_key, cursor_data.get(primary_key, ''))
                     outputer.store(datas)
-                    self.print_statistics(loader, outputer)
+                    self.print_statistics(*self.merge_statistics({}, {}, {}, loader, outputer, self.join_loaders))
+                    self.merge_statistics(loader_statistics, outputer_statistics, join_loaders_statistics, loader,
+                                          outputer, self.join_loaders)
+
+                logging.info("end %s -> %s batch show statistics", batch_index - 1, config_batch_count)
+                self.print_statistics(self.loader.__class__.__name__, loader_statistics,
+                                      self.outputer.__class__.__name__, outputer_statistics,
+                                      len(self.join_loaders), join_loaders_statistics)
+
             else:
                 datas = self.loader.get()
                 if datas:
                     self.outputer.store(datas)
-                self.print_statistics(self.loader, self.outputer)
+                self.print_statistics(*self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders))
 
             for name, database in self.databases.items():
                 database.close()

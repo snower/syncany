@@ -6,6 +6,41 @@ from ...valuers import find_valuer
 from ...filters import find_filter
 from ...calculaters import find_calculater
 
+class LoaderJoinWarp(object):
+    __loader = None
+
+    def __init__(self, loader):
+        self.__origin_loader = loader
+        self.__loader = loader
+
+    def __getattr__(self, item):
+        if self.__loader is None:
+            return super(LoaderJoinWarp, self).__getattr__(item)
+
+        return getattr(self.__loader, item)
+
+    def __setattr__(self, key, value):
+        if self.__loader is None:
+            return super(LoaderJoinWarp, self).__setattr__(key, value)
+
+        return setattr(self.__loader, key, value)
+
+    def __str__(self):
+        if self.__loader is None:
+            return super(LoaderJoinWarp, self).__str__()
+
+        return str(self.__loader)
+
+    def __repr__(self):
+        if self.__loader is None:
+            return super(LoaderJoinWarp, self).__repr__()
+
+        return repr(self.__loader)
+
+    def clone(self):
+        self.__loader = self.__origin_loader.clone()
+        return self
+
 class ValuerCreater(object):
     def create_const_valuer(self, config, join_loaders = None):
         valuer_cls = find_valuer(config["name"])
@@ -45,7 +80,7 @@ class ValuerCreater(object):
             if loader_cache_key in join_loaders:
                 loader = join_loaders[loader_cache_key]
             else:
-                loader = self.create_loader(config["loader"], [config["foreign_key"]])
+                loader = LoaderJoinWarp(self.create_loader(config["loader"], [config["foreign_key"]]))
                 join_loaders[loader_cache_key] = loader
         else:
             loader = self.create_loader(config["loader"], [config["foreign_key"]])
