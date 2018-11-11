@@ -250,6 +250,9 @@ class MaxCalculater(Calculater):
         if not self.args:
             return None
 
+        if len(self.args) == 1 and isinstance(self.args[0], (list, tuple, set)):
+            return max(*tuple(self.args[0]))
+
         if len(self.args) == 2 and \
                 isinstance(self.args[0], (list, tuple, set)) and \
                 isinstance(self.args[1], str):
@@ -267,6 +270,9 @@ class MinCalculater(Calculater):
     def calculate(self):
         if not self.args:
             return None
+
+        if len(self.args) == 1 and isinstance(self.args[0], (list, tuple, set)):
+            return min(*tuple(self.args[0]))
 
         if len(self.args) == 2 and \
             isinstance(self.args[0], (list, tuple, set)) and \
