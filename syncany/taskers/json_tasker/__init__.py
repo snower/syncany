@@ -445,9 +445,9 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     for primary_key in outputer.primary_keys:
                         outputer.filter_lte(primary_key, cursor_data.get(primary_key, ''))
                     outputer.store(datas)
-                    self.print_statistics(*self.merge_statistics({}, {}, {}, loader, outputer, self.join_loaders))
+                    self.print_statistics(*self.merge_statistics({}, {}, {}, loader, outputer, self.join_loaders.values()))
                     self.merge_statistics(loader_statistics, outputer_statistics, join_loaders_statistics, loader,
-                                          outputer, self.join_loaders)
+                                          outputer, self.join_loaders.values())
 
                 logging.info("end %s -> %s batch show statistics", batch_index - 1, config_batch_count)
                 self.print_statistics(self.loader.__class__.__name__, loader_statistics,
@@ -458,7 +458,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 datas = self.loader.get()
                 if datas:
                     self.outputer.store(datas)
-                self.print_statistics(*self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders))
+                self.print_statistics(*self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders.values()))
 
             for name, database in self.databases.items():
                 database.close()
