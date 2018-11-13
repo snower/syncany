@@ -211,6 +211,15 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
     def compile_schema_field(self, field):
         if isinstance(field, dict):
+            if "name" not in field or not field["name"].endswith("_valuer"):
+                field = {
+                    "name": "case_valuer",
+                    "key": field.pop("case") if "case" in field else "",
+                    "case": field,
+                    "default_case": field.pop("end") if "" in field else None,
+                }
+                return self.compile_case_valuer(**field)
+
             name = "compile_" + field.pop("name")
             return getattr(self, name)(**field)
 
