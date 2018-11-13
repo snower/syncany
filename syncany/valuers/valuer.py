@@ -15,6 +15,9 @@ class Valuer(object):
         return self.__class__(self.key, self.filter)
 
     def fill(self, data):
+        if data is None:
+            return self
+
         if not self.key:
             return self
 

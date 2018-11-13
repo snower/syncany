@@ -250,51 +250,53 @@ class MaxCalculater(Calculater):
         if not self.args:
             return None
 
-        if len(self.args) == 1 and isinstance(self.args[0], (list, tuple, set)):
-            return max(*tuple(self.args[0]))
+        if not isinstance(self.args[0], (list, tuple, set)):
+            if len(self.args) == 2:
+                return self.args[1]
+            if len(self.args) > 2:
+                return max(*tuple(self.args))
+            return self.args[0]
 
-        if len(self.args) == 2 and isinstance(self.args[0], (list, tuple, set)):
-            if isinstance(self.args[1], str):
-                values = {}
-                for data in self.args[0]:
-                    key_value = self.get_key_value(self.args[1], data)
-                    values[key_value] = data
+        max_key_value = max(*tuple(self.args[0]))
 
-                max_key_value = max(*tuple(values.keys()))
-                return values[max_key_value]
-
+        if len(self.args) >= 2:
             if isinstance(self.args[1], (list, tuple, set)):
-                max_key_value = max(*tuple(self.args[1]))
                 try:
-                    return self.args[0][self.args[1].index(max_key_value)]
+                    return self.args[1][self.args[0].index(max_key_value)]
                 except:
                     return None
 
-        return max(*tuple(self.args))
+            if isinstance(self.args[1], dict):
+                return self.args[1].get(max_key_value)
+
+            return max(*tuple([max_key_value] + list(self.args[1:])))
+
+        return max_key_value
 
 class MinCalculater(Calculater):
     def calculate(self):
         if not self.args:
             return None
 
-        if len(self.args) == 1 and isinstance(self.args[0], (list, tuple, set)):
-            return min(*tuple(self.args[0]))
+        if not isinstance(self.args[0], (list, tuple, set)):
+            if len(self.args) == 2:
+                return self.args[1]
+            if len(self.args) >= 2:
+                return min(*tuple(self.args))
+            return self.args[0]
 
-        if len(self.args) == 2 and isinstance(self.args[0], (list, tuple, set)):
-            if isinstance(self.args[1], str):
-                values = {}
-                for data in self.args[0]:
-                    key_value = self.get_key_value(self.args[1], data)
-                    values[key_value] = data
+        min_key_value = min(*tuple(self.args[0]))
 
-                min_key_value = min(*tuple(values.keys()))
-                return values[min_key_value]
-
+        if len(self.args) >= 2:
             if isinstance(self.args[1], (list, tuple, set)):
-                max_key_value = min(*tuple(self.args[1]))
                 try:
-                    return self.args[0][self.args[1].index(max_key_value)]
+                    return self.args[1][self.args[0].index(min_key_value)]
                 except:
                     return None
 
-        return min(*tuple(self.args))
+            if isinstance(self.args[1], dict):
+                return self.args[1].get(min_key_value)
+
+            return min(*tuple([min_key_value] + list(self.args[1:])))
+
+        return min_key_value
