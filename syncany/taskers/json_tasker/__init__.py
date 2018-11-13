@@ -132,7 +132,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     filter_cls = find_filter('str')
                 self.argparse.add_argument('--%s' % filter["name"], dest="%s" % filter["name"], type=filter_cls(filter.get("type_args")), help="%s" % filter["name"])
 
-            self.argparse.add_argument('--__batch', dest="config_batch_count", type=int, default=0, help="per sync batch count (default: 0 all)")
+        self.argparse.add_argument('--__batch', dest="config_batch_count", type=int, default=0, help="per sync batch count (default: 0 all)")
 
     def compile_key(self, key):
         if not isinstance(key, str) or key == "":
