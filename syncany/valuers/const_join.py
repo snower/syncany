@@ -28,3 +28,6 @@ class ConstJoinValuer(ConstValuer):
 
     def get_fields(self):
         return [self.key]
+
+    def get_final_filter(self):
+        return self.valuer.get_final_filter()

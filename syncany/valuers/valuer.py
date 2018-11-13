@@ -84,3 +84,6 @@ class Valuer(object):
 
     def get_fields(self):
         return []
+
+    def get_final_filter(self):
+        return self.filter

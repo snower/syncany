@@ -40,3 +40,6 @@ class SchemaValuer(Valuer):
                 fields.append(field)
 
         return fields
+
+    def get_final_filter(self):
+        return None

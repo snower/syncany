@@ -334,6 +334,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             for name, valuer in self.schema.items():
                 valuer = self.create_valuer(self.compile_db_valuer(name, None))
                 if valuer:
+                    if name in self.loader.schema:
+                        valuer.filter = self.loader.schema[name].get_final_filter()
                     self.outputer.add_valuer(name, valuer)
 
         for filter in self.config["querys"]:
@@ -374,12 +376,12 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     getattr(self.outputer, "filter_eq")(filter_name, value)
 
     def print_statistics(self, loader_name, loader_statistics, outputer_name, outputer_statistics, join_loader_count, join_loader_statistics):
-        statistics = ["loader_%s: %s" % (key, value) for key, value in loader_statistics().items()]
+        statistics = ["loader_%s: %s" % (key, value) for key, value in loader_statistics.items()]
         logging.info("loader: %s <- %s %s", loader_name, self.input, " ".join(statistics))
 
         logging.info("join_count: %s %s", join_loader_count, " ".join(["join_%s: %s" % (key, value) for key, value in join_loader_statistics.items()]))
 
-        statistics = ["outputer_%s: %s" % (key, value) for key, value in outputer_statistics().items()]
+        statistics = ["outputer_%s: %s" % (key, value) for key, value in outputer_statistics.items()]
         logging.info("outputer: %s -> %s %s", outputer_name, self.output, " ".join(statistics))
 
     def merge_statistics(self, loader_statistics, outputer_statistics, join_loaders_statistics, loader, outputer, join_loaders):

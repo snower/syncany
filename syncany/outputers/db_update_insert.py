@@ -39,6 +39,7 @@ class DBUpdateInsertOutputer(DBOutputer):
             values = {}
             for key, field in self.schema.items():
                 values[key] = field.clone().fill(data)
+                setattr(values[key], "value_type_class", data.get(key).__class__)
 
             self.load_data_keys[primary_key] = values
             self.load_datas.append(values)
@@ -55,7 +56,8 @@ class DBUpdateInsertOutputer(DBOutputer):
     def update(self, data, load_data):
         eq =  True
         for key, value in data.items():
-            if value != load_data[key].get():
+            load_valuer = load_data[key]
+            if value != load_valuer.get() or getattr(load_valuer, "value_type_class") != value.__class__:
                 eq = False
                 break
         if eq:
