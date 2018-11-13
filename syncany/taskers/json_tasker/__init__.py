@@ -145,6 +145,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             tokens = key.split(".")
             instance = tokens[0]
             key = ".".join(tokens[1:])
+            if key == "" and tokens[0] == "$":
+                key = "*"
         else:
             instance = key[0]
             key = key[1:]

@@ -66,10 +66,17 @@ class ValuerCompiler(object):
         }
 
     def compile_calculate_valuer(self, key="", args=[], filter = None):
-        args_valuers = []
+        args_valuers, return_valuer = [], None
         if isinstance(args, list):
             for arg in args:
-                args_valuers.append(self.compile_schema_field(arg))
+                if arg and arg[0] == ":":
+                    return_valuer = self.compile_schema_field(arg[1:])
+                elif arg and isinstance(arg, (list, tuple, set)) and arg[0] and arg[0][0] == ":":
+                    arg = list(arg)
+                    arg[0] = arg[0][1:]
+                    return_valuer = self.compile_schema_field(arg)
+                else:
+                    args_valuers.append(self.compile_schema_field(arg))
         else:
             args_valuers.append(args)
 
@@ -77,6 +84,7 @@ class ValuerCompiler(object):
             "name": "calculate_valuer",
             "key": key,
             "args": args_valuers,
+            "return": return_valuer,
         }
 
     def compile_schema_valuer(self, schema={}):

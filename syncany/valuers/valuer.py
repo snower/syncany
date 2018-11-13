@@ -18,13 +18,17 @@ class Valuer(object):
         if not self.key:
             return self
 
+        if self.key == "*":
+            self.value = data
+            return self
+
         if self.key not in data:
-            odata = data
             keys = self.key.split(".")
             for key in keys:
                 if isinstance(data, (list, tuple, set)):
                     if key[0] != ":":
-                        break
+                        data = [value[key] for value in data if key in value]
+                        continue
 
                     slices = key.split(":")
                     try: start = int(slices[1])
@@ -43,17 +47,15 @@ class Valuer(object):
                     data = data[start: end: step]
 
                 elif isinstance(data, dict):
-                    if key not in data:
+                    if key[0] == ":":
+                        continue
+                    elif key not in data:
                         break
+
                     data = data[key]
 
                 else:
                     break
-
-                data = data[key]
-
-            if odata == data:
-                return self
 
             self.value = data
             if self.filter:
@@ -87,3 +89,6 @@ class Valuer(object):
 
     def get_final_filter(self):
         return self.filter
+
+    def require_loaded(self):
+        return False

@@ -31,3 +31,6 @@ class ConstJoinValuer(ConstValuer):
 
     def get_final_filter(self):
         return self.valuer.get_final_filter()
+
+    def require_loaded(self):
+        return True

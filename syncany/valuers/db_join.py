@@ -31,8 +31,8 @@ class DBJoinValuer(DBValuer):
     def childs(self):
         return [self.valuer]
 
-    def get_fields(self):
-        return [self.key]
-
     def get_final_filter(self):
         return self.valuer.get_final_filter()
+
+    def require_loaded(self):
+        return True
