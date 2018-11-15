@@ -5,16 +5,17 @@
 from .db import DBValuer
 
 class DBJoinValuer(DBValuer):
-    def __init__(self, loader, foreign_key, valuer, *args, **kwargs):
+    def __init__(self, loader, foreign_key, foreign_filters, valuer, *args, **kwargs):
         super(DBJoinValuer, self).__init__(*args, **kwargs)
 
         self.loader = loader
         self.foreign_key = foreign_key
         self.valuer = valuer
+        self.foreign_filters = foreign_filters
         self.matcher = None
 
     def clone(self):
-        return self.__class__(self.loader, self.foreign_key, self.valuer.clone(), self.key, self.filter)
+        return self.__class__(self.loader, self.foreign_key, self.foreign_filters, self.valuer.clone(), self.key, self.filter)
 
     def fill(self, data):
         super(DBJoinValuer, self).fill(data)

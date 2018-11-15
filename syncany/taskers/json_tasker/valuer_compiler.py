@@ -28,7 +28,7 @@ class ValuerCompiler(object):
             "valuer": valuer,
         }
 
-    def compile_db_join_valuer(self, key = "", loader = None, foreign_key = "", filter = None, valuer = None):
+    def compile_db_join_valuer(self, key = "", loader = None, foreign_key = "", foreign_filters = None, filter = None, valuer = None):
         valuer = self.compile_schema_field(valuer)
 
         return {
@@ -36,11 +36,12 @@ class ValuerCompiler(object):
             "key": key,
             "loader": loader,
             "foreign_key": foreign_key,
+            'foreign_filters': foreign_filters or [],
             "valuer": valuer,
             "filter": filter,
         }
 
-    def compile_case_valuer(self, key = "", value = None, case = {}, default_case = None):
+    def compile_case_valuer(self, key = "", value = None, case = None, default_case = None):
         if value is not None:
             key, value = '', self.compile_schema_field(value)
         elif (key and key[0] in ("$", "@")) or isinstance(key, list):
@@ -50,7 +51,7 @@ class ValuerCompiler(object):
         if isinstance(case, list):
             for index in range(len(case)):
                 case_valuers[index] = self.compile_schema_field(case[index])
-        else:
+        elif isinstance(case, dict):
             for case_value, field in case.items():
                 case_valuers[case_value] = self.compile_schema_field(field)
 
@@ -65,7 +66,7 @@ class ValuerCompiler(object):
             "default_case": default_case,
         }
 
-    def compile_calculate_valuer(self, key="", args=[], filter = None):
+    def compile_calculate_valuer(self, key="", args=None, filter = None):
         args_valuers, return_valuer = [], None
         if isinstance(args, list):
             for arg in args:
@@ -85,12 +86,15 @@ class ValuerCompiler(object):
             "key": key,
             "args": args_valuers,
             "return": return_valuer,
+            "filter": filter,
         }
 
-    def compile_schema_valuer(self, schema={}):
+    def compile_schema_valuer(self, schema=None):
         schema_valuers = {}
-        for key, field in schema.items():
-            schema_valuers[key] = self.compile_schema_field(field)
+
+        if isinstance(schema, dict):
+            for key, field in schema.items():
+                schema_valuers[key] = self.compile_schema_field(field)
 
         return {
             "name": "schema_valuer",

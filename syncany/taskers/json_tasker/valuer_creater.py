@@ -76,11 +76,22 @@ class ValuerCreater(object):
         if not valuer_cls:
             return
         if join_loaders is not None:
-            loader_cache_key = config["loader"]["database"] + "::" + config["foreign_key"]
+            if config["foreign_filters"]:
+                loader_cache_foreign_filters = "&".join(sorted(["%s %s %s" % (name, exp, str(value)) for name, exp, value in config["foreign_filters"]]))
+            else:
+                loader_cache_foreign_filters = ""
+            loader_cache_key = config["loader"]["database"] + "::" + config["foreign_key"] + "::" + loader_cache_foreign_filters
             if loader_cache_key in join_loaders:
                 loader = join_loaders[loader_cache_key]
             else:
-                loader = LoaderJoinWarp(self.create_loader(config["loader"], [config["foreign_key"]]))
+                loader = self.create_loader(config["loader"], [config["foreign_key"]])
+                if config["foreign_filters"]:
+                    for name, exp, value in config["foreign_filters"]:
+                        if exp == "eq":
+                            loader.add_filter(name, exp, value)
+                        else:
+                            getattr(loader, "filter_" + exp)(name, value)
+                loader = LoaderJoinWarp(loader)
                 join_loaders[loader_cache_key] = loader
         else:
             loader = self.create_loader(config["loader"], [config["foreign_key"]])
@@ -95,7 +106,7 @@ class ValuerCreater(object):
         for key in child_valuer.get_fields():
             if key not in loader.schema:
                 loader.add_valuer(key, self.create_valuer(self.compile_db_valuer(key, None), join_loaders))
-        return valuer_cls(loader, config["foreign_key"], child_valuer, config["key"], filter)
+        return valuer_cls(loader, config["foreign_key"], config["foreign_filters"], child_valuer, config["key"], filter)
 
     def create_case_valuer(self, config, join_loaders = None):
         valuer_cls = find_valuer(config["name"])

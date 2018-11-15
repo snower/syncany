@@ -172,15 +172,34 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         }
 
     def compile_foreign_key(self, foreign_key):
-        if foreign_key[0] != "&":
+        if isinstance(foreign_key, (list, tuple, set)):
+            if not foreign_key or foreign_key[0][0] != "&":
+                return None
+            foreign_key, foreign_filter_configs = foreign_key[0], (foreign_key[1] if len(foreign_key) >= 2 else {})
+        elif foreign_key[0] != "&":
             return None
+        else:
+            foreign_filter_configs = {}
 
         foreign_key = ".".join(foreign_key.split(".")[1:])
         foreign_key = foreign_key.split("::")
 
+        foreign_filters = []
+        if isinstance(foreign_filter_configs, dict):
+            for key, exps in foreign_filter_configs.items():
+                if isinstance(exps, dict):
+                    for exp, value in exps.items():
+                        try:
+                            exp = get_expression_name(exp)
+                            foreign_filters.append((key, exp, value))
+                        except KeyError: pass
+                else:
+                    foreign_filters.append((key, 'eq', exps))
+
         return {
             "database": foreign_key[0],
             "foreign_key": foreign_key[1],
+            "foreign_filters": foreign_filters,
         }
 
     def compile_schema(self):
@@ -239,7 +258,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     return self.compile_const_valuer(key["value"])
 
                 loader = {"name": "db_join_loader", "database": foreign_key["database"]}
-                return self.compile_db_join_valuer(key["key"], loader, foreign_key["foreign_key"], key["filter"], field[2])
+                return self.compile_db_join_valuer(key["key"], loader, foreign_key["foreign_key"], foreign_key["foreign_filters"], key["filter"], field[2])
 
             if key["instance"] == "@":
                 return self.compile_calculate_valuer(key["key"], field[1:], key["filter"])
