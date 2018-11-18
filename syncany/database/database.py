@@ -141,4 +141,4 @@ class DataBase(object):
         return "db_loader"
 
     def get_default_outputer(self):
-        return "db_update_insert_outputer"
+        return "db_update_delete_insert_outputer"
