@@ -58,6 +58,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         }
 
         self.outputer_creater = {
+            "db_update_delete_insert_outputer": self.create_db_update_delete_insert_outputer,
             "db_update_insert_outputer": self.create_db_update_insert_outputer,
             "db_delete_insert_outputer": self.create_db_delete_insert_outputer,
         }
