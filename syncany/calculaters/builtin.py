@@ -300,3 +300,13 @@ class MinCalculater(Calculater):
             return min(*tuple([min_key_value] + list(self.args[1:])))
 
         return min_key_value
+
+class LenCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return 0
+
+        if len(self.args) == 1:
+            return len(self.args[0])
+
+        return len(self.args)

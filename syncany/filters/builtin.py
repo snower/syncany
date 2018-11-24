@@ -29,6 +29,9 @@ class IntFilter(Filter):
             except:
                 return 0
 
+        if isinstance(value, datetime.timedelta):
+            return int(value.total_seconds())
+
         if isinstance(value, (list, tuple, set)):
             result = 0
             for cv in value:
@@ -62,6 +65,9 @@ class FloatFilter(Filter):
                 return float(datetime.datetime(value.year, value.month, value.day).timestamp())
             except:
                 return 0.0
+
+        if isinstance(value, datetime.timedelta):
+            return float(value.total_seconds())
 
         if isinstance(value, (list, tuple, set)):
             result = 0.0
@@ -176,6 +182,9 @@ class DateTimeFilter(Filter):
                 return value
             return value.astimezone(tz=localzone)
 
+        if isinstance(value, datetime.timedelta):
+            return datetime.datetime.now(tz=localzone) + value
+
         if isinstance(value, (int, float)):
             value = datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC)
             if localzone == value.tzinfo:
@@ -218,6 +227,9 @@ class DateTimeFormatFilter(DateTimeFilter):
         if value is False:
             return ""
 
+        if isinstance(value, datetime.timedelta):
+            return str(value)
+
         if isinstance(value, (list, tuple, set)):
             results = []
             for cv in value:
@@ -236,6 +248,11 @@ class DateFilter(Filter):
     def filter(self, value):
         if isinstance(value, datetime.date):
             return value
+
+        if isinstance(value, datetime.timedelta):
+            localzone = get_localzone()
+            dt = datetime.datetime.now(tz=localzone)
+            return datetime.date(dt.year, dt.month, dt.day) + value
 
         if isinstance(value, (int, float)):
             dt = datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC).astimezone(tz=get_localzone())
@@ -277,6 +294,9 @@ class DateFormatFilter(DateFilter):
 
         if value is False:
             return ""
+
+        if isinstance(value, datetime.timedelta):
+            return str(value)
 
         if isinstance(value, (list, tuple, set)):
             results = []
