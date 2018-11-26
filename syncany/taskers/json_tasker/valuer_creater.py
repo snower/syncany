@@ -14,13 +14,13 @@ class LoaderJoinWarp(object):
         self.__loader = loader
 
     def __getattr__(self, item):
-        if self.__loader is None:
+        if self.__loader is None or item in ("_LoaderJoinWarp__origin_loader", "_LoaderJoinWarp__loader"):
             return super(LoaderJoinWarp, self).__getattr__(item)
 
         return getattr(self.__loader, item)
 
     def __setattr__(self, key, value):
-        if self.__loader is None:
+        if self.__loader is None or key in ("_LoaderJoinWarp__origin_loader", "_LoaderJoinWarp__loader"):
             return super(LoaderJoinWarp, self).__setattr__(key, value)
 
         return setattr(self.__loader, key, value)
