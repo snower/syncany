@@ -14,7 +14,9 @@ class DBUpdateInsertOutputer(DBOutputer):
 
         load_datas = []
         if len(self.primary_keys) == 1:
-            for i in range(int(len(datas) / 1000.0 + 1)):
+            data_count = len(datas)
+            data_load_batch = int(data_count / 1000 + 1) if data_count % 1000 != 0 else int(data_count / 1000)
+            for i in range(data_load_batch):
                 query = self.db.query(self.name, self.primary_keys, list(fields))
                 primary_values = []
                 for data in datas[i * 1000: (i + 1) * 1000]:
