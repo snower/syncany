@@ -12,6 +12,7 @@ class DBLoader(Loader):
         self.db = db
         self.name = name
         self.querys = []
+        self.last_data = None
 
     def clone(self):
         loader = self.__class__(self.db, self.name, self.primary_keys)
@@ -85,6 +86,7 @@ class DBLoader(Loader):
 
             self.data_keys[primary_key] = values
             self.datas.append(values)
+            self.last_data = data
 
         self.querys.append(query)
         self.loaded = True

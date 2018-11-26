@@ -482,7 +482,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     if not datas:
                         break
 
-                    cursor_data = datas[-1]
+                    cursor_data = loader.last_data
                     for primary_key in outputer.primary_keys:
                         outputer.filter_lte(primary_key, cursor_data.get(primary_key, ''))
                     outputer.store(datas)
