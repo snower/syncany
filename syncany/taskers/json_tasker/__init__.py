@@ -232,13 +232,21 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
     def compile_schema_field(self, field):
         if isinstance(field, dict):
             if "name" not in field or not field["name"].endswith("_valuer"):
-                field = {
-                    "name": "case_valuer",
-                    "key": field.pop("case") if "case" in field else "",
-                    "case": field,
-                    "default_case": field.pop("end") if "" in field else None,
+                if "case" not in field:
+                    return self.compile_const_valuer(field)
+
+                case_field = {
+                    "key": field.pop("case"),
+                    "case": {},
+                    "default_case": field.pop("end") if "end" in field else None,
                 }
-                return self.compile_case_valuer(**field)
+
+                for case_key, case_value in field.items():
+                    if isinstance(case_key, str) and case_key[0] == ":" and case_key[1:].isdigit():
+                        case_field['case'][int(case_key[1:])] = case_value
+                    else:
+                        case_field['case'][case_key] = case_value
+                return self.compile_case_valuer(**case_field)
 
             name = "compile_" + field.pop("name")
             return getattr(self, name)(**field)
