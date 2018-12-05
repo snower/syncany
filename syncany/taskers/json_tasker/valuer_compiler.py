@@ -28,7 +28,8 @@ class ValuerCompiler(object):
             "valuer": valuer,
         }
 
-    def compile_db_join_valuer(self, key = "", loader = None, foreign_key = "", foreign_filters = None, filter = None, valuer = None):
+    def compile_db_join_valuer(self, key = "", loader = None, foreign_key = "", foreign_filters = None, filter = None, args_valuer = None, valuer = None):
+        args_valuer = self.compile_schema_field(args_valuer) if args_valuer else None
         valuer = self.compile_schema_field(valuer)
 
         return {
@@ -37,6 +38,7 @@ class ValuerCompiler(object):
             "loader": loader,
             "foreign_key": foreign_key,
             'foreign_filters': foreign_filters or [],
+            "args_valuer": args_valuer,
             "valuer": valuer,
             "filter": filter,
         }

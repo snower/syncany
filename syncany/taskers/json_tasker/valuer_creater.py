@@ -96,6 +96,7 @@ class ValuerCreater(object):
         else:
             loader = self.create_loader(config["loader"], [config["foreign_key"]])
 
+        args_valuer = self.create_valuer(config["args_valuer"], join_loaders) if config["args_valuer"] else None
         child_valuer = self.create_valuer(config["valuer"], join_loaders)
         filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
@@ -106,7 +107,7 @@ class ValuerCreater(object):
         for key in child_valuer.get_fields():
             if key not in loader.schema:
                 loader.add_valuer(key, self.create_valuer(self.compile_db_valuer(key, None), join_loaders))
-        return valuer_cls(loader, config["foreign_key"], config["foreign_filters"], child_valuer, config["key"], filter)
+        return valuer_cls(loader, config["foreign_key"], config["foreign_filters"], args_valuer, child_valuer, config["key"], filter)
 
     def create_case_valuer(self, config, join_loaders = None):
         valuer_cls = find_valuer(config["name"])

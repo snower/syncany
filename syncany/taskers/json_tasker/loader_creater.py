@@ -9,7 +9,7 @@ class LoaderCreater(object):
         loader_cls = find_loader(config["name"])
         if not loader_cls:
             return None
-        return loader_cls(config["datas"], config["database"], primary_keys)
+        return loader_cls(config["datas"], primary_keys)
 
     def create_db_loader(self, config, primary_keys):
         loader_cls = find_loader(config["name"])

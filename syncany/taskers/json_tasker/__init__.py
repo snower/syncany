@@ -254,12 +254,16 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         if isinstance(field, list):
             key = self.compile_key(field[0])
             if key["instance"] is None:
-                foreign_key = self.compile_foreign_key(field[1])
-                if foreign_key is None:
+                if len(field) <= 1:
                     return self.compile_const_valuer(key["value"])
 
+                foreign_key = self.compile_foreign_key(field[1])
+                if foreign_key is None:
+                    loader = {"name": "const_loader", "datas": field[1]}
+                    return self.compile_const_join_valuer(key["key"], key["value"], loader, field[2], field[3])
+
                 loader = {"name": "db_join_loader", "database": foreign_key["database"]}
-                return self.compile_const_join_valuer(key["key"], key["value"], loader, foreign_key["foreign_key"], field[2])
+                return self.compile_db_join_valuer(key["key"], loader, foreign_key["foreign_key"], foreign_key["foreign_filters"], None, key["value"], field[2])
 
             if key["instance"] == "$":
                 foreign_key = self.compile_foreign_key(field[1])
@@ -267,7 +271,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     return self.compile_const_valuer(key["value"])
 
                 loader = {"name": "db_join_loader", "database": foreign_key["database"]}
-                return self.compile_db_join_valuer(key["key"], loader, foreign_key["foreign_key"], foreign_key["foreign_filters"], key["filter"], field[2])
+                return self.compile_db_join_valuer(key["key"], loader, foreign_key["foreign_key"], foreign_key["foreign_filters"], key["filter"], None, field[2])
 
             if key["instance"] == "@":
                 return self.compile_calculate_valuer(key["key"], field[1:], key["filter"])
