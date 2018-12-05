@@ -53,6 +53,7 @@ class Valuer(object):
                     if key[0] == ":":
                         continue
                     elif key not in data:
+                        data = None
                         break
 
                     data = data[key]
