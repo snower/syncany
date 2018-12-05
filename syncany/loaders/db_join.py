@@ -68,6 +68,10 @@ class DBJoinLoader(DBLoader):
 
             unload_primary_keys = list(self.unload_primary_keys)
             for i in range(int(len(unload_primary_keys) / 1000.0 + 1)):
+                current_unload_primary_keys = unload_primary_keys[i * 1000: (i + 1) * 1000]
+                if not current_unload_primary_keys:
+                    break
+
                 query = self.db.query(self.name, self.primary_keys, list(fields))
                 for key, exp, value in self.filters:
                     if key is None:
@@ -75,7 +79,7 @@ class DBJoinLoader(DBLoader):
                     else:
                         getattr(query, "filter_%s" % exp)(key, value)
 
-                query.filter_in(self.primary_keys[0], unload_primary_keys[i * 1000: (i + 1) * 1000])
+                query.filter_in(self.primary_keys[0], current_unload_primary_keys)
                 datas = query.commit()
                 for data in datas:
                     primary_key = self.get_data_primary_key(data)
