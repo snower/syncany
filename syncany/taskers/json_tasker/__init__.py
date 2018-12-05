@@ -242,7 +242,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 }
 
                 for case_key, case_value in field.items():
-                    if isinstance(case_key, str) and case_key[0] == ":" and case_key[1:].isdigit():
+                    if case_key and isinstance(case_key, str) and case_key[0] == ":" and case_key[1:].isdigit():
                         case_field['case'][int(case_key[1:])] = case_value
                     else:
                         case_field['case'][case_key] = case_value

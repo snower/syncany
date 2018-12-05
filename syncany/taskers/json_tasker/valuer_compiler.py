@@ -72,9 +72,10 @@ class ValuerCompiler(object):
         args_valuers, return_valuer = [], None
         if isinstance(args, list):
             for arg in args:
-                if arg and arg[0] == ":":
+                if arg and isinstance(arg, str) and arg[0] == ":":
                     return_valuer = self.compile_schema_field(arg[1:])
-                elif arg and isinstance(arg, (list, tuple, set)) and arg[0] and arg[0][0] == ":":
+                elif arg and isinstance(arg, (list, tuple, set)) and arg[0]\
+                        and isinstance(arg[0], str) and arg[0][0] == ":":
                     arg = list(arg)
                     arg[0] = arg[0][1:]
                     return_valuer = self.compile_schema_field(arg)
