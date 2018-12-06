@@ -463,7 +463,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 outputer_statistics = {}
                 join_loaders_statistics = {}
 
-                cursor_data = None
+                cursor_data, ocursor_data = None, None
                 logging.info("start %s -> %s batch cursor: %s", 1, config_batch_count, "")
 
                 while True:
@@ -487,9 +487,13 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                         break
 
                     cursor_data = loader.last_data
-                    for primary_key in outputer.primary_keys:
-                        outputer.filter_lte(primary_key, cursor_data.get(primary_key, ''))
+
+                    if ocursor_data:
+                        for primary_key in outputer.primary_keys:
+                            outputer.filter_gt(primary_key, ocursor_data.get(primary_key, ''))
                     outputer.store(datas)
+                    ocursor_data = datas[-1]
+
                     self.print_statistics(*self.merge_statistics({}, {}, {}, loader, outputer, self.join_loaders.values()))
                     self.merge_statistics(loader_statistics, outputer_statistics, join_loaders_statistics, loader,
                                           outputer, self.join_loaders.values())
