@@ -2,15 +2,18 @@
 # 18/8/6
 # create by: snower
 
-from collections import defaultdict
 from .db import DBOutputer
+from ..valuers.valuer import LoadAllFieldsExceoption
 
 class DBUpdateInsertOutputer(DBOutputer):
     def load(self, datas):
         fields = set([])
-        for name, valuer in self.schema.items():
-            for key in valuer.get_fields():
-                fields.add(key)
+        try:
+            for name, valuer in self.schema.items():
+                for key in valuer.get_fields():
+                    fields.add(key)
+        except LoadAllFieldsExceoption:
+            fields = []
 
         load_datas = []
         if len(self.primary_keys) == 1:

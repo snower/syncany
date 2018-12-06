@@ -82,7 +82,7 @@ class CalculateValuer(Valuer):
             for field in valuer.get_fields():
                 fields.append(field)
 
-        if self.return_valuer:
+        if not self.wait_loaded and self.return_valuer:
             for field in self.return_valuer.get_fields():
                 fields.append(field)
         return fields

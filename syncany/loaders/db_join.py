@@ -4,7 +4,7 @@
 
 from collections import defaultdict
 from .db import DBLoader
-from ..valuers.case import CaseValuer
+from ..valuers.valuer import LoadAllFieldsExceoption
 
 class DBJoinMatcher(object):
     def __init__(self, key, value):
@@ -62,9 +62,12 @@ class DBJoinLoader(DBLoader):
                 for key, exp, value in self.filters:
                     if key: fields.add(key)
 
-                for name, valuer in self.schema.items():
-                    for field in valuer.get_fields():
-                        fields.add(field)
+                try:
+                    for name, valuer in self.schema.items():
+                        for field in valuer.get_fields():
+                            fields.add(field)
+                except LoadAllFieldsExceoption:
+                    fields = []
 
             unload_primary_keys = list(self.unload_primary_keys)
             for i in range(int(len(unload_primary_keys) / 1000.0 + 1)):

@@ -4,6 +4,7 @@
 
 from collections import defaultdict, OrderedDict
 from .loader import Loader
+from ..valuers.valuer import LoadAllFieldsExceoption
 
 class DBLoader(Loader):
     def __init__(self, db, name, *args, **kwargs):
@@ -33,9 +34,12 @@ class DBLoader(Loader):
             for key, exp, value in self.filters:
                 if key: fields.add(key)
 
-            for name, valuer in self.schema.items():
-                for field in valuer.get_fields():
-                    fields.add(field)
+            try:
+                for name, valuer in self.schema.items():
+                    for field in valuer.get_fields():
+                        fields.add(field)
+            except LoadAllFieldsExceoption:
+                fields = []
 
         query = self.db.query(self.name, self.primary_keys, list(fields))
 

@@ -2,6 +2,9 @@
 # 18/8/6
 # create by: snower
 
+class LoadAllFieldsExceoption(Exception):
+    pass
+
 class Valuer(object):
     def __init__(self, key, filter = None):
         self.key = key

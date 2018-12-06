@@ -3,6 +3,7 @@
 # create by: snower
 
 from ...valuers import find_valuer
+from ...valuers.valuer import LoadAllFieldsExceoption
 from ...filters import find_filter
 from ...calculaters import find_calculater
 
@@ -104,9 +105,13 @@ class ValuerCreater(object):
         if config["foreign_key"] not in loader.schema:
             loader.add_valuer(config["foreign_key"],
                               self.create_valuer(self.compile_db_valuer(config["foreign_key"], None), join_loaders))
-        for key in child_valuer.get_fields():
-            if key not in loader.schema:
-                loader.add_valuer(key, self.create_valuer(self.compile_db_valuer(key, None), join_loaders))
+        try:
+            for key in child_valuer.get_fields():
+                if key not in loader.schema:
+                    loader.add_valuer(key, self.create_valuer(self.compile_db_valuer(key, None), join_loaders))
+        except LoadAllFieldsExceoption:
+            loader.schema.clear()
+            loader.add_key_matcher(".*", self.create_valuer(self.compile_db_valuer("", None)))
         return valuer_cls(loader, config["foreign_key"], config["foreign_filters"], args_valuer, child_valuer, config["key"], filter)
 
     def create_case_valuer(self, config, join_loaders = None):

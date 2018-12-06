@@ -60,7 +60,7 @@ class MongoQueryBuilder(QueryBuilder):
 
     def commit(self):
         connection = self.db.ensure_connection()
-        cursor = connection[self.db_name][self.collection_name].find(self.query, {field: 1 for field in self.fields})
+        cursor = connection[self.db_name][self.collection_name].find(self.query, {field: 1 for field in self.fields} if self.fields else None)
         if self.limit:
             if self.limit[0]:
                 cursor.skip(self.limit[0])

@@ -310,3 +310,35 @@ class LenCalculater(Calculater):
             return len(self.args[0])
 
         return len(self.args)
+
+class IndexCalculater(Calculater):
+    def calculate(self):
+        if not self.args or len(self.args) < 2:
+            return None
+
+        if isinstance(self.args[1], (list, tuple, set)):
+            for data in self.args[1]:
+                if len(self.args) >= 3:
+                    if self.args[2] not in data:
+                        continue
+                    if data[self.args[2]] == self.args[0]:
+                        return data
+
+                if data == self.args[0]:
+                    return data
+
+            if isinstance(self.args[0], (int, float)):
+                return self.args[2][int(self.args[0])] if len(self.args[2]) > self.args[0] else None
+
+        elif isinstance(self.args[1], dict):
+            if len(self.args) >= 3:
+                if self.args[2] not in self.args[1]:
+                    return None
+
+                if self.args[1][self.args[2]] == self.args[0]:
+                    return self.args[1]
+
+            if self.args[1] == self.args[0]:
+                return self.args[1]
+
+        return None

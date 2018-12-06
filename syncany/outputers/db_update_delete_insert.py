@@ -4,13 +4,17 @@
 
 from collections import defaultdict
 from .db import DBOutputer
+from ..valuers.valuer import LoadAllFieldsExceoption
 
 class DBUpdateDeleteInsertOutputer(DBOutputer):
     def load(self):
         fields = set([])
-        for name, valuer in self.schema.items():
-            for key in valuer.get_fields():
-                fields.add(key)
+        try:
+            for name, valuer in self.schema.items():
+                for key in valuer.get_fields():
+                    fields.add(key)
+        except LoadAllFieldsExceoption:
+            fields = []
         query = self.db.query(self.name, self.primary_keys, list(fields))
 
         in_exps = defaultdict(list)

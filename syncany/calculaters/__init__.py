@@ -26,6 +26,7 @@ CALCULATERS = {
     "max": MaxCalculater,
     "min": MinCalculater,
     "len": LenCalculater,
+    "index": IndexCalculater,
 }
 
 def find_calculater(name):
