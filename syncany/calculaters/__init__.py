@@ -26,6 +26,7 @@ CALCULATERS = {
     "max": MaxCalculater,
     "min": MinCalculater,
     "len": LenCalculater,
+    "abs": AbsCalculater,
     "index": IndexCalculater,
 }
 

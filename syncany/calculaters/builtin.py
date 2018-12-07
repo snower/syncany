@@ -311,6 +311,35 @@ class LenCalculater(Calculater):
 
         return len(self.args)
 
+class AbsCalculater(Calculater):
+    def abs(self, arg):
+        if isinstance(arg, (int, float)):
+            return abs(arg)
+        if isinstance(arg, str):
+            try:
+
+                return abs(float(arg) if "." in arg else int(arg))
+            except:
+                return 0
+        if isinstance(arg, list):
+            return [self.abs(child_arg) for child_arg in arg]
+        if isinstance(arg, dict):
+            return {child_key: self.abs(child_arg) for child_key, child_arg in arg.items()}
+        return 0
+
+    def calculate(self):
+        if not self.args:
+            return 0
+
+        result = []
+        for arg in self.args:
+            result.append(self.abs(arg))
+
+        if len(result) == 1:
+            return result[0]
+
+        return result
+
 class IndexCalculater(Calculater):
     def calculate(self):
         if not self.args or len(self.args) < 2:
