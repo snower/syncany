@@ -46,7 +46,9 @@ class ValuerCompiler(object):
     def compile_case_valuer(self, key = "", value = None, case = None, default_case = None):
         if value is not None:
             key, value = '', self.compile_schema_field(value)
-        elif (key and key[0] in ("$", "@")) or isinstance(key, list):
+        elif (isinstance(key, str) and key and key[0] in ("$", "@")) \
+                or isinstance(key, list) \
+                or isinstance(key, dict):
             key, value = '', self.compile_schema_field(key)
 
         case_valuers = {}
