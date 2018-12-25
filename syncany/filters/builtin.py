@@ -175,21 +175,43 @@ class ObjectIdFilter(Filter):
                 return ObjectId("000000000000000000000000")
 
 class DateTimeFilter(Filter):
+    def __init__(self, *args, **kwargs):
+        super(DateTimeFilter, self).__init__(*args, **kwargs)
+
+        if self.args and self.args[-1] == ")":
+            try:
+                index = self.args.rindex("(")
+                self.dtformat = self.args[:index]
+                self.tzname = self.args[index + 1: -1]
+            except:
+                self.dtformat = self.args
+                self.tzname = None
+        else:
+            self.dtformat = self.args
+            self.tzname = None
+
     def filter(self, value):
         localzone = get_localzone()
         if isinstance(value, datetime.datetime):
-            if localzone == value.tzinfo:
-                return value
-            return value.astimezone(tz=localzone)
+            if localzone != value.tzinfo:
+                value = value.astimezone(tz=localzone)
+            if self.dtformat:
+                return datetime.datetime.strptime(value.strftime(self.dtformat), self.dtformat).astimezone(tz=localzone)
+            return value
 
         if isinstance(value, datetime.timedelta):
-            return datetime.datetime.now(tz=localzone) + value
+            value = datetime.datetime.now(tz=localzone) + value
+            if self.dtformat:
+                return datetime.datetime.strptime(value.strftime(self.dtformat), self.dtformat).astimezone(tz=localzone)
+            return value
 
         if isinstance(value, (int, float)):
-            value = datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC)
-            if localzone == value.tzinfo:
-                return value
-            return value.astimezone(tz=localzone)
+            value = datetime.datetime.fromtimestamp(value, pytz.timezone(self.tzname) if self.tzname else pytz.UTC)
+            if localzone != value.tzinfo:
+                value = value.astimezone(tz=localzone)
+            if self.dtformat:
+                return datetime.datetime.strptime(value.strftime(self.dtformat), self.dtformat).astimezone(tz=localzone)
+            return value
 
         if isinstance(value, (list, tuple, set)):
             results = []
@@ -204,13 +226,15 @@ class DateTimeFilter(Filter):
             return value
 
         if isinstance(value, datetime.date):
-            value = datetime.datetime(value.year, value.month, value.day, tzinfo=pytz.timezone(self.args) if self.args else localzone)
-            if localzone == value.tzinfo:
-                return value
-            return value.astimezone(tz=localzone)
+            value = datetime.datetime(value.year, value.month, value.day, tzinfo=pytz.timezone(self.tzname) if self.tzname else localzone)
+            if localzone != value.tzinfo:
+                value = value.astimezone(tz=localzone)
+            if self.dtformat:
+                return datetime.datetime.strptime(value.strftime(self.dtformat), self.dtformat).astimezone(tz=localzone)
+            return value
 
         try:
-            return datetime.datetime.strptime(value, self.args or "%Y-%m-%d %H:%M:%S").astimezone(tz=localzone)
+            return datetime.datetime.strptime(value, self.dtformat or "%Y-%m-%d %H:%M:%S").astimezone(tz=localzone)
         except:
             return None
 
