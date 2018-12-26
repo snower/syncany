@@ -8,6 +8,7 @@ FILTERS = {
     "int": IntFilter,
     "float": FloatFilter,
     "str": StringFilter,
+    'bool': BooleanFilter,
     "ObjectId": ObjectIdFilter,
     "datetime": DateTimeFilter,
     "datetimef": DateTimeFormatFilter,

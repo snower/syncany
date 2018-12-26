@@ -134,6 +134,13 @@ class StringFilter(Filter):
         except:
             return ""
 
+class BooleanFilter(Filter):
+    def filter(self, value):
+        try:
+            return bool(value)
+        except:
+            return False
+
 class ObjectIdFilter(Filter):
     def __init__(self, *args, **kwargs):
         if ObjectId is None:

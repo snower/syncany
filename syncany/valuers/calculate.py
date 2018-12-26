@@ -95,7 +95,7 @@ class CalculateValuer(Valuer):
             return self.return_valuer.get_final_filter()
 
         final_filter = None
-        for valuer in self.childs():
+        for valuer in self.args_valuers:
             filter = valuer.get_final_filter()
             if filter is None:
                 continue

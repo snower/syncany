@@ -47,7 +47,9 @@ class ValuerCreater(object):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
             return
-        return valuer_cls(config["value"], "")
+        filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
+        filter = filter_cls(config["filter"]["args"]) if filter_cls else None
+        return valuer_cls(config["value"], "", filter)
 
     def create_db_valuer(self, config, join_loaders = None):
         valuer_cls = find_valuer(config["name"])

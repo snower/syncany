@@ -64,7 +64,7 @@ class CaseValuer(Valuer):
 
     def get_final_filter(self):
         final_filter = None
-        for valuer in self.childs():
+        for _, valuer in self.case_valuers.items():
             filter = valuer.get_final_filter()
             if filter is None:
                 continue
@@ -73,5 +73,13 @@ class CaseValuer(Valuer):
                 return None
 
             final_filter = filter
+
+        if self.default_case_valuer:
+            filter = self.default_case_valuer.get_final_filter()
+            if filter is None:
+                return final_filter
+
+            if final_filter is not None and final_filter.__class__ != filter.__class__:
+                return None
 
         return final_filter

@@ -2,11 +2,29 @@
 # 18/8/15
 # create by: snower
 
+import datetime
+try:
+    from bson.objectid import ObjectId
+except ImportError:
+    ObjectId = None
+
 class ValuerCompiler(object):
     def compile_const_valuer(self, value = None):
+        filter = None
+        filter_name = type(value).__name__
+        if filter_name in ("int", "float", "str", 'bool'):
+            filter = {"name": filter_name, "args": None}
+        elif ObjectId is not None and isinstance(value, ObjectId):
+            filter = {"name": "ObjectId", "args": None}
+        elif isinstance(value, datetime.datetime):
+            filter = {"name": "datetime", "args": None}
+        elif isinstance(value, datetime.date):
+            filter = {"name": "date", "args": None}
+
         return {
             "name": "const_valuer",
-            "value": value
+            "value": value,
+            "filter": filter,
         }
 
     def compile_db_valuer(self, key = "", filter = None):
