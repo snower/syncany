@@ -2,7 +2,7 @@
 # 18/8/6
 # create by: snower
 
-class LoadAllFieldsExceoption(Exception):
+class LoadAllFieldsException(Exception):
     pass
 
 class Valuer(object):

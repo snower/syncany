@@ -4,7 +4,7 @@
 
 from collections import defaultdict
 from .db import DBOutputer
-from ..valuers.valuer import LoadAllFieldsExceoption
+from ..valuers.valuer import LoadAllFieldsException
 
 class DBUpdateDeleteInsertOutputer(DBOutputer):
     def load(self):
@@ -13,7 +13,7 @@ class DBUpdateDeleteInsertOutputer(DBOutputer):
             for name, valuer in self.schema.items():
                 for key in valuer.get_fields():
                     fields.add(key)
-        except LoadAllFieldsExceoption:
+        except LoadAllFieldsException:
             fields = []
         query = self.db.query(self.name, self.primary_keys, list(fields))
 

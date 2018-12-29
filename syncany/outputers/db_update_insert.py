@@ -3,7 +3,7 @@
 # create by: snower
 
 from .db import DBOutputer
-from ..valuers.valuer import LoadAllFieldsExceoption
+from ..valuers.valuer import LoadAllFieldsException
 
 class DBUpdateInsertOutputer(DBOutputer):
     def load(self, datas):
@@ -12,7 +12,7 @@ class DBUpdateInsertOutputer(DBOutputer):
             for name, valuer in self.schema.items():
                 for key in valuer.get_fields():
                     fields.add(key)
-        except LoadAllFieldsExceoption:
+        except LoadAllFieldsException:
             fields = []
 
         load_datas = []
