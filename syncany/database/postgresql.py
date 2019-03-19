@@ -17,31 +17,44 @@ class PostgresqlQueryBuilder(QueryBuilder):
         self.query_values = []
         self.sql = None
 
+        db_name = self.name.split(".")
+        if len(db_name) > 1:
+            self.table_name = ".".join(db_name[1:])
+        else:
+            self.table_name = db_name[0]
+
     def filter_gt(self, key, value):
+        key = self.map_virtual_fields(self.table_name, key)
         self.query.append('`' + key + "`>%s")
         self.query_values.append(value)
 
     def filter_gte(self, key, value):
+        key = self.map_virtual_fields(self.table_name, key)
         self.query.append('`' + key + "`>=%s")
         self.query_values.append(value)
 
     def filter_lt(self, key, value):
+        key = self.map_virtual_fields(self.table_name, key)
         self.query.append('`' + key + "`<%s")
         self.query_values.append(value)
 
     def filter_lte(self, key, value):
+        key = self.map_virtual_fields(self.table_name, key)
         self.query.append('`' + key + "`<=%s")
         self.query_values.append(value)
 
     def filter_eq(self, key, value):
+        key = self.map_virtual_fields(self.table_name, key)
         self.query.append('`' + key + "`=%s")
         self.query_values.append(value)
 
     def filter_ne(self, key, value):
+        key = self.map_virtual_fields(self.table_name, key)
         self.query.append('`' + key + "`!=%s")
         self.query_values.append(value)
 
     def filter_in(self, key, value):
+        key = self.map_virtual_fields(self.table_name, key)
         self.query.append('`' + key + "` in %s")
         self.query_values.append(value)
 
@@ -54,10 +67,34 @@ class PostgresqlQueryBuilder(QueryBuilder):
     def order_by(self, key, direct=1):
         self.orders.append(('`' + key + ("` ASC" if direct else "` DESC")))
 
+    def map_virtual_fields(self, table_name, field):
+        if table_name in self.db.tables:
+            virtual_fields = self.db.tables[table_name].get("virtual_fields", {})
+            if field in virtual_fields:
+                return virtual_fields[field]
+        return field
+
+    def map_raw_sql(self):
+        if self.table_name in self.db.tables:
+            raw_sql = self.db.tables[self.table_name].get("raw_sql", "")
+            if raw_sql:
+                return '(%s) `%s`' % (raw_sql, self.table_name)
+        return ("`%s`.`%s`" % (self.db.db_name, self.table_name))
+
     def commit(self):
-        db_name = self.name.split(".")
-        db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
-        fields = ", ".join(['`' + field + '`' for field in self.fields]) if self.fields else "*"
+        db_name = self.map_raw_sql()
+
+        if self.fields:
+            fields = []
+            for field in self.fields:
+                virtual_field = self.map_virtual_fields(self.table_name, field)
+                if virtual_field == field:
+                    fields.append('`' + field + '`')
+                else:
+                    fields.append('%s as `%s`' % (virtual_field, field))
+            fields = ", ".join(fields)
+        else:
+            fields = "*"
 
         where = (" WHERE" + " AND ".join(self.query)) if self.query else ""
         order_by = (" ORDER BY " + ",".join(self.orders)) if self.orders else ""
@@ -220,6 +257,13 @@ class PostgresqlDB(DataBase):
         "user": "root",
         "password": "",
         "dbname": "",
+        "tables": [
+            # {
+            #     "name": "",
+            #     "virtual_fields": {}
+            #     "raw_sql": "",
+            # }
+        ],
     }
 
     def __init__(self, config):
@@ -234,6 +278,7 @@ class PostgresqlDB(DataBase):
         all_config.update(config)
 
         self.db_name = all_config["dbname"] if "dbname" in all_config else all_config["name"]
+        self.tables = {table["name"]: table for table in all_config.pop("tables")} if "tables" in all_config else {}
 
         super(PostgresqlDB, self).__init__(all_config)
 
