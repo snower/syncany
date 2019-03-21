@@ -9,6 +9,8 @@ FILTERS = {
     "float": FloatFilter,
     "str": StringFilter,
     'bool': BooleanFilter,
+    'list': ListFilter,
+    'dict': DictFilter,
     "ObjectId": ObjectIdFilter,
     "datetime": DateTimeFilter,
     "datetimef": DateTimeFormatFilter,

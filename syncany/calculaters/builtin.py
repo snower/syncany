@@ -4,6 +4,7 @@
 
 import datetime
 import pytz
+import json
 from tzlocal import get_localzone
 from .calculater import Calculater
 
@@ -371,3 +372,23 @@ class IndexCalculater(Calculater):
                 return self.args[1]
 
         return None
+
+class JsonEncodeCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return None
+
+        try:
+            return json.dumps(self.args[0], default=str, ensure_ascii=False).encode("utf-8")
+        except:
+            return None
+
+class JsonDecodeCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return None
+
+        try:
+            return json.loads(self.args[0])
+        except:
+            return None

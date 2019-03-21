@@ -28,6 +28,8 @@ CALCULATERS = {
     "len": LenCalculater,
     "abs": AbsCalculater,
     "index": IndexCalculater,
+    "json_encode": JsonEncodeCalculater,
+    "json_decode": JsonDecodeCalculater,
 }
 
 def find_calculater(name):

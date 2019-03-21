@@ -141,6 +141,38 @@ class BooleanFilter(Filter):
         except:
             return False
 
+class ListFilter(Filter):
+    def filter(self, value):
+        if isinstance(value, (set, list, tuple)):
+            return list(value)
+
+        if value is None:
+            return []
+
+        return [value]
+
+class DictFilter(Filter):
+    def filter(self, value):
+        if isinstance(value, dict):
+            return value
+
+        if isinstance(value, (set, list, tuple)):
+            value = list(value)
+            value_len = len(value)
+
+            try:
+                return {value[i]: (value[i + 1] if i + 1 < value_len else None) for i in range(0, value_len, 2)}
+            except:
+                pass
+
+        if value is None:
+            return {}
+
+        try:
+            return dict(value)
+        except:
+            return {}
+
 class ObjectIdFilter(Filter):
     def __init__(self, *args, **kwargs):
         if ObjectId is None:
