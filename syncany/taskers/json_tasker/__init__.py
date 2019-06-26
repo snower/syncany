@@ -8,6 +8,7 @@ import logging
 import logging.config
 import traceback
 import json
+import re
 from collections import OrderedDict
 from ..tasker import Tasker
 from ...filters import find_filter
@@ -84,11 +85,26 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             logging.config.dictConfig(self.config["logging"])
 
     def compile_filters(self):
+        if isinstance(self.config["querys"], list) and len(self.config["querys"]) == 2 \
+            and isinstance(self.config["querys"][0], str) and isinstance(self.config["querys"][1], dict):
+            if self.config["querys"][0][0] == "#":
+                self.config["querys"][0] = self.config["querys"][0][1:]
+            self.config["querys"][1]["#raw_query"] = self.config["querys"][0]
+            self.config["querys"] = self.config["querys"][1]
+
         if isinstance(self.config["querys"], str):
-            keys = self.config["querys"].split("|")
-            filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
+            if self.config["querys"] and self.config["querys"][0] == "#":
+                keys = ["#raw_query"]
+                exps = self.config["querys"][1:]
+                filters = ['str']
+            else:
+                keys = self.config["querys"].split("|")
+                exps = "=="
+                filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
+
             self.config["querys"] = [{
                 "name": keys[0],
+                "exps": exps,
                 "type": filters[0],
                 'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
             }]
@@ -107,6 +123,9 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         self.argparse.add_argument("json", type=str, nargs=argparse.OPTIONAL, help="json filename")
         for filter in self.config["querys"]:
+            if filter["name"] == "#raw_query":
+                continue
+
             if "exps" in filter:
                 if isinstance(filter["exps"], str):
                     filter["exps"] = [filter["exps"]]
@@ -327,6 +346,53 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         return self.outputer_creater[config["name"]](config, primary_keys)
 
+    def format_virtual_table(self, virtual_query, virtual_args):
+        if isinstance(virtual_query, dict):
+            values = {}
+            for key, value in virtual_query.items():
+                values[key] = self.format_virtual_table(value, virtual_args)
+            return values
+
+        if isinstance(virtual_query, (list, tuple, set)):
+            values = []
+            for value in virtual_query:
+                values.append(self.format_virtual_table(value, virtual_args))
+            return values
+
+        if isinstance(virtual_query, str):
+            virtual_field_re = re.compile(r'([<>!= ]*@[a-zA-Z0-9_]+?)[, \)$]')
+            virtual_fields = virtual_field_re.findall('(' + virtual_query + ')')
+            for virtual_field in virtual_fields:
+                virtual_field_exp, virtual_field_name = tuple(map(lambda s: s.strip(), virtual_field.split("@")))
+                virtual_field_value = ""
+
+                virtual_field_exp = "==" if virtual_field_exp == '=' else virtual_field_exp
+                for filter in self.config["querys"]:
+                    if filter["name"] != virtual_field_name:
+                        continue
+
+                    filter["virtual_field"] = True
+                    if "exps" in filter:
+                        exps = [filter["exps"]] if isinstance(filter["exps"], str) else filter["exps"]
+
+                        for exp in exps:
+                            if exp != virtual_field_exp:
+                                continue
+
+                            exp_name = get_expression_name(exp)
+                            if hasattr(self.arguments, "%s_%s" % (virtual_field_name, exp_name)):
+                                virtual_field_value = getattr(self.arguments,  "%s_%s" % (virtual_field_name, exp_name))
+                    else:
+                        if virtual_field_exp == "==" and hasattr(self.arguments, virtual_field_name):
+                            virtual_field_value = getattr(self.arguments, virtual_field_name)
+
+                virtual_args.append(virtual_field_value)
+                if '@' + virtual_field_name == virtual_query.strip():
+                    return virtual_field_value
+                virtual_query = virtual_query.replace('@' + virtual_field_name, '%s')
+            return virtual_query
+        return virtual_query
+
     def compile_loader(self):
         input_loader = self.compile_foreign_key(self.config["input"])
         db_name = input_loader["database"].split(".")[0]
@@ -348,6 +414,27 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         for filter in self.config["querys"]:
             filter_name = filter["name"]
+            if filter_name != "#raw_query":
+                continue
+
+            if hasattr(self.databases[db_name], "tables"):
+                table_name = input_loader["database"].split(".")[1]
+                virtual_args = []
+                self.databases[db_name].tables[table_name] = {
+                    "name": table_name,
+                    "raw_query": self.format_virtual_table(filter["exps"], virtual_args),
+                    "virtual_args": virtual_args,
+                }
+
+        for filter in self.config["querys"]:
+            filter_name = filter["name"]
+
+            if filter_name == "#raw_query":
+                continue
+
+            if filter.get("virtual_field"):
+                continue
+
             if "exps" in filter:
                 if isinstance(filter["exps"], str):
                     exps = [filter["exps"]]
@@ -383,6 +470,9 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         for filter in self.config["querys"]:
             filter_name = filter["name"]
+            if filter_name == "#raw_query":
+                continue
+
             value_filter = lambda v : v
             if filter_name not in self.outputer.schema:
                 for field_name, valuer in self.outputer.schema.items():

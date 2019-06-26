@@ -77,13 +77,13 @@ class MysqlQueryBuilder(QueryBuilder):
 
     def map_raw_sql(self):
         if self.table_name in self.db.tables:
-            raw_sql = self.db.tables[self.table_name].get("raw_sql", "")
+            raw_sql = self.db.tables[self.table_name].get("raw_query", "")
             if raw_sql:
-                return '(%s) `%s`' % (raw_sql, self.table_name)
-        return ("`%s`.`%s`" % (self.db.db_name, self.table_name))
+                return '(%s) `%s`' % (raw_sql, self.table_name), list(self.db.tables[self.table_name].get("virtual_args", "") or [])
+        return ("`%s`.`%s`" % (self.db.db_name, self.table_name)), []
 
     def commit(self):
-        db_name = self.map_raw_sql()
+        db_name, raw_values = self.map_raw_sql()
 
         if self.fields:
             fields = []
@@ -104,7 +104,7 @@ class MysqlQueryBuilder(QueryBuilder):
         connection = self.db.ensure_connection()
         cursor = connection.cursor(DictCursor)
         try:
-            cursor.execute(self.sql, self.query_values)
+            cursor.execute(self.sql, raw_values + self.query_values)
             datas = cursor.fetchall()
         finally:
             cursor.close()
