@@ -28,6 +28,7 @@ CALCULATERS = {
     "len": LenCalculater,
     "abs": AbsCalculater,
     "index": IndexCalculater,
+    "filter": FilterCalculater,
     "json_encode": JsonEncodeCalculater,
     "json_decode": JsonDecodeCalculater,
 }

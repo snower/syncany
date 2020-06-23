@@ -373,6 +373,33 @@ class IndexCalculater(Calculater):
 
         return None
 
+class FilterCalculater(Calculater):
+    def calculate(self):
+        if not self.args or len(self.args) < 2:
+            return None
+
+        result = []
+        if isinstance(self.args[0], (list, tuple, set)):
+            for data in self.args[0]:
+                if isinstance(data, dict) and len(self.args) >= 3:
+                    if self.args[2] not in data:
+                        continue
+                    if data[self.args[2]] == self.args[1]:
+                        result.append(data)
+                elif data == self.args[1]:
+                    return data
+
+        elif isinstance(self.args[0], dict):
+            if len(self.args) >= 3:
+                if self.args[2] in self.args[0] and self.args[0][self.args[2]] == self.args[1]:
+                    result.append(self.args[0])
+            elif self.args[1] == self.args[0]:
+                result.append(self.args[0])
+
+        elif self.args[1] == self.args[0]:
+            result.append(self.args[0])
+        return result[0] if len(result) == 1 else (result or None)
+
 class JsonEncodeCalculater(Calculater):
     def calculate(self):
         if not self.args:
