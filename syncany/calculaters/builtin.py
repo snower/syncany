@@ -376,7 +376,7 @@ class IndexCalculater(Calculater):
 class FilterCalculater(Calculater):
     def calculate(self):
         if not self.args or len(self.args) < 2:
-            return None
+            return []
 
         result = []
         if isinstance(self.args[0], (list, tuple, set)):
@@ -398,7 +398,7 @@ class FilterCalculater(Calculater):
 
         elif self.args[1] == self.args[0]:
             result.append(self.args[0])
-        return result[0] if len(result) == 1 else (result or None)
+        return result
 
 class JsonEncodeCalculater(Calculater):
     def calculate(self):

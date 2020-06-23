@@ -157,6 +157,12 @@ class DictFilter(Filter):
             return value
 
         if isinstance(value, (set, list, tuple)):
+            if not value:
+                return {}
+
+            if len(value) == 1 and isinstance(value[0], dict):
+                return value[0]
+
             value = list(value)
             value_len = len(value)
 
