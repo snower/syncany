@@ -400,6 +400,42 @@ class FilterCalculater(Calculater):
             result.append(self.args[0])
         return result
 
+class SumCalculater(Calculater):
+    def add(self, v):
+        if isinstance(v, (int, float)):
+            return v
+        elif v is True:
+            return 1
+        elif isinstance(v, str):
+            try:
+                return float(v)
+            except:
+                pass
+        return 0
+
+    def calculate(self):
+        if not self.args:
+            return 0
+
+        result = 0
+        if isinstance(self.args[0], (list, tuple, set)):
+            for data in self.args[0]:
+                if isinstance(data, dict) and len(self.args) >= 2:
+                    if self.args[1] not in data:
+                        continue
+                    result += self.add(data[self.args[1]])
+                else:
+                    result += self.add(data)
+        elif isinstance(self.args[0], dict):
+            if len(self.args) >= 2:
+                if self.args[1] in self.args[0]:
+                    result += self.add(self.args[0][self.args[1]])
+            else:
+                result += self.add(self.args[0])
+        else:
+            result += self.add(self.args[0])
+        return result
+
 class JsonEncodeCalculater(Calculater):
     def calculate(self):
         if not self.args:

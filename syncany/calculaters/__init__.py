@@ -29,6 +29,7 @@ CALCULATERS = {
     "abs": AbsCalculater,
     "index": IndexCalculater,
     "filter": FilterCalculater,
+    "sum": SumCalculater,
     "json_encode": JsonEncodeCalculater,
     "json_decode": JsonDecodeCalculater,
 }
