@@ -289,16 +289,16 @@ class MysqlDB(DataBase):
             self.connection = pymysql.Connection(**self.config)
         return self.connection
 
-    def query(self, name, primary_keys = None, fields = ()):
+    def query(self, name, primary_keys=None, fields=()):
         return MysqlQueryBuilder(self, name, primary_keys, fields)
 
-    def insert(self, name, primary_keys = None, fields = (), datas = None):
+    def insert(self, name, primary_keys=None, fields=(), datas=None):
         return MysqlInsertBuilder(self, name, primary_keys, fields, datas)
 
-    def update(self, name, primary_keys = None, fields = (), update = None):
+    def update(self, name, primary_keys=None, fields=(), update=None):
         return MysqlUpdateBuilder(self, name, primary_keys, fields, update)
 
-    def delete(self, name, primary_keys = None):
+    def delete(self, name, primary_keys=None):
         return MysqlDeleteBuilder(self, name, primary_keys)
 
     def close(self):

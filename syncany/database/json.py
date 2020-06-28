@@ -216,16 +216,16 @@ class JsonDB(DataBase):
 
         return self.jsons[name]
 
-    def query(self, name, primary_keys = None, fields = ()):
+    def query(self, name, primary_keys=None, fields=()):
         return JsonQueryBuilder(self, name, primary_keys, fields)
 
-    def insert(self, name, primary_keys = None, fields = (), datas = None):
+    def insert(self, name, primary_keys=None, fields=(), datas=None):
         return JsonInsertBuilder(self, name, primary_keys, fields, datas)
 
-    def update(self, name, primary_keys = None, fields = (), update = None):
+    def update(self, name, primary_keys=None, fields=(), update=None):
         return JsonUpdateBuilder(self, name, primary_keys, fields, update)
 
-    def delete(self, name, primary_keys = None):
+    def delete(self, name, primary_keys=None):
         return JsonDeleteBuilder(self, name, primary_keys)
 
     def close(self):

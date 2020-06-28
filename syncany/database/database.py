@@ -33,10 +33,10 @@ class QueryBuilder(object):
     def filter_in(self, key, value):
         raise NotImplementedError()
 
-    def filter_limit(self, count, start = None):
+    def filter_limit(self, count, start=None):
         raise NotImplementedError()
 
-    def order_by(self, key, direct = 1):
+    def order_by(self, key, direct=1):
         raise NotImplementedError()
 
     def commit(self):
@@ -122,16 +122,16 @@ class DataBase(object):
         self.name = config.pop("name")
         self.config = config
 
-    def query(self, name, primary_keys = None, fields = ()):
+    def query(self, name, primary_keys=None, fields=()):
         return QueryBuilder(self, name, primary_keys, fields)
 
-    def insert(self, name, primary_keys = None, fields = (), datas = None):
+    def insert(self, name, primary_keys=None, fields=(), datas=None):
         return InsertBuilder(self, name, primary_keys, fields, datas)
 
-    def update(self, name, primary_keys = None, fields = (), update = None):
+    def update(self, name, primary_keys=None, fields=(), update=None):
         return UpdateBuilder(self, name, primary_keys, fields, update)
 
-    def delete(self, name, primary_keys = None):
+    def delete(self, name, primary_keys=None):
         return DeleteBuilder(self, name, primary_keys)
 
     def close(self):

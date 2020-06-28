@@ -9,7 +9,7 @@ except ImportError:
     ObjectId = None
 
 class ValuerCompiler(object):
-    def compile_const_valuer(self, value = None):
+    def compile_const_valuer(self, value=None):
         filter = None
         filter_name = type(value).__name__
         if filter_name in ("int", "float", "str", 'bool'):
@@ -27,14 +27,14 @@ class ValuerCompiler(object):
             "filter": filter,
         }
 
-    def compile_db_valuer(self, key = "", filter = None):
+    def compile_db_valuer(self, key="", filter=None):
         return {
             "name": "db_valuer",
             "key": key,
             "filter": filter
         }
 
-    def compile_const_join_valuer(self, key = "", value = None, loader = None, foreign_key = "", valuer = None):
+    def compile_const_join_valuer(self, key="", value=None, loader=None, foreign_key="", valuer=None):
         valuer = self.compile_schema_field(valuer)
 
         return {
@@ -46,7 +46,7 @@ class ValuerCompiler(object):
             "valuer": valuer,
         }
 
-    def compile_db_join_valuer(self, key = "", loader = None, foreign_key = "", foreign_filters = None, filter = None, args_valuer = None, valuer = None):
+    def compile_db_join_valuer(self, key="", loader=None, foreign_key="", foreign_filters=None, filter=None, args_valuer=None, valuer=None):
         args_valuer = self.compile_schema_field(args_valuer) if args_valuer else None
         valuer = self.compile_schema_field(valuer)
 
@@ -61,7 +61,7 @@ class ValuerCompiler(object):
             "filter": filter,
         }
 
-    def compile_case_valuer(self, key = "", value = None, case = None, default_case = None):
+    def compile_case_valuer(self, key="", value=None, case=None, default_case=None):
         if value is not None:
             key, value = '', self.compile_schema_field(value)
         elif (isinstance(key, str) and key and key[0] in ("$", "@")) \
@@ -88,7 +88,7 @@ class ValuerCompiler(object):
             "default_case": default_case,
         }
 
-    def compile_calculate_valuer(self, key="", args=None, filter = None):
+    def compile_calculate_valuer(self, key="", args=None, filter=None):
         args_valuers, return_valuer = [], None
         if isinstance(args, list):
             for arg in args:

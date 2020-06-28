@@ -239,16 +239,16 @@ class CsvDB(DataBase):
 
         return self.csvs[name]
 
-    def query(self, name, primary_keys = None, fields = ()):
+    def query(self, name, primary_keys=None, fields=()):
         return CsvQueryBuilder(self, name, primary_keys, fields)
 
-    def insert(self, name, primary_keys = None, fields = (), datas = None):
+    def insert(self, name, primary_keys=None, fields=(), datas=None):
         return CsvInsertBuilder(self, name, primary_keys, fields, datas)
 
-    def update(self, name, primary_keys = None, fields = (), update = None):
+    def update(self, name, primary_keys=None, fields=(), update=None):
         return CsvUpdateBuilder(self, name, primary_keys, fields, update)
 
-    def delete(self, name, primary_keys = None):
+    def delete(self, name, primary_keys=None):
         return CsvDeleteBuilder(self, name, primary_keys)
 
     def close(self):

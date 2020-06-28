@@ -43,7 +43,7 @@ class LoaderJoinWarp(object):
         return self
 
 class ValuerCreater(object):
-    def create_const_valuer(self, config, join_loaders = None):
+    def create_const_valuer(self, config, join_loaders=None):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
             return
@@ -51,7 +51,7 @@ class ValuerCreater(object):
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
         return valuer_cls(config["value"], "", filter)
 
-    def create_db_valuer(self, config, join_loaders = None):
+    def create_db_valuer(self, config, join_loaders=None):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
             return
@@ -59,7 +59,7 @@ class ValuerCreater(object):
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
         return valuer_cls(config["key"], filter)
 
-    def create_const_join_valuer(self, config, join_loaders = None):
+    def create_const_join_valuer(self, config, join_loaders=None):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
             return
@@ -74,7 +74,7 @@ class ValuerCreater(object):
                 loader.add_valuer(key, self.create_valuer(self.compile_db_valuer(key, None), join_loaders))
         return valuer_cls(loader, config["foreign_key"], child_valuer, config["value"], config["key"], None)
 
-    def create_db_join_valuer(self, config, join_loaders = None):
+    def create_db_join_valuer(self, config, join_loaders=None):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
             return
@@ -116,7 +116,7 @@ class ValuerCreater(object):
             loader.add_key_matcher(".*", self.create_valuer(self.compile_db_valuer("", None)))
         return valuer_cls(loader, config["foreign_key"], config["foreign_filters"], args_valuer, child_valuer, config["key"], filter)
 
-    def create_case_valuer(self, config, join_loaders = None):
+    def create_case_valuer(self, config, join_loaders=None):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
             return

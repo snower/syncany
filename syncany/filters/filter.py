@@ -3,7 +3,7 @@
 # create by: snower
 
 class Filter(object):
-    def __init__(self, args = None):
+    def __init__(self, args=None):
         self.args = args
 
     def filter(self, value):

@@ -156,17 +156,20 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
     def compile_key(self, key):
         if not isinstance(key, str) or key == "":
-            return {"instance": None, "key": "", "value": key, "filter": None}
+            return {"instance": None, "key": "", "inherit_reflen": 0, "value": key, "filter": None}
 
         if key[0] not in ("&", "$", "@", "|"):
-            return {"instance": None, "key": "", "value": key, "filter": None}
+            return {"instance": None, "key": "", "inherit_reflen": 0, "value": key, "filter": None}
 
+        inherit_reflen = 0
         if key[0] in ("&", "$"):
             tokens = key.split(".")
-            instance = tokens[0]
+            instance = tokens[0][0]
             key = ".".join(tokens[1:])
             if key == "" and tokens[0] == "$":
                 key = "*"
+            if key[0] == "$" and tokens[0][1:] == ("$" * len(tokens[0][1:])):
+                inherit_reflen = len(tokens[0][1:])
         else:
             instance = key[0]
             key = key[1:]
@@ -184,6 +187,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         return {
             "instance": instance,
             "key": key,
+            "inherit_reflen": inherit_reflen,
             'value': None,
             "filter": {
                 "name": filter,
@@ -251,13 +255,13 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
     def compile_schema_field(self, field):
         if isinstance(field, dict):
             if "name" not in field or not field["name"].endswith("_valuer"):
-                if "case" not in field:
+                if "#case" not in field:
                     return self.compile_const_valuer(field)
 
                 case_field = {
                     "key": field.pop("case"),
                     "case": {},
-                    "default_case": field.pop("end") if "end" in field else None,
+                    "default_case": field.pop("#end") if "#end" in field else None,
                 }
 
                 for case_key, case_value in field.items():
@@ -273,7 +277,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         if isinstance(field, list):
             key = self.compile_key(field[0])
             if key["instance"] is None:
-                if len(field) <= 1:
+                if len(field) != 3:
                     return self.compile_const_valuer(key["value"])
 
                 foreign_key = self.compile_foreign_key(field[1])
@@ -285,6 +289,9 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 return self.compile_db_join_valuer(key["key"], loader, foreign_key["foreign_key"], foreign_key["foreign_filters"], None, key["value"], field[2])
 
             if key["instance"] == "$":
+                if len(field) != 3:
+                    return self.compile_const_valuer(key["value"])
+
                 foreign_key = self.compile_foreign_key(field[1])
                 if foreign_key is None:
                     return self.compile_const_valuer(key["value"])
@@ -307,7 +314,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             return self.compile_calculate_valuer(key["key"], [], key["filter"])
         return self.compile_const_valuer(field)
 
-    def create_valuer(self, config, join_loaders = None):
+    def create_valuer(self, config, join_loaders=None):
         if "name" not in config or not config["name"]:
             return None
 

@@ -6,7 +6,7 @@ class LoadAllFieldsException(Exception):
     pass
 
 class Valuer(object):
-    def __init__(self, key, filter = None):
+    def __init__(self, key, filter=None):
         self.key = key
         self.filter = filter
         self.value = None
