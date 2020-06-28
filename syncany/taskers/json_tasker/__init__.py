@@ -290,7 +290,9 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
             if key["instance"] == "$":
                 if len(field) != 3:
-                    return self.compile_const_valuer(key["value"])
+                    if "inherit_reflen" in key and key["inherit_reflen"] > 0:
+                        return self.compile_inherit_valuer(key["value"], key["filter"], key["inherit_reflen"])
+                    return self.compile_db_valuer(key["value"], key["filter"])
 
                 foreign_key = self.compile_foreign_key(field[1])
                 if foreign_key is None:
@@ -308,13 +310,15 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             return self.compile_const_valuer(key["value"])
 
         if key["instance"] == "$":
+            if "inherit_reflen" in key and key["inherit_reflen"] > 0:
+                return self.compile_inherit_valuer(key["value"], key["filter"], key["inherit_reflen"])
             return self.compile_db_valuer(key["key"], key["filter"])
 
         if key["instance"] == "@":
             return self.compile_calculate_valuer(key["key"], [], key["filter"])
         return self.compile_const_valuer(field)
 
-    def create_valuer(self, config, join_loaders=None):
+    def create_valuer(self, config, inherit_valuers=None, join_loaders=None):
         if "name" not in config or not config["name"]:
             return None
 
@@ -325,7 +329,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             config = {key: value for key, value in config.items() if key != "name"}
             return valuer_cls(**config)
 
-        return self.valuer_creater[config["name"]](config, join_loaders)
+        return self.valuer_creater[config["name"]](config, inherit_valuers, join_loaders)
 
     def create_loader(self, config, primary_keys):
         if "name" not in config or not config["name"]:
@@ -413,9 +417,15 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         if isinstance(self.schema, dict):
             for name, valuer in self.schema.items():
-                valuer = self.create_valuer(valuer, self.join_loaders)
+                inherit_valuers = []
+                valuer = self.create_valuer(valuer, inherit_valuers, self.join_loaders)
                 if valuer:
                     self.loader.add_valuer(name, valuer)
+                for inherit_valuer in inherit_valuers:
+                    inherit_valuer["reflen"] -= 1
+                    if inherit_valuer["reflen"] == 0:
+                        for inherit_name in inherit_valuer.get_fields():
+                            self.loader.add_valuer(inherit_name, inherit_valuer)
         elif self.schema == ".*":
             self.loader.add_key_matcher(".*", self.create_valuer(self.compile_db_valuer("", None)))
 

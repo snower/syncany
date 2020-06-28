@@ -34,6 +34,15 @@ class ValuerCompiler(object):
             "filter": filter
         }
 
+    def compile_inherit_valuer(self, key="", filter=None, reflen=0):
+        return {
+            "name": "inherit_valuer",
+            "key": '',
+            "filter": None,
+            'reflen': reflen,
+            "valuer": self.compile_db_valuer(key, filter)
+        }
+
     def compile_const_join_valuer(self, key="", value=None, loader=None, foreign_key="", valuer=None):
         valuer = self.compile_schema_field(valuer)
 
