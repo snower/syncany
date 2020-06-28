@@ -25,7 +25,7 @@ class ConstJoinValuer(ConstValuer):
         self.loader.filter_eq(self.foreign_key, self.value)
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
-                inherit_valuer.fill(data)
+                inherit_valuer.fill(self.value)
         return self
 
     def get(self):

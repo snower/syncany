@@ -7,10 +7,10 @@ import weakref
 from .valuer import Valuer
 
 class InheritValuer(Valuer):
-    def __init__(self, child_valuer, value_valuer, *args, **kwargs):
+    def __init__(self, value_valuer, *args, **kwargs):
         super(InheritValuer, self).__init__(*args, **kwargs)
 
-        self.child_valuer = child_valuer if child_valuer else InheritChildValuer(self, value_valuer, *args, **kwargs)
+        self.child_valuer = InheritChildValuer(self, value_valuer, *args, **kwargs)
         self.value_valuer = value_valuer
         self.cloned_child_valuer = None
 
@@ -19,13 +19,14 @@ class InheritValuer(Valuer):
 
     def clone(self):
         if self.child_valuer.cloned_inherit_valuer:
-            child_valuer = self.child_valuer.cloned_inherit_valuer
+            inherit_valuer = self.child_valuer.cloned_inherit_valuer
             self.child_valuer.cloned_inherit_valuer = None
-        else:
-            child_valuer = self.child_valuer.clone()
-            self.cloned_child_valuer = child_valuer
+            return inherit_valuer
+
         value_valuer = self.value_valuer.clone() if self.value_valuer else None
-        return self.__class__(child_valuer, value_valuer, self.key, self.filter)
+        inherit_valuer = self.__class__(value_valuer, self.key, self.filter)
+        self.cloned_child_valuer = inherit_valuer.get_inherit_child_valuer()
+        return inherit_valuer
 
     def fill(self, data):
         if self.value_valuer:
@@ -55,19 +56,19 @@ class InheritChildValuer(Valuer):
     def __init__(self, inherit_valuer, value_valuer, *args, **kwargs):
         super(InheritChildValuer, self).__init__(*args, **kwargs)
 
-        self.inherit_valuer = weakref.ref(inherit_valuer)
+        self.inherit_valuer = weakref.proxy(inherit_valuer)
         self.value_valuer = value_valuer
         self.cloned_inherit_valuer = None
 
     def clone(self):
         if self.inherit_valuer.cloned_child_valuer:
-            inherit_valuer = self.inherit_valuer.cloned_child_valuer
+            child_valuer = self.inherit_valuer.cloned_child_valuer
             self.inherit_valuer.cloned_child_valuer = None
-        else:
-            inherit_valuer = self.inherit_valuer.clone()
-            self.cloned_inherit_valuer = inherit_valuer
+            return child_valuer
+
         value_valuer = self.value_valuer.clone() if self.value_valuer else None
-        return self.__class__(inherit_valuer, value_valuer, self.key, self.filter)
+        self.cloned_inherit_valuer = InheritValuer(value_valuer, self.key, self.filter)
+        return self.cloned_inherit_valuer.get_inherit_child_valuer()
 
     def fill(self, data):
         return self

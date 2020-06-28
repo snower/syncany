@@ -66,8 +66,8 @@ class ValuerCreater(object):
         filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
         value_valuer = self.create_valuer(config["valuer"], inherit_valuers, join_loaders)
-        inherit_valuer = valuer_cls(None, value_valuer, config["key"], filter)
-        if inherit_valuers:
+        inherit_valuer = valuer_cls(value_valuer, config["key"], filter)
+        if inherit_valuers is not None:
             inherit_valuers.append({
                 "reflen": config["reflen"],
                 "valuer": inherit_valuer,
@@ -92,12 +92,12 @@ class ValuerCreater(object):
         current_inherit_valuers = []
         for inherit_valuer in child_inherit_valuers:
             inherit_valuer["reflen"] -= 1
-            if inherit_valuer["reflen"] == 0:
+            if inherit_valuer["reflen"] == -1:
                 current_inherit_valuers.append(inherit_valuer["valuer"])
                 for key in inherit_valuer["valuer"].get_fields():
                     if key not in loader.schema:
                         loader.add_valuer(key, self.create_valuer(self.compile_db_valuer(key, None)))
-            elif inherit_valuer["reflen"] > 0 and inherit_valuers:
+            elif inherit_valuer["reflen"] >= 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
         return valuer_cls(loader, config["foreign_key"], child_valuer, current_inherit_valuers,
                           config["value"], config["key"], None)
@@ -144,12 +144,12 @@ class ValuerCreater(object):
 
             for inherit_valuer in child_inherit_valuers:
                 inherit_valuer["reflen"] -= 1
-                if inherit_valuer["reflen"] == 0:
+                if inherit_valuer["reflen"] == -1:
                     current_inherit_valuers.append(inherit_valuer["valuer"])
                     for inherit_key in inherit_valuer["valuer"].get_fields():
                         if inherit_key not in loader.schema:
                             loader.add_valuer(inherit_key, self.create_valuer(self.compile_db_valuer(inherit_key, None)))
-                elif inherit_valuer["reflen"] > 0 and inherit_valuers:
+                elif inherit_valuer["reflen"] >= 0 and inherit_valuers is not None:
                     inherit_valuers.append(inherit_valuer)
         except LoadAllFieldsException:
             loader.schema.clear()
@@ -194,9 +194,9 @@ class ValuerCreater(object):
         current_inherit_valuers = []
         for inherit_valuer in return_inherit_valuers:
             inherit_valuer["reflen"] -= 1
-            if inherit_valuer["reflen"] == 0:
+            if inherit_valuer["reflen"] == -1:
                 current_inherit_valuers.append(inherit_valuer["valuer"])
-            elif inherit_valuer["reflen"] > 0 and inherit_valuers:
+            elif inherit_valuer["reflen"] >= 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
 
         return valuer_cls(calculater, args_valuers, return_valuer, current_inherit_valuers, "", filter)
