@@ -155,3 +155,19 @@ class ValuerCompiler(object):
             "key": "",
             "schema": schema_valuers,
         }
+
+    def compile_make_valuer(self, key="", filter=None, valuer=None, loop=None):
+        if isinstance(valuer, dict):
+            valuer = {key: self.compile_schema_field(value) for key, value in valuer.items()}
+        elif isinstance(valuer, (list, tuple, set)):
+            valuer = [self.compile_schema_field(value) for value in valuer]
+        else:
+            valuer = None
+
+        return {
+            "name": "make_valuer",
+            "key": key,
+            "valuer": valuer,
+            "filter": filter,
+            "loop": loop,
+        }

@@ -35,11 +35,13 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         self.valuer_compiler = {
             "const_valuer": self.compile_const_valuer,
             "db_valuer": self.compile_db_valuer,
+            "inherit_valuer": self.compile_inherit_valuer,
             "const_join_valuer": self.compile_const_join_valuer,
             "db_join_valuer": self.compile_db_join_valuer,
             "case_valuer": self.compile_case_valuer,
             "calculate_valuer": self.compile_calculate_valuer,
             "schema_valuer": self.compile_schema_valuer,
+            "make_valuer": self.compile_make_valuer,
         }
 
         self.valuer_creater = {
@@ -51,6 +53,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "case_valuer": self.create_case_valuer,
             "calculate_valuer": self.create_calculate_valuer,
             "schema_valuer": self.create_schema_valuer,
+            "make_valuer": self.create_make_valuer,
         }
 
         self.loader_creater = {
@@ -159,7 +162,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         if not isinstance(key, str) or key == "":
             return {"instance": None, "key": "", "inherit_reflen": 0, "value": key, "filter": None}
 
-        if key[0] not in ("&", "$", "@", "|"):
+        if key[0] not in ("&", "$", "@", "|", "#"):
             return {"instance": None, "key": "", "inherit_reflen": 0, "value": key, "filter": None}
 
         inherit_reflen = 0
@@ -309,6 +312,10 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
             if key["instance"] == "@":
                 return self.compile_calculate_valuer(key["key"], field[1:], key["filter"])
+
+            if key["instance"] == "#":
+                if key["key"] == "make" and len(field) in (2, 3):
+                    return self.compile_make_valuer(key["key"], key["filter"], field[1], field[2] if len(field) >= 3 else None)
             return self.compile_const_valuer(field)
 
         key = self.compile_key(field)

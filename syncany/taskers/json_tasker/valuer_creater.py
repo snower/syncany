@@ -204,3 +204,16 @@ class ValuerCreater(object):
         for key, valuer_config in config["schema"].items():
             schema_valuers[key] = self.create_valuer(valuer_config, **kwargs)
         return valuer_cls(schema_valuers, config["key"], None)
+
+    def create_make_valuer(self, config, **kwargs):
+        valuer_cls = find_valuer(config["name"])
+        if not valuer_cls:
+            return
+        if isinstance(config["valuer"], dict):
+            value_valuer = {key: self.create_valuer(valuer_config, **kwargs)
+                            for key, valuer_config in config["valuer"].items()}
+        elif isinstance(config["valuer"], (list, tuple, set)):
+            value_valuer = [self.create_valuer(valuer_config, **kwargs) for valuer_config in config["valuer"]]
+        else:
+            value_valuer = None
+        return valuer_cls(value_valuer, config["loop"], config["key"], None)
