@@ -16,6 +16,7 @@ from ...database import find_database
 from ...loaders import find_loader
 from ...valuers import find_valuer
 from ...outputers import find_outputer
+from ...calculaters import find_calculater
 from ...utils import get_expression_name
 from .valuer_compiler import ValuerCompiler
 from .valuer_creater import ValuerCreater
@@ -88,6 +89,27 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         if "logging" in self.config and isinstance(self.config["logging"], dict):
             logging.config.dictConfig(self.config["logging"])
 
+    def compile_filter_calculater(self, calculater):
+        keys = calculater[0][1:].split("|")
+
+        calculater_cls = find_calculater(keys[0])
+        if not calculater_cls:
+            return calculater
+        calculater_args = []
+        for value in calculater[1:]:
+            if isinstance(value, list) and value and value[0][0] == "@":
+                calculater_args.append(self.compile_filter_calculater(value))
+            else:
+                calculater_args.append(value)
+        value = calculater_cls(*tuple(calculater_args)).calculate()
+
+        filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
+        filters_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
+        filter_cls = find_filter(filters[0])
+        if filter_cls:
+            return filter_cls(filters_args).filter(value)
+        return value
+
     def compile_filters(self):
         if isinstance(self.config["querys"], list) and len(self.config["querys"]) == 2 \
             and isinstance(self.config["querys"][0], str) and isinstance(self.config["querys"][1], dict):
@@ -148,8 +170,10 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                         filter_cls = find_filter(filter["type"])
                         if filter_cls is None:
                             filter_cls = find_filter('str')
+                        if isinstance(value, list) and value and value[0][0] == "@":
+                            value = self.compile_filter_calculater(value)
                         self.argparse.add_argument('--%s__%s' % (filter["name"], exp_name), dest="%s_%s" % (filter["name"], exp_name),
-                                               type=filter_cls(filter.get("type_args")), default=value, help="%s %s" % (filter["name"], exp))
+                                               type=filter_cls(filter.get("type_args")), default=value, help="%s %s (default: %s)" % (filter["name"], exp, value))
             else:
                 filter_cls = find_filter(filter["type"])
                 if filter_cls is None:
