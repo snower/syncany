@@ -7,6 +7,7 @@ from .builtin import *
 
 CALCULATERS = {
     "": Calculater,
+    "type": TypeCalculater,
     "add": AddCalculater,
     "sub": SubCalculater,
     "mul": MulCalculater,

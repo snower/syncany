@@ -7,6 +7,38 @@ import pytz
 import json
 from tzlocal import get_localzone
 from .calculater import Calculater
+try:
+    from bson.objectid import ObjectId
+except ImportError:
+    ObjectId = None
+
+class TypeCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return 0
+
+        if self.args[0] is None:
+            return "null"
+
+        if self.args[0] is True or self.args[0] is False:
+            return "boolean"
+
+        if isinstance(self.args[0], dict):
+            return "map"
+
+        if isinstance(self.args[0], (list, tuple, set)):
+            return "array"
+
+        if isinstance(self.args[0], int):
+            return "int"
+
+        if isinstance(self.args[0], float):
+            return "float"
+
+        if ObjectId and isinstance(self.args[0], ObjectId):
+            return "ObjectId"
+
+        return type(self.args[0]).__name_
 
 class AddCalculater(Calculater):
     def calculate(self):
@@ -156,9 +188,26 @@ class JoinCalculater(Calculater):
 
 
 class NowCalculater(Calculater):
+    TIMEDELTAS = {"Y": 365 * 24 * 60 * 60, "m": 30 * 24 * 60 * 60, "d": 24 * 60 * 60, "H": 60 * 60, "M": 60, "S": 1}
+
     def calculate(self):
         if not self.args:
             return datetime.datetime.now(tz=get_localzone())
+
+        if self.args[0] and self.args[0][0] in ("-", "+") and self.args[0][-1] in ("Y", "m", "d", "H", "M", "S"):
+            try:
+                seconds = int(self.args[0][1:-1]) * self.TIMEDELTAS[self.args[0][-1]]
+            except:
+                return datetime.datetime.now(tz=get_localzone())
+
+            if len(self.args) >= 2:
+                now = datetime.datetime.now(tz=pytz.timezone(self.args[1]))
+            else:
+                now = datetime.datetime.now(tz=get_localzone())
+
+            if self.args[0][0] == "-":
+                return now - datetime.timedelta(seconds=seconds)
+            return now + datetime.timedelta(seconds=seconds)
 
         return datetime.datetime.now(tz=pytz.timezone(self.args[0]))
 
