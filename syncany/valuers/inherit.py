@@ -93,3 +93,6 @@ class InheritChildValuer(Valuer):
         if not self.value_valuer:
             return None
         return self.value_valuer.get_final_filter()
+
+    def require_loaded(self):
+        return False

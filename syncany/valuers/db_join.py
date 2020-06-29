@@ -34,10 +34,11 @@ class DBJoinValuer(DBValuer):
             super(DBJoinValuer, self).fill(data)
             self.matcher = self.loader.filter_eq(self.foreign_key, self.value)
 
-        self.matcher.add_valuer(self.valuer)
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
-                self.matcher.add_valuer(inherit_valuer)
+                inherit_valuer.fill(data)
+
+        self.matcher.add_valuer(self.valuer)
         return self
 
     def get(self):
@@ -57,12 +58,17 @@ class DBJoinValuer(DBValuer):
         return valuers
 
     def get_fields(self):
+        fields = []
+
         if self.args_valuer:
-            fields = []
             for field in self.args_valuer.get_fields():
                 fields.append(field)
-            return fields
-        return super(DBJoinValuer, self).get_fields()
+
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                for field in inherit_valuer.get_fields():
+                    fields.append(field)
+        return fields if fields else super(DBJoinValuer, self).get_fields()
 
     def get_final_filter(self):
         return self.valuer.get_final_filter()

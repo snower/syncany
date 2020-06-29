@@ -37,13 +37,22 @@ class ValuerCompiler(object):
     def compile_inherit_valuer(self, key="", filter=None, reflen=0):
         return {
             "name": "inherit_valuer",
-            "key": '',
+            "key": key,
             "filter": None,
             'reflen': reflen,
             "valuer": self.compile_db_valuer(key, filter)
         }
 
     def compile_const_join_valuer(self, key="", value=None, loader=None, foreign_key="", valuer=None):
+        valuer = "$.*" if valuer is None else valuer
+        if isinstance(valuer, str) and valuer[0] == ":":
+            valuer = valuer[1:]
+        if isinstance(valuer, (list, tuple, set)) and valuer[0] and isinstance(valuer[0], str):
+            if valuer[0] == ":":
+                valuer = list(valuer)[1:]
+            elif valuer[0][0] == ":":
+                valuer = list(valuer)
+                valuer[0] = valuer[0][1:]
         valuer = self.compile_schema_field(valuer)
 
         return {
@@ -57,6 +66,16 @@ class ValuerCompiler(object):
 
     def compile_db_join_valuer(self, key="", loader=None, foreign_key="", foreign_filters=None, filter=None, args_valuer=None, valuer=None):
         args_valuer = self.compile_schema_field(args_valuer) if args_valuer else None
+
+        valuer = "$.*" if valuer is None else valuer
+        if isinstance(valuer, str) and valuer[0] == ":":
+            valuer = valuer[1:]
+        if isinstance(valuer, (list, tuple, set)) and valuer[0] and isinstance(valuer[0], str):
+            if valuer[0] == ":":
+                valuer = list(valuer)[1:]
+            elif valuer[0][0] == ":":
+                valuer = list(valuer)
+                valuer[0] = valuer[0][1:]
         valuer = self.compile_schema_field(valuer)
 
         return {
@@ -103,10 +122,13 @@ class ValuerCompiler(object):
             for arg in args:
                 if arg and isinstance(arg, str) and arg[0] == ":":
                     return_valuer = self.compile_schema_field(arg[1:])
-                elif arg and isinstance(arg, (list, tuple, set)) and arg[0]\
+                elif arg and isinstance(arg, (list, tuple, set)) and arg[0] \
                         and isinstance(arg[0], str) and arg[0][0] == ":":
-                    arg = list(arg)
-                    arg[0] = arg[0][1:]
+                    if arg[0] == ":":
+                        arg = list(arg)[1:]
+                    elif arg[0][0] == ":":
+                        arg = list(arg)
+                        arg[0] = arg[0][1:]
                     return_valuer = self.compile_schema_field(arg)
                 else:
                     args_valuers.append(self.compile_schema_field(arg))

@@ -14,3 +14,6 @@ class DBValuer(Valuer):
             return []
 
         return keys
+
+    def require_loaded(self):
+        return False

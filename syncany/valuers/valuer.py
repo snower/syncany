@@ -98,4 +98,7 @@ class Valuer(object):
         return self.filter
 
     def require_loaded(self):
+        for child in self.childs():
+            if child.require_loaded():
+                return True
         return False

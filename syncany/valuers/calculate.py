@@ -23,8 +23,6 @@ class CalculateValuer(Valuer):
                 self.wait_loaded = True
                 return
 
-            self.check_wait_loaded(valuer.childs())
-
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
@@ -42,17 +40,17 @@ class CalculateValuer(Valuer):
         for valuer in self.args_valuers:
             valuer.fill(data)
 
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
         if not self.wait_loaded:
             values = []
             for valuer in self.args_valuers:
                 values.append(valuer.get())
 
             calculater = self.calculater(*values)
-            result = calculater.calculate()
-            self.return_valuer.fill(result)
-            if self.inherit_valuers:
-                for inherit_valuer in self.inherit_valuers:
-                    inherit_valuer.fill(result)
+            self.return_valuer.fill(calculater.calculate())
         return self
 
     def get(self):
@@ -65,11 +63,7 @@ class CalculateValuer(Valuer):
 
             calculater = self.calculater(*values)
             if self.return_valuer:
-                result = calculater.calculate()
-                self.return_valuer.fill(result)
-                if self.inherit_valuers:
-                    for inherit_valuer in self.inherit_valuers:
-                        inherit_valuer.fill(result)
+                self.return_valuer.fill(calculater.calculate())
                 self.value = self.return_valuer.get()
             else:
                 self.value = calculater.calculate()
@@ -98,10 +92,11 @@ class CalculateValuer(Valuer):
         if not self.wait_loaded and self.return_valuer:
             for field in self.return_valuer.get_fields():
                 fields.append(field)
-            if self.inherit_valuers:
-                for inherit_valuer in self.inherit_valuers:
-                    for field in inherit_valuer.get_fields():
-                        fields.append(field)
+
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                for field in inherit_valuer.get_fields():
+                    fields.append(field)
         return fields
 
     def get_final_filter(self):
