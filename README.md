@@ -88,18 +88,15 @@ VALUES ('201806091836318176287421', '5b750a3f943039305a26c1ec', 'groupbuy', 3800
   "schema": {
     "订单号": "$.order_id",
     "用户ID": "$.uid",
-    "用户名": ["$.uid|ObjectId", "&.mongo_user.user::_id", "$.username"],
-    "用户昵称": ["$.uid|ObjectId", "&.mongo_user.user::_id", "$.nickname"],
+    "用户名": ["$.uid|ObjectId", "&.mongo_user.user::_id", ":$.username"],
+    "用户昵称": ["$.uid|ObjectId", "&.mongo_user.user::_id", ":$.nickname"],
     "订单类型": {
-      "name": "case_valuer",
-      "key": "order_type",
-      "case": {
-        "groupbuy": "团购订单"
-      },
-      "default_case": "普通订单"
+      "#case": "$.order_type",
+      "groupbuy": "团购订单"
+      "#end": "普通订单"
     },
     "订单金额(元)": ["@div", "$.total_fee", 100],
-    "订单状态": ["$.status", "&.json.status.json::status", "$.verbose_name"],
+    "订单状态": ["$.status", "&.json.status.json::status", ":$.verbose_name"],
     "下单时间": "$.order_at|datetime %Y-%m-%d %H:%M:%S"
   }
 }
