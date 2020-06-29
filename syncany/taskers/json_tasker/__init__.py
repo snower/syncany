@@ -78,6 +78,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                         self.load_json(json_filename)
                 else:
                     self.load_json(config["extends"])
+                config.pop("extends")
             self.config.update(config)
 
     def load_databases(self):
