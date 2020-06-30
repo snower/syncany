@@ -102,7 +102,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 calculater_args.append(self.compile_filter_calculater(value))
             else:
                 calculater_args.append(value)
-        value = calculater_cls(*tuple(calculater_args)).calculate()
+        value = calculater_cls(keys[0], *tuple(calculater_args)).calculate()
 
         filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
         filters_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None

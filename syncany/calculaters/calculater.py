@@ -3,7 +3,8 @@
 # create by: snower
 
 class Calculater(object):
-    def __init__(self, *args):
+    def __init__(self, name, *args):
+        self.name = name
         self.args = args
 
     def calculate(self):

@@ -2,6 +2,8 @@
 # 18/8/15
 # create by: snower
 
+import math
+import hashlib
 import datetime
 import pytz
 import json
@@ -283,6 +285,26 @@ class NeqCalculater(Calculater):
 
         return True
 
+class AndCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return None
+
+        result = self.args[0]
+        for i in range(1, len(self.args)):
+            result = result and self.args[i]
+        return result
+
+class OrCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return None
+
+        result = self.args[0]
+        for i in range(1, len(self.args)):
+            result = result or self.args[i]
+        return result
+
 class InCalculater(Calculater):
     def calculate(self):
         if not self.args:
@@ -485,8 +507,65 @@ class SumCalculater(Calculater):
             result += self.add(self.args[0])
         return result
 
-class JsonEncodeCalculater(Calculater):
+class StringCalculater(Calculater):
     def calculate(self):
+        if not self.args:
+            return ''
+
+        func_name = self.name[8:]
+        if hasattr(self.args[0], func_name):
+            try:
+                getattr(self.args[0], func_name)(*tuple(self.args[1:]))
+            except:
+                return ''
+        return ''
+
+class MathCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return 0
+
+        func_name = self.name[8:]
+        if hasattr(math, func_name):
+            try:
+                getattr(math, func_name)(*tuple(self.args))
+            except:
+                return 0
+        return 0
+
+class HashCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return None
+
+        b = b''
+        for arg in self.args:
+            if isinstance(arg, bytes):
+                b += str(arg).encode("utf-8")
+            else:
+                b += arg
+
+        if self.name == "hash::md5":
+            return hashlib.md5(b).hexdigest()
+        if self.name == "hash::sha1":
+            return hashlib.sha1(b).hexdigest()
+        if self.name == "hash::sha256":
+            return hashlib.sha256(b).hexdigest()
+        if self.name == "hash::sha384":
+            return hashlib.sha384(b).hexdigest()
+        if self.name == "hash::sha512":
+            return hashlib.sha512(b).hexdigest()
+        return None
+
+class JsonCalculater(Calculater):
+    def calculate(self):
+        if self.name == "json::encode":
+            return self.encode()
+        if self.name == "json::decode":
+            return self.decode()
+        return None
+
+    def encode(self):
         if not self.args:
             return None
 
@@ -495,8 +574,7 @@ class JsonEncodeCalculater(Calculater):
         except:
             return None
 
-class JsonDecodeCalculater(Calculater):
-    def calculate(self):
+    def decode(self):
         if not self.args:
             return None
 

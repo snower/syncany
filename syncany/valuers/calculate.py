@@ -5,10 +5,11 @@
 from .valuer import Valuer
 
 class CalculateValuer(Valuer):
-    def __init__(self, calculater, args_valuers, return_valuer, inherit_valuers, *args, **kwargs):
+    def __init__(self, calculater, calculater_name, args_valuers, return_valuer, inherit_valuers, *args, **kwargs):
         super(CalculateValuer, self).__init__(*args, **kwargs)
 
         self.calculater = calculater
+        self.calculater_name = calculater_name
         self.args_valuers = args_valuers
         self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
@@ -32,7 +33,7 @@ class CalculateValuer(Valuer):
             args_valuers.append(valuer.clone())
         return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
-        return self.__class__(self.calculater, args_valuers, return_valuer, inherit_valuers, self.key, self.filter)
+        return self.__class__(self.calculater, self.calculater_name, args_valuers, return_valuer, inherit_valuers, self.key, self.filter)
 
     def fill(self, data):
         super(CalculateValuer, self).fill(data)
@@ -49,7 +50,7 @@ class CalculateValuer(Valuer):
             for valuer in self.args_valuers:
                 values.append(valuer.get())
 
-            calculater = self.calculater(*values)
+            calculater = self.calculater(self.calculater_name, *values)
             self.return_valuer.fill(calculater.calculate())
         return self
 
@@ -61,7 +62,7 @@ class CalculateValuer(Valuer):
             for valuer in self.args_valuers:
                 values.append(valuer.get())
 
-            calculater = self.calculater(*values)
+            calculater = self.calculater(self.calculater_name, *values)
             if self.return_valuer:
                 self.return_valuer.fill(calculater.calculate())
                 self.value = self.return_valuer.get()

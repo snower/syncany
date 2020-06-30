@@ -194,7 +194,7 @@ class ValuerCreater(object):
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
 
-        return valuer_cls(calculater, args_valuers, return_valuer, current_inherit_valuers, "", filter)
+        return valuer_cls(calculater, config['key'], args_valuers, return_valuer, current_inherit_valuers, "", filter)
 
     def create_schema_valuer(self, config, **kwargs):
         valuer_cls = find_valuer(config["name"])

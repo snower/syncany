@@ -23,6 +23,8 @@ CALCULATERS = {
     "lte": LteCalculater,
     "eq": EqCalculater,
     "neq": NeqCalculater,
+    "and": AndCalculater,
+    "or": OrCalculater,
     "in": InCalculater,
     "max": MaxCalculater,
     "min": MinCalculater,
@@ -31,9 +33,11 @@ CALCULATERS = {
     "index": IndexCalculater,
     "filter": FilterCalculater,
     "sum": SumCalculater,
-    "json_encode": JsonEncodeCalculater,
-    "json_decode": JsonDecodeCalculater,
+    "string": StringCalculater,
+    "math": MathCalculater,
+    "hash": HashCalculater,
+    "json": JsonCalculater,
 }
 
 def find_calculater(name):
-    return CALCULATERS.get(name)
+    return CALCULATERS.get(name.split("::")[0])
