@@ -12,12 +12,16 @@ class InheritValuer(Valuer):
 
         self.child_valuer = InheritChildValuer(self, value_valuer, *args, **kwargs)
         self.value_valuer = value_valuer
+        self.filled = False
         self.cloned_child_valuer = None
 
     def get_inherit_child_valuer(self):
         return self.child_valuer
 
     def clone(self):
+        if self.filled:
+            return self
+
         if self.child_valuer.cloned_inherit_valuer:
             inherit_valuer = self.child_valuer.cloned_inherit_valuer
             self.child_valuer.cloned_inherit_valuer = None
@@ -33,6 +37,7 @@ class InheritValuer(Valuer):
             self.value_valuer.fill(data)
         else:
             super(InheritValuer, self).fill(data)
+        self.filled = True
         return self
 
     def get(self):
@@ -61,6 +66,9 @@ class InheritChildValuer(Valuer):
         self.cloned_inherit_valuer = None
 
     def clone(self):
+        if self.inherit_valuer.filled:
+            return self
+
         if self.inherit_valuer.cloned_child_valuer:
             child_valuer = self.inherit_valuer.cloned_child_valuer
             self.inherit_valuer.cloned_child_valuer = None

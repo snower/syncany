@@ -339,8 +339,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 return self.compile_calculate_valuer(key["key"], field[1:], key["filter"])
 
             if key["instance"] == "#":
-                if key["key"] == "make" and len(field) in (2, 3):
-                    return self.compile_make_valuer(key["key"], key["filter"], field[1], field[2] if len(field) >= 3 else None)
+                if key["key"] == "make" and len(field) in (2, 3, 4, 5):
+                    return self.compile_make_valuer(key["key"], key["filter"], field[1], field[2:])
             return self.compile_const_valuer(field)
 
         key = self.compile_key(field)

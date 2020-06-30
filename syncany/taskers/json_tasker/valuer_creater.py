@@ -205,15 +205,37 @@ class ValuerCreater(object):
             schema_valuers[key] = self.create_valuer(valuer_config, **kwargs)
         return valuer_cls(schema_valuers, config["key"], None)
 
-    def create_make_valuer(self, config, **kwargs):
+    def create_make_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
             return
         if isinstance(config["valuer"], dict):
-            value_valuer = {key: self.create_valuer(valuer_config, **kwargs)
-                            for key, valuer_config in config["valuer"].items()}
+            if "name" in config["valuer"] and isinstance(config["valuer"]["name"], str):
+                value_valuer = self.create_valuer(config["valuer"], inherit_valuers=inherit_valuers, **kwargs)
+            else:
+                value_valuer = {key: (self.create_valuer(key_config, inherit_valuers=inherit_valuers, **kwargs),
+                                      self.create_valuer(value_config, inherit_valuers=inherit_valuers, **kwargs))
+                                for key, (key_config, value_config) in config["valuer"].items()}
         elif isinstance(config["valuer"], (list, tuple, set)):
-            value_valuer = [self.create_valuer(valuer_config, **kwargs) for valuer_config in config["valuer"]]
+            value_valuer = [self.create_valuer(value_config, inherit_valuers=inherit_valuers, **kwargs)
+                            for value_config in config["valuer"]]
         else:
             value_valuer = None
-        return valuer_cls(value_valuer, config["loop"], config["key"], None)
+        loop_valuer = self.create_valuer(config["loop_valuer"], inherit_valuers=inherit_valuers, **kwargs) \
+            if "loop_valuer" in config and config["loop_valuer"] else None
+        condition_valuer = self.create_valuer(config["condition_valuer"], inherit_valuers=inherit_valuers, **kwargs) \
+            if "condition_valuer" in config and config["condition_valuer"] else None
+
+        return_inherit_valuers = []
+        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, **kwargs) \
+            if "return_valuer" in config and config["return_valuer"] else None
+
+        current_inherit_valuers = []
+        for inherit_valuer in return_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+        return valuer_cls(value_valuer, config["loop"], loop_valuer, config["condition"], condition_valuer,
+                          config["condition_break"], return_valuer, current_inherit_valuers, config["key"], None)

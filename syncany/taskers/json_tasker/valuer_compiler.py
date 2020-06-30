@@ -156,18 +156,49 @@ class ValuerCompiler(object):
             "schema": schema_valuers,
         }
 
-    def compile_make_valuer(self, key="", filter=None, valuer=None, loop=None):
+    def compile_make_valuer(self, key="", filter=None, valuer=None, loop_condition_returns=None):
         if isinstance(valuer, dict):
-            valuer = {key: self.compile_schema_field(value) for key, value in valuer.items()}
+            valuer = {key: (self.compile_schema_field(key), self.compile_schema_field(value))
+                      for key, value in valuer.items()}
         elif isinstance(valuer, (list, tuple, set)):
             valuer = [self.compile_schema_field(value) for value in valuer]
         else:
-            valuer = None
+            valuer = self.compile_schema_field(valuer)
+
+        loop, loop_valuer = None, None
+        condition, condition_valuer, condition_break = None, None, None
+        return_valuer = None
+        for lcr in loop_condition_returns:
+            if isinstance(lcr, str):
+                if lcr[:4] == "#for":
+                    loop = lcr
+                elif lcr[:3] == "#if":
+                    condition = lcr
+                elif lcr[:1] == ":":
+                    return_valuer = self.compile_schema_field(lcr[1:])
+            elif lcr and isinstance(lcr, (list, tuple, set)):
+                if lcr[0][:4] == "#for" and len(lcr) == 2:
+                    loop, loop_valuer = lcr[0], self.compile_schema_field(lcr[1])
+                elif lcr[0][:3] == "#if" and len(lcr) in (2, 3):
+                    condition, condition_valuer, condition_break = lcr[0], self.compile_schema_field(lcr[1]),\
+                                                                   lcr[2] if len(lcr) >= 3 else None
+                elif lcr[0][:1] == ":":
+                    if lcr[0] == ":":
+                        lcr = list(lcr)[1:]
+                    else:
+                        lcr = list(lcr)
+                        lcr[0] = lcr[0][1:]
+                    return_valuer = self.compile_schema_field(lcr)
 
         return {
             "name": "make_valuer",
             "key": key,
-            "valuer": valuer,
             "filter": filter,
+            "valuer": valuer,
             "loop": loop,
+            "loop_valuer": loop_valuer,
+            "condition": condition,
+            "condition_valuer": condition_valuer,
+            "condition_break": condition_break,
+            "return_valuer": return_valuer,
         }
