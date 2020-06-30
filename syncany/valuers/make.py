@@ -115,6 +115,12 @@ class MakeValuer(Valuer):
                             break
                 else:
                     result.append(v)
+
+            if self.condition_break == "break":
+                if not result:
+                    return self.return_valuer.fill(None)
+                if len(result) == 1:
+                    return self.return_valuer.fill(result[0])
             self.return_valuer.fill(result)
         return self
 
