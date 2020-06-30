@@ -111,13 +111,13 @@ class StringFilter(Filter):
 
         if isinstance(value, int):
             try:
-                return (self.args or "%d" % value)
+                return ((self.args or "%d") % value)
             except:
                 return "0"
 
         if isinstance(value, float):
             try:
-                return (self.args or "%f" % value)
+                return ((self.args or "%f") % value)
             except:
                 return "0.0"
 
@@ -128,6 +128,11 @@ class StringFilter(Filter):
                 return value.decode(self.args or "utf-8")
             except:
                 return ""
+
+        if self.args:
+            try:
+                return self.args % value
+            except: pass
 
         try:
             return str(value)
@@ -141,7 +146,7 @@ class BooleanFilter(Filter):
         except:
             return False
 
-class ListFilter(Filter):
+class ArrayFilter(Filter):
     def filter(self, value):
         if isinstance(value, (set, list, tuple)):
             return list(value)
@@ -151,7 +156,7 @@ class ListFilter(Filter):
 
         return [value]
 
-class DictFilter(Filter):
+class MapFilter(Filter):
     def filter(self, value):
         if isinstance(value, dict):
             return value
@@ -211,6 +216,9 @@ class ObjectIdFilter(Filter):
         if isinstance(value, (int, float)):
             return ObjectId.from_datetime(datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC))
 
+        if isinstance(value, datetime.datetime):
+            return ObjectId.from_datetime(value)
+
         try:
             return ObjectId(value)
         except:
@@ -269,6 +277,9 @@ class DateTimeFilter(Filter):
             for ck, cv in value.items():
                 results[ck] = self.filter(cv)
             return value
+
+        if ObjectId and isinstance(value, ObjectId):
+            return value.generation_time
 
         if isinstance(value, datetime.date):
             value = datetime.datetime(value.year, value.month, value.day, tzinfo=pytz.timezone(self.tzname) if self.tzname else localzone)
