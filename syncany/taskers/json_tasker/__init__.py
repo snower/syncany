@@ -181,6 +181,14 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     filter_cls = find_filter('str')
                 self.argparse.add_argument('--%s' % filter["name"], dest="%s" % filter["name"], type=filter_cls(filter.get("type_args")), help="%s" % filter["name"])
 
+        if "input" in self.config and self.config["input"][:2] == "<<":
+            self.argparse.add_argument('--__input', dest="config_input", type=str, default=self.config["input"],
+                                       help="data input (default: %s)" % self.config["input"][2:])
+
+        if "output" in self.config and self.config["output"][:2] == ">>":
+            self.argparse.add_argument('--__output', dest="config_output", type=str, default=self.config["output"],
+                                       help="data output (default: %s)" % self.config["output"][2:])
+
         self.argparse.add_argument('--__batch', dest="config_batch_count", type=int, default=0, help="per sync batch count (default: 0 all)")
 
     def compile_key(self, key):
@@ -443,6 +451,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         return virtual_query
 
     def compile_loader(self):
+        if self.config["input"][:2] == "<<":
+            self.config["input"] = getattr(self.arguments, "config_input", self.config["input"][2:])
         input_loader = self.compile_foreign_key(self.config["input"])
         db_name = input_loader["database"].split(".")[0]
 
@@ -502,6 +512,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     getattr(self.loader, "filter_eq")(filter_name, getattr(self.arguments, filter_name))
 
     def compile_outputer(self):
+        if self.config["output"][:2] == ">>":
+            self.config["output"] = getattr(self.arguments, "config_output", self.config["output"][2:])
         output_outputer = self.compile_foreign_key(self.config["output"])
         db_name = output_outputer["database"].split(".")[0]
 
@@ -586,8 +598,6 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         try:
             self.load_json(self.json_filename)
             self.name = self.config["name"]
-            self.input = self.config["input"]
-            self.output = self.config["output"]
 
             self.compile_logging()
             self.compile_filters()
@@ -597,6 +607,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             self.compile_schema()
             self.compile_loader()
             self.compile_outputer()
+            self.input = self.config["input"]
+            self.output = self.config["output"]
 
             config_batch_count = int(getattr(self.arguments, "config_batch_count", 0))
             if config_batch_count > 0:
