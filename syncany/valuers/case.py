@@ -11,6 +11,7 @@ class CaseValuer(Valuer):
         self.case_valuers = case_valuers
         self.default_case_valuer = default_case_valuer
         self.value_valuer = value_valuer or None
+        self.value_wait_loaded = self.value_valuer.require_loaded()
 
     def clone(self):
         case_valuers = {}
@@ -25,10 +26,17 @@ class CaseValuer(Valuer):
 
         if self.value_valuer:
             self.value_valuer.fill(data)
-            for case_key, case_valuer in self.case_valuers.items():
-                case_valuer.fill(data)
-            if self.default_case_valuer:
-                self.default_case_valuer.fill(data)
+            if self.value_wait_loaded:
+                for case_key, case_valuer in self.case_valuers.items():
+                    case_valuer.fill(data)
+                if self.default_case_valuer:
+                    self.default_case_valuer.fill(data)
+            else:
+                self.value = self.value_valuer.get()
+                if self.value in self.case_valuers:
+                    self.case_valuers[self.value].fill(data)
+                elif self.default_case_valuer:
+                    self.default_case_valuer.fill(data)
         else:
             if self.value in self.case_valuers:
                 self.case_valuers[self.value].fill(data)
@@ -37,8 +45,9 @@ class CaseValuer(Valuer):
         return self
 
     def get(self):
-        if self.value_valuer:
-            self.value = self.value_valuer.get()
+        if self.value_wait_loaded:
+            if self.value_valuer:
+                self.value = self.value_valuer.get()
 
         if self.value in self.case_valuers:
             return self.case_valuers[self.value].get()

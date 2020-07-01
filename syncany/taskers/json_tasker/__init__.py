@@ -297,7 +297,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 if "#case" not in field:
                     return self.compile_const_valuer(field)
 
-                case_value = field.pop("#case")
+                case_case = field.pop("#case")
                 cases = {}
                 case_default = field.pop("#end") if "#end" in field else None
                 for case_key, case_value in field.items():
@@ -305,7 +305,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                         cases[int(case_key[1:])] = case_value
                     else:
                         cases[case_key] = case_value
-                return self.compile_case_valuer('', None, case_value, cases, case_default)
+                return self.compile_case_valuer('', None, case_case, cases, case_default)
             return field
 
         if isinstance(field, list):
