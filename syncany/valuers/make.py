@@ -161,9 +161,19 @@ class MakeValuer(Valuer):
 
         if self.return_valuer and not self.wait_loaded:
             if isinstance(self.value_valuer, dict):
-                result = {key_valuer.get(): value_valuer.get() for key, (key_valuer, value_valuer) in self.value_valuer.items()}
+                result = {}
+                for key, (key_valuer, value_valuer) in self.value_valuer.items():
+                    kv = key_valuer.get()
+                    vv = value_valuer.get()
+                    if isinstance(kv, (list, tuple, set)):
+                        for ki in range(len(kv)):
+                            result[kv[ki]] = vv[ki] if isinstance(vv, (list, tuple, set)) and len(vv) > ki else None
+                    else:
+                        result[kv] = vv
             elif isinstance(self.value_valuer, (list, tuple, set)):
                 result = [value_valuer.get() for value_valuer in self.value_valuer]
+                if len(self.value) == 1 and isinstance(self.value[0], (list, tuple, set)):
+                    self.value = self.value[0]
             elif isinstance(self.value_valuer, Valuer):
                 result = self.value_valuer.get()
             else:
@@ -209,9 +219,19 @@ class MakeValuer(Valuer):
                 return self.return_valuer.get()
 
         if isinstance(self.value_valuer, dict):
-            self.value = {key_valuer.get(): value_valuer.get() for key, (key_valuer, value_valuer) in self.value_valuer.items()}
+            self.value = {}
+            for key, (key_valuer, value_valuer) in self.value_valuer.items():
+                kv = key_valuer.get()
+                vv = value_valuer.get()
+                if isinstance(kv, (list, tuple, set)):
+                    for ki in range(len(kv)):
+                        self.value[kv[ki]] = vv[ki] if isinstance(vv, (list, tuple, set)) and len(vv) > ki else None
+                else:
+                    self.value[kv] = vv
         elif isinstance(self.value_valuer, (list, tuple, set)):
             self.value = [value_valuer.get() for value_valuer in self.value_valuer]
+            if len(self.value) == 1 and isinstance(self.value[0], (list, tuple, set)):
+                self.value = self.value[0]
         elif isinstance(self.value_valuer, Valuer):
             self.value = self.value_valuer.get()
         else:

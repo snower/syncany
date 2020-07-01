@@ -11,6 +11,7 @@ from .case import CaseValuer
 from .calculate import CalculateValuer
 from .schema import SchemaValuer
 from .make import MakeValuer
+from .let import LetValuer
 
 VALUERS = {
     "const_valuer": ConstValuer,
@@ -22,6 +23,7 @@ VALUERS = {
     "calculate_valuer": CalculateValuer,
     "schema_valuer": SchemaValuer,
     "make_valuer": MakeValuer,
+    "let_valuer": LetValuer,
 }
 
 def find_valuer(name):

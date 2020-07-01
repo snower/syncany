@@ -40,20 +40,20 @@ class ValuerCompiler(object):
             "key": key,
             "filter": None,
             'reflen': reflen,
-            "valuer": self.compile_db_valuer(key, filter)
+            "value_valuer": self.compile_db_valuer(key, filter)
         }
 
-    def compile_const_join_valuer(self, key="", value=None, loader=None, foreign_key="", valuer=None):
-        valuer = "$.*" if valuer is None else valuer
-        if isinstance(valuer, str) and valuer[0] == ":":
-            valuer = valuer[1:]
-        if isinstance(valuer, (list, tuple, set)) and valuer[0] and isinstance(valuer[0], str):
-            if valuer[0] == ":":
-                valuer = list(valuer)[1:]
-            elif valuer[0][0] == ":":
-                valuer = list(valuer)
-                valuer[0] = valuer[0][1:]
-        valuer = self.compile_schema_field(valuer)
+    def compile_const_join_valuer(self, key="", value=None, loader=None, foreign_key="", return_arg=None):
+        return_arg = "$.*" if return_arg is None else return_arg
+        if isinstance(return_arg, str) and return_arg[:1] == ":":
+            return_arg = return_arg[1:]
+        if isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
+            if return_arg[0] == ":":
+                return_arg = list(return_arg)[1:]
+            elif return_arg[0][:1] == ":":
+                return_arg = list(return_arg)
+                return_arg[0] = return_arg[0][1:]
+        return_valuer = self.compile_schema_field(return_arg)
 
         return {
             "name": "const_join_valuer",
@@ -61,72 +61,78 @@ class ValuerCompiler(object):
             "value": value,
             "loader": loader,
             "foreign_key": foreign_key,
-            "valuer": valuer,
+            "return_valuer": return_valuer,
         }
 
-    def compile_db_join_valuer(self, key="", loader=None, foreign_key="", foreign_filters=None, filter=None, args_valuer=None, valuer=None):
-        args_valuer = self.compile_schema_field(args_valuer) if args_valuer else None
+    def compile_db_join_valuer(self, key="", loader=None, foreign_key="", foreign_filters=None, filter=None, args_arg=None, return_arg=None):
+        args_valuer = self.compile_schema_field(args_arg) if args_arg else None
 
-        valuer = "$.*" if valuer is None else valuer
-        if isinstance(valuer, str) and valuer[0] == ":":
-            valuer = valuer[1:]
-        if isinstance(valuer, (list, tuple, set)) and valuer[0] and isinstance(valuer[0], str):
-            if valuer[0] == ":":
-                valuer = list(valuer)[1:]
-            elif valuer[0][0] == ":":
-                valuer = list(valuer)
-                valuer[0] = valuer[0][1:]
-        valuer = self.compile_schema_field(valuer)
+        return_arg = "$.*" if return_arg is None else return_arg
+        if isinstance(return_arg, str) and return_arg[:1] == ":":
+            return_arg = return_arg[1:]
+        if isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
+            if return_arg[0] == ":":
+                return_arg = list(return_arg)[1:]
+            elif return_arg[0][:1] == ":":
+                return_arg = list(return_arg)
+                return_arg[0] = return_arg[0][1:]
+        return_valuer = self.compile_schema_field(return_arg)
 
         return {
             "name": "db_join_valuer",
             "key": key,
+            "filter": filter,
             "loader": loader,
             "foreign_key": foreign_key,
             'foreign_filters': foreign_filters or [],
             "args_valuer": args_valuer,
-            "valuer": valuer,
-            "filter": filter,
+            "return_valuer": return_valuer,
         }
 
-    def compile_case_valuer(self, key="", value=None, case=None, default_case=None):
-        if value is not None:
-            key, value = '', self.compile_schema_field(value)
-        elif (isinstance(key, str) and key and key[0] in ("$", "@")) \
-                or isinstance(key, list) \
-                or isinstance(key, dict):
-            key, value = '', self.compile_schema_field(key)
+    def compile_case_valuer(self, key="", filter=None, value_arg=None, cases_arg=None, default_arg=None):
+        value_valuer = self.compile_schema_field(value_arg)
 
         case_valuers = {}
-        if isinstance(case, list):
-            for index in range(len(case)):
-                case_valuers[index] = self.compile_schema_field(case[index])
-        elif isinstance(case, dict):
-            for case_value, field in case.items():
+        if isinstance(cases_arg, (list, tuple, set)):
+            for index in range(len(cases_arg)):
+                if isinstance(cases_arg[index], str) and cases_arg[index][:1] == ":":
+                    default_arg = cases_arg[index][1:]
+                    continue
+                if isinstance(cases_arg[index], (list, tuple, set)) and cases_arg[index] and isinstance(cases_arg[index][0], str):
+                    if cases_arg[index][0] == ":":
+                        default_arg = list(cases_arg[index])[1:]
+                        continue
+                    if cases_arg[index][0][:1] == ":":
+                        default_arg = list(cases_arg[index])
+                        default_arg[0] = default_arg[0][1:]
+                        continue
+
+                case_valuers[index] = self.compile_schema_field(cases_arg[index])
+        elif isinstance(cases_arg, dict):
+            for case_value, field in cases_arg.items():
                 case_valuers[case_value] = self.compile_schema_field(field)
 
-        if default_case:
-            default_case = self.compile_schema_field(default_case)
+        default_valuer = self.compile_schema_field(default_arg) if default_arg else None
 
         return {
             "name": "case_valuer",
             "key": key,
-            'value': value,
-            "case": case_valuers,
-            "default_case": default_case,
+            "filter": filter,
+            'value_valuer': value_valuer,
+            "case_valuers": case_valuers,
+            "default_valuer": default_valuer,
         }
 
-    def compile_calculate_valuer(self, key="", args=None, filter=None):
+    def compile_calculate_valuer(self, key="", filter=None, args=None):
         args_valuers, return_valuer = [], None
         if isinstance(args, list):
             for arg in args:
-                if arg and isinstance(arg, str) and arg[0] == ":":
+                if isinstance(arg, str) and arg[:1] == ":":
                     return_valuer = self.compile_schema_field(arg[1:])
-                elif arg and isinstance(arg, (list, tuple, set)) and arg[0] \
-                        and isinstance(arg[0], str) and arg[0][0] == ":":
+                elif isinstance(arg, (list, tuple, set)) and arg and isinstance(arg[0], str):
                     if arg[0] == ":":
                         arg = list(arg)[1:]
-                    elif arg[0][0] == ":":
+                    elif arg[0][:1] == ":":
                         arg = list(arg)
                         arg[0] = arg[0][1:]
                     return_valuer = self.compile_schema_field(arg)
@@ -138,9 +144,9 @@ class ValuerCompiler(object):
         return {
             "name": "calculate_valuer",
             "key": key,
-            "args": args_valuers,
-            "return": return_valuer,
             "filter": filter,
+            "args_valuers": args_valuers,
+            "return_valuer": return_valuer,
         }
 
     def compile_schema_valuer(self, schema=None):
@@ -153,7 +159,7 @@ class ValuerCompiler(object):
         return {
             "name": "schema_valuer",
             "key": "",
-            "schema": schema_valuers,
+            "schema_valuers": schema_valuers,
         }
 
     def compile_make_valuer(self, key="", filter=None, valuer=None, loop_condition_returns=None):
@@ -200,5 +206,25 @@ class ValuerCompiler(object):
             "condition": condition,
             "condition_valuer": condition_valuer,
             "condition_break": condition_break,
+            "return_valuer": return_valuer,
+        }
+
+    def compile_let_valuer(self, key="", filter=None, key_arg=None, return_arg=None):
+        key_valuer = self.compile_schema_field(key_arg)
+        if isinstance(return_arg, str) and return_arg[:1] == ":":
+            return_arg = return_arg[1:]
+        elif isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
+            if return_arg[0] == ":":
+                return_arg = list(return_arg)[1:]
+            elif return_arg[0][:1] == ":":
+                return_arg = list(return_arg)
+                return_arg[0] = return_arg[0][1:]
+        return_valuer = self.compile_schema_field(return_arg) if return_arg else None
+
+        return {
+            "name": "let_valuer",
+            "key": "",
+            "filter": filter,
+            "key_valuer": key_valuer,
             "return_valuer": return_valuer,
         }

@@ -43,6 +43,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "calculate_valuer": self.compile_calculate_valuer,
             "schema_valuer": self.compile_schema_valuer,
             "make_valuer": self.compile_make_valuer,
+            "let_valuer": self.compile_let_valuer,
         }
 
         self.valuer_creater = {
@@ -55,6 +56,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "calculate_valuer": self.create_calculate_valuer,
             "schema_valuer": self.create_schema_valuer,
             "make_valuer": self.create_make_valuer,
+            "let_valuer": self.create_let_valuer,
         }
 
         self.loader_creater = {
@@ -182,11 +184,11 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 self.argparse.add_argument('--%s' % filter["name"], dest="%s" % filter["name"], type=filter_cls(filter.get("type_args")), help="%s" % filter["name"])
 
         if "input" in self.config and self.config["input"][:2] == "<<":
-            self.argparse.add_argument('--__input', dest="config_input", type=str, default=self.config["input"],
+            self.argparse.add_argument('--__input', dest="config_input", type=str, default=self.config["input"][2:],
                                        help="data input (default: %s)" % self.config["input"][2:])
 
         if "output" in self.config and self.config["output"][:2] == ">>":
-            self.argparse.add_argument('--__output', dest="config_output", type=str, default=self.config["output"],
+            self.argparse.add_argument('--__output', dest="config_output", type=str, default=self.config["output"][2:],
                                        help="data output (default: %s)" % self.config["output"][2:])
 
         self.argparse.add_argument('--__batch', dest="config_batch_count", type=int, default=0, help="per sync batch count (default: 0 all)")
@@ -295,21 +297,16 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 if "#case" not in field:
                     return self.compile_const_valuer(field)
 
-                case_field = {
-                    "key": field.pop("#case"),
-                    "case": {},
-                    "default_case": field.pop("#end") if "#end" in field else None,
-                }
-
+                case_value = field.pop("#case")
+                cases = {}
+                case_default = field.pop("#end") if "#end" in field else None
                 for case_key, case_value in field.items():
                     if case_key and isinstance(case_key, str) and case_key[0] == ":" and case_key[1:].isdigit():
-                        case_field['case'][int(case_key[1:])] = case_value
+                        cases[int(case_key[1:])] = case_value
                     else:
-                        case_field['case'][case_key] = case_value
-                return self.compile_case_valuer(**case_field)
-
-            name = "compile_" + field.pop("name")
-            return getattr(self, name)(**field)
+                        cases[case_key] = case_value
+                return self.compile_case_valuer('', None, case_value, cases, case_default)
+            return field
 
         if isinstance(field, list):
             key = self.compile_key(field[0])
@@ -344,11 +341,15 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                                                    None, field[0], field[2] if len(field) >= 3 else None)
 
             if key["instance"] == "@":
-                return self.compile_calculate_valuer(key["key"], field[1:], key["filter"])
+                return self.compile_calculate_valuer(key["key"], key["filter"], field[1:])
 
             if key["instance"] == "#":
+                if key["key"] == "case" and len(field) > 2:
+                    return self.compile_case_valuer(key["key"], key["filter"], field[1], field[2:], None)
                 if key["key"] == "make" and len(field) in (2, 3, 4, 5):
                     return self.compile_make_valuer(key["key"], key["filter"], field[1], field[2:])
+                if key["key"] == "let" and len(field) in (2, 3):
+                    return self.compile_let_valuer(key["key"], key["filter"], field[1], field[2] if len(field) >= 3 else None)
             return self.compile_const_valuer(field)
 
         key = self.compile_key(field)
@@ -361,7 +362,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             return self.compile_db_valuer(key["key"], key["filter"])
 
         if key["instance"] == "@":
-            return self.compile_calculate_valuer(key["key"], [], key["filter"])
+            return self.compile_calculate_valuer(key["key"], key["filter"], [])
         return self.compile_const_valuer(field)
 
     def create_valuer(self, config, **kwargs):
