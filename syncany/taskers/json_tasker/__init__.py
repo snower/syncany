@@ -44,6 +44,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "schema_valuer": self.compile_schema_valuer,
             "make_valuer": self.compile_make_valuer,
             "let_valuer": self.compile_let_valuer,
+            "yield_valuer": self.compile_yield_valuer,
+            "aggregate_valuer": self.compile_aggregate_valuer,
         }
 
         self.valuer_creater = {
@@ -57,6 +59,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "schema_valuer": self.create_schema_valuer,
             "make_valuer": self.create_make_valuer,
             "let_valuer": self.create_let_valuer,
+            "yield_valuer": self.create_yield_valuer,
+            "aggregate_valuer": self.create_aggregate_valuer,
         }
 
         self.loader_creater = {
@@ -311,20 +315,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         if isinstance(field, list):
             key = self.compile_key(field[0])
             if key["instance"] is None:
-                if len(field) not in (2, 3, 4):
-                    return self.compile_const_valuer(key["value"])
-
-                foreign_key = self.compile_foreign_key(field[1])
-                if foreign_key is None:
-                    if len(field) not in (3, 4):
-                        return self.compile_const_valuer(key["value"])
-                    loader = {"name": "const_loader", "datas": field[1]}
-                    return self.compile_const_join_valuer(key["key"], key["value"], loader, field[2],
-                                                          field[3] if len(field) >= 4 else None)
-
-                loader = {"name": "db_join_loader", "database": foreign_key["database"]}
-                return self.compile_db_join_valuer(key["key"], loader, foreign_key["foreign_key"], foreign_key["foreign_filters"],
-                                                   None, field[0], field[2] if len(field) >= 3 else None)
+                return self.compile_const_valuer(field)
 
             if key["instance"] == "$":
                 if len(field) not in (2, 3):
@@ -334,7 +325,11 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
                 foreign_key = self.compile_foreign_key(field[1])
                 if foreign_key is None:
-                    return self.compile_const_valuer(key["value"])
+                    if len(field) not in (3, 4):
+                        return self.compile_const_valuer(field)
+                    loader = {"name": "const_loader", "datas": field[1]}
+                    return self.compile_const_join_valuer(key["key"], key["value"], loader, field[2],
+                                                          field[3] if len(field) >= 4 else None)
 
                 loader = {"name": "db_join_loader", "database": foreign_key["database"]}
                 return self.compile_db_join_valuer(key["key"], loader, foreign_key["foreign_key"], foreign_key["foreign_filters"],
@@ -350,6 +345,12 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     return self.compile_make_valuer(key["key"], key["filter"], field[1], field[2:])
                 if key["key"] == "let" and len(field) in (2, 3):
                     return self.compile_let_valuer(key["key"], key["filter"], field[1], field[2] if len(field) >= 3 else None)
+                if key["key"] == "yield" and len(field) in (1, 2, 3):
+                    return self.compile_yield_valuer(key["key"], key["filter"], field[1] if len(field) >= 1 else None,
+                                                     field[2] if len(field) >= 3 else None)
+                if key["key"] == "aggregate" and len(field) == 3:
+                    return self.compile_aggregate_valuer(key["key"], key["filter"], field[1], field[2])
+
             return self.compile_const_valuer(field)
 
         key = self.compile_key(field)
@@ -363,6 +364,10 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         if key["instance"] == "@":
             return self.compile_calculate_valuer(key["key"], key["filter"], [])
+
+        if key["instance"] == "#":
+            if key["key"] == "yield":
+                return self.compile_yield_valuer(key["key"], key["filter"], None, None)
         return self.compile_const_valuer(field)
 
     def create_valuer(self, config, **kwargs):
@@ -461,17 +466,23 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         loader_config = {
             "name": loader,
             "database": input_loader["database"],
+            "is_yield": False,
         }
         self.loader = self.create_loader(loader_config, [input_loader["foreign_key"]])
 
         if isinstance(self.schema, dict):
             for name, valuer in self.schema.items():
-                inherit_valuers = []
-                valuer = self.create_valuer(valuer, inherit_valuers=inherit_valuers, join_loaders=self.join_loaders)
+                inherit_valuers, yield_valuers, aggregate_valuers = [], [], []
+                valuer = self.create_valuer(valuer, schema_field_name=name, inherit_valuers=inherit_valuers,
+                                            join_loaders=self.join_loaders, yield_valuers=yield_valuers,
+                                            aggregate_valuers=aggregate_valuers)
                 if valuer:
                     self.loader.add_valuer(name, valuer)
                 if inherit_valuers:
                     raise OverflowError(name + " inherit out of range")
+                if yield_valuers or aggregate_valuers:
+                    loader_config["is_yield"] = True
+                    self.loader.is_yield = True
         elif self.schema == ".*":
             self.loader.add_key_matcher(".*", self.create_valuer(self.compile_db_valuer("", None)))
 

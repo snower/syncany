@@ -228,3 +228,43 @@ class ValuerCompiler(object):
             "key_valuer": key_valuer,
             "return_valuer": return_valuer,
         }
+
+    def compile_yield_valuer(self, key="", filter=None, value_arg=None, return_arg=None):
+        value_valuer = self.compile_schema_field(value_arg) if value_arg else None
+        if isinstance(return_arg, str) and return_arg[:1] == ":":
+            return_arg = return_arg[1:]
+        elif isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
+            if return_arg[0] == ":":
+                return_arg = list(return_arg)[1:]
+            elif return_arg[0][:1] == ":":
+                return_arg = list(return_arg)
+                return_arg[0] = return_arg[0][1:]
+        return_valuer = self.compile_schema_field(return_arg) if return_arg else None
+
+        return {
+            "name": "yield_valuer",
+            "key": "",
+            "filter": filter,
+            "value_valuer": value_valuer,
+            "return_valuer": return_valuer,
+        }
+
+    def compile_aggregate_valuer(self, key="", filter=None, key_arg=None, calculate_arg=None):
+        key_valuer = self.compile_schema_field(key_arg)
+        if isinstance(calculate_arg, str) and calculate_arg[:1] == ":":
+            calculate_arg = calculate_arg[1:]
+        elif isinstance(calculate_arg, (list, tuple, set)) and calculate_arg and isinstance(calculate_arg[0], str):
+            if calculate_arg[0] == ":":
+                calculate_arg = list(calculate_arg)[1:]
+            elif calculate_arg[0][:1] == ":":
+                calculate_arg = list(calculate_arg)
+                calculate_arg[0] = calculate_arg[0][1:]
+        calculate_valuer = self.compile_schema_field(calculate_arg)
+
+        return {
+            "name": "aggregate_valuer",
+            "key": "",
+            "filter": filter,
+            "key_valuer": key_valuer,
+            "calculate_valuer": calculate_valuer,
+        }

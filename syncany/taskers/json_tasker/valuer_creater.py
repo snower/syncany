@@ -262,3 +262,67 @@ class ValuerCreater(object):
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
         return valuer_cls(key_valuer, return_valuer, current_inherit_valuers, config["key"], filter)
+
+    def create_yield_valuer(self, config, inherit_valuers=None, yield_valuers=None, **kwargs):
+        valuer_cls = find_valuer(config["name"])
+        if not valuer_cls:
+            return
+        value_valuer = self.create_valuer(config["value_valuer"], inherit_valuers=inherit_valuers,
+                                          yield_valuers=yield_valuers, **kwargs) \
+            if "value_valuer" in config and config["value_valuer"] else None
+
+        return_inherit_valuers = []
+        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers,
+                                           yield_valuers=yield_valuers, **kwargs) \
+            if "return_valuer" in config and config["return_valuer"] else None
+
+        filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
+        filter = filter_cls(config["filter"]["args"]) if filter_cls else None
+
+        current_inherit_valuers = []
+        for inherit_valuer in return_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+        yield_valuer = valuer_cls(value_valuer, return_valuer, current_inherit_valuers, config["key"], filter)
+        if yield_valuers is not None:
+            yield_valuers.append(yield_valuer)
+        return yield_valuer
+
+    def create_aggregate_valuer(self, config, schema_field_name=None, inherit_valuers=None, aggregate_valuers=None, **kwargs):
+        valuer_cls = find_valuer(config["name"])
+        if not valuer_cls:
+            return
+
+        key_child_aggregate_valuers = []
+        key_valuer = self.create_valuer(config["key_valuer"], schema_field_name=schema_field_name,
+                                        inherit_valuers=inherit_valuers,
+                                        aggregate_valuers=key_child_aggregate_valuers, **kwargs) \
+            if "key_valuer" in config and config["key_valuer"] else None
+        if key_child_aggregate_valuers:
+            raise SyntaxError("aggregate conflict")
+
+        calculate_child_aggregate_valuers = []
+        calculate_inherit_valuers = []
+        calculate_valuer = self.create_valuer(config["calculate_valuer"], schema_field_name=schema_field_name,
+                                              inherit_valuers=calculate_inherit_valuers,
+                                              aggregate_valuers=calculate_child_aggregate_valuers, **kwargs) \
+            if "calculate_valuer" in config and config["calculate_valuer"] else None
+        if calculate_child_aggregate_valuers:
+            raise SyntaxError("aggregate conflict")
+
+        current_inherit_valuers = []
+        for inherit_valuer in calculate_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
+        manager = aggregate_valuers[0].get_manager() if aggregate_valuers else None
+        aggregate_valuer = valuer_cls(key_valuer, calculate_valuer, current_inherit_valuers, manager, schema_field_name, None)
+        if aggregate_valuers is not None:
+            aggregate_valuers.append(aggregate_valuer)
+        return aggregate_valuer

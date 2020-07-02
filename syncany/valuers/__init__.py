@@ -12,6 +12,8 @@ from .calculate import CalculateValuer
 from .schema import SchemaValuer
 from .make import MakeValuer
 from .let import LetValuer
+from .generator import YieldValuer
+from .aggregate import AggregateValuer
 
 VALUERS = {
     "const_valuer": ConstValuer,
@@ -24,6 +26,8 @@ VALUERS = {
     "schema_valuer": SchemaValuer,
     "make_valuer": MakeValuer,
     "let_valuer": LetValuer,
+    "yield_valuer": YieldValuer,
+    "aggregate_valuer": AggregateValuer,
 }
 
 def find_valuer(name):

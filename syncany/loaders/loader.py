@@ -2,6 +2,7 @@
 # 18/8/6
 # create by: snower
 
+import types
 import re
 from collections import OrderedDict
 
@@ -23,8 +24,9 @@ class KeyMatcher(object):
         return self.valuer.clone()
 
 class Loader(object):
-    def __init__(self, primary_keys):
+    def __init__(self, primary_keys, is_yield=False):
         self.primary_keys = primary_keys
+        self.is_yield = is_yield
         self.schema = OrderedDict()
         self.filters = []
         self.key_matchers = []
@@ -77,14 +79,50 @@ class Loader(object):
             self.load()
 
         datas = []
+        if not self.is_yield:
+            for data in self.datas:
+                odata = OrderedDict()
+                for name, valuer in self.schema.items():
+                    if name not in data:
+                        odata[name] = valuer.get()
+                        continue
+                    odata[name] = data[name].get()
+                datas.append(odata)
+            return datas
+
+        oyields = OrderedDict()
         for data in self.datas:
             odata = OrderedDict()
             for name, valuer in self.schema.items():
-                if name in data:
-                    odata[name] = data[name].get()
-                else:
+                if name not in data:
                     odata[name] = valuer.get()
-            datas.append(odata)
+                    continue
+                value = data[name].get()
+                if isinstance(value, types.GeneratorType):
+                    oyields[name] = value
+                    final_filter = valuer.get_final_filter()
+                    if final_filter:
+                        odata[name] = final_filter.filter(None)
+                    else:
+                        odata[name] = None
+                    continue
+                odata[name] = value
+
+            if oyields:
+                while oyields:
+                    oyield_data = OrderedDict()
+                    for name, oyield in list(oyields.items()):
+                        try:
+                            oyield_data[name] = oyield.send(oyield_data)
+                        except StopIteration:
+                            oyields.pop(name)
+                    if oyield_data:
+                        for name, value in odata.items():
+                            if name not in oyield_data:
+                                oyield_data[name] = value
+                        datas.append(oyield_data)
+            else:
+                datas.append(odata)
         return datas
 
     def add_filter(self, key, exp, value):
