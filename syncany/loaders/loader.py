@@ -111,15 +111,16 @@ class Loader(object):
             if oyields:
                 while oyields:
                     oyield_data = OrderedDict()
+                    for name, value in odata.items():
+                        oyield_data[name] = value
+                    has_oyield_data = False
                     for name, oyield in list(oyields.items()):
                         try:
                             oyield_data[name] = oyield.send(oyield_data)
+                            has_oyield_data = True
                         except StopIteration:
                             oyields.pop(name)
-                    if oyield_data:
-                        for name, value in odata.items():
-                            if name not in oyield_data:
-                                oyield_data[name] = value
+                    if has_oyield_data:
                         datas.append(oyield_data)
             else:
                 datas.append(odata)
