@@ -131,11 +131,13 @@ class ValuerCompiler(object):
                     return_valuer = self.compile_schema_field(arg[1:])
                 elif isinstance(arg, (list, tuple, set)) and arg and isinstance(arg[0], str):
                     if arg[0] == ":":
-                        arg = list(arg)[1:]
+                        return_valuer = self.compile_schema_field(list(arg)[1:])
                     elif arg[0][:1] == ":":
                         arg = list(arg)
                         arg[0] = arg[0][1:]
-                    return_valuer = self.compile_schema_field(arg)
+                        return_valuer = self.compile_schema_field(arg)
+                    else:
+                        args_valuers.append(self.compile_schema_field(arg))
                 else:
                     args_valuers.append(self.compile_schema_field(arg))
         else:

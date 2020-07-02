@@ -44,7 +44,8 @@ class AggregateValuer(Valuer):
         return self.__class__(key_valuer, calculate_valuer, inherit_valuers, self.aggregate_manager, self.key, self.filter)
 
     def fill(self, data):
-        self.key_valuer.fill(data)
+        if self.key_valuer:
+            self.key_valuer.fill(data)
 
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
@@ -52,9 +53,9 @@ class AggregateValuer(Valuer):
         return self
 
     def get(self):
-        self.key_value = self.key_valuer.get()
+        self.key_value = self.key_valuer.get() if self.key_valuer else ""
         self.loader_data = self.aggregate_manager.get(self.key_value)
-        if self.loader_data is None:
+        if self.loader_data is None or self.key not in self.loader_data:
             final_filter = self.calculate_valuer.get_final_filter()
             loader_data = {}
             if final_filter:
@@ -64,12 +65,12 @@ class AggregateValuer(Valuer):
             self.calculate_valuer.fill(self.loader_data)
 
         self.value = self.calculate_valuer.get()
-        if self.loader_data is not None:
+        if self.loader_data is not None and self.key in self.loader_data:
             self.aggregate_manager.set(self.key_value, self.key, self.value)
 
         def gen_iter():
             loader_data = yield None
-            if self.loader_data is None:
+            if self.loader_data is None or self.key not in self.loader_data:
                 yield self.value
                 self.aggregate_manager.add(self.key_value, loader_data)
         g = gen_iter()
@@ -89,8 +90,9 @@ class AggregateValuer(Valuer):
 
     def get_fields(self):
         fields = []
-        for field in self.key_valuer.get_fields():
-            fields.append(field)
+        if self.key_valuer:
+            for field in self.key_valuer.get_fields():
+                fields.append(field)
 
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
