@@ -513,19 +513,47 @@ class StringCalculater(Calculater):
             return ''
 
         func_name = self.name[8:]
-        if hasattr(self.args[0], func_name):
+        if isinstance(self.args[0], str) and hasattr(self.args[0], func_name):
             try:
                 getattr(self.args[0], func_name)(*tuple(self.args[1:]))
             except:
                 return ''
         return ''
 
+class ArrayCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return None
+
+        func_name = self.name[7:]
+        if isinstance(self.args[0], (list, tuple, set)):
+            value = list(self.args[0])
+            if hasattr(value, func_name):
+                try:
+                    getattr(value, func_name)(*tuple(self.args[1:]))
+                except:
+                    return None
+        return None
+
+class MapCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return None
+
+        func_name = self.name[5:]
+        if isinstance(self.args[0], dict) and hasattr(self.args[0], func_name):
+            try:
+                getattr(self.args[0], func_name)(*tuple(self.args[1:]))
+            except:
+                return None
+        return None
+
 class MathCalculater(Calculater):
     def calculate(self):
         if not self.args:
             return 0
 
-        func_name = self.name[8:]
+        func_name = self.name[6:]
         if hasattr(math, func_name):
             try:
                 getattr(math, func_name)(*tuple(self.args))
@@ -570,7 +598,7 @@ class JsonCalculater(Calculater):
             return None
 
         try:
-            return json.dumps(self.args[0], default=str, ensure_ascii=False).encode("utf-8")
+            return json.dumps(self.args[0], default=str, ensure_ascii=False)
         except:
             return None
 

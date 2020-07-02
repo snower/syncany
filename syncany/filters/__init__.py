@@ -8,6 +8,7 @@ FILTERS = {
     "int": IntFilter,
     "float": FloatFilter,
     "str": StringFilter,
+    "bytes": BytesFilter,
     'bool': BooleanFilter,
     'array': ArrayFilter,
     'map': MapFilter,

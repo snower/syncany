@@ -139,6 +139,59 @@ class StringFilter(Filter):
         except:
             return ""
 
+class BytesFilter(Filter):
+    def filter(self, value):
+        if value is None:
+            return b""
+
+        if value is True:
+            return b"true"
+
+        if value is False:
+            return b"false"
+
+        if isinstance(value, datetime.datetime):
+            try:
+                return bytes(value.strftime(self.args or "%Y-%m-%d %H:%M:%S"), "utf-8")
+            except:
+                return b""
+
+        if isinstance(value, datetime.date):
+            try:
+                return bytes(value.strftime(self.args or "%Y-%m-%d"))
+            except:
+                return ""
+
+        if isinstance(value, int):
+            try:
+                return bytes((self.args or "%d") % value, "utf-8")
+            except:
+                return b"0"
+
+        if isinstance(value, float):
+            try:
+                return bytes(((self.args or "%f") % value), "utf-8")
+            except:
+                return b"0.0"
+
+        if isinstance(value, str):
+            try:
+                if self.args == "hex":
+                    return binascii.b2a_hex(value)
+                return value.encode(self.args or "utf-8")
+            except:
+                return ""
+
+        if self.args:
+            try:
+                return bytes(self.args % value, "utf-8")
+            except: pass
+
+        try:
+            return bytes(str(value), "utf-8")
+        except:
+            return b""
+
 class BooleanFilter(Filter):
     def filter(self, value):
         try:

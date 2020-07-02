@@ -34,6 +34,8 @@ CALCULATERS = {
     "filter": FilterCalculater,
     "sum": SumCalculater,
     "string": StringCalculater,
+    "array": ArrayCalculater,
+    "map": MapCalculater,
     "math": MathCalculater,
     "hash": HashCalculater,
     "json": JsonCalculater,
