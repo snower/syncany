@@ -14,6 +14,12 @@ from .filter import Filter
 
 class IntFilter(Filter):
     def filter(self, value):
+        if isinstance(value, int):
+            return value
+
+        if isinstance(value, float):
+            return int(value)
+
         if value is None:
             return 0
 
@@ -51,6 +57,12 @@ class IntFilter(Filter):
 
 class FloatFilter(Filter):
     def filter(self, value):
+        if isinstance(value, float):
+            return value
+
+        if isinstance(value, int):
+            return float(value)
+
         if value is None:
             return 0.0
 
@@ -88,6 +100,9 @@ class FloatFilter(Filter):
 
 class StringFilter(Filter):
     def filter(self, value):
+        if isinstance(value, str):
+            return value
+
         if value is None:
             return ""
 
@@ -141,6 +156,9 @@ class StringFilter(Filter):
 
 class BytesFilter(Filter):
     def filter(self, value):
+        if isinstance(value, bytes):
+            return value
+
         if value is None:
             return b""
 
@@ -180,7 +198,7 @@ class BytesFilter(Filter):
                     return binascii.b2a_hex(value)
                 return value.encode(self.args or "utf-8")
             except:
-                return ""
+                return b""
 
         if self.args:
             try:
@@ -194,6 +212,9 @@ class BytesFilter(Filter):
 
 class BooleanFilter(Filter):
     def filter(self, value):
+        if value is True or value is False:
+            return value
+
         try:
             return bool(value)
         except:
@@ -201,7 +222,10 @@ class BooleanFilter(Filter):
 
 class ArrayFilter(Filter):
     def filter(self, value):
-        if isinstance(value, (set, list, tuple)):
+        if isinstance(value, list):
+            return value
+
+        if isinstance(value, (set, tuple)):
             return list(value)
 
         if value is None:
@@ -245,6 +269,9 @@ class ObjectIdFilter(Filter):
         super(ObjectIdFilter, self).__init__(*args, **kwargs)
 
     def filter(self, value):
+        if isinstance(value, ObjectId):
+            return value
+
         if value is None:
             return ObjectId("000000000000000000000000")
 

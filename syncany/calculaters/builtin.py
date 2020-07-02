@@ -515,7 +515,7 @@ class StringCalculater(Calculater):
         func_name = self.name[8:]
         if isinstance(self.args[0], str) and hasattr(self.args[0], func_name):
             try:
-                getattr(self.args[0], func_name)(*tuple(self.args[1:]))
+                return getattr(self.args[0], func_name)(*tuple(self.args[1:]))
             except:
                 return ''
         return ''
@@ -530,7 +530,10 @@ class ArrayCalculater(Calculater):
             value = list(self.args[0])
             if hasattr(value, func_name):
                 try:
-                    getattr(value, func_name)(*tuple(self.args[1:]))
+                    result = getattr(value, func_name)(*tuple(self.args[1:]))
+                    if func_name in ("append", "clear", "extend", "insert", "reverse", "sort"):
+                        return value
+                    return result
                 except:
                     return None
         return None
@@ -543,7 +546,10 @@ class MapCalculater(Calculater):
         func_name = self.name[5:]
         if isinstance(self.args[0], dict) and hasattr(self.args[0], func_name):
             try:
-                getattr(self.args[0], func_name)(*tuple(self.args[1:]))
+                result = getattr(self.args[0], func_name)(*tuple(self.args[1:]))
+                if func_name in ("clear", "update"):
+                    return self.args[0]
+                return result
             except:
                 return None
         return None
@@ -556,7 +562,7 @@ class MathCalculater(Calculater):
         func_name = self.name[6:]
         if hasattr(math, func_name):
             try:
-                getattr(math, func_name)(*tuple(self.args))
+                return getattr(math, func_name)(*tuple(self.args))
             except:
                 return 0
         return 0
