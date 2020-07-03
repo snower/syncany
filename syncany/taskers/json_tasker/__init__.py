@@ -29,7 +29,16 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         super(JsonTasker, self).__init__()
 
         self.start_time = time.time()
-        self.config = {}
+        self.config = {
+            "name": "",
+            "input": "",
+            "output": "",
+            "querys": {},
+            "databases": [],
+            "defines": {},
+            "variables": {},
+            "schema": {},
+        }
         self.name = ""
         self.join_loaders = {}
 
@@ -46,6 +55,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "let_valuer": self.compile_let_valuer,
             "yield_valuer": self.compile_yield_valuer,
             "aggregate_valuer": self.compile_aggregate_valuer,
+            "call_valuer": self.compile_call_valuer,
+            "assign_valuer": self.compile_assign_valuer,
         }
 
         self.valuer_creater = {
@@ -61,6 +72,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "let_valuer": self.create_let_valuer,
             "yield_valuer": self.create_yield_valuer,
             "aggregate_valuer": self.create_aggregate_valuer,
+            "call_valuer": self.create_call_valuer,
+            "assign_valuer": self.create_assign_valuer,
         }
 
         self.loader_creater = {
@@ -85,7 +98,14 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 else:
                     self.load_json(config["extends"])
                 config.pop("extends")
+
+            defines = config.pop("defines") if "defines" in config else {}
+            variables = config.pop("variables") if "variables" in config else {}
             self.config.update(config)
+            if defines and isinstance(defines, dict):
+                self.config["defines"].update(defines)
+            if variables and isinstance(variables, dict):
+                self.config["variables"].update(variables)
 
     def load_databases(self):
         for config in self.config["databases"]:
@@ -350,6 +370,12 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                                                      field[2] if len(field) >= 3 else None)
                 if key["key"] == "aggregate" and len(field) == 3:
                     return self.compile_aggregate_valuer(key["key"], key["filter"], field[1], field[2])
+                if key["key"] == "call" and len(field) in (2, 3) and field[1] in self.config["defines"]:
+                    return self.compile_call_valuer(field[1], key["filter"], field[2] if len(field) >= 3 else None,
+                                                    self.config["defines"][field[1]])
+                if key["key"] == "assign" and len(field) in (2, 3, 4):
+                    return self.compile_assign_valuer(field[1], key["filter"], field[2] if len(field) >= 3 else None,
+                                                    field[3] if len(field) >= 4 else None)
 
             return self.compile_const_valuer(field)
 
@@ -475,7 +501,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 inherit_valuers, yield_valuers, aggregate_valuers = [], [], []
                 valuer = self.create_valuer(valuer, schema_field_name=name, inherit_valuers=inherit_valuers,
                                             join_loaders=self.join_loaders, yield_valuers=yield_valuers,
-                                            aggregate_valuers=aggregate_valuers)
+                                            aggregate_valuers=aggregate_valuers, define_valuers={},
+                                            global_variables=dict(**self.config["variables"]))
                 if valuer:
                     self.loader.add_valuer(name, valuer)
                 if inherit_valuers:

@@ -326,3 +326,64 @@ class ValuerCreater(object):
         if aggregate_valuers is not None:
             aggregate_valuers.append(aggregate_valuer)
         return aggregate_valuer
+
+    def create_call_valuer(self, config, inherit_valuers=None, define_valuers=None, **kwargs):
+        valuer_cls = find_valuer(config["name"])
+        if not valuer_cls:
+            return
+
+        calculate_inherit_valuers = []
+        calculate_valuer = self.create_valuer(config["calculate_valuer"], inherit_valuers=calculate_inherit_valuers,
+                                              define_valuers=define_valuers, **kwargs) \
+            if "calculate_valuer" in config and config["calculate_valuer"] else None
+        if not calculate_inherit_valuers:
+            if define_valuers and config["key"] in define_valuers:
+                calculate_valuer = define_valuers[config["key"]]
+            else:
+                define_valuers[config["key"]] = calculate_valuer
+        else:
+            for calculate_inherit_valuer in calculate_inherit_valuers:
+                if inherit_valuers is not None:
+                    inherit_valuers.append(calculate_inherit_valuer)
+
+        return_inherit_valuers = []
+        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers,
+                                           define_valuers=define_valuers, **kwargs) \
+            if "return_valuer" in config and config["return_valuer"] else None
+
+        current_inherit_valuers = []
+        for inherit_valuer in return_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
+        return valuer_cls(calculate_valuer, return_valuer, current_inherit_valuers, None, config['key'], None)
+
+    def create_assign_valuer(self, config, inherit_valuers=None, global_variables=None, **kwargs):
+        valuer_cls = find_valuer(config["name"])
+        if not valuer_cls:
+            return
+
+        calculate_valuer = self.create_valuer(config["calculate_valuer"], inherit_valuers=inherit_valuers,
+                                              global_variables=global_variables, **kwargs) \
+            if "calculate_valuer" in config and config["calculate_valuer"] else None
+
+        return_inherit_valuers = []
+        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers,
+                                           global_variables=global_variables, **kwargs) \
+            if "return_valuer" in config and config["return_valuer"] else None
+
+        filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
+        filter = filter_cls(config["filter"]["args"]) if filter_cls else None
+
+        current_inherit_valuers = []
+        for inherit_valuer in return_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
+        return valuer_cls(global_variables, calculate_valuer, return_valuer, current_inherit_valuers, config['key'], filter)

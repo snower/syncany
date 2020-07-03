@@ -14,6 +14,8 @@ from .make import MakeValuer
 from .let import LetValuer
 from .generator import YieldValuer
 from .aggregate import AggregateValuer
+from .call import CallValuer
+from .assign import AssignValuer
 
 VALUERS = {
     "const_valuer": ConstValuer,
@@ -28,6 +30,8 @@ VALUERS = {
     "let_valuer": LetValuer,
     "yield_valuer": YieldValuer,
     "aggregate_valuer": AggregateValuer,
+    "call_valuer": CallValuer,
+    "assign_valuer": AssignValuer,
 }
 
 def find_valuer(name):

@@ -55,12 +55,13 @@ class AggregateValuer(Valuer):
         return self.__class__(key_valuer, calculate_valuer, inherit_valuers, self.aggregate_manager, self.key, self.filter)
 
     def fill(self, data):
-        if self.key_valuer:
-            self.key_valuer.fill(data)
-
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
+
+        if self.key_valuer:
+            self.key_valuer.fill(data)
+
         return self
 
     def get(self):

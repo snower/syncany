@@ -37,13 +37,12 @@ class CalculateValuer(Valuer):
 
     def fill(self, data):
         super(CalculateValuer, self).fill(data)
-
-        for valuer in self.args_valuers:
-            valuer.fill(data)
-
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
+
+        for valuer in self.args_valuers:
+            valuer.fill(data)
 
         if not self.wait_loaded:
             values = []

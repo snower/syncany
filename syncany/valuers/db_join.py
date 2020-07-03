@@ -27,16 +27,16 @@ class DBJoinValuer(DBValuer):
                               return_valuer, inherit_valuers, self.key, self.filter)
 
     def fill(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
         if self.args_valuer:
             self.args_valuer.fill(data)
             self.matcher = self.loader.filter_eq(self.foreign_key, self.args_valuer.get())
         elif self.key:
             super(DBJoinValuer, self).fill(data)
             self.matcher = self.loader.filter_eq(self.foreign_key, self.value)
-
-        if self.inherit_valuers:
-            for inherit_valuer in self.inherit_valuers:
-                inherit_valuer.fill(data)
 
         self.matcher.add_valuer(self.return_valuer)
         return self

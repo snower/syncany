@@ -270,3 +270,54 @@ class ValuerCompiler(object):
             "key_valuer": key_valuer,
             "calculate_valuer": calculate_valuer,
         }
+
+    def compile_call_valuer(self, key="", filter=None, return_arg=None, calculate_arg=None):
+        if isinstance(return_arg, str) and return_arg[:1] == ":":
+            return_arg = return_arg[1:]
+        elif isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
+            if return_arg[0] == ":":
+                return_arg = list(return_arg)[1:]
+            elif return_arg[0][:1] == ":":
+                return_arg = list(return_arg)
+                return_arg[0] = return_arg[0][1:]
+
+        return_valuer = self.compile_schema_field(return_arg) if return_arg else None
+        calculate_valuer = self.compile_schema_field(calculate_arg)
+
+        return {
+            "name": "call_valuer",
+            "key": key,
+            "filter": filter,
+            "return_valuer": return_valuer,
+            "calculate_valuer": calculate_valuer,
+        }
+
+    def compile_assign_valuer(self, key="", filter=None, calculate_arg=None, return_arg=None):
+        if isinstance(calculate_arg, str) and calculate_arg[:1] == ":":
+            return_arg, calculate_arg = calculate_arg[1:], None
+        elif isinstance(calculate_arg, (list, tuple, set)) and calculate_arg and isinstance(calculate_arg[0], str):
+            if calculate_arg[0] == ":":
+                return_arg, calculate_arg = list(calculate_arg)[1:], None
+            elif calculate_arg[0][:1] == ":":
+                return_arg, calculate_arg = list(calculate_arg), None
+                return_arg[0] = return_arg[0][1:]
+
+        if isinstance(return_arg, str) and return_arg[:1] == ":":
+            return_arg = return_arg[1:]
+        elif isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
+            if return_arg[0] == ":":
+                return_arg = list(return_arg)[1:]
+            elif return_arg[0][:1] == ":":
+                return_arg = list(return_arg)
+                return_arg[0] = return_arg[0][1:]
+
+        calculate_valuer = self.compile_schema_field(calculate_arg) if calculate_arg else None
+        return_valuer = self.compile_schema_field(return_arg) if return_arg else None
+
+        return {
+            "name": "assign_valuer",
+            "key": key,
+            "filter": filter,
+            "calculate_valuer": calculate_valuer,
+            "return_valuer": return_valuer,
+        }

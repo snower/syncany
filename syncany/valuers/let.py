@@ -31,11 +31,11 @@ class LetValuer(Valuer):
         return self.__class__(key_valuer, return_valuer, inherit_valuers, self.key, self.filter)
 
     def fill(self, data):
-        self.key_valuer.fill(data)
-
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
+
+        self.key_valuer.fill(data)
 
         if not self.wait_loaded:
             self.key = self.key_valuer.get()

@@ -33,12 +33,12 @@ class YieldValuer(Valuer):
         return self.__class__(value_valuer, return_valuer, inherit_valuers, self.key, self.filter)
 
     def fill(self, data):
-        if self.value_valuer:
-            self.value_valuer.fill(data)
-
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
+
+        if self.value_valuer:
+            self.value_valuer.fill(data)
 
         if self.return_valuer and not self.wait_loaded:
             if self.value_valuer:
