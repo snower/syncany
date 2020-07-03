@@ -211,6 +211,29 @@ class CsvDB(DataBase):
 
         self.csvs = {}
 
+    def read_file(self, name, filename, fp):
+        reader = csv.reader(fp, quotechar='"')
+        descriptions, datas = [], []
+        for row in reader:
+            if not descriptions:
+                descriptions = row
+            else:
+                data = OrderedDict()
+                for i in range(len(descriptions)):
+                    data[descriptions[i]] = row[i]
+                datas.append(data)
+        return CsvFile(name, filename, datas)
+
+    def write_file(self, fp, csv_file):
+        fields = csv_file.get_fields()
+        writer = csv.writer(fp, quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+        writer.writerow(fields)
+
+        for data in csv_file.datas:
+            data = [data[field] for field in fields]
+            writer.writerow(data)
+        fp.flush()
+
     def ensure_open_file(self, name):
         if not name:
             raise CsvFileNotFound()
@@ -220,23 +243,22 @@ class CsvDB(DataBase):
             if len(names) < 2:
                 raise CsvFileNotFound()
 
+            if names[1][:1] == "&":
+                fileno = int(names[1][1:])
+                if fileno in (1, 2):
+                    self.csvs[name] = CsvFile(name, fileno, [])
+                    return self.csvs[name]
+
+                fp = open(fileno, "r", newline='', encoding="utf-8")
+                self.csvs[name] = self.read_file(name, fileno, fp)
+                return self.csvs[name]
+
             filename = os.path.join(self.config["path"], ".".join(names[1:]))
             if os.path.exists(filename):
                 with open(filename, "r", newline='', encoding="utf-8") as fp:
-                    reader = csv.reader(fp, quotechar='"')
-                    descriptions, datas = [], []
-                    for row in reader:
-                        if not descriptions:
-                            descriptions = row
-                        else:
-                            data = OrderedDict()
-                            for i in range(len(descriptions)):
-                                data[descriptions[i]] = row[i]
-                            datas.append(data)
-                    self.csvs[name] = CsvFile(name, filename, datas)
+                    self.csvs[name] = self.read_file(name, filename, fp)
             else:
                 self.csvs[name] = CsvFile(name, filename, [])
-
         return self.csvs[name]
 
     def query(self, name, primary_keys=None, fields=()):
@@ -257,13 +279,13 @@ class CsvDB(DataBase):
                 if not csv_file.changed:
                     continue
 
-                fields = csv_file.get_fields()
-                with open(csv_file.filename, "w", newline='', encoding="utf-8") as fp:
-                    writer = csv.writer(fp, quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
-                    writer.writerow(fields)
-
-                    for data in csv_file.datas:
-                        data = [data[field] for field in fields]
-                        writer.writerow(data)
+                if isinstance(csv_file.filename, str):
+                    with open(csv_file.filename, "w", newline='', encoding="utf-8") as fp:
+                        self.write_file(fp, csv_file)
+                else:
+                    if csv_file.filename == 0:
+                        continue
+                    fp = open(csv_file.filename, "w", newline='', encoding="utf-8")
+                    self.write_file(fp, csv_file)
 
         self.csvs = {}

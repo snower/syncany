@@ -195,6 +195,16 @@ class JsonDB(DataBase):
 
         self.jsons = {}
 
+    def read_file(self, fp, name, filename):
+        datas = json.load(fp)
+        if not isinstance(datas, list):
+            datas = [datas]
+        return JsonFile(name, filename, datas)
+
+    def write_file(self, fp, json_file):
+        json.dump(json_file.datas, fp, default=str, indent=4, ensure_ascii=False, sort_keys=True)
+        fp.flush()
+
     def ensure_open_file(self, name):
         if not name:
             raise JsonFileNotFound()
@@ -204,16 +214,22 @@ class JsonDB(DataBase):
             if len(names) < 2:
                 raise JsonFileNotFound()
 
+            if names[1][:1] == "&":
+                fileno = int(names[1][1:])
+                if fileno in (1, 2):
+                    self.jsons[name] = JsonFile(name, fileno, [])
+                    return self.jsons[name]
+
+                fp = open(fileno, "r")
+                self.jsons[name] = self.read_file(fp, name, fileno)
+                return self.jsons[name]
+
             filename = os.path.join(self.config["path"], ".".join(names[1:]))
             if os.path.exists(filename):
                 with open(filename, "r") as fp:
-                    datas = json.load(fp)
-                    if not isinstance(datas, list):
-                        datas = [datas]
-                    self.jsons[name] = JsonFile(name, filename, datas)
+                    self.jsons[name] = self.read_file(fp, name, filename)
             else:
                 self.jsons[name] = JsonFile(name, filename, [])
-
         return self.jsons[name]
 
     def query(self, name, primary_keys=None, fields=()):
@@ -234,7 +250,13 @@ class JsonDB(DataBase):
                 if not json_file.changed:
                     continue
 
-                with open(json_file.filename, "w") as fp:
-                    json.dump(json_file.datas, fp, default=str, indent = 4, ensure_ascii = False, sort_keys = True)
+                if isinstance(json_file.filename, str):
+                    with open(json_file.filename, "w") as fp:
+                        self.write_file(fp, json_file)
+                else:
+                    if json_file.filename == 0:
+                        continue
+                    fp = open(json_file.filename, "w")
+                    self.write_file(fp, json_file)
 
         self.jsons = {}
