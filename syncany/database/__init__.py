@@ -2,7 +2,7 @@
 # 18/8/6
 # create by: snower
 
-from .stdio import StdioDB
+from .textline import TextLineDB
 from .mongodb import MongoDB
 from .mysql import MysqlDB
 from .postgresql import PostgresqlDB
@@ -12,7 +12,7 @@ from .csv import CsvDB
 from .json import JsonDB
 
 DATABASES = {
-    "stdio": StdioDB,
+    "textline": TextLineDB,
     "mongo": MongoDB,
     "mysql": MysqlDB,
     "postgresql": PostgresqlDB,
