@@ -112,27 +112,31 @@ class TextLineQueryBuilder(QueryBuilder):
                 else:
                     rdatas = self.text_read(fp)
 
-        index, datas = 0, []
-        for data in rdatas:
-            if self.limit and (index < self.limit[0] or index > self.limit[1]):
-                continue
+        if not self.query:
+            datas = rdatas
+            if self.limit:
+                datas = datas[self.limit[0]: self.limit[1]]
+        else:
+            index, datas = 0, []
+            for data in rdatas:
+                if self.limit and (index < self.limit[0] or index > self.limit[1]):
+                    continue
 
-            succed = True
-            for (key, exp), (value, cmp) in self.query.items():
-                if key not in data:
-                    succed = False
-                    break
-                if not cmp(data[key], value):
-                    succed = False
-                    break
+                succed = True
+                for (key, exp), (value, cmp) in self.query.items():
+                    if key not in data:
+                        succed = False
+                        break
+                    if not cmp(data[key], value):
+                        succed = False
+                        break
 
-            if succed:
-                datas.append(data)
-                index += 1
+                if succed:
+                    datas.append(data)
+                    index += 1
 
         if self.orders:
             datas = sorted(datas, key=self.orders[0][0], reverse=True if self.orders[0][1] < 0 else False)
-
         return datas
 
 class TextLineInsertBuilder(InsertBuilder):

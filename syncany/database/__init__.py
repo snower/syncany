@@ -2,6 +2,7 @@
 # 18/8/6
 # create by: snower
 
+from .memory import MemoryDB
 from .textline import TextLineDB
 from .mongodb import MongoDB
 from .mysql import MysqlDB
@@ -12,6 +13,7 @@ from .csv import CsvDB
 from .json import JsonDB
 
 DATABASES = {
+    "memory": MemoryDB,
     "textline": TextLineDB,
     "mongo": MongoDB,
     "mysql": MysqlDB,
