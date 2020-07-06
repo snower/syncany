@@ -5,13 +5,21 @@
 from .valuer import Valuer
 
 class CaseValuer(Valuer):
-    def __init__(self, case_valuers, default_case_valuer, value_valuer, *args, **kwargs):
+    def __init__(self, case_valuers, default_case_valuer, value_valuer, return_valuer, inherit_valuers, *args, **kwargs):
         super(CaseValuer, self).__init__(*args, **kwargs)
 
         self.case_valuers = case_valuers
         self.default_case_valuer = default_case_valuer
         self.value_valuer = value_valuer or None
-        self.value_wait_loaded = self.value_valuer.require_loaded()
+        self.return_valuer = return_valuer
+        self.inherit_valuers = inherit_valuers
+        self.value_wait_loaded = True if self.value_valuer and self.value_valuer.require_loaded() else False
+        self.case_wait_loaded = True if not self.return_valuer or \
+                                        (self.default_case_valuer
+                                         and self.default_case_valuer.require_loaded()) else False
+
+    def add_inherit_valuer(self, valuer):
+        self.inherit_valuers.append(valuer)
 
     def clone(self):
         case_valuers = {}
@@ -19,10 +27,14 @@ class CaseValuer(Valuer):
             case_valuers[name] = valuer.clone()
         default_case_valuer = self.default_case_valuer.clone() if self.default_case_valuer else None
         value_valuer = self.value_valuer.clone() if self.value_valuer else None
-        return self.__class__(case_valuers, default_case_valuer, value_valuer, self.key, self.filter)
+        return_valuer = self.return_valuer.clone() if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+        return self.__class__(case_valuers, default_case_valuer, value_valuer, return_valuer, inherit_valuers, self.key, self.filter)
 
     def fill(self, data):
-        super(CaseValuer, self).fill(data)
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
 
         if self.value_valuer:
             self.value_valuer.fill(data)
@@ -31,34 +43,60 @@ class CaseValuer(Valuer):
                     case_valuer.fill(data)
                 if self.default_case_valuer:
                     self.default_case_valuer.fill(data)
-            else:
-                self.value = self.value_valuer.get()
-                if self.value in self.case_valuers:
-                    self.case_valuers[self.value].fill(data)
-                elif self.default_case_valuer:
-                    self.default_case_valuer.fill(data)
+                return self
+            self.value = self.value_valuer.get()
         else:
-            if self.value in self.case_valuers:
-                self.case_valuers[self.value].fill(data)
-            elif self.default_case_valuer:
-                self.default_case_valuer.fill(data)
+            self.value = data
+
+        if self.value in self.case_valuers:
+            self.case_valuers[self.value].fill(data)
+            self.case_wait_loaded = True if not self.return_valuer or \
+                                            (self.case_valuers[self.value].require_loaded()) else False
+            if self.return_valuer and not self.case_wait_loaded:
+                self.value = self.case_valuers[self.value].get()
+                self.return_valuer.fill(self.value)
+        elif self.default_case_valuer:
+            self.default_case_valuer.fill(data)
+            if self.return_valuer and not self.case_wait_loaded:
+                self.value = self.default_case_valuer.get()
+                self.return_valuer.fill(self.value)
         return self
 
     def get(self):
-        if self.value_wait_loaded:
-            if self.value_valuer:
-                self.value = self.value_valuer.get()
+        if self.value_valuer and self.value_wait_loaded:
+            self.value = self.value_valuer.get()
+            self.case_wait_loaded = True
 
-        if self.value in self.case_valuers:
-            return self.case_valuers[self.value].get()
-        elif self.default_case_valuer:
-            return self.default_case_valuer.get()
+        if self.case_wait_loaded:
+            if self.value in self.case_valuers:
+                self.value = self.case_valuers[self.value].get()
+                if self.return_valuer:
+                    self.return_valuer.fill(self.value)
+                    return self.return_valuer.get()
+                return self.value
+            elif self.default_case_valuer:
+                self.value = self.default_case_valuer.get()
+                if self.return_valuer:
+                    self.return_valuer.fill(self.value)
+                    return self.return_valuer.get()
+                return self.value
+
+        if self.return_valuer:
+            return self.return_valuer.get()
         return self.value
 
     def childs(self):
-        return list(self.case_valuers.values()) \
-               + ([self.default_case_valuer] if self.default_case_valuer else []) \
-               + ([self.value_valuer] if self.value_valuer else [])
+        childs = list(self.case_valuers.values())
+        if self.default_case_valuer:
+            childs.append(self.default_case_valuer)
+        if self.value_valuer:
+            childs.append(self.value_valuer)
+        if self.return_valuer:
+            childs.append(self.return_valuer)
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                childs.append(inherit_valuer)
+        return childs
 
     def get_fields(self):
         fields = self.value_valuer.get_fields() if self.value_valuer else [self.key]
@@ -69,9 +107,17 @@ class CaseValuer(Valuer):
         if self.default_case_valuer:
             for field in self.default_case_valuer.get_fields():
                 fields.append(field)
+
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                for field in inherit_valuer.get_fields():
+                    fields.append(field)
         return fields
 
     def get_final_filter(self):
+        if self.return_valuer:
+            return self.return_valuer.get_final_filter()
+
         final_filter = None
         for _, valuer in self.case_valuers.items():
             filter = valuer.get_final_filter()

@@ -43,27 +43,6 @@ class ValuerCompiler(object):
             "value_valuer": self.compile_db_valuer(key, filter)
         }
 
-    def compile_const_join_valuer(self, key="", value=None, loader=None, foreign_key="", return_arg=None):
-        return_arg = "$.*" if return_arg is None else return_arg
-        if isinstance(return_arg, str) and return_arg[:1] == ":":
-            return_arg = return_arg[1:]
-        if isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
-            if return_arg[0] == ":":
-                return_arg = list(return_arg)[1:]
-            elif return_arg[0][:1] == ":":
-                return_arg = list(return_arg)
-                return_arg[0] = return_arg[0][1:]
-        return_valuer = self.compile_schema_field(return_arg)
-
-        return {
-            "name": "const_join_valuer",
-            "key": key,
-            "value": value,
-            "loader": loader,
-            "foreign_key": foreign_key,
-            "return_valuer": return_valuer,
-        }
-
     def compile_db_join_valuer(self, key="", loader=None, foreign_key="", foreign_filters=None, filter=None, args_arg=None, return_arg=None):
         args_valuer = self.compile_schema_field(args_arg) if args_arg else None
 
@@ -89,30 +68,38 @@ class ValuerCompiler(object):
             "return_valuer": return_valuer,
         }
 
-    def compile_case_valuer(self, key="", filter=None, value_arg=None, cases_arg=None, default_arg=None):
-        value_valuer = self.compile_schema_field(value_arg)
-
+    def compile_case_valuer(self, key="", filter=None, value_arg=None, cases_arg=None, default_arg=None, return_arg=None):
         case_valuers = {}
         if isinstance(cases_arg, (list, tuple, set)):
+            cases_args = []
             for index in range(len(cases_arg)):
                 if isinstance(cases_arg[index], str) and cases_arg[index][:1] == ":":
-                    default_arg = cases_arg[index][1:]
+                    return_arg = cases_arg[index][1:]
                     continue
                 if isinstance(cases_arg[index], (list, tuple, set)) and cases_arg[index] and isinstance(cases_arg[index][0], str):
                     if cases_arg[index][0] == ":":
-                        default_arg = list(cases_arg[index])[1:]
+                        return_arg = list(cases_arg[index])[1:]
                         continue
                     if cases_arg[index][0][:1] == ":":
-                        default_arg = list(cases_arg[index])
-                        default_arg[0] = default_arg[0][1:]
+                        return_arg = list(cases_arg[index])
+                        return_arg[0] = return_arg[0][1:]
                         continue
+                cases_args.append(cases_arg[index])
 
-                case_valuers[index] = self.compile_schema_field(cases_arg[index])
+            if len(cases_args) == 3:
+                value_arg = cases_args[0]
+                case_valuers[0] = self.compile_schema_field(cases_args[1])
+                case_valuers[1] = self.compile_schema_field(cases_args[2])
+            elif len(cases_args) == 2:
+                case_valuers[0] = self.compile_schema_field(cases_args[0])
+                case_valuers[1] = self.compile_schema_field(cases_args[1])
         elif isinstance(cases_arg, dict):
             for case_value, field in cases_arg.items():
                 case_valuers[case_value] = self.compile_schema_field(field)
 
+        value_valuer = self.compile_schema_field(value_arg) if value_arg else None
         default_valuer = self.compile_schema_field(default_arg) if default_arg else None
+        return_valuer = self.compile_schema_field(return_arg) if return_arg else None
 
         return {
             "name": "case_valuer",
@@ -121,6 +108,7 @@ class ValuerCompiler(object):
             'value_valuer': value_valuer,
             "case_valuers": case_valuers,
             "default_valuer": default_valuer,
+            "return_valuer": return_valuer,
         }
 
     def compile_calculate_valuer(self, key="", filter=None, args=None):

@@ -74,31 +74,6 @@ class ValuerCreater(object):
             })
         return inherit_valuer.get_inherit_child_valuer()
 
-    def create_const_join_valuer(self, config, inherit_valuers=None, **kwargs):
-        valuer_cls = find_valuer(config["name"])
-        if not valuer_cls:
-            return
-        loader = self.create_loader(config["loader"], [config["foreign_key"]])
-
-        return_inherit_valuers = []
-        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, **kwargs)
-
-        if config["foreign_key"] not in loader.schema:
-            loader.add_valuer(config["foreign_key"], self.create_valuer(self.compile_db_valuer(config["foreign_key"], None)))
-        for key in return_valuer.get_fields():
-            if key not in loader.schema:
-                loader.add_valuer(key, self.create_valuer(self.compile_db_valuer(key, None)))
-
-        current_inherit_valuers = []
-        for inherit_valuer in return_inherit_valuers:
-            inherit_valuer["reflen"] -= 1
-            if inherit_valuer["reflen"] == 0:
-                current_inherit_valuers.append(inherit_valuer["valuer"])
-            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
-                inherit_valuers.append(inherit_valuer)
-        return valuer_cls(loader, config["foreign_key"], return_valuer, current_inherit_valuers,
-                          config["value"], config["key"], None)
-
     def create_db_join_valuer(self, config, inherit_valuers=None, join_loaders=None, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
@@ -152,22 +127,35 @@ class ValuerCreater(object):
         return valuer_cls(loader, config["foreign_key"], config["foreign_filters"], args_valuer, return_valuer,
                           current_inherit_valuers, config["key"], filter)
 
-    def create_case_valuer(self, config, **kwargs):
+    def create_case_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
             return
 
         if "value_valuer" in config and config["value_valuer"]:
-            value_valuer = self.create_valuer(config["value_valuer"], **kwargs)
+            value_valuer = self.create_valuer(config["value_valuer"], inherit_valuers=inherit_valuers, **kwargs)
         else:
             value_valuer = None
 
         case_valuers = {}
         for key, valuer_config in config["case_valuers"].items():
-            case_valuers[key] = self.create_valuer(valuer_config, **kwargs)
-        default_case_valuer = self.create_valuer(config["default_valuer"], **kwargs) \
+            case_valuers[key] = self.create_valuer(valuer_config, inherit_valuers=inherit_valuers, **kwargs)
+
+        default_case_valuer = self.create_valuer(config["default_valuer"], inherit_valuers=inherit_valuers, **kwargs) \
             if "default_valuer" in config and config["default_valuer"] else None
-        return valuer_cls(case_valuers, default_case_valuer, value_valuer, config["key"], None)
+
+        return_inherit_valuers = []
+        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, **kwargs) \
+            if "return_valuer" in config and config["return_valuer"] else None
+
+        current_inherit_valuers = []
+        for inherit_valuer in return_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+        return valuer_cls(case_valuers, default_case_valuer, value_valuer, return_valuer, current_inherit_valuers, config["key"], None)
 
     def create_calculate_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = find_valuer(config["name"])

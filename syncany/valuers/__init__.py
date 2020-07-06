@@ -3,7 +3,6 @@
 # create by: snower
 
 from .const import ConstValuer
-from .const_join import ConstJoinValuer
 from .db import DBValuer
 from .inherit import InheritValuer
 from .db_join import DBJoinValuer
@@ -19,7 +18,6 @@ from .assign import AssignValuer
 
 VALUERS = {
     "const_valuer": ConstValuer,
-    "const_join_valuer": ConstJoinValuer,
     "db_valuer": DBValuer,
     "inherit_valuer": InheritValuer,
     "db_join_valuer": DBJoinValuer,

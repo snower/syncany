@@ -46,7 +46,6 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "const_valuer": self.compile_const_valuer,
             "db_valuer": self.compile_db_valuer,
             "inherit_valuer": self.compile_inherit_valuer,
-            "const_join_valuer": self.compile_const_join_valuer,
             "db_join_valuer": self.compile_db_join_valuer,
             "case_valuer": self.compile_case_valuer,
             "calculate_valuer": self.compile_calculate_valuer,
@@ -63,7 +62,6 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "const_valuer": self.create_const_valuer,
             "db_valuer": self.create_db_valuer,
             "inherit_valuer": self.create_inherit_valuer,
-            "const_join_valuer": self.create_const_join_valuer,
             "db_join_valuer": self.create_db_join_valuer,
             "case_valuer": self.create_case_valuer,
             "calculate_valuer": self.create_calculate_valuer,
@@ -324,15 +322,19 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 case_case = field.pop("#case")
                 cases = {}
                 case_default = field.pop("#end") if "#end" in field else None
+                case_return = field.pop(":") if ":" in field else None
                 for case_key, case_value in field.items():
                     if case_key and isinstance(case_key, str) and case_key[0] == ":" and case_key[1:].isdigit():
                         cases[int(case_key[1:])] = case_value
                     else:
                         cases[case_key] = case_value
-                return self.compile_case_valuer('', None, case_case, cases, case_default)
+                return self.compile_case_valuer('', None, case_case, cases, case_default, case_return)
             return field
 
-        if isinstance(field, list):
+        if isinstance(field, (list, tuple, set)):
+            if not field:
+                return self.compile_const_valuer(field)
+
             key = self.compile_key(field[0])
             if key["instance"] is None:
                 return self.compile_const_valuer(field)
@@ -345,11 +347,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
                 foreign_key = self.compile_foreign_key(field[1])
                 if foreign_key is None:
-                    if len(field) not in (3, 4):
-                        return self.compile_const_valuer(field)
-                    loader = {"name": "const_loader", "datas": field[1]}
-                    return self.compile_const_join_valuer(key["key"], key["value"], loader, field[2],
-                                                          field[3] if len(field) >= 4 else None)
+                    return self.compile_const_valuer(field)
 
                 loader = {"name": "db_join_loader", "database": foreign_key["database"]}
                 return self.compile_db_join_valuer(key["key"], loader, foreign_key["foreign_key"], foreign_key["foreign_filters"],
@@ -359,8 +357,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 return self.compile_calculate_valuer(key["key"], key["filter"], field[1:])
 
             if key["instance"] == "#":
-                if key["key"] == "case" and len(field) > 2:
-                    return self.compile_case_valuer(key["key"], key["filter"], field[1], field[2:], None)
+                if key["key"] == "case" and len(field) in (2, 3, 4):
+                    return self.compile_case_valuer(key["key"], key["filter"], None, field[1:], None)
                 if key["key"] == "make" and len(field) in (2, 3, 4, 5):
                     return self.compile_make_valuer(key["key"], key["filter"], field[1], field[2:])
                 if key["key"] == "let" and len(field) in (2, 3):
