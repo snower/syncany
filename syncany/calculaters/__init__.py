@@ -12,6 +12,8 @@ CALCULATERS = {
     "sub": SubCalculater,
     "mul": MulCalculater,
     "div": DivCalculater,
+    "mod": ModCalculater,
+    "bit": BitCalculater,
     "concat": ConcatCalculater,
     "substring": SubstringCalculater,
     "split": SplitCalculater,

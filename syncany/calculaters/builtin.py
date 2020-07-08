@@ -100,6 +100,39 @@ class DivCalculater(Calculater):
 
         return result
 
+class ModCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return 0
+
+        result = self.args[0]
+        for i in range(1, len(self.args)):
+            result = result % self.args[i]
+
+        return result
+
+class BitCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return 0
+
+        if len(self.args) == 3:
+            if self.args[1] == ">>":
+                return self.args[0] >> self.args[2]
+            if self.args[1] == "<<":
+                return self.args[0] << self.args[2]
+            if self.args[1] == "&":
+                return self.args[0] & self.args[2]
+            if self.args[1] == "|":
+                return self.args[0] | self.args[2]
+            if self.args[1] == "^":
+                return self.args[0] ^ self.args[2]
+
+        if len(self.args) == 2:
+            if self.args[0] == "~":
+                return ~ self.args[1]
+        return 0
+
 class ConcatCalculater(Calculater):
     def calculate(self):
         if not self.args:
