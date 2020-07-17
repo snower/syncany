@@ -135,33 +135,26 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             return filter_cls(filters_args).filter(value)
         return value
 
-    def compile_filters(self):
-        if isinstance(self.config["querys"], list) and len(self.config["querys"]) == 2 \
-            and isinstance(self.config["querys"][0], str) and isinstance(self.config["querys"][1], dict):
-            if self.config["querys"][0][0] == "#":
-                self.config["querys"][0] = self.config["querys"][0][1:]
-            self.config["querys"][1]["#raw_query"] = self.config["querys"][0]
-            self.config["querys"] = self.config["querys"][1]
+    def compile_filters_parse(self, config_querys):
+        if isinstance(config_querys, str):
+            keys = config_querys.split("|")
+            exps = "=="
+            filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
 
-        if isinstance(self.config["querys"], str):
-            if self.config["querys"] and self.config["querys"][0] == "#":
-                keys = ["#raw_query"]
-                exps = self.config["querys"][1:]
-                filters = ['str']
-            else:
-                keys = self.config["querys"].split("|")
-                exps = "=="
-                filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
-
-            self.config["querys"] = [{
+            return [{
                 "name": keys[0],
                 "exps": exps,
                 "type": filters[0],
                 'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
             }]
-        elif isinstance(self.config["querys"], dict):
+
+        if isinstance(config_querys, dict):
+            if len(config_querys) == 4 and "name" in config_querys and "exps" in config_querys \
+                    and "type" in config_querys and "type_args" in config_querys:
+                return [config_querys]
+
             querys = []
-            for name, exps in self.config["querys"].items():
+            for name, exps in config_querys.items():
                 keys = name.split("|")
                 filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
                 querys.append({
@@ -170,13 +163,24 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     "type": filters[0],
                     'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
                 })
-            self.config["querys"] = querys
+            return querys
+
+        if isinstance(config_querys, list):
+            querys = []
+            for cq in config_querys:
+                if isinstance(cq, str):
+                    querys.extend(self.compile_filters_parse(cq))
+                elif isinstance(cq, dict) and len(cq) == 4 and "name" in cq \
+                    and "exps" in cq and "type" in cq and "type_args" in cq:
+                    querys.extend(cq)
+            return querys
+        return []
+
+    def compile_filters(self):
+        self.config["querys"] = self.compile_filters_parse(self.config["querys"])
 
         self.argparse.add_argument("json", type=str, nargs=argparse.OPTIONAL, help="json filename")
         for filter in self.config["querys"]:
-            if filter["name"] == "#raw_query":
-                continue
-
             if "exps" in filter:
                 if isinstance(filter["exps"], str):
                     filter["exps"] = [filter["exps"]]
@@ -206,14 +210,14 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 self.argparse.add_argument('--%s' % filter["name"], dest="%s" % filter["name"], type=filter_cls(filter.get("type_args")), help="%s" % filter["name"])
 
         if "input" in self.config and self.config["input"][:2] == "<<":
-            self.argparse.add_argument('--__input', dest="config_input", type=str, default=self.config["input"][2:],
+            self.argparse.add_argument('--@input', dest="config_input", type=str, default=self.config["input"][2:],
                                        help="data input (default: %s)" % self.config["input"][2:])
 
         if "output" in self.config and self.config["output"][:2] == ">>":
-            self.argparse.add_argument('--__output', dest="config_output", type=str, default=self.config["output"][2:],
+            self.argparse.add_argument('--@output', dest="config_output", type=str, default=self.config["output"][2:],
                                        help="data output (default: %s)" % self.config["output"][2:])
 
-        self.argparse.add_argument('--__batch', dest="config_batch_count", type=int, default=0, help="per sync batch count (default: 0 all)")
+        self.argparse.add_argument('--@batch', dest="config_batch_count", type=int, default=0, help="per sync batch count (default: 0 all)")
 
     def compile_key(self, key):
         if not isinstance(key, str) or key == "":
@@ -433,53 +437,6 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         return self.outputer_creater[config["name"]](config, primary_keys)
 
-    def format_virtual_table(self, virtual_query, virtual_args):
-        if isinstance(virtual_query, dict):
-            values = {}
-            for key, value in virtual_query.items():
-                values[key] = self.format_virtual_table(value, virtual_args)
-            return values
-
-        if isinstance(virtual_query, (list, tuple, set)):
-            values = []
-            for value in virtual_query:
-                values.append(self.format_virtual_table(value, virtual_args))
-            return values
-
-        if isinstance(virtual_query, str):
-            virtual_field_re = re.compile(r'([<>!= ]*@[a-zA-Z0-9_]+?)[, \)$]')
-            virtual_fields = virtual_field_re.findall('(' + virtual_query + ')')
-            for virtual_field in virtual_fields:
-                virtual_field_exp, virtual_field_name = tuple(map(lambda s: s.strip(), virtual_field.split("@")))
-                virtual_field_value = ""
-
-                virtual_field_exp = "==" if virtual_field_exp == '=' else virtual_field_exp
-                for filter in self.config["querys"]:
-                    if filter["name"] != virtual_field_name:
-                        continue
-
-                    filter["virtual_field"] = True
-                    if "exps" in filter:
-                        exps = [filter["exps"]] if isinstance(filter["exps"], str) else filter["exps"]
-
-                        for exp in exps:
-                            if exp != virtual_field_exp:
-                                continue
-
-                            exp_name = get_expression_name(exp)
-                            if hasattr(self.arguments, "%s_%s" % (virtual_field_name, exp_name)):
-                                virtual_field_value = getattr(self.arguments,  "%s_%s" % (virtual_field_name, exp_name))
-                    else:
-                        if virtual_field_exp == "==" and hasattr(self.arguments, virtual_field_name):
-                            virtual_field_value = getattr(self.arguments, virtual_field_name)
-
-                virtual_args.append(virtual_field_value)
-                if '@' + virtual_field_name == virtual_query.strip():
-                    return virtual_field_value
-                virtual_query = virtual_query.replace('@' + virtual_field_name, '%s')
-            return virtual_query
-        return virtual_query
-
     def compile_loader(self):
         if self.config["input"][:2] == "<<":
             self.config["input"] = getattr(self.arguments, "config_input", self.config["input"][2:])
@@ -513,27 +470,6 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         for filter in self.config["querys"]:
             filter_name = filter["name"]
-            if filter_name != "#raw_query":
-                continue
-
-            if hasattr(self.databases[db_name], "tables"):
-                table_name = input_loader["database"].split(".")[1]
-                virtual_args = []
-                self.databases[db_name].tables[table_name] = {
-                    "name": table_name,
-                    "raw_query": self.format_virtual_table(filter["exps"], virtual_args),
-                    "virtual_args": virtual_args,
-                }
-
-        for filter in self.config["querys"]:
-            filter_name = filter["name"]
-
-            if filter_name == "#raw_query":
-                continue
-
-            if filter.get("virtual_field"):
-                continue
-
             if "exps" in filter:
                 if isinstance(filter["exps"], str):
                     exps = [filter["exps"]]
@@ -571,10 +507,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         for filter in self.config["querys"]:
             filter_name = filter["name"]
-            if filter_name == "#raw_query":
-                continue
-
-            value_filter = lambda v : v
+            value_filter = lambda v: v
             if filter_name not in self.outputer.schema:
                 for field_name, valuer in self.outputer.schema.items():
                     fields = valuer.get_fields()
