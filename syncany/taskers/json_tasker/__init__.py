@@ -3,12 +3,9 @@
 # create by: snower
 
 import time
-import argparse
 import logging
 import logging.config
-import traceback
 import json
-import re
 from collections import OrderedDict
 from ..tasker import Tasker
 from ...filters import find_filter
@@ -179,7 +176,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
     def compile_filters(self):
         self.config["querys"] = self.compile_filters_parse(self.config["querys"])
 
-        self.argparse.add_argument("json", type=str, nargs=argparse.OPTIONAL, help="json filename")
+        arguments = []
         for filter in self.config["querys"]:
             if "exps" in filter:
                 if isinstance(filter["exps"], str):
@@ -191,8 +188,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                         filter_cls = find_filter(filter["type"])
                         if filter_cls is None:
                             filter_cls = find_filter('str')
-                        self.argparse.add_argument('--%s__%s' % (filter["name"], exp_name), dest="%s_%s" % (filter["name"], exp_name),
-                                                   type=filter_cls(filter.get("type_args")), required=True, help="%s %s" % (filter["name"], exp))
+                        arguments.append({"name": '%s__%s' % (filter["name"], exp_name), "type": filter_cls(filter.get("type_args")),
+                                          "help": "%s %s" % (filter["name"], exp)})
                 elif isinstance(filter["exps"], dict):
                     for exp, value in filter["exps"].items():
                         exp_name = get_expression_name(exp)
@@ -201,23 +198,24 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                             filter_cls = find_filter('str')
                         if isinstance(value, list) and value and value[0][0] == "@":
                             value = self.compile_filter_calculater(value)
-                        self.argparse.add_argument('--%s__%s' % (filter["name"], exp_name), dest="%s_%s" % (filter["name"], exp_name),
-                                               type=filter_cls(filter.get("type_args")), default=value, help="%s %s (default: %s)" % (filter["name"], exp, value))
+                        arguments.append({"name": '%s__%s' % (filter["name"], exp_name), "type": filter_cls(filter.get("type_args")),
+                             "default": value, "help": "%s %s (default: %s)" % (filter["name"], exp, value)})
             else:
                 filter_cls = find_filter(filter["type"])
                 if filter_cls is None:
                     filter_cls = find_filter('str')
-                self.argparse.add_argument('--%s' % filter["name"], dest="%s" % filter["name"], type=filter_cls(filter.get("type_args")), help="%s" % filter["name"])
+                arguments.append({"name": filter["name"], "type": filter_cls(filter.get("type_args")), "help": "%s" % filter["name"]})
 
         if "input" in self.config and self.config["input"][:2] == "<<":
-            self.argparse.add_argument('--@input', dest="config_input", type=str, default=self.config["input"][2:],
-                                       help="data input (default: %s)" % self.config["input"][2:])
+            arguments.append({"name": "@input", "type": str, "default": self.config["input"][2:],
+                              "help": "data input (default: %s)" % self.config["input"][2:]})
 
         if "output" in self.config and self.config["output"][:2] == ">>":
-            self.argparse.add_argument('--@output', dest="config_output", type=str, default=self.config["output"][2:],
-                                       help="data output (default: %s)" % self.config["output"][2:])
+            arguments.append({"name": "@output", "type": str, "default": self.config["output"][2:],
+                              "help": "data output (default: %s)" % self.config["output"][2:]})
 
-        self.argparse.add_argument('--@batch', dest="config_batch_count", type=int, default=0, help="per sync batch count (default: 0 all)")
+        arguments.append({"name": "@batch", "type": int, "default": 0, "help": "per sync batch count (default: 0 all)"})
+        return arguments
 
     def compile_key(self, key):
         if not isinstance(key, str) or key == "":
@@ -439,7 +437,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
     def compile_loader(self):
         if self.config["input"][:2] == "<<":
-            self.config["input"] = getattr(self.arguments, "config_input", self.config["input"][2:])
+            self.config["input"] = self.arguments.get("@input", self.config["input"][2:])
         input_loader = self.compile_foreign_key(self.config["input"])
         db_name = input_loader["database"].split(".")[0]
 
@@ -478,15 +476,15 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
                 for exp in exps:
                     exp_name = get_expression_name(exp)
-                    if hasattr(self.loader, "filter_%s" % exp_name) and hasattr(self.arguments, "%s_%s" % (filter_name, exp_name)):
-                        getattr(self.loader, "filter_%s" % exp_name)(filter_name, getattr(self.arguments, "%s_%s" % (filter_name, exp_name)))
+                    if hasattr(self.loader, "filter_%s" % exp_name) and "%s__%s" % (filter_name, exp_name) in self.arguments:
+                        getattr(self.loader, "filter_%s" % exp_name)(filter_name, self.arguments["%s__%s" % (filter_name, exp_name)])
             else:
-                if hasattr(self.loader, "filter_eq") and hasattr(self.arguments, filter_name):
-                    getattr(self.loader, "filter_eq")(filter_name, getattr(self.arguments, filter_name))
+                if hasattr(self.loader, "filter_eq") and filter_name in self.arguments:
+                    getattr(self.loader, "filter_eq")(filter_name, self.arguments[filter_name])
 
     def compile_outputer(self):
         if self.config["output"][:2] == ">>":
-            self.config["output"] = getattr(self.arguments, "config_output", self.config["output"][2:])
+            self.config["output"] = self.arguments.get("@output", self.config["output"][2:])
         output_outputer = self.compile_foreign_key(self.config["output"])
         db_name = output_outputer["database"].split(".")[0]
 
@@ -534,22 +532,22 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
                 for exp in exps:
                     exp_name = get_expression_name(exp)
-                    if hasattr(self.outputer, "filter_%s" % exp_name) and hasattr(self.arguments, "%s_%s" % (filter_name, exp_name)):
-                        value = value_filter(getattr(self.arguments, "%s_%s" % (filter_name, exp_name)))
+                    if hasattr(self.outputer, "filter_%s" % exp_name) and "%s__%s" % (filter_name, exp_name) in self.arguments:
+                        value = value_filter(self.arguments["%s__%s" % (filter_name, exp_name)])
                         getattr(self.outputer, "filter_%s" % exp_name)(filter_name, value)
             else:
-                if hasattr(self.outputer, "filter_eq") and hasattr(self.arguments, filter_name):
-                    value = value_filter(getattr(self.arguments, filter_name))
+                if hasattr(self.outputer, "filter_eq") and filter_name in self.arguments:
+                    value = value_filter(self.arguments[filter_name])
                     getattr(self.outputer, "filter_eq")(filter_name, value)
 
     def print_statistics(self, loader_name, loader_statistics, outputer_name, outputer_statistics, join_loader_count, join_loader_statistics):
         statistics = ["loader_%s: %s" % (key, value) for key, value in loader_statistics.items()]
-        logging.info("loader: %s <- %s %s", loader_name, self.input, " ".join(statistics))
+        logging.info("%s loader: %s <- %s %s", self.name, loader_name, self.input, " ".join(statistics))
 
-        logging.info("join_count: %s %s", join_loader_count, " ".join(["join_%s: %s" % (key, value) for key, value in join_loader_statistics.items()]))
+        logging.info("%s join_count: %s %s", self.name, join_loader_count, " ".join(["join_%s: %s" % (key, value) for key, value in join_loader_statistics.items()]))
 
         statistics = ["outputer_%s: %s" % (key, value) for key, value in outputer_statistics.items()]
-        logging.info("outputer: %s -> %s %s", outputer_name, self.output, " ".join(statistics))
+        logging.info("%s outputer: %s -> %s %s", self.name, outputer_name, self.output, " ".join(statistics))
 
     def merge_statistics(self, loader_statistics, outputer_statistics, join_loaders_statistics, loader, outputer, join_loaders):
         for total_statistics, statisticers in ((loader_statistics, [loader]), (outputer_statistics, [outputer]), (join_loaders_statistics, join_loaders)):
@@ -564,78 +562,79 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         return loader.__class__.__name__, loader_statistics, outputer.__class__.__name__, outputer_statistics, len(join_loaders), join_loaders_statistics
 
+    def load(self):
+        super(JsonTasker, self).load()
+        self.load_json(self.json_filename)
+        self.name = self.config["name"]
+        self.compile_logging()
+        return self.compile_filters()
+
+    def compile(self, arguments):
+        super(JsonTasker, self).compile(arguments)
+
+        self.load_databases()
+        self.compile_schema()
+        self.compile_loader()
+        self.compile_outputer()
+        self.input = self.config["input"]
+        self.output = self.config["output"]
+
     def run(self):
-        try:
-            self.load_json(self.json_filename)
-            self.name = self.config["name"]
+        batch_count = int(self.arguments.get("@batch", 0))
+        if batch_count > 0:
+            batch_index = 0
+            loader_statistics = {}
+            outputer_statistics = {}
+            join_loaders_statistics = {}
 
-            self.compile_logging()
-            self.compile_filters()
-            super(JsonTasker, self).run()
+            cursor_data, ocursor_data = None, None
+            logging.info("%s start %s -> %s batch cursor: %s", self.name, 1, batch_count, "")
 
-            self.load_databases()
-            self.compile_schema()
-            self.compile_loader()
-            self.compile_outputer()
-            self.input = self.config["input"]
-            self.output = self.config["output"]
+            while True:
+                batch_index += 1
+                loader = self.loader.clone()
+                outputer = self.outputer.clone()
+                self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
 
-            config_batch_count = int(getattr(self.arguments, "config_batch_count", 0))
-            if config_batch_count > 0:
-                batch_index = 0
-                loader_statistics = {}
-                outputer_statistics = {}
-                join_loaders_statistics = {}
+                if cursor_data:
+                    vcursor = []
+                    for primary_key in loader.primary_keys:
+                        cv = cursor_data.get(primary_key, '')
+                        loader.filter_gt(primary_key, cv)
+                        vcursor.append("%s -> %s" % (primary_key, cv))
 
-                cursor_data, ocursor_data = None, None
-                logging.info("start %s -> %s batch cursor: %s", 1, config_batch_count, "")
+                    logging.info("%s start %s -> %s batch cursor: %s", self.name, batch_index, batch_count, " ".join(vcursor))
 
-                while True:
-                    batch_index += 1
-                    loader = self.loader.clone()
-                    outputer = self.outputer.clone()
-                    self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
+                loader.filter_limit(batch_count)
+                datas = loader.get()
+                if not datas:
+                    break
 
-                    if cursor_data:
-                        vcursor = []
-                        for primary_key in loader.primary_keys:
-                            cv = cursor_data.get(primary_key, '')
-                            loader.filter_gt(primary_key, cv)
-                            vcursor.append("%s -> %s" % (primary_key, cv))
+                cursor_data = loader.last_data
 
-                        logging.info("start %s -> %s batch cursor: %s", batch_index, config_batch_count, " ".join(vcursor))
+                if ocursor_data:
+                    for primary_key in outputer.primary_keys:
+                        outputer.filter_gt(primary_key, ocursor_data.get(primary_key, ''))
+                outputer.store(datas)
+                ocursor_data = datas[-1]
 
-                    loader.filter_limit(config_batch_count)
-                    datas = loader.get()
-                    if not datas:
-                        break
+                self.print_statistics(*self.merge_statistics({}, {}, {}, loader, outputer, self.join_loaders.values()))
+                self.merge_statistics(loader_statistics, outputer_statistics, join_loaders_statistics, loader,
+                                      outputer, self.join_loaders.values())
 
-                    cursor_data = loader.last_data
+            logging.info("%s end %s -> %s batch show statistics", self.name, batch_index - 1, batch_count)
+            statistics = (self.loader.__class__.__name__, loader_statistics, self.outputer.__class__.__name__, outputer_statistics,
+                          len(self.join_loaders), join_loaders_statistics)
+            self.print_statistics(*statistics)
+        else:
+            datas = self.loader.get()
+            if datas:
+                self.outputer.store(datas)
+            statistics = self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders.values())
+            self.print_statistics(*statistics)
 
-                    if ocursor_data:
-                        for primary_key in outputer.primary_keys:
-                            outputer.filter_gt(primary_key, ocursor_data.get(primary_key, ''))
-                    outputer.store(datas)
-                    ocursor_data = datas[-1]
+        for name, database in self.databases.items():
+            database.close()
 
-                    self.print_statistics(*self.merge_statistics({}, {}, {}, loader, outputer, self.join_loaders.values()))
-                    self.merge_statistics(loader_statistics, outputer_statistics, join_loaders_statistics, loader,
-                                          outputer, self.join_loaders.values())
-
-                logging.info("end %s -> %s batch show statistics", batch_index - 1, config_batch_count)
-                self.print_statistics(self.loader.__class__.__name__, loader_statistics,
-                                      self.outputer.__class__.__name__, outputer_statistics,
-                                      len(self.join_loaders), join_loaders_statistics)
-
-            else:
-                datas = self.loader.get()
-                if datas:
-                    self.outputer.store(datas)
-                self.print_statistics(*self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders.values()))
-
-            for name, database in self.databases.items():
-                database.close()
-
-            logging.info("finish %s %s %.2fms", self.json_filename, self.config.get("name"), (time.time() - self.start_time) * 1000)
-        except Exception as e:
-            logging.error("%s\n%s", e, traceback.format_exc())
+        logging.info("%s finish %s %s %.2fms", self.name, self.json_filename, self.config.get("name"), (time.time() - self.start_time) * 1000)
+        return statistics
