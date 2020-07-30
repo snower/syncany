@@ -88,12 +88,12 @@ class TextLineQueryBuilder(QueryBuilder):
         if len(fileinfo) < 2:
             return []
 
-        if fileinfo[1][::] == "&":
+        if fileinfo[1][:1] == "&":
             fileno = int(fileinfo[1][1:])
             if fileno < 0 or fileno in (1, 2):
                 return []
 
-            fp = open(fileno, "r", newline='', encoding="utf-8")
+            fp = open(fileno, "r", newline='', encoding="utf-8", closefd=False)
             if self.db.config["format"] == "csv":
                 rdatas = self.csv_read(fp)
             elif self.db.config["format"] == "json":
@@ -183,7 +183,7 @@ class TextLineInsertBuilder(InsertBuilder):
             fileno = int(fileinfo[1][1:])
             if fileno <= 0:
                 return
-            fp = open(fileno, "w", newline='', encoding="utf-8")
+            fp = open(fileno, "w", newline='', encoding="utf-8", closefd=False)
             if self.db.config["format"] == "csv":
                 self.csv_write(fp)
             elif self.db.config["format"] == "json":

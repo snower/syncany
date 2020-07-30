@@ -253,7 +253,7 @@ class CsvDB(DataBase):
                     self.csvs[name] = CsvFile(name, fileno, [])
                     return self.csvs[name]
 
-                fp = open(fileno, "r", newline='', encoding="utf-8")
+                fp = open(fileno, "r", newline='', encoding="utf-8", closefd=False)
                 self.csvs[name] = self.read_file(name, fileno, fp)
                 return self.csvs[name]
 
@@ -289,7 +289,7 @@ class CsvDB(DataBase):
                 else:
                     if csv_file.filename == 0:
                         continue
-                    fp = open(csv_file.filename, "w", newline='', encoding="utf-8")
+                    fp = open(csv_file.filename, "w", newline='', encoding="utf-8", closefd=False)
                     self.write_file(fp, csv_file)
 
         self.csvs = {}

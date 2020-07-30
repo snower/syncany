@@ -21,22 +21,29 @@ from .loader_creater import LoaderCreater
 from .outputer_creater import OutputerCreater
 
 class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerCreater):
+    DEFAULT_CONFIG = {
+        "name": "",
+        "input": "",
+        "output": "",
+        "querys": {},
+        "databases": [],
+        "defines": {},
+        "variables": {},
+        "schema": {},
+    }
+
     def __init__(self, json_filename):
-        self.json_filename = json_filename
+        self.start_time = time.time()
+        self.config = {k: v for k, v in self.DEFAULT_CONFIG.items()}
+        self.name = ""
+
+        if isinstance(json_filename, dict):
+            self.config.update(json_filename)
+            self.json_filename = "__buildin__::" + json_filename.get("name", str(int(time.time())))
+        else:
+            self.json_filename = json_filename
         super(JsonTasker, self).__init__()
 
-        self.start_time = time.time()
-        self.config = {
-            "name": "",
-            "input": "",
-            "output": "",
-            "querys": {},
-            "databases": [],
-            "defines": {},
-            "variables": {},
-            "schema": {},
-        }
-        self.name = ""
         self.join_loaders = {}
 
         self.valuer_compiler = {
@@ -84,23 +91,30 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         }
 
     def load_json(self, filename):
-        with open(filename, "r") as fp:
-            config = json.load(fp)
-            if "extends" in config:
-                if isinstance(config["extends"], list):
-                    for json_filename in config["extends"]:
-                        self.load_json(json_filename)
-                else:
-                    self.load_json(config["extends"])
-                config.pop("extends")
+        if filename[:13] != "__buildin__::":
+            with open(filename, "r") as fp:
+                config = json.load(fp)
+        else:
+            config, self.config = self.config, {k: v for k, v in self.DEFAULT_CONFIG.items()}
 
-            defines = config.pop("defines") if "defines" in config else {}
-            variables = config.pop("variables") if "variables" in config else {}
+        if "extends" not in config:
             self.config.update(config)
-            if defines and isinstance(defines, dict):
-                self.config["defines"].update(defines)
-            if variables and isinstance(variables, dict):
-                self.config["variables"].update(variables)
+            return
+
+        if isinstance(config["extends"], list):
+            for json_filename in config["extends"]:
+                self.load_json(json_filename)
+        else:
+            self.load_json(config["extends"])
+        config.pop("extends")
+
+        defines = config.pop("defines") if "defines" in config else {}
+        variables = config.pop("variables") if "variables" in config else {}
+        self.config.update(config)
+        if defines and isinstance(defines, dict):
+            self.config["defines"].update(defines)
+        if variables and isinstance(variables, dict):
+            self.config["variables"].update(variables)
 
     def load_databases(self):
         for config in self.config["databases"]:
@@ -210,9 +224,19 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             arguments.append({"name": "@input", "type": str, "default": self.config["input"][2:],
                               "help": "data input (default: %s)" % self.config["input"][2:]})
 
+        if "loader" in self.config and self.config["loader"][:2] == "<<":
+            arguments.append({"name": "@loader", "type": str, "default": self.config["loader"][2:],
+                              "choices": ("db_loader",),
+                              "help": "data loader (default: %s)" % self.config["loader"][2:]})
+
         if "output" in self.config and self.config["output"][:2] == ">>":
             arguments.append({"name": "@output", "type": str, "default": self.config["output"][2:],
                               "help": "data output (default: %s)" % self.config["output"][2:]})
+
+        if "outputer" in self.config and self.config["outputer"][:2] == ">>":
+            arguments.append({"name": "@outputer", "type": str, "default": self.config["outputer"][2:],
+                              "choices": tuple(self.outputer_creater.keys()),
+                              "help": "data outputer (default: %s)" % self.config["outputer"][2:]})
 
         arguments.append({"name": "@batch", "type": int, "default": 0, "help": "per sync batch count (default: 0 all)"})
         return arguments
@@ -441,6 +465,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         input_loader = self.compile_foreign_key(self.config["input"])
         db_name = input_loader["database"].split(".")[0]
 
+        if "loader" in self.config and self.config["loader"][:2] == "<<" and "@loader" in self.arguments:
+            self.config["loader"] = self.arguments["@loader"]
         loader = self.config.get("loader", self.databases[db_name].get_default_loader())
         loader_config = {
             "name": loader,
@@ -488,6 +514,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         output_outputer = self.compile_foreign_key(self.config["output"])
         db_name = output_outputer["database"].split(".")[0]
 
+        if "outputer" in self.config and self.config["outputer"][:2] == ">>" and "@outputer" in self.arguments:
+            self.config["outputer"] = self.arguments["@outputer"]
         outputer = self.config.get("outputer", self.databases[db_name].get_default_outputer())
         outputer_config = {
             "name": outputer,
@@ -561,6 +589,14 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                         total_statistics[key] = value
 
         return loader.__class__.__name__, loader_statistics, outputer.__class__.__name__, outputer_statistics, len(join_loaders), join_loaders_statistics
+
+    def get_dependency(self):
+        if "dependency" not in self.config:
+            return []
+
+        if isinstance(self.config["dependency"], str):
+            return [self.config["dependency"]]
+        return self.config["dependency"]
 
     def load(self):
         super(JsonTasker, self).load()

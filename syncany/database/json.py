@@ -224,7 +224,7 @@ class JsonDB(DataBase):
                     self.jsons[name] = JsonFile(name, fileno, [])
                     return self.jsons[name]
 
-                fp = open(fileno, "r")
+                fp = open(fileno, "r", closefd=False)
                 self.jsons[name] = self.read_file(fp, name, fileno)
                 return self.jsons[name]
 
@@ -260,7 +260,7 @@ class JsonDB(DataBase):
                 else:
                     if json_file.filename == 0:
                         continue
-                    fp = open(json_file.filename, "w")
+                    fp = open(json_file.filename, "w", closefd=False)
                     self.write_file(fp, json_file)
 
         self.jsons = {}
