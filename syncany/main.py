@@ -5,7 +5,7 @@
 import sys
 import argparse
 import traceback
-import logging
+from .logger import get_logger
 from .taskers.json_tasker import JsonTasker
 
 def load_dependency(json_filename, ap, register_aps):
@@ -95,10 +95,10 @@ def main():
             run_dependency(*dependency_tasker)
         tasker.run()
     except KeyboardInterrupt:
-        logging.error("Crtl+C exited")
+        get_logger().error("Crtl+C exited")
         exit(130)
     except Exception as e:
-        logging.error("%s\n%s", e, traceback.format_exc())
+        get_logger().error("%s\n%s", e, traceback.format_exc())
         exit(1)
     exit(0)
 

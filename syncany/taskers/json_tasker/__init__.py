@@ -4,10 +4,10 @@
 
 import time
 import copy
-import logging
 import logging.config
 import json
 from collections import OrderedDict
+from ...logger import get_logger
 from ..tasker import Tasker
 from ...filters import find_filter
 from ...database import find_database
@@ -601,12 +601,12 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
     def print_statistics(self, loader_name, loader_statistics, outputer_name, outputer_statistics, join_loader_count, join_loader_statistics):
         statistics = ["loader_%s: %s" % (key, value) for key, value in loader_statistics.items()]
-        logging.info("%s loader: %s <- %s %s", self.name, loader_name, self.input, " ".join(statistics))
+        get_logger().info("%s loader: %s <- %s %s", self.name, loader_name, self.input, " ".join(statistics))
 
-        logging.info("%s join_count: %s %s", self.name, join_loader_count, " ".join(["join_%s: %s" % (key, value) for key, value in join_loader_statistics.items()]))
+        get_logger().info("%s join_count: %s %s", self.name, join_loader_count, " ".join(["join_%s: %s" % (key, value) for key, value in join_loader_statistics.items()]))
 
         statistics = ["outputer_%s: %s" % (key, value) for key, value in outputer_statistics.items()]
-        logging.info("%s outputer: %s -> %s %s", self.name, outputer_name, self.output, " ".join(statistics))
+        get_logger().info("%s outputer: %s -> %s %s", self.name, outputer_name, self.output, " ".join(statistics))
 
     def merge_statistics(self, loader_statistics, outputer_statistics, join_loaders_statistics, loader, outputer, join_loaders):
         for total_statistics, statisticers in ((loader_statistics, [loader]), (outputer_statistics, [outputer]), (join_loaders_statistics, join_loaders)):
@@ -655,7 +655,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             join_loaders_statistics = {}
 
             cursor_data, ocursor_data = None, None
-            logging.info("%s start %s -> %s batch cursor: %s", self.name, 1, batch_count, "")
+            get_logger().info("%s start %s -> %s batch cursor: %s", self.name, 1, batch_count, "")
 
             while True:
                 batch_index += 1
@@ -670,7 +670,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                         loader.filter_gt(primary_key, cv)
                         vcursor.append("%s -> %s" % (primary_key, cv))
 
-                    logging.info("%s start %s -> %s batch cursor: %s", self.name, batch_index, batch_count, " ".join(vcursor))
+                    get_logger().info("%s start %s -> %s batch cursor: %s", self.name, batch_index, batch_count, " ".join(vcursor))
 
                 loader.filter_limit(batch_count)
                 datas = loader.get()
@@ -689,7 +689,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 self.merge_statistics(loader_statistics, outputer_statistics, join_loaders_statistics, loader,
                                       outputer, self.join_loaders.values())
 
-            logging.info("%s end %s -> %s batch show statistics", self.name, batch_index - 1, batch_count)
+            get_logger().info("%s end %s -> %s batch show statistics", self.name, batch_index - 1, batch_count)
             statistics = (self.loader.__class__.__name__, loader_statistics, self.outputer.__class__.__name__, outputer_statistics,
                           len(self.join_loaders), join_loaders_statistics)
             self.print_statistics(*statistics)
@@ -703,5 +703,5 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         for name, database in self.databases.items():
             database.close()
 
-        logging.info("%s finish %s %s %.2fms", self.name, self.json_filename, self.config.get("name"), (time.time() - self.start_time) * 1000)
+        get_logger().info("%s finish %s %s %.2fms", self.name, self.json_filename, self.config.get("name"), (time.time() - self.start_time) * 1000)
         return statistics
