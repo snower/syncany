@@ -3,6 +3,7 @@
 # create by: snower
 
 import time
+import copy
 import logging
 import logging.config
 import json
@@ -19,7 +20,7 @@ from .valuer_compiler import ValuerCompiler
 from .valuer_creater import ValuerCreater
 from .loader_creater import LoaderCreater
 from .outputer_creater import OutputerCreater
-from ...errors import LoaderUnknownException, OutputerUnknownException, ValuerUnknownException
+from ...errors import LoaderUnknownException, OutputerUnknownException, ValuerUnknownException, DatabaseUnknownException
 
 class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerCreater):
     DEFAULT_CONFIG = {
@@ -35,11 +36,11 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
     def __init__(self, json_filename):
         self.start_time = time.time()
-        self.config = {k: v for k, v in self.DEFAULT_CONFIG.items()}
+        self.config = copy.deepcopy(self.DEFAULT_CONFIG)
         self.name = ""
 
         if isinstance(json_filename, dict):
-            self.config.update(json_filename)
+            self.config.update(copy.deepcopy(json_filename))
             self.json_filename = "__inline__::" + json_filename.get("name", str(int(time.time())))
         else:
             self.json_filename = json_filename
@@ -93,39 +94,52 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         }
 
     def load_json(self, filename):
-        if filename[:12] != "__inline__::":
+        if filename[:12] == "__inline__::":
+            config, self.config = self.config, copy.deepcopy(self.DEFAULT_CONFIG)
+            for k, v in self.DEFAULT_CONFIG.items():
+                if k in config and not config[k]:
+                    config.pop(k)
+        else:
             with open(filename, "r") as fp:
                 config = json.load(fp)
-        else:
-            config, self.config = self.config, {k: v for k, v in self.DEFAULT_CONFIG.items()}
 
-        if "extends" not in config:
-            self.config.update(config)
-            return
-
-        if isinstance(config["extends"], list):
-            for json_filename in config["extends"]:
+        extends = config.pop("extends") if "extends" in config else []
+        if isinstance(extends, (tuple, set, list)):
+            for json_filename in extends:
                 self.load_json(json_filename)
         else:
-            self.load_json(config["extends"])
-        config.pop("extends")
+            self.load_json(extends)
 
-        defines = config.pop("defines") if "defines" in config else {}
-        variables = config.pop("variables") if "variables" in config else {}
-        self.config.update(config)
-        if defines and isinstance(defines, dict):
-            self.config["defines"].update(defines)
-        if variables and isinstance(variables, dict):
-            self.config["variables"].update(variables)
+        for k, v in config.items():
+            if k in ("defines", "variables", "logger"):
+                if not isinstance(v, dict) or not isinstance(self.config.get(k, {}), dict):
+                    continue
+
+                if k not in self.config:
+                    self.config[k] = v
+                else:
+                    self.config[k].update(v)
+            elif k in ("databases",):
+                if not isinstance(v, list) or not isinstance(self.config.get(k, []), list):
+                    continue
+
+                if k not in self.config:
+                    self.config[k] = v
+                else:
+                    self.config[k].extend(v)
+            else:
+                self.config[k] = v
 
     def load_databases(self):
         for config in self.config["databases"]:
             database_cls = find_database(config.pop("driver"))
+            if not database_cls:
+                raise DatabaseUnknownException(config["name"] + " is unknown")
             self.databases[config["name"]] = database_cls(config)
 
     def compile_logging(self):
-        if "logging" in self.config and isinstance(self.config["logging"], dict):
-            logging.config.dictConfig(self.config["logging"])
+        if "logger" in self.config and isinstance(self.config["logger"], dict):
+            logging.config.dictConfig(self.config["logger"])
 
     def compile_filter_calculater(self, calculater):
         keys = calculater[0][1:].split("|")
@@ -289,7 +303,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             if not foreign_key or foreign_key[0][0] != "&":
                 return None
             foreign_key, foreign_filter_configs = foreign_key[0], (foreign_key[1] if len(foreign_key) >= 2 else {})
-        elif foreign_key[0] != "&":
+        elif not foreign_key or foreign_key[0] != "&":
             return None
         else:
             foreign_filter_configs = {}
@@ -469,6 +483,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             if len(input_info) == 2:
                 self.config["input"], self.config["loader"] = input_info[0].strip(), ("db_" + input_info[1] + "_loader").strip()
         input_loader = self.compile_foreign_key(self.config["input"])
+        if not input_loader:
+            raise LoaderUnknownException(self.config["input"] + "is not define")
         db_name = input_loader["database"].split(".")[0]
 
         if "loader" in self.config and self.config["loader"][:2] == "<<" and "@loader" in self.arguments:
@@ -525,6 +541,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     output_info[1] = short_names[output_info[1]]
                 self.config["output"], self.config["outputer"] = output_info[0].strip(), ("db_" + output_info[1] + "_outputer").strip()
         output_outputer = self.compile_foreign_key(self.config["output"])
+        if not output_outputer:
+            raise OutputerUnknownException(self.config["output"] + "is not define")
         db_name = output_outputer["database"].split(".")[0]
 
         if "outputer" in self.config and self.config["outputer"][:2] == ">>" and "@outputer" in self.arguments:
@@ -607,9 +625,9 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         if "dependency" not in self.config:
             return []
 
-        if isinstance(self.config["dependency"], str):
-            return [self.config["dependency"]]
-        return self.config["dependency"]
+        if isinstance(self.config["dependency"], (tuple, set, list)):
+            return self.config["dependency"]
+        return [self.config["dependency"]]
 
     def load(self):
         super(JsonTasker, self).load()
