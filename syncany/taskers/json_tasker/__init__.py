@@ -93,7 +93,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         }
 
     def load_json(self, filename):
-        if filename[:13] != "__inline__::":
+        if filename[:12] != "__inline__::":
             with open(filename, "r") as fp:
                 config = json.load(fp)
         else:
