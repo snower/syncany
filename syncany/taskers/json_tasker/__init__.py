@@ -19,6 +19,7 @@ from .valuer_compiler import ValuerCompiler
 from .valuer_creater import ValuerCreater
 from .loader_creater import LoaderCreater
 from .outputer_creater import OutputerCreater
+from ...errors import LoaderUnknownException, OutputerUnknownException, ValuerUnknownException
 
 class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerCreater):
     DEFAULT_CONFIG = {
@@ -88,6 +89,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "db_update_delete_insert_outputer": self.create_db_update_delete_insert_outputer,
             "db_update_insert_outputer": self.create_db_update_insert_outputer,
             "db_delete_insert_outputer": self.create_db_delete_insert_outputer,
+            "db_insert_outputer": self.create_db_insert_outputer,
         }
 
     def load_json(self, filename):
@@ -422,12 +424,12 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
     def create_valuer(self, config, **kwargs):
         if "name" not in config or not config["name"]:
-            return None
+            raise ValuerUnknownException(config["name"] + " is unknown")
 
         if config["name"] not in self.valuer_creater:
             valuer_cls = find_valuer(config["name"])
             if not valuer_cls:
-                return
+                raise ValuerUnknownException(config["name"] + " is unknown")
             config = {key: value for key, value in config.items() if key != "name"}
             return valuer_cls(**config)
 
@@ -435,12 +437,12 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
     def create_loader(self, config, primary_keys):
         if "name" not in config or not config["name"]:
-            return None
+            raise LoaderUnknownException(config["name"] + " is unknown")
 
         if config["name"] not in self.loader_creater:
             loader_cls = find_loader(config["name"])
             if not loader_cls:
-                return None
+                raise LoaderUnknownException(config["name"] + " is unknown")
             config = {key: value for key, value in config.items() if key != "name"}
             return loader_cls(**config)
 
@@ -448,12 +450,12 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
     def create_outputer(self, config, primary_keys):
         if "name" not in config or not config["name"]:
-            return None
+            raise OutputerUnknownException(config["name"] + " is unknown")
 
         if config["name"] not in self.outputer_creater:
             outputer_cls = find_outputer(config["name"])
             if not outputer_cls:
-                return None
+                raise OutputerUnknownException(config["name"] + " is unknown")
             config = {key: value for key, value in config.items() if key != "name"}
             return outputer_cls(**config)
 
@@ -462,6 +464,10 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
     def compile_loader(self):
         if self.config["input"][:2] == "<<":
             self.config["input"] = self.arguments.get("@input", self.config["input"][2:])
+        if " use " in self.config["input"]:
+            input_info = self.config["input"].split(" use ")
+            if len(input_info) == 2:
+                self.config["input"], self.config["loader"] = input_info[0].strip(), ("db_" + input_info[1] + "_loader").strip()
         input_loader = self.compile_foreign_key(self.config["input"])
         db_name = input_loader["database"].split(".")[0]
 
@@ -511,6 +517,13 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
     def compile_outputer(self):
         if self.config["output"][:2] == ">>":
             self.config["output"] = self.arguments.get("@output", self.config["output"][2:])
+        if " use " in self.config["output"]:
+            output_info = self.config["output"].split(" use ")
+            if len(output_info) == 2:
+                short_names = {"I": "insert", "UI": "update_insert", "UDI": "update_delete_insert", "DI": "delete_insert"}
+                if output_info[1] in short_names:
+                    output_info[1] = short_names[output_info[1]]
+                self.config["output"], self.config["outputer"] = output_info[0].strip(), ("db_" + output_info[1] + "_outputer").strip()
         output_outputer = self.compile_foreign_key(self.config["output"])
         db_name = output_outputer["database"].split(".")[0]
 

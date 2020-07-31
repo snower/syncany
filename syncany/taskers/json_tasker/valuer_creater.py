@@ -6,6 +6,7 @@ from ...valuers import find_valuer
 from ...valuers.valuer import LoadAllFieldsException
 from ...filters import find_filter
 from ...calculaters import find_calculater
+from ...errors import ValuerUnknownException
 
 class LoaderJoinWarp(object):
     __loader = None
@@ -46,7 +47,7 @@ class ValuerCreater(object):
     def create_const_valuer(self, config, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
-            return
+            raise ValuerUnknownException(config["name"] + " is unknown")
         filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
         return valuer_cls(config["value"], "", filter)
@@ -54,7 +55,7 @@ class ValuerCreater(object):
     def create_db_valuer(self, config, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
-            return
+            raise ValuerUnknownException(config["name"] + " is unknown")
         filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
         return valuer_cls(config["key"], filter)
@@ -62,7 +63,7 @@ class ValuerCreater(object):
     def create_inherit_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
-            return
+            raise ValuerUnknownException(config["name"] + " is unknown")
         filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
         value_valuer = self.create_valuer(config["value_valuer"], inherit_valuers=inherit_valuers, **kwargs)
@@ -77,7 +78,7 @@ class ValuerCreater(object):
     def create_db_join_valuer(self, config, inherit_valuers=None, join_loaders=None, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
-            return
+            raise ValuerUnknownException(config["name"] + " is unknown")
         if join_loaders is not None:
             if config["foreign_filters"]:
                 loader_cache_foreign_filters = "&".join(sorted(["%s %s %s" % (name, exp, str(value)) for name, exp, value in config["foreign_filters"]]))
@@ -130,7 +131,7 @@ class ValuerCreater(object):
     def create_case_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
-            return
+            raise ValuerUnknownException(config["name"] + " is unknown")
 
         if "value_valuer" in config and config["value_valuer"]:
             value_valuer = self.create_valuer(config["value_valuer"], inherit_valuers=inherit_valuers, **kwargs)
@@ -160,7 +161,7 @@ class ValuerCreater(object):
     def create_calculate_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
-            return
+            raise ValuerUnknownException(config["name"] + " is unknown")
 
         args_valuers = []
         for valuer_config in config["args_valuers"]:
@@ -187,7 +188,7 @@ class ValuerCreater(object):
     def create_schema_valuer(self, config, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
-            return
+            raise ValuerUnknownException(config["name"] + " is unknown")
         schema_valuers = {}
         for key, valuer_config in config["schema_valuers"].items():
             schema_valuers[key] = self.create_valuer(valuer_config, **kwargs)
@@ -196,7 +197,7 @@ class ValuerCreater(object):
     def create_make_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
-            return
+            raise ValuerUnknownException(config["name"] + " is unknown")
         if isinstance(config["valuer"], dict):
             if "name" in config["valuer"] and isinstance(config["valuer"]["name"], str):
                 value_valuer = self.create_valuer(config["valuer"], inherit_valuers=inherit_valuers, **kwargs)
@@ -231,7 +232,7 @@ class ValuerCreater(object):
     def create_let_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
-            return
+            raise ValuerUnknownException(config["name"] + " is unknown")
         key_valuer = self.create_valuer(config["key_valuer"], inherit_valuers=inherit_valuers, **kwargs) \
             if "key_valuer" in config and config["key_valuer"] else None
 
@@ -254,7 +255,7 @@ class ValuerCreater(object):
     def create_yield_valuer(self, config, inherit_valuers=None, yield_valuers=None, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
-            return
+            raise ValuerUnknownException(config["name"] + " is unknown")
         value_valuer = self.create_valuer(config["value_valuer"], inherit_valuers=inherit_valuers,
                                           yield_valuers=yield_valuers, **kwargs) \
             if "value_valuer" in config and config["value_valuer"] else None
@@ -282,7 +283,7 @@ class ValuerCreater(object):
     def create_aggregate_valuer(self, config, schema_field_name=None, inherit_valuers=None, aggregate_valuers=None, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
-            return
+            raise ValuerUnknownException(config["name"] + " is unknown")
 
         key_child_aggregate_valuers = []
         key_valuer = self.create_valuer(config["key_valuer"], schema_field_name=schema_field_name,
@@ -318,7 +319,7 @@ class ValuerCreater(object):
     def create_call_valuer(self, config, inherit_valuers=None, define_valuers=None, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
-            return
+            raise ValuerUnknownException(config["name"] + " is unknown")
 
         calculate_inherit_valuers = []
         calculate_valuer = self.create_valuer(config["calculate_valuer"], inherit_valuers=calculate_inherit_valuers,
@@ -352,7 +353,7 @@ class ValuerCreater(object):
     def create_assign_valuer(self, config, inherit_valuers=None, global_variables=None, **kwargs):
         valuer_cls = find_valuer(config["name"])
         if not valuer_cls:
-            return
+            raise ValuerUnknownException(config["name"] + " is unknown")
 
         calculate_valuer = self.create_valuer(config["calculate_valuer"], inherit_valuers=inherit_valuers,
                                               global_variables=global_variables, **kwargs) \
