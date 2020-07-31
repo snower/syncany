@@ -40,7 +40,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         if isinstance(json_filename, dict):
             self.config.update(json_filename)
-            self.json_filename = "__buildin__::" + json_filename.get("name", str(int(time.time())))
+            self.json_filename = "__inline__::" + json_filename.get("name", str(int(time.time())))
         else:
             self.json_filename = json_filename
         super(JsonTasker, self).__init__()
@@ -93,7 +93,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         }
 
     def load_json(self, filename):
-        if filename[:13] != "__buildin__::":
+        if filename[:13] != "__inline__::":
             with open(filename, "r") as fp:
                 config = json.load(fp)
         else:
