@@ -2,7 +2,9 @@
 # 18/8/6
 # create by: snower
 
-class LoadAllFieldsException(Exception):
+from ..errors import SyncanyException
+
+class LoadAllFieldsException(SyncanyException):
     pass
 
 class Valuer(object):
