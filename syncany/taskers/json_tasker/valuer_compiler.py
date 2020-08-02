@@ -239,8 +239,28 @@ class ValuerCompiler(object):
             "return_valuer": return_valuer,
         }
 
-    def compile_aggregate_valuer(self, key="", filter=None, key_arg=None, calculate_arg=None):
+    def compile_aggregate_valuer(self, key="", filter=None, key_arg=None, calculate_arg=None, pipeline_args=None):
         key_valuer = self.compile_schema_field(key_arg)
+
+        pipeline_valuers = []
+        if pipeline_args:
+            for pipeline_arg in pipeline_args:
+                if isinstance(pipeline_arg, dict):
+                    for pipeline_name, pipeline_value in pipeline_arg.items():
+                        pipeline_valuers.append((pipeline_name, self.compile_schema_field(pipeline_value)))
+                elif isinstance(pipeline_arg, (list, tuple, set)):
+                    if pipeline_arg and not isinstance(pipeline_arg[0], dict):
+                        calculate_arg = pipeline_arg
+                        continue
+
+                    for p in pipeline_arg:
+                        if not isinstance(p, dict):
+                            continue
+                        for pipeline_name, pipeline_value in p.items():
+                            pipeline_valuers.append((pipeline_name, self.compile_schema_field(pipeline_value)))
+                else:
+                    calculate_arg = pipeline_arg
+
         if isinstance(calculate_arg, str) and calculate_arg[:1] == ":":
             calculate_arg = calculate_arg[1:]
         elif isinstance(calculate_arg, (list, tuple, set)) and calculate_arg and isinstance(calculate_arg[0], str):
@@ -257,6 +277,7 @@ class ValuerCompiler(object):
             "filter": filter,
             "key_valuer": key_valuer,
             "calculate_valuer": calculate_valuer,
+            "pipeline_valuers": pipeline_valuers,
         }
 
     def compile_call_valuer(self, key="", filter=None, return_arg=None, calculate_arg=None):

@@ -299,6 +299,15 @@ class ValuerCreater(object):
                                               inherit_valuers=calculate_inherit_valuers,
                                               aggregate_valuers=calculate_child_aggregate_valuers, **kwargs) \
             if "calculate_valuer" in config and config["calculate_valuer"] else None
+
+        pipeline_valuers = []
+        if "pipeline_valuers" in config and config["pipeline_valuers"]:
+            for pipeline_name, pipeline_valuer in config["pipeline_valuers"]:
+                pipeline_valuer = self.create_valuer(pipeline_valuer, schema_field_name=schema_field_name,
+                                   inherit_valuers=calculate_inherit_valuers,
+                                   aggregate_valuers=calculate_child_aggregate_valuers, **kwargs)
+                pipeline_valuers.append((pipeline_name, pipeline_valuer))
+
         if calculate_child_aggregate_valuers:
             raise SyntaxError("aggregate conflict")
 
@@ -311,7 +320,7 @@ class ValuerCreater(object):
                 inherit_valuers.append(inherit_valuer)
 
         manager = aggregate_valuers[0].get_manager() if aggregate_valuers else None
-        aggregate_valuer = valuer_cls(key_valuer, calculate_valuer, current_inherit_valuers, manager, schema_field_name, None)
+        aggregate_valuer = valuer_cls(key_valuer, calculate_valuer, pipeline_valuers, current_inherit_valuers, manager, schema_field_name, None)
         if aggregate_valuers is not None:
             aggregate_valuers.append(aggregate_valuer)
         return aggregate_valuer
