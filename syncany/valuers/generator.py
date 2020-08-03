@@ -98,12 +98,12 @@ class YieldValuer(Valuer):
                 self.iter_datas = data if isinstance(data, (list, tuple, set)) else [data]
 
         def gen_iter():
-            yield None
+            gdata = yield None
             for data in self.iter_datas:
                 if isinstance(data, types.GeneratorType):
                     while True:
                         try:
-                            child_data = data.send(self)
+                            child_data = data.send(gdata)
                             child_data = self.filter_data(child_data)
                             yield child_data
                         except StopIteration:
