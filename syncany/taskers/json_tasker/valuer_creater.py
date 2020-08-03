@@ -110,21 +110,22 @@ class ValuerCreater(object):
         if config["foreign_key"] not in loader.schema:
             loader.add_valuer(config["foreign_key"], self.create_valuer(self.compile_db_valuer(config["foreign_key"], None)))
 
-        current_inherit_valuers = []
         try:
             for key in return_valuer.get_fields():
                 if key not in loader.schema:
                     loader.add_valuer(key, self.create_valuer(self.compile_db_valuer(key, None)))
-
-            for inherit_valuer in return_inherit_valuers:
-                inherit_valuer["reflen"] -= 1
-                if inherit_valuer["reflen"] == 0:
-                    current_inherit_valuers.append(inherit_valuer["valuer"])
-                elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
-                    inherit_valuers.append(inherit_valuer)
         except LoadAllFieldsException:
             loader.schema.clear()
             loader.add_key_matcher(".*", self.create_valuer(self.compile_db_valuer("", None)))
+
+        current_inherit_valuers = []
+        for inherit_valuer in return_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
         return valuer_cls(loader, config["foreign_key"], config["foreign_filters"], args_valuer, return_valuer,
                           current_inherit_valuers, config["key"], filter)
 
