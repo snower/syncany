@@ -21,13 +21,19 @@ class Valuer(object):
 
     def fill(self, data):
         if data is None:
+            if self.filter:
+                self.value = self.filter.filter(self.value)
             return self
 
         if not self.key:
+            if self.filter:
+                self.value = self.filter.filter(self.value)
             return self
 
         if self.key == "*":
             self.value = data
+            if self.filter:
+                self.value = self.filter.filter(self.value)
             return self
 
         if self.key not in data:
