@@ -157,7 +157,10 @@ class ValuerCompiler(object):
             valuer = {key: (self.compile_schema_field(key), self.compile_schema_field(value))
                       for key, value in valuer.items()}
         elif isinstance(valuer, (list, tuple, set)):
-            valuer = [self.compile_schema_field(value) for value in valuer]
+            if len(valuer) == 1:
+                valuer = self.compile_schema_field(valuer[0])
+            else:
+                valuer = [self.compile_schema_field(value) for value in valuer]
         else:
             valuer = self.compile_schema_field(valuer)
 
