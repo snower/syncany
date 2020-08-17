@@ -470,10 +470,10 @@ class IndexCalculater(Calculater):
                     return None
 
                 if self.args[1][self.args[2]] == self.args[0]:
-                    return self.args[1]
+                    return self.args[1][self.args[2]]
 
-            if self.args[1] == self.args[0]:
-                return self.args[1]
+            if self.args[0] in self.args[1]:
+                return self.args[1][self.args[0]]
 
         return None
 
