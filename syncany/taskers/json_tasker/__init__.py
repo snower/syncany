@@ -490,7 +490,10 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         if "loader" in self.config and self.config["loader"][:2] == "<<" and "@loader" in self.arguments:
             self.config["loader"] = self.arguments["@loader"]
-        loader = self.config.get("loader", self.databases[db_name].get_default_loader())
+        try:
+            loader = self.config.get("loader", self.databases[db_name].get_default_loader())
+        except KeyError:
+            raise DatabaseUnknownException(db_name + " is unknown")
         loader_config = {
             "name": loader,
             "database": input_loader["database"],
@@ -548,7 +551,10 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         if "outputer" in self.config and self.config["outputer"][:2] == ">>" and "@outputer" in self.arguments:
             self.config["outputer"] = self.arguments["@outputer"]
-        outputer = self.config.get("outputer", self.databases[db_name].get_default_outputer())
+        try:
+            outputer = self.config.get("outputer", self.databases[db_name].get_default_outputer())
+        except KeyError:
+            raise DatabaseUnknownException(db_name + " is unknown")
         outputer_config = {
             "name": outputer,
             "database": output_outputer["database"],
