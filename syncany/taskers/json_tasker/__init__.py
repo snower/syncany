@@ -119,14 +119,19 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     self.config[k] = v
                 else:
                     self.config[k].update(v)
-            elif k in ("databases",):
+            elif k == "databases":
                 if not isinstance(v, list) or not isinstance(self.config.get(k, []), list):
                     continue
 
                 if k not in self.config:
                     self.config[k] = v
                 else:
-                    self.config[k].extend(v)
+                    databases = {database["name"]: database for database in self.config[k]}
+                    for database in v:
+                        if database["name"] in databases:
+                            databases[database["name"]].update(database)
+                        else:
+                            self.config[k].append(database)
             else:
                 self.config[k] = v
 
