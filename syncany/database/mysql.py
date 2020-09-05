@@ -94,19 +94,27 @@ class MysqlQueryBuilder(QueryBuilder):
             return '(%s) `virtual_%s`' % (sql, self.table_name), virtual_table.get("args", [])
         return ("`%s`.`%s`" % (self.db.db_name, self.table_name)), []
 
-    def format_query(self, virtual_args):
+    def format_query(self, db_name, virtual_args):
         if not virtual_args:
-            return (" AND ".join(self.query) if self.query else ""), self.query_values
+            return db_name, (" AND ".join(self.query) if self.query else ""), self.query_values
 
         query, query_values, virtual_query, virtual_values = [], [], {}, []
         for arg in virtual_args:
-            virtual_q = "`" + arg[0] + "`" + arg[1] + "%s"
+            if isinstance(arg, str):
+                virtual_q = "`" + arg[0] + "`=%s"
+            else:
+                virtual_q = "`" + arg[0] + "`" + arg[1] + "%s"
             for i in range(len(self.query)):
                 if self.query[i] == virtual_q:
                     virtual_args[self.query[i]] = self.query_values[i]
-                    virtual_values.append(self.query_values[i])
+                    if isinstance(arg, str):
+                        db_name = db_name.replace('`' + arg + '`', '`' + self.query_values[i] + '`')
+                    else:
+                        virtual_values.append(self.query_values[i])
                     break
             if virtual_q in virtual_args:
+                continue
+            if isinstance(arg, str):
                 continue
             virtual_values.append(arg[2] if len(arg) >= 3 else None)
 
@@ -115,11 +123,11 @@ class MysqlQueryBuilder(QueryBuilder):
                 continue
             query.append(self.query[i])
             query_values.append(self.query_values[i])
-        return (" AND ".join(query) if query else ""), (virtual_values + query_values)
+        return db_name, (" AND ".join(query) if query else ""), (virtual_values + query_values)
 
     def commit(self):
         db_name, virtual_args = self.format_table()
-        query, query_values = self.format_query(virtual_args)
+        db_name, query, query_values = self.format_query(db_name, virtual_args)
 
         if self.fields:
             fields = []
