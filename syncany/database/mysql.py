@@ -2,6 +2,7 @@
 # 18/8/6
 # create by: snower
 
+import re
 try:
     import pymysql
     from pymysql.cursors import DictCursor
@@ -75,15 +76,46 @@ class MysqlQueryBuilder(QueryBuilder):
                 return virtual_fields[field]
         return field
 
-    def map_raw_sql(self):
-        if self.table_name in self.db.tables:
-            raw_sql = self.db.tables[self.table_name].get("raw_query", "")
-            if raw_sql:
-                return '(%s) `%s`' % (raw_sql, self.table_name), list(self.db.tables[self.table_name].get("virtual_args", "") or [])
+    def format_table(self):
+        for virtual_table in self.db.virtual_tables:
+            if virtual_table.get("name_match"):
+                name_match = re.compile(virtual_table.get("name_match"))
+                if not name_match.match(self.table_name):
+                    continue
+                sql = virtual_table['sql'].replace('`%s`' % virtual_table["name"], '`%s`' % self.table_name)
+            elif virtual_table["name"] != self.table_name:
+                continue
+            else:
+                sql = virtual_table['sql']
+            return '(%s) `virtual_%s`' % (sql, self.table_name), virtual_table.get("args", [])
         return ("`%s`.`%s`" % (self.db.db_name, self.table_name)), []
 
+    def format_query(self, virtual_args):
+        if not virtual_args:
+            return (" AND ".join(self.query) if self.query else ""), self.query_values
+
+        query, query_values, virtual_query, virtual_values = [], [], {}, []
+        for arg in virtual_args:
+            virtual_q = "`" + arg[0] + "`" + arg[1] + "%s"
+            for i in range(len(self.query)):
+                if self.query[i] == virtual_q:
+                    virtual_args[self.query[i]] = self.query_values[i]
+                    virtual_values.append(self.query_values[i])
+                    break
+            if virtual_q in virtual_args:
+                continue
+            virtual_values.append(arg[2] if len(arg) >= 3 else None)
+
+        for i in range(len(self.query)):
+            if self.query[i] in virtual_query:
+                continue
+            query.append(self.query[i])
+            query_values.append(self.query_values[i])
+        return (" AND ".join(query) if query else ""), (virtual_values + query_values)
+
     def commit(self):
-        db_name, raw_values = self.map_raw_sql()
+        db_name, virtual_args = self.format_table()
+        query, query_values = self.format_query(virtual_args)
 
         if self.fields:
             fields = []
@@ -97,14 +129,14 @@ class MysqlQueryBuilder(QueryBuilder):
         else:
             fields = "*"
 
-        where = (" WHERE" + " AND ".join(self.query)) if self.query else ""
+        where = (" WHERE" + query) if query else ""
         order_by = (" ORDER BY " + ",".join(self.orders)) if self.orders else ""
         limit = (" LIMIT %s%s" % (("%s," % self.limit[0]) if self.limit[0] else "", self.limit[1])) if self.limit else ""
         self.sql = "SELECT %s FROM %s%s%s%s" % (fields, db_name, where, order_by, limit)
         connection = self.db.ensure_connection()
         cursor = connection.cursor(DictCursor)
         try:
-            cursor.execute(self.sql, raw_values + self.query_values)
+            cursor.execute(self.sql, query_values)
             datas = cursor.fetchall()
         finally:
             cursor.close()
@@ -264,7 +296,16 @@ class MysqlDB(DataBase):
             # {
             #     "name": "",
             #     "virtual_fields": {}
-            #     "raw_sql": "",
+            # }
+        ],
+        "virtual_tables": [
+            # {
+            #     "name": "",
+            #     "name_match": "",
+            #     "sql": "",
+            #     "args": [],
+            #     "schema": {
+            #     }
             # }
         ],
     }
@@ -276,6 +317,7 @@ class MysqlDB(DataBase):
 
         self.db_name = all_config["db"] if "db" in all_config else all_config["name"]
         self.tables = {table["name"]: table for table in all_config.pop("tables")} if "tables" in all_config else {}
+        self.virtual_tables = all_config.pop("virtual_tables") if "virtual_tables" in all_config else []
 
         super(MysqlDB, self).__init__(all_config)
 
