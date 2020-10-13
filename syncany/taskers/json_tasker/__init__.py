@@ -241,23 +241,35 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     filter_cls = find_filter('str')
                 arguments.append({"name": filter["name"], "type": filter_cls(filter.get("type_args")), "help": "%s" % filter["name"]})
 
-        if "input" in self.config and self.config["input"][:2] == "<<":
-            arguments.append({"name": "@input", "type": str, "default": self.config["input"][2:],
-                              "help": "data input (default: %s)" % self.config["input"][2:]})
+        if "input" in self.config:
+            if isinstance(self.config["input"], (list, tuple)) and self.config["input"] and self.config["input"][0][0] == "@":
+                self.config["input"] = self.compile_filter_calculater(self.config["input"])
+            if self.config["input"][:2] == "<<":
+                arguments.append({"name": "@input", "type": str, "default": self.config["input"][2:],
+                                  "help": "data input (default: %s)" % self.config["input"][2:]})
 
-        if "loader" in self.config and self.config["loader"][:2] == "<<":
-            arguments.append({"name": "@loader", "type": str, "default": self.config["loader"][2:],
-                              "choices": ("db_loader",),
-                              "help": "data loader (default: %s)" % self.config["loader"][2:]})
+        if "loader" in self.config:
+            if isinstance(self.config["loader"], (list, tuple)) and self.config["loader"] and self.config["loader"][0][0] == "@":
+                self.config["loader"] = self.compile_filter_calculater(self.config["loader"])
+            if self.config["loader"][:2] == "<<":
+                arguments.append({"name": "@loader", "type": str, "default": self.config["loader"][2:],
+                                  "choices": ("db_loader",),
+                                  "help": "data loader (default: %s)" % self.config["loader"][2:]})
 
-        if "output" in self.config and self.config["output"][:2] == ">>":
-            arguments.append({"name": "@output", "type": str, "default": self.config["output"][2:],
-                              "help": "data output (default: %s)" % self.config["output"][2:]})
+        if "output" in self.config:
+            if isinstance(self.config["output"], (list, tuple)) and self.config["output"] and self.config["output"][0][0] == "@":
+                self.config["output"] = self.compile_filter_calculater(self.config["output"])
+            if self.config["output"][:2] == ">>":
+                arguments.append({"name": "@output", "type": str, "default": self.config["output"][2:],
+                                  "help": "data output (default: %s)" % self.config["output"][2:]})
 
-        if "outputer" in self.config and self.config["outputer"][:2] == ">>":
-            arguments.append({"name": "@outputer", "type": str, "default": self.config["outputer"][2:],
-                              "choices": tuple(self.outputer_creater.keys()),
-                              "help": "data outputer (default: %s)" % self.config["outputer"][2:]})
+        if "outputer" in self.config:
+            if isinstance(self.config["outputer"], (list, tuple)) and self.config["outputer"] and self.config["outputer"][0][0] == "@":
+                self.config["outputer"] = self.compile_filter_calculater(self.config["outputer"])
+            if self.config["outputer"][:2] == ">>":
+                arguments.append({"name": "@outputer", "type": str, "default": self.config["outputer"][2:],
+                                  "choices": tuple(self.outputer_creater.keys()),
+                                  "help": "data outputer (default: %s)" % self.config["outputer"][2:]})
 
         arguments.append({"name": "@batch", "type": int, "default": 0, "help": "per sync batch count (default: 0 all)"})
         return arguments
