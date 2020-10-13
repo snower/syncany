@@ -106,13 +106,13 @@ class MysqlQueryBuilder(QueryBuilder):
                 virtual_q = "`" + arg[0] + "`" + arg[1] + "%s"
             for i in range(len(self.query)):
                 if self.query[i] == virtual_q:
-                    virtual_args[self.query[i]] = self.query_values[i]
+                    virtual_query[self.query[i]] = self.query_values[i]
                     if isinstance(arg, str):
                         db_name = db_name.replace('`' + arg + '`', '`' + self.query_values[i] + '`')
                     else:
                         virtual_values.append(self.query_values[i])
                     break
-            if virtual_q in virtual_args:
+            if virtual_q in virtual_query:
                 continue
             if isinstance(arg, str):
                 continue
