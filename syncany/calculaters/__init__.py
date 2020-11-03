@@ -45,3 +45,9 @@ CALCULATERS = {
 
 def find_calculater(name):
     return CALCULATERS.get(name.split("::")[0])
+
+def register_calculater(name, calculater):
+    if not issubclass(calculater, Calculater):
+        raise TypeError("is not Calculater")
+    CALCULATERS[name] = calculater
+    return calculater

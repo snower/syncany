@@ -14,7 +14,8 @@ from ...database import find_database
 from ...loaders import find_loader
 from ...valuers import find_valuer
 from ...outputers import find_outputer
-from ...calculaters import find_calculater
+from ...calculaters import find_calculater, register_calculater
+from ...calculaters.import_calculater import create_import_calculater
 from ...utils import get_expression_name
 from .valuer_compiler import ValuerCompiler
 from .valuer_creater import ValuerCreater
@@ -29,6 +30,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         "output": "",
         "querys": {},
         "databases": [],
+        "imports": {},
         "defines": {},
         "variables": {},
         "schema": {},
@@ -111,7 +113,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             self.load_json(extends)
 
         for k, v in config.items():
-            if k in ("defines", "variables", "logger"):
+            if k in ("imports", "defines", "variables", "logger"):
                 if not isinstance(v, dict) or not isinstance(self.config.get(k, {}), dict):
                     continue
 
@@ -141,6 +143,12 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             if not database_cls:
                 raise DatabaseUnknownException(config["name"] + " is unknown")
             self.databases[config["name"]] = database_cls(config)
+
+    def load_imports(self):
+        for name, package in self.config["imports"].items():
+            module = __import__(package, {}, {})
+            if not find_calculater(name):
+                register_calculater(name, create_import_calculater(name, module))
 
     def compile_logging(self):
         if "logger" in self.config and isinstance(self.config["logger"], dict):
@@ -658,6 +666,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         self.load_json(self.json_filename)
         self.name = self.config["name"]
         self.compile_logging()
+        self.load_imports()
         return self.compile_filters()
 
     def compile(self, arguments):
