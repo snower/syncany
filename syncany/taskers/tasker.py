@@ -10,6 +10,7 @@ from ..valuers import find_valuer, Valuer
 from ..filters import find_filter, Filter
 from ..database import find_database, DataBase
 from ..calculaters import find_calculater, Calculater
+from ..hook import Hooker
 
 _thread_local = threading.local()
 
@@ -33,6 +34,7 @@ class Tasker(object):
         self.schema = OrderedDict()
         self.loader = None
         self.outputer = None
+        self.hookers = set([])
 
     def find_loader_driver(self, name):
         if name in self.extensions["loaders"]:
@@ -101,6 +103,11 @@ class Tasker(object):
         self.extensions["calculaters"][name] = calculater
         return calculater
 
+    def add_hooker(self, hooker):
+        if not isinstance(hooker, Hooker):
+            raise TypeError("is not Hooker instance")
+        self.hookers.add(hooker)
+
     def get_loader(self):
         pass
 
@@ -112,6 +119,24 @@ class Tasker(object):
 
     def run(self):
         pass
+
+    def decorator_compiled(self, func):
+        hooker = Hooker()
+        hooker.compiled = func
+        self.add_hooker(hooker)
+        return func
+
+    def decorator_loaded(self, func):
+        hooker = Hooker()
+        hooker.loaded = func
+        self.add_hooker(hooker)
+        return func
+
+    def decorator_outputed(self, func):
+        hooker = Hooker()
+        hooker.outputed = func
+        self.add_hooker(hooker)
+        return func
 
 def current_tasker():
     try:

@@ -672,6 +672,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         self.compile_outputer()
         self.input = self.config["input"]
         self.output = self.config["output"]
+        for hooker in self.hookers:
+            hooker.compiled(self)
 
     def run(self):
         batch_count = int(self.arguments.get("@batch", 0))
@@ -704,6 +706,9 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 if not datas:
                     break
 
+                for hooker in self.hookers:
+                    datas = hooker.loaded(self, datas)
+
                 cursor_data = loader.last_data
 
                 if ocursor_data:
@@ -711,6 +716,9 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                         outputer.filter_gt(primary_key, ocursor_data.get(primary_key, ''))
                 outputer.store(datas)
                 ocursor_data = datas[-1]
+
+                for hooker in self.hookers:
+                    hooker.outputed(self, datas)
 
                 self.print_statistics(*self.merge_statistics({}, {}, {}, loader, outputer, self.join_loaders.values()))
                 self.merge_statistics(loader_statistics, outputer_statistics, join_loaders_statistics, loader,
