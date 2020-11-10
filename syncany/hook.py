@@ -6,6 +6,9 @@ class Hooker(object):
     def compiled(self, tasker):
         pass
 
+    def queried(self, tasker, datas):
+        return datas
+
     def loaded(self, tasker, datas):
         return datas
 

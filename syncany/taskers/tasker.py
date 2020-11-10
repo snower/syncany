@@ -126,6 +126,12 @@ class Tasker(object):
         self.add_hooker(hooker)
         return func
 
+    def decorator_queried(self, func):
+        hooker = Hooker()
+        hooker.queried = func
+        self.add_hooker(hooker)
+        return func
+
     def decorator_loaded(self, func):
         hooker = Hooker()
         hooker.loaded = func

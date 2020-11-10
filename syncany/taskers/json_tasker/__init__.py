@@ -702,10 +702,13 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     get_logger().info("%s start %s -> %s batch cursor: %s", self.name, batch_index, batch_count, " ".join(vcursor))
 
                 loader.filter_limit(batch_count)
+                loader.load()
+                for hooker in self.hookers:
+                    loader.datas = hooker.queried(self, loader.datas)
+
                 datas = loader.get()
                 if not datas:
                     break
-
                 for hooker in self.hookers:
                     datas = hooker.loaded(self, datas)
 
@@ -716,7 +719,6 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                         outputer.filter_gt(primary_key, ocursor_data.get(primary_key, ''))
                 outputer.store(datas)
                 ocursor_data = datas[-1]
-
                 for hooker in self.hookers:
                     hooker.outputed(self, datas)
 
