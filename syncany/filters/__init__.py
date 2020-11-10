@@ -23,7 +23,7 @@ FILTERS = {
 
 def find_filter(name):
     if name not in FILTERS:
-        raise FilterUnknownException("%s is unknown filter" % name)
+        return None
     return FILTERS[name]
 
 def register_filter(name, filter):
