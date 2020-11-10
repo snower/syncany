@@ -4,6 +4,7 @@
 
 from .calculater import Calculater
 from .builtin import *
+from ..errors import CalculaterUnknownException
 
 CALCULATERS = {
     "": Calculater,
@@ -44,7 +45,10 @@ CALCULATERS = {
 }
 
 def find_calculater(name):
-    return CALCULATERS.get(name.split("::")[0])
+    name = name.split("::")[0]
+    if name not in CALCULATERS:
+        raise CalculaterUnknownException("%s is unknown calculater" % name)
+    return CALCULATERS[name]
 
 def register_calculater(name, calculater):
     if not issubclass(calculater, Calculater):

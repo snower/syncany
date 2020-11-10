@@ -9,12 +9,6 @@ import json
 from collections import OrderedDict
 from ...logger import get_logger
 from ..tasker import Tasker
-from ...filters import find_filter
-from ...database import find_database
-from ...loaders import find_loader
-from ...valuers import find_valuer
-from ...outputers import find_outputer
-from ...calculaters import find_calculater, register_calculater
 from ...calculaters.import_calculater import create_import_calculater
 from ...utils import get_expression_name
 from .valuer_compiler import ValuerCompiler
@@ -139,7 +133,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
     def load_databases(self):
         for config in self.config["databases"]:
-            database_cls = find_database(config.pop("driver"))
+            database_cls = self.find_database_driver(config.pop("driver"))
             if not database_cls:
                 raise DatabaseUnknownException(config["name"] + " is unknown")
             self.databases[config["name"]] = database_cls(config)
@@ -147,8 +141,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
     def load_imports(self):
         for name, package in self.config["imports"].items():
             module = __import__(package, {}, {})
-            if not find_calculater(name):
-                register_calculater(name, create_import_calculater(name, module))
+            if not self.find_calculater_driver(name):
+                self.register_calculater_driver(name, create_import_calculater(name, module))
 
     def compile_logging(self):
         if "logger" in self.config and isinstance(self.config["logger"], dict):
@@ -157,7 +151,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
     def compile_filter_calculater(self, calculater):
         keys = calculater[0][1:].split("|")
 
-        calculater_cls = find_calculater(keys[0])
+        calculater_cls = self.find_calculater_driver(keys[0])
         if not calculater_cls:
             return calculater
         calculater_args = []
@@ -170,7 +164,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
         filters_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
-        filter_cls = find_filter(filters[0])
+        filter_cls = self.find_filter_driver(filters[0])
         if filter_cls:
             return filter_cls(filters_args).filter(value)
         return value
@@ -228,25 +222,25 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 if isinstance(filter["exps"], list):
                     for exp in filter["exps"]:
                         exp_name = get_expression_name(exp)
-                        filter_cls = find_filter(filter["type"])
+                        filter_cls = self.find_filter_driver(filter["type"])
                         if filter_cls is None:
-                            filter_cls = find_filter('str')
+                            filter_cls = self.find_filter_driver('str')
                         arguments.append({"name": '%s__%s' % (filter["name"], exp_name), "type": filter_cls(filter.get("type_args")),
                                           "help": "%s %s" % (filter["name"], exp)})
                 elif isinstance(filter["exps"], dict):
                     for exp, value in filter["exps"].items():
                         exp_name = get_expression_name(exp)
-                        filter_cls = find_filter(filter["type"])
+                        filter_cls = self.find_filter_driver(filter["type"])
                         if filter_cls is None:
-                            filter_cls = find_filter('str')
+                            filter_cls = self.find_filter_driver('str')
                         if isinstance(value, list) and value and value[0][0] == "@":
                             value = self.compile_filter_calculater(value)
                         arguments.append({"name": '%s__%s' % (filter["name"], exp_name), "type": filter_cls(filter.get("type_args")),
                              "default": value, "help": "%s %s (default: %s)" % (filter["name"], exp, value)})
             else:
-                filter_cls = find_filter(filter["type"])
+                filter_cls = self.find_filter_driver(filter["type"])
                 if filter_cls is None:
-                    filter_cls = find_filter('str')
+                    filter_cls = self.find_filter_driver('str')
                 arguments.append({"name": filter["name"], "type": filter_cls(filter.get("type_args")), "help": "%s" % filter["name"]})
 
         if "input" in self.config:
@@ -467,7 +461,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             raise ValuerUnknownException(config["name"] + " is unknown")
 
         if config["name"] not in self.valuer_creater:
-            valuer_cls = find_valuer(config["name"])
+            valuer_cls = self.find_valuer_driver(config["name"])
             if not valuer_cls:
                 raise ValuerUnknownException(config["name"] + " is unknown")
             config = {key: value for key, value in config.items() if key != "name"}
@@ -480,7 +474,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             raise LoaderUnknownException(config["name"] + " is unknown")
 
         if config["name"] not in self.loader_creater:
-            loader_cls = find_loader(config["name"])
+            loader_cls = self.find_loader_driver(config["name"])
             if not loader_cls:
                 raise LoaderUnknownException(config["name"] + " is unknown")
             config = {key: value for key, value in config.items() if key != "name"}
@@ -493,7 +487,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             raise OutputerUnknownException(config["name"] + " is unknown")
 
         if config["name"] not in self.outputer_creater:
-            outputer_cls = find_outputer(config["name"])
+            outputer_cls = self.find_outputer_driver(config["name"])
             if not outputer_cls:
                 raise OutputerUnknownException(config["name"] + " is unknown")
             config = {key: value for key, value in config.items() if key != "name"}

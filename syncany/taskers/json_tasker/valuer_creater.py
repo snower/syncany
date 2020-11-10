@@ -2,10 +2,7 @@
 # 18/8/15
 # create by: snower
 
-from ...valuers import find_valuer
 from ...valuers.valuer import LoadAllFieldsException
-from ...filters import find_filter
-from ...calculaters import find_calculater
 from ...errors import ValuerUnknownException
 
 class LoaderJoinWarp(object):
@@ -45,26 +42,26 @@ class LoaderJoinWarp(object):
 
 class ValuerCreater(object):
     def create_const_valuer(self, config, **kwargs):
-        valuer_cls = find_valuer(config["name"])
+        valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
-        filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
+        filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
         return valuer_cls(config["value"], "", filter)
 
     def create_db_valuer(self, config, **kwargs):
-        valuer_cls = find_valuer(config["name"])
+        valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
-        filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
+        filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
         return valuer_cls(config["key"], filter)
 
     def create_inherit_valuer(self, config, inherit_valuers=None, **kwargs):
-        valuer_cls = find_valuer(config["name"])
+        valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
-        filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
+        filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
         value_valuer = self.create_valuer(config["value_valuer"], inherit_valuers=inherit_valuers, **kwargs)
         inherit_valuer = valuer_cls(value_valuer, config["key"], filter)
@@ -76,7 +73,7 @@ class ValuerCreater(object):
         return inherit_valuer.get_inherit_child_valuer()
 
     def create_db_join_valuer(self, config, inherit_valuers=None, join_loaders=None, **kwargs):
-        valuer_cls = find_valuer(config["name"])
+        valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
         if join_loaders is not None:
@@ -104,7 +101,7 @@ class ValuerCreater(object):
                                          join_loaders=join_loaders, **kwargs) if config["args_valuer"] else None
         return_inherit_valuers = []
         return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, join_loaders=join_loaders, **kwargs)
-        filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
+        filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
 
         if config["foreign_key"] not in loader.schema:
@@ -130,7 +127,7 @@ class ValuerCreater(object):
                           current_inherit_valuers, config["key"], filter)
 
     def create_case_valuer(self, config, inherit_valuers=None, **kwargs):
-        valuer_cls = find_valuer(config["name"])
+        valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
 
@@ -160,16 +157,16 @@ class ValuerCreater(object):
         return valuer_cls(case_valuers, default_case_valuer, value_valuer, return_valuer, current_inherit_valuers, config["key"], None)
 
     def create_calculate_valuer(self, config, inherit_valuers=None, **kwargs):
-        valuer_cls = find_valuer(config["name"])
+        valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
 
         args_valuers = []
         for valuer_config in config["args_valuers"]:
             args_valuers.append(self.create_valuer(valuer_config, inherit_valuers=inherit_valuers, **kwargs))
-        calculater = find_calculater(config["key"])
+        calculater = self.find_calculater_driver(config["key"])
 
-        filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
+        filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
 
         return_inherit_valuers = []
@@ -187,7 +184,7 @@ class ValuerCreater(object):
         return valuer_cls(calculater, config['key'], args_valuers, return_valuer, current_inherit_valuers, "", filter)
 
     def create_schema_valuer(self, config, **kwargs):
-        valuer_cls = find_valuer(config["name"])
+        valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
         schema_valuers = {}
@@ -196,7 +193,7 @@ class ValuerCreater(object):
         return valuer_cls(schema_valuers, config["key"], None)
 
     def create_make_valuer(self, config, inherit_valuers=None, **kwargs):
-        valuer_cls = find_valuer(config["name"])
+        valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
         if isinstance(config["valuer"], dict):
@@ -231,7 +228,7 @@ class ValuerCreater(object):
                           config["condition_break"], return_valuer, current_inherit_valuers, config["key"], None)
 
     def create_let_valuer(self, config, inherit_valuers=None, **kwargs):
-        valuer_cls = find_valuer(config["name"])
+        valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
         key_valuer = self.create_valuer(config["key_valuer"], inherit_valuers=inherit_valuers, **kwargs) \
@@ -241,7 +238,7 @@ class ValuerCreater(object):
         return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, **kwargs) \
             if "return_valuer" in config and config["return_valuer"] else None
 
-        filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
+        filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
 
         current_inherit_valuers = []
@@ -254,7 +251,7 @@ class ValuerCreater(object):
         return valuer_cls(key_valuer, return_valuer, current_inherit_valuers, config["key"], filter)
 
     def create_yield_valuer(self, config, inherit_valuers=None, yield_valuers=None, **kwargs):
-        valuer_cls = find_valuer(config["name"])
+        valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
         value_valuer = self.create_valuer(config["value_valuer"], inherit_valuers=inherit_valuers,
@@ -266,7 +263,7 @@ class ValuerCreater(object):
                                            yield_valuers=yield_valuers, **kwargs) \
             if "return_valuer" in config and config["return_valuer"] else None
 
-        filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
+        filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
 
         current_inherit_valuers = []
@@ -282,7 +279,7 @@ class ValuerCreater(object):
         return yield_valuer
 
     def create_aggregate_valuer(self, config, schema_field_name=None, inherit_valuers=None, aggregate_valuers=None, **kwargs):
-        valuer_cls = find_valuer(config["name"])
+        valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
 
@@ -327,7 +324,7 @@ class ValuerCreater(object):
         return aggregate_valuer
 
     def create_call_valuer(self, config, inherit_valuers=None, define_valuers=None, **kwargs):
-        valuer_cls = find_valuer(config["name"])
+        valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
 
@@ -361,7 +358,7 @@ class ValuerCreater(object):
         return valuer_cls(calculate_valuer, return_valuer, current_inherit_valuers, None, config['key'], None)
 
     def create_assign_valuer(self, config, inherit_valuers=None, global_variables=None, **kwargs):
-        valuer_cls = find_valuer(config["name"])
+        valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
 
@@ -374,7 +371,7 @@ class ValuerCreater(object):
                                            global_variables=global_variables, **kwargs) \
             if "return_valuer" in config and config["return_valuer"] else None
 
-        filter_cls = find_filter(config["filter"]["name"]) if "filter" in config and config["filter"] else None
+        filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
 
         current_inherit_valuers = []

@@ -2,6 +2,7 @@
 # 18/8/6
 # create by: snower
 
+from .valuer import Valuer
 from .const import ConstValuer
 from .db import DBValuer
 from .inherit import InheritValuer
@@ -15,6 +16,7 @@ from .generator import YieldValuer
 from .aggregate import AggregateValuer
 from .call import CallValuer
 from .assign import AssignValuer
+from ..errors import ValuerUnknownException
 
 VALUERS = {
     "const_valuer": ConstValuer,
@@ -33,4 +35,12 @@ VALUERS = {
 }
 
 def find_valuer(name):
-    return VALUERS.get(name)
+    if name not in VALUERS:
+        raise ValuerUnknownException("%s is unknown valuer" % name)
+    return VALUERS[name]
+
+def register_valuer(name, valuer):
+    if not issubclass(valuer, Valuer):
+        raise TypeError("is not Valuer")
+    VALUERS[name] = valuer
+    return valuer

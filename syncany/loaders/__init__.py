@@ -2,9 +2,11 @@
 # 18/8/6
 # create by: snower
 
+from .loader import Loader
 from .const import ConstLoader
 from .db import DBLoader
 from .db_join import DBJoinLoader
+from ..errors import LoaderUnknownException
 
 LOADERS = {
     "const_loader": ConstLoader,
@@ -13,4 +15,12 @@ LOADERS = {
 }
 
 def find_loader(name):
-    return LOADERS.get(name)
+    if name not in LOADERS:
+        raise LoaderUnknownException("%s is unknown loader" % name)
+    return LOADERS[name]
+
+def register_loader(name, loader):
+    if not issubclass(loader, Loader):
+        raise TypeError("is not Loader")
+    LOADERS[name] = loader
+    return loader
