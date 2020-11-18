@@ -15,7 +15,7 @@ from .valuer_compiler import ValuerCompiler
 from .valuer_creater import ValuerCreater
 from .loader_creater import LoaderCreater
 from .outputer_creater import OutputerCreater
-from ...errors import LoaderUnknownException, OutputerUnknownException, ValuerUnknownException, DatabaseUnknownException
+from ...errors import LoaderUnknownException, OutputerUnknownException, ValuerUnknownException, DatabaseUnknownException, CalculaterUnknownException
 
 class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerCreater):
     DEFAULT_CONFIG = {
@@ -141,7 +141,10 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
     def load_imports(self):
         for name, package in self.config["imports"].items():
             module = __import__(package, {}, {})
-            if not self.find_calculater_driver(name):
+            try:
+                if not self.find_calculater_driver(name):
+                    self.register_calculater_driver(name, create_import_calculater(name, module))
+            except CalculaterUnknownException:
                 self.register_calculater_driver(name, create_import_calculater(name, module))
 
     def compile_logging(self):
