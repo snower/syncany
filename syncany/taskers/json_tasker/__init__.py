@@ -418,6 +418,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 return self.compile_calculate_valuer(key["key"], key["filter"], field[1:])
 
             if key["instance"] == "#":
+                if key["key"] == "const":
+                    return self.compile_const_valuer(field[1:] if len(field) > 2 else (field[1] if len(field) > 1 else None))
                 if key["key"] == "case" and len(field) in (2, 3, 4):
                     return self.compile_case_valuer(key["key"], key["filter"], None, field[1:], None)
                 if key["key"] == "make" and len(field) in (2, 3, 4, 5):
@@ -452,6 +454,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             return self.compile_calculate_valuer(key["key"], key["filter"], [])
 
         if key["instance"] == "#":
+            if key["key"] == "const":
+                return self.compile_const_valuer(None)
             if key["key"] == "yield":
                 return self.compile_yield_valuer(key["key"], key["filter"], None, None)
         return self.compile_const_valuer(field)
