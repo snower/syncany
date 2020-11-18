@@ -679,70 +679,86 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         for hooker in self.hookers:
             hooker.compiled(self)
 
+    def run_batch(self, batch_count):
+        batch_index = 0
+        loader_statistics = {}
+        outputer_statistics = {}
+        join_loaders_statistics = {}
+
+        cursor_data, ocursor_data = None, None
+        get_logger().info("%s start %s -> %s batch cursor: %s", self.name, 1, batch_count, "")
+
+        while True:
+            batch_index += 1
+            loader = self.loader.clone()
+            outputer = self.outputer.clone()
+            self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
+
+            if cursor_data:
+                vcursor = []
+                for primary_key in loader.primary_keys:
+                    cv = cursor_data.get(primary_key, '')
+                    loader.filter_gt(primary_key, cv)
+                    vcursor.append("%s -> %s" % (primary_key, cv))
+
+                get_logger().info("%s start %s -> %s batch cursor: %s", self.name, batch_index, batch_count,
+                                  " ".join(vcursor))
+
+            loader.filter_limit(batch_count)
+            loader.load()
+            for hooker in self.hookers:
+                loader.datas = hooker.queried(self, loader.datas)
+
+            datas = loader.get()
+            if not datas:
+                break
+            for hooker in self.hookers:
+                datas = hooker.loaded(self, datas)
+
+            cursor_data = loader.last_data
+
+            if ocursor_data:
+                for primary_key in outputer.primary_keys:
+                    outputer.filter_gt(primary_key, ocursor_data.get(primary_key, ''))
+            outputer.store(datas)
+            ocursor_data = datas[-1]
+            for hooker in self.hookers:
+                hooker.outputed(self, datas)
+
+            self.print_statistics(*self.merge_statistics({}, {}, {}, loader, outputer, self.join_loaders.values()))
+            self.merge_statistics(loader_statistics, outputer_statistics, join_loaders_statistics, loader,
+                                  outputer, self.join_loaders.values())
+
+        get_logger().info("%s end %s -> %s batch show statistics", self.name, batch_index - 1, batch_count)
+        statistics = (self.loader.__class__.__name__, loader_statistics, self.outputer.__class__.__name__, outputer_statistics,
+                      len(self.join_loaders), join_loaders_statistics)
+        self.print_statistics(*statistics)
+        return statistics
+
     def run(self):
         batch_count = int(self.arguments.get("@batch", 0))
-        if batch_count > 0:
-            batch_index = 0
-            loader_statistics = {}
-            outputer_statistics = {}
-            join_loaders_statistics = {}
-
-            cursor_data, ocursor_data = None, None
-            get_logger().info("%s start %s -> %s batch cursor: %s", self.name, 1, batch_count, "")
-
-            while True:
-                batch_index += 1
-                loader = self.loader.clone()
-                outputer = self.outputer.clone()
-                self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
-
-                if cursor_data:
-                    vcursor = []
-                    for primary_key in loader.primary_keys:
-                        cv = cursor_data.get(primary_key, '')
-                        loader.filter_gt(primary_key, cv)
-                        vcursor.append("%s -> %s" % (primary_key, cv))
-
-                    get_logger().info("%s start %s -> %s batch cursor: %s", self.name, batch_index, batch_count, " ".join(vcursor))
-
-                loader.filter_limit(batch_count)
-                loader.load()
+        try:
+            if batch_count > 0:
+                statistics = self.run_batch(batch_count)
+            else:
+                self.loader.load()
                 for hooker in self.hookers:
-                    loader.datas = hooker.queried(self, loader.datas)
+                    self.loader.datas = hooker.queried(self, self.loader.datas)
 
-                datas = loader.get()
-                if not datas:
-                    break
-                for hooker in self.hookers:
-                    datas = hooker.loaded(self, datas)
+                datas = self.loader.get()
+                if datas:
+                    for hooker in self.hookers:
+                        datas = hooker.loaded(self, datas)
 
-                cursor_data = loader.last_data
+                    self.outputer.store(datas)
+                    for hooker in self.hookers:
+                        hooker.outputed(self, datas)
 
-                if ocursor_data:
-                    for primary_key in outputer.primary_keys:
-                        outputer.filter_gt(primary_key, ocursor_data.get(primary_key, ''))
-                outputer.store(datas)
-                ocursor_data = datas[-1]
-                for hooker in self.hookers:
-                    hooker.outputed(self, datas)
-
-                self.print_statistics(*self.merge_statistics({}, {}, {}, loader, outputer, self.join_loaders.values()))
-                self.merge_statistics(loader_statistics, outputer_statistics, join_loaders_statistics, loader,
-                                      outputer, self.join_loaders.values())
-
-            get_logger().info("%s end %s -> %s batch show statistics", self.name, batch_index - 1, batch_count)
-            statistics = (self.loader.__class__.__name__, loader_statistics, self.outputer.__class__.__name__, outputer_statistics,
-                          len(self.join_loaders), join_loaders_statistics)
-            self.print_statistics(*statistics)
-        else:
-            datas = self.loader.get()
-            if datas:
-                self.outputer.store(datas)
-            statistics = self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders.values())
-            self.print_statistics(*statistics)
-
-        for name, database in self.databases.items():
-            database.close()
+                statistics = self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders.values())
+                self.print_statistics(*statistics)
+        finally:
+            for name, database in self.databases.items():
+                database.close()
 
         get_logger().info("%s finish %s %s %.2fms", self.name, self.json_filename, self.config.get("name"), (time.time() - self.start_time) * 1000)
         return statistics
