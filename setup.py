@@ -26,7 +26,7 @@ setup(
         "pytz>=2018.5",
         "tzlocal>=1.5.1",
     ],
-    extras_require = {
+    extras_require={
         "pymongo": ['pymongo>=3.6.1'],
         "pymysql": ['PyMySQL>=0.8.1'],
         "openpyxl": ["openpyxl>=2.5.0"],

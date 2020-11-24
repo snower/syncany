@@ -12,6 +12,7 @@ from .elasticsearch import ElasticsearchDB
 from .excel import ExeclDB
 from .csv import CsvDB
 from .json import JsonDB
+from .beanstalk import BeanstalkDB
 from ..errors import DatabaseUnknownException
 
 DATABASES = {
@@ -24,6 +25,7 @@ DATABASES = {
     "execl": ExeclDB,
     "csv": CsvDB,
     "json": JsonDB,
+    "beanstalk": BeanstalkDB,
 }
 
 def find_database(name):
