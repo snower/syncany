@@ -4,6 +4,7 @@
 
 
 import time
+import pickle
 import json
 try:
     import msgpack
@@ -15,6 +16,13 @@ try:
 except ImportError:
     pystalkd = None
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
+
+class StringSerialize(object):
+    def loads(self, data):
+        return str(data)
+
+    def dumps(self, value):
+        return value
 
 class JsonSerialize(object):
     def loads(self, data):
@@ -34,9 +42,18 @@ class MsgpackSerialize(object):
     def dumps(self, value):
         return msgpack.dumps(value)
 
+class PickleSerialize(object):
+    def loads(self, data):
+        return pickle.loads(data)
+
+    def dumps(self, value):
+        return pickle.dumps(value)
+
 class BeanstalkQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
         super(BeanstalkQueryBuilder, self).__init__(*args, **kwargs)
+
+        self.limit = (0, self.db.bulk_size)
 
     def filter_gt(self, key, value):
         self.query[(key, '>')] = (value, lambda a, b: a > b)
@@ -68,36 +85,42 @@ class BeanstalkQueryBuilder(QueryBuilder):
     def order_by(self, key, direct=1):
         self.orders.append((key, direct))
 
-    def commit(self):
-        queue_name = self.name.split(".")
-        connection = self.db.ensure_connection()
-        connection.watch(queue_name[1] if len(queue_name) > 1 else queue_name[0])
-
+    def reserve(self, connection):
         load_datas, start_time = [], time.time()
         while True:
             job = connection.reserve(timeout=2)
             if not job:
                 if not load_datas:
                     start_time = time.time()
+                    continue
+                elif time.time() - start_time >= self.db.wait_timeout:
+                    break
                 continue
 
-            load_datas.append(self.db.serialize.loads(job.body))
+            data = self.db.serialize.loads(job.body)
+            if not data:
+                continue
+            load_datas.append(data)
             job.delete()
 
-            if len(load_datas) >= self.db.bulk_size or time.time() - start_time >= self.db.wait_timeout:
+            if len(load_datas) >= (self.limit[1] - self.limit[0]) or time.time() - start_time >= self.db.wait_timeout:
                 break
+        return load_datas
+
+    def commit(self):
+        queue_name = self.name.split(".")
+        connection = self.db.ensure_connection()
+        connection.watch(queue_name[1] if len(queue_name) > 1 else queue_name[0])
+        try:
+            load_datas = self.reserve(connection)
+        finally:
+            connection.ignore(queue_name[1] if len(queue_name) > 1 else queue_name[0])
 
         if not self.query:
-            if self.limit:
-                datas = load_datas[self.limit[0]: self.limit[1]]
-            else:
-                datas = load_datas
+            datas = load_datas
         else:
-            index, datas = 0, []
+            datas = []
             for data in load_datas:
-                if self.limit and (index < self.limit[0] or index > self.limit[1]):
-                    continue
-
                 succed = True
                 for (key, exp), (value, cmp) in self.query.items():
                     if key not in data:
@@ -109,7 +132,6 @@ class BeanstalkQueryBuilder(QueryBuilder):
 
                 if succed:
                     datas.append(data)
-                    index += 1
 
         if self.orders:
             datas = sorted(datas, key=self.orders[0][0], reverse=True if self.orders[0][1] < 0 else False)
@@ -127,7 +149,10 @@ class BeanstalkInsertBuilder(InsertBuilder):
         connection = self.db.ensure_connection()
         connection.use(queue_name[1] if len(queue_name) > 1 else queue_name[0])
         for data in self.datas:
-            connection.put(self.db.serialize.dumps(data))
+            data = self.db.serialize.dumps(data)
+            if not data:
+                continue
+            connection.put()
 
 class BeanstalkUpdateBuilder(UpdateBuilder):
     pass
@@ -143,6 +168,8 @@ class BeanstalkDB(DataBase):
     }
 
     SERIALIZES = {
+        "": StringSerialize,
+        "pickle": PickleSerialize,
         "json": JsonSerialize,
         "msgpack": MsgpackSerialize,
     }
@@ -153,11 +180,22 @@ class BeanstalkDB(DataBase):
         all_config.update(config)
 
         self.serialize = self.SERIALIZES.get(all_config.pop("serialize") if "serialize" in all_config else "json", JsonSerialize)()
+        self.ignore_serialize_error = all_config.pop("ignore_serialize_error") if "ignore_serialize_error" in all_config else False
         self.wait_timeout = int(all_config.pop("wait_timeout") if "wait_timeout" in all_config else 30)
         self.bulk_size = int(all_config.pop("bulk_size") if "bulk_size" in all_config else 500)
         super(BeanstalkDB, self).__init__(all_config)
 
         self.connection = None
+        if self.ignore_serialize_error:
+            def catch_serialize_error(func):
+                def _(*args, **kwargs):
+                    try:
+                        return func(*args, **kwargs)
+                    except:
+                        return None
+                return _
+            self.serialize.dumps = catch_serialize_error(self.serialize.dumps)
+            self.serialize.loads = catch_serialize_error(self.serialize.loads)
 
     def ensure_connection(self):
         if not self.connection:
