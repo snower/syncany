@@ -4,6 +4,7 @@
 
 from .calculater import Calculater
 from .builtin import *
+from .conversion_calculater import ConversionCalculater
 from ..errors import CalculaterUnknownException
 
 CALCULATERS = {
@@ -36,12 +37,14 @@ CALCULATERS = {
     "index": IndexCalculater,
     "filter": FilterCalculater,
     "sum": SumCalculater,
+    "sort": SortCalculater,
     "string": StringCalculater,
     "array": ArrayCalculater,
     "map": MapCalculater,
     "math": MathCalculater,
     "hash": HashCalculater,
     "json": JsonCalculater,
+    "conversion": ConversionCalculater,
 }
 
 def find_calculater(name):

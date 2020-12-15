@@ -15,6 +15,7 @@ from .valuer_compiler import ValuerCompiler
 from .valuer_creater import ValuerCreater
 from .loader_creater import LoaderCreater
 from .outputer_creater import OutputerCreater
+from ...hook import PipelinesHooker
 from ...errors import LoaderUnknownException, OutputerUnknownException, ValuerUnknownException, DatabaseUnknownException, CalculaterUnknownException
 
 class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerCreater):
@@ -28,6 +29,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         "defines": {},
         "variables": {},
         "schema": {},
+        "pipelines": [],
     }
 
     def __init__(self, json_filename):
@@ -128,6 +130,16 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                             databases[database["name"]].update(database)
                         else:
                             self.config[k].append(database)
+            elif k == "pipelines":
+                if self.config[k]:
+                    pipelines = copy.copy(self.config[k] if isinstance(self.config[k], list)
+                                            and not isinstance(self.config[k][0], str) else [self.config[k]])
+                else:
+                    pipelines = []
+                if v:
+                    for pipeline in (v if isinstance(v, list) and not isinstance(v[0], str) else [v]):
+                        pipelines.append(pipeline)
+                self.config[k] = pipelines
             else:
                 self.config[k] = v
 
@@ -365,86 +377,86 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     try:
                         index = names[0][2:]
                     except:
-                        self.schema[name] = self.compile_schema_field(field)
+                        self.schema[name] = self.compile_valuer(field)
                         continue
 
                     order_names[index] = name
-                    schema[name] = self.compile_schema_field(field)
+                    schema[name] = self.compile_valuer(field)
                 else:
-                    self.schema[name] = self.compile_schema_field(field)
+                    self.schema[name] = self.compile_valuer(field)
 
             for name in order_names:
                 if name:
                     self.schema[name] = schema[name]
 
-    def compile_schema_field(self, field):
-        if isinstance(field, dict):
-            if "name" not in field or not field["name"].endswith("_valuer"):
-                if "#case" not in field:
-                    return self.compile_const_valuer(field)
+    def compile_valuer(self, valuer):
+        if isinstance(valuer, dict):
+            if "name" not in valuer or not valuer["name"].endswith("_valuer"):
+                if "#case" not in valuer:
+                    return self.compile_const_valuer(valuer)
 
-                case_case = field.pop("#case")
+                case_case = valuer.pop("#case")
                 cases = {}
-                case_default = field.pop("#end") if "#end" in field else None
-                case_return = field.pop(":") if ":" in field else None
-                for case_key, case_value in field.items():
+                case_default = valuer.pop("#end") if "#end" in valuer else None
+                case_return = valuer.pop(":") if ":" in valuer else None
+                for case_key, case_value in valuer.items():
                     if case_key and isinstance(case_key, str) and case_key[0] == ":" and case_key[1:].isdigit():
                         cases[int(case_key[1:])] = case_value
                     else:
                         cases[case_key] = case_value
                 return self.compile_case_valuer('', None, case_case, cases, case_default, case_return)
-            return field
+            return valuer
 
-        if isinstance(field, (list, tuple, set)):
-            if not field:
-                return self.compile_const_valuer(field)
+        if isinstance(valuer, (list, tuple, set)):
+            if not valuer:
+                return self.compile_const_valuer(valuer)
 
-            key = self.compile_key(field[0])
+            key = self.compile_key(valuer[0])
             if key["instance"] is None:
-                return self.compile_const_valuer(field)
+                return self.compile_const_valuer(valuer)
 
             if key["instance"] == "$":
-                if len(field) not in (2, 3):
+                if len(valuer) not in (2, 3):
                     if "inherit_reflen" in key and key["inherit_reflen"] > 0:
                         return self.compile_inherit_valuer(key["key"], key["filter"], key["inherit_reflen"])
                     return self.compile_db_valuer(key["key"], key["filter"])
 
-                foreign_key = self.compile_foreign_key(field[1])
+                foreign_key = self.compile_foreign_key(valuer[1])
                 if foreign_key is None:
-                    return self.compile_const_valuer(field)
+                    return self.compile_const_valuer(valuer)
 
                 loader = {"name": "db_join_loader", "database": foreign_key["database"]}
                 return self.compile_db_join_valuer(key["key"], loader, foreign_key["foreign_key"], foreign_key["foreign_filters"],
-                                                   None, field[0], field[2] if len(field) >= 3 else None)
+                                                   None, valuer[0], valuer[2] if len(valuer) >= 3 else None)
 
             if key["instance"] == "@":
-                return self.compile_calculate_valuer(key["key"], key["filter"], field[1:])
+                return self.compile_calculate_valuer(key["key"], key["filter"], valuer[1:])
 
             if key["instance"] == "#":
                 if key["key"] == "const":
-                    return self.compile_const_valuer(field[1:] if len(field) > 2 else (field[1] if len(field) > 1 else None))
-                if key["key"] == "case" and len(field) in (2, 3, 4):
-                    return self.compile_case_valuer(key["key"], key["filter"], None, field[1:], None)
-                if key["key"] == "make" and len(field) in (2, 3, 4, 5):
-                    return self.compile_make_valuer(key["key"], key["filter"], field[1], field[2:])
-                if key["key"] == "let" and len(field) in (2, 3):
-                    return self.compile_let_valuer(key["key"], key["filter"], field[1], field[2] if len(field) >= 3 else None)
-                if key["key"] == "yield" and len(field) in (1, 2, 3):
-                    return self.compile_yield_valuer(key["key"], key["filter"], field[1] if len(field) >= 1 else None,
-                                                     field[2] if len(field) >= 3 else None)
-                if key["key"] == "aggregate" and len(field) >= 3:
-                    return self.compile_aggregate_valuer(key["key"], key["filter"], field[1], field[2] if len(field) == 3 else None,
-                                                         None if len(field) == 3 else field[2:])
-                if key["key"] == "call" and len(field) in (2, 3) and field[1] in self.config["defines"]:
-                    return self.compile_call_valuer(field[1], key["filter"], field[2] if len(field) >= 3 else None,
-                                                    self.config["defines"][field[1]])
-                if key["key"] == "assign" and len(field) in (2, 3, 4):
-                    return self.compile_assign_valuer(field[1], key["filter"], field[2] if len(field) >= 3 else None,
-                                                    field[3] if len(field) >= 4 else None)
+                    return self.compile_const_valuer(valuer[1:] if len(valuer) > 2 else (valuer[1] if len(valuer) > 1 else None))
+                if key["key"] == "case" and len(valuer) in (2, 3, 4):
+                    return self.compile_case_valuer(key["key"], key["filter"], None, valuer[1:], None)
+                if key["key"] == "make" and len(valuer) in (2, 3, 4, 5):
+                    return self.compile_make_valuer(key["key"], key["filter"], valuer[1], valuer[2:])
+                if key["key"] == "let" and len(valuer) in (2, 3):
+                    return self.compile_let_valuer(key["key"], key["filter"], valuer[1], valuer[2] if len(valuer) >= 3 else None)
+                if key["key"] == "yield" and len(valuer) in (1, 2, 3):
+                    return self.compile_yield_valuer(key["key"], key["filter"], valuer[1] if len(valuer) >= 1 else None,
+                                                     valuer[2] if len(valuer) >= 3 else None)
+                if key["key"] == "aggregate" and len(valuer) >= 3:
+                    return self.compile_aggregate_valuer(key["key"], key["filter"], valuer[1], valuer[2] if len(valuer) == 3 else None,
+                                                         None if len(valuer) == 3 else valuer[2:])
+                if key["key"] == "call" and len(valuer) in (2, 3) and valuer[1] in self.config["defines"]:
+                    return self.compile_call_valuer(valuer[1], key["filter"], valuer[2] if len(valuer) >= 3 else None,
+                                                    self.config["defines"][valuer[1]])
+                if key["key"] == "assign" and len(valuer) in (2, 3, 4):
+                    return self.compile_assign_valuer(valuer[1], key["filter"], valuer[2] if len(valuer) >= 3 else None,
+                                                    valuer[3] if len(valuer) >= 4 else None)
 
-            return self.compile_const_valuer(field)
+            return self.compile_const_valuer(valuer)
 
-        key = self.compile_key(field)
+        key = self.compile_key(valuer)
         if key["instance"] is None:
             return self.compile_const_valuer(key["value"])
 
@@ -461,7 +473,48 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 return self.compile_const_valuer(None)
             if key["key"] == "yield":
                 return self.compile_yield_valuer(key["key"], key["filter"], None, None)
-        return self.compile_const_valuer(field)
+        return self.compile_const_valuer(valuer)
+
+    def compile_pipelines(self):
+        if not self.config["pipelines"]:
+            return
+
+        current_type = "compiled_valuers"
+        valuers = {"compiled_valuers": [], "queried_valuers": [], "loaded_valuers": [], "outputed_valuers": []}
+        for pipeline in self.config["pipelines"]:
+            if isinstance(pipeline, list):
+                if pipeline[0][:1] not in (">", "@"):
+                    continue
+
+                if pipeline[0][:3] == ">>>":
+                    current_type, pipeline[0] = "outputed_valuers", pipeline[0][3:]
+                elif pipeline[0][:2] == ">>":
+                    current_type, pipeline[0] = "loaded_valuers", pipeline[0][2:]
+                elif pipeline[0][:1] == ">":
+                    current_type, pipeline[0] = "queried_valuers", pipeline[0][1:]
+
+                if not pipeline[0]:
+                    continue
+            else:
+                if pipeline[:1] not in (">", "@"):
+                    continue
+
+                if pipeline[:3] == ">>>":
+                    current_type, pipeline = "outputed_valuers", pipeline[3:]
+                elif pipeline[:2] == ">>":
+                    current_type, pipeline = "loaded_valuers", pipeline[2:]
+                elif pipeline[:1] == ">":
+                    current_type, pipeline = "queried_valuers", pipeline[1:]
+
+                if not pipeline:
+                    continue
+
+            valuer = self.create_valuer(self.compile_valuer(pipeline), define_valuers={},
+                                        global_variables=dict(**self.config["variables"]))
+            valuers[current_type].append(valuer)
+
+        pipelines_hooker = PipelinesHooker(**valuers)
+        self.add_hooker(pipelines_hooker)
 
     def create_valuer(self, config, **kwargs):
         if "name" not in config or not config["name"]:
@@ -675,6 +728,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         self.load_databases()
         self.compile_schema()
+        self.compile_pipelines()
         self.compile_loader()
         self.compile_outputer()
         self.input = self.config["input"]
@@ -719,7 +773,6 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 datas = hooker.loaded(self, datas)
 
             cursor_data = loader.last_data
-
             if ocursor_data:
                 for primary_key in outputer.primary_keys:
                     outputer.filter_gt(primary_key, ocursor_data.get(primary_key, ''))

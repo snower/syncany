@@ -44,7 +44,7 @@ class ValuerCompiler(object):
         }
 
     def compile_db_join_valuer(self, key="", loader=None, foreign_key="", foreign_filters=None, filter=None, args_arg=None, return_arg=None):
-        args_valuer = self.compile_schema_field(args_arg) if args_arg else None
+        args_valuer = self.compile_valuer(args_arg) if args_arg else None
 
         return_arg = "$.*" if return_arg is None else return_arg
         if isinstance(return_arg, str) and return_arg[:1] == ":":
@@ -55,7 +55,7 @@ class ValuerCompiler(object):
             elif return_arg[0][:1] == ":":
                 return_arg = list(return_arg)
                 return_arg[0] = return_arg[0][1:]
-        return_valuer = self.compile_schema_field(return_arg)
+        return_valuer = self.compile_valuer(return_arg)
 
         return {
             "name": "db_join_valuer",
@@ -88,18 +88,18 @@ class ValuerCompiler(object):
 
             if len(cases_args) == 3:
                 value_arg = cases_args[0]
-                case_valuers[0] = self.compile_schema_field(cases_args[1])
-                case_valuers[1] = self.compile_schema_field(cases_args[2])
+                case_valuers[0] = self.compile_valuer(cases_args[1])
+                case_valuers[1] = self.compile_valuer(cases_args[2])
             elif len(cases_args) == 2:
-                case_valuers[0] = self.compile_schema_field(cases_args[0])
-                case_valuers[1] = self.compile_schema_field(cases_args[1])
+                case_valuers[0] = self.compile_valuer(cases_args[0])
+                case_valuers[1] = self.compile_valuer(cases_args[1])
         elif isinstance(cases_arg, dict):
             for case_value, field in cases_arg.items():
-                case_valuers[case_value] = self.compile_schema_field(field)
+                case_valuers[case_value] = self.compile_valuer(field)
 
-        value_valuer = self.compile_schema_field(value_arg) if value_arg else None
-        default_valuer = self.compile_schema_field(default_arg) if default_arg else None
-        return_valuer = self.compile_schema_field(return_arg) if return_arg else None
+        value_valuer = self.compile_valuer(value_arg) if value_arg else None
+        default_valuer = self.compile_valuer(default_arg) if default_arg else None
+        return_valuer = self.compile_valuer(return_arg) if return_arg else None
 
         return {
             "name": "case_valuer",
@@ -116,18 +116,18 @@ class ValuerCompiler(object):
         if isinstance(args, list):
             for arg in args:
                 if isinstance(arg, str) and arg[:1] == ":":
-                    return_valuer = self.compile_schema_field(arg[1:])
+                    return_valuer = self.compile_valuer(arg[1:])
                 elif isinstance(arg, (list, tuple, set)) and arg and isinstance(arg[0], str):
                     if arg[0] == ":":
-                        return_valuer = self.compile_schema_field(list(arg)[1:])
+                        return_valuer = self.compile_valuer(list(arg)[1:])
                     elif arg[0][:1] == ":":
                         arg = list(arg)
                         arg[0] = arg[0][1:]
-                        return_valuer = self.compile_schema_field(arg)
+                        return_valuer = self.compile_valuer(arg)
                     else:
-                        args_valuers.append(self.compile_schema_field(arg))
+                        args_valuers.append(self.compile_valuer(arg))
                 else:
-                    args_valuers.append(self.compile_schema_field(arg))
+                    args_valuers.append(self.compile_valuer(arg))
         else:
             args_valuers.append(args)
 
@@ -144,7 +144,7 @@ class ValuerCompiler(object):
 
         if isinstance(schema, dict):
             for key, field in schema.items():
-                schema_valuers[key] = self.compile_schema_field(field)
+                schema_valuers[key] = self.compile_valuer(field)
 
         return {
             "name": "schema_valuer",
@@ -154,15 +154,15 @@ class ValuerCompiler(object):
 
     def compile_make_valuer(self, key="", filter=None, valuer=None, loop_condition_returns=None):
         if isinstance(valuer, dict):
-            valuer = {key: (self.compile_schema_field(key), self.compile_schema_field(value))
+            valuer = {key: (self.compile_valuer(key), self.compile_valuer(value))
                       for key, value in valuer.items()}
         elif isinstance(valuer, (list, tuple, set)):
             if len(valuer) == 1:
-                valuer = self.compile_schema_field(valuer[0])
+                valuer = self.compile_valuer(valuer[0])
             else:
-                valuer = [self.compile_schema_field(value) for value in valuer]
+                valuer = [self.compile_valuer(value) for value in valuer]
         else:
-            valuer = self.compile_schema_field(valuer)
+            valuer = self.compile_valuer(valuer)
 
         loop, loop_valuer = None, None
         condition, condition_valuer, condition_break = None, None, None
@@ -174,12 +174,12 @@ class ValuerCompiler(object):
                 elif lcr[:3] == "#if":
                     condition = lcr
                 elif lcr[:1] == ":":
-                    return_valuer = self.compile_schema_field(lcr[1:])
+                    return_valuer = self.compile_valuer(lcr[1:])
             elif lcr and isinstance(lcr, (list, tuple, set)):
                 if lcr[0][:4] == "#for" and len(lcr) == 2:
-                    loop, loop_valuer = lcr[0], self.compile_schema_field(lcr[1])
+                    loop, loop_valuer = lcr[0], self.compile_valuer(lcr[1])
                 elif lcr[0][:3] == "#if" and len(lcr) in (2, 3):
-                    condition, condition_valuer, condition_break = lcr[0], self.compile_schema_field(lcr[1]),\
+                    condition, condition_valuer, condition_break = lcr[0], self.compile_valuer(lcr[1]),\
                                                                    lcr[2] if len(lcr) >= 3 else None
                 elif lcr[0][:1] == ":":
                     if lcr[0] == ":":
@@ -187,7 +187,7 @@ class ValuerCompiler(object):
                     else:
                         lcr = list(lcr)
                         lcr[0] = lcr[0][1:]
-                    return_valuer = self.compile_schema_field(lcr)
+                    return_valuer = self.compile_valuer(lcr)
 
         return {
             "name": "make_valuer",
@@ -203,7 +203,7 @@ class ValuerCompiler(object):
         }
 
     def compile_let_valuer(self, key="", filter=None, key_arg=None, return_arg=None):
-        key_valuer = self.compile_schema_field(key_arg)
+        key_valuer = self.compile_valuer(key_arg)
         if isinstance(return_arg, str) and return_arg[:1] == ":":
             return_arg = return_arg[1:]
         elif isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
@@ -212,7 +212,7 @@ class ValuerCompiler(object):
             elif return_arg[0][:1] == ":":
                 return_arg = list(return_arg)
                 return_arg[0] = return_arg[0][1:]
-        return_valuer = self.compile_schema_field(return_arg) if return_arg else None
+        return_valuer = self.compile_valuer(return_arg) if return_arg else None
 
         return {
             "name": "let_valuer",
@@ -223,7 +223,7 @@ class ValuerCompiler(object):
         }
 
     def compile_yield_valuer(self, key="", filter=None, value_arg=None, return_arg=None):
-        value_valuer = self.compile_schema_field(value_arg) if value_arg else None
+        value_valuer = self.compile_valuer(value_arg) if value_arg else None
         if isinstance(return_arg, str) and return_arg[:1] == ":":
             return_arg = return_arg[1:]
         elif isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
@@ -232,7 +232,7 @@ class ValuerCompiler(object):
             elif return_arg[0][:1] == ":":
                 return_arg = list(return_arg)
                 return_arg[0] = return_arg[0][1:]
-        return_valuer = self.compile_schema_field(return_arg) if return_arg else None
+        return_valuer = self.compile_valuer(return_arg) if return_arg else None
 
         return {
             "name": "yield_valuer",
@@ -243,14 +243,14 @@ class ValuerCompiler(object):
         }
 
     def compile_aggregate_valuer(self, key="", filter=None, key_arg=None, calculate_arg=None, pipeline_args=None):
-        key_valuer = self.compile_schema_field(key_arg)
+        key_valuer = self.compile_valuer(key_arg)
 
         pipeline_valuers = []
         if pipeline_args:
             for pipeline_arg in pipeline_args:
                 if isinstance(pipeline_arg, dict):
                     for pipeline_name, pipeline_value in pipeline_arg.items():
-                        pipeline_valuers.append((pipeline_name, self.compile_schema_field(pipeline_value)))
+                        pipeline_valuers.append((pipeline_name, self.compile_valuer(pipeline_value)))
                 elif isinstance(pipeline_arg, (list, tuple, set)):
                     if pipeline_arg and not isinstance(pipeline_arg[0], dict):
                         calculate_arg = pipeline_arg
@@ -260,7 +260,7 @@ class ValuerCompiler(object):
                         if not isinstance(p, dict):
                             continue
                         for pipeline_name, pipeline_value in p.items():
-                            pipeline_valuers.append((pipeline_name, self.compile_schema_field(pipeline_value)))
+                            pipeline_valuers.append((pipeline_name, self.compile_valuer(pipeline_value)))
                 else:
                     calculate_arg = pipeline_arg
 
@@ -272,7 +272,7 @@ class ValuerCompiler(object):
             elif calculate_arg[0][:1] == ":":
                 calculate_arg = list(calculate_arg)
                 calculate_arg[0] = calculate_arg[0][1:]
-        calculate_valuer = self.compile_schema_field(calculate_arg)
+        calculate_valuer = self.compile_valuer(calculate_arg)
 
         return {
             "name": "aggregate_valuer",
@@ -293,8 +293,8 @@ class ValuerCompiler(object):
                 return_arg = list(return_arg)
                 return_arg[0] = return_arg[0][1:]
 
-        return_valuer = self.compile_schema_field(return_arg) if return_arg else None
-        calculate_valuer = self.compile_schema_field(calculate_arg)
+        return_valuer = self.compile_valuer(return_arg) if return_arg else None
+        calculate_valuer = self.compile_valuer(calculate_arg)
 
         return {
             "name": "call_valuer",
@@ -323,8 +323,8 @@ class ValuerCompiler(object):
                 return_arg = list(return_arg)
                 return_arg[0] = return_arg[0][1:]
 
-        calculate_valuer = self.compile_schema_field(calculate_arg) if calculate_arg else None
-        return_valuer = self.compile_schema_field(return_arg) if return_arg else None
+        calculate_valuer = self.compile_valuer(calculate_arg) if calculate_arg else None
+        return_valuer = self.compile_valuer(return_arg) if return_arg else None
 
         return {
             "name": "assign_valuer",

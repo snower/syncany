@@ -540,6 +540,28 @@ class SumCalculater(Calculater):
             result += self.add(self.args[0])
         return result
 
+class SortCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return None
+
+        if not isinstance(self.args[0], list):
+            return self.args[0]
+
+        keys = str(self.args[2]).split(".") if len(self.args) >= 3 else []
+        def sort_key(x):
+            for k in keys:
+                if isinstance(x, dict) and k in x:
+                    x = x[k]
+
+            if isinstance(x, (list, set, tuple, dict)):
+                return id(x)
+            return x
+        return sorted(self.args[0], key=sort_key,
+                      reverse=True if len(self.args) >= 2 and self.args[1] else False)
+
+
+
 class StringCalculater(Calculater):
     def calculate(self):
         if not self.args:
