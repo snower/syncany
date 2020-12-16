@@ -8,6 +8,7 @@ from .textline import TextLineDB
 from .mongodb import MongoDB
 from .mysql import MysqlDB
 from .postgresql import PostgresqlDB
+from .clickhouse import ClickhouseDB
 from .elasticsearch import ElasticsearchDB
 from .excel import ExeclDB
 from .csv import CsvDB
@@ -21,6 +22,7 @@ DATABASES = {
     "mongo": MongoDB,
     "mysql": MysqlDB,
     "postgresql": PostgresqlDB,
+    "clickhouse": ClickhouseDB,
     "elasticsearch": ElasticsearchDB,
     "execl": ExeclDB,
     "csv": CsvDB,
