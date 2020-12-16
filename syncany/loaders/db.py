@@ -31,9 +31,6 @@ class DBLoader(Loader):
 
         fields = set([])
         if not self.key_matchers:
-            for key, exp, value in self.filters:
-                if key: fields.add(key)
-
             try:
                 for name, valuer in self.schema.items():
                     for field in valuer.get_fields():
