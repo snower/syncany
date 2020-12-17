@@ -5,6 +5,7 @@
 import re
 try:
     import psycopg2
+    from psycopg2.extras import DictCursor
 except ImportError:
     psycopg2 = None
 
@@ -26,38 +27,38 @@ class PostgresqlQueryBuilder(QueryBuilder):
 
     def filter_gt(self, key, value):
         key = self.map_virtual_fields(self.table_name, key)
-        self.query.append('`' + key + "`>%s")
+        self.query.append('"' + key + '">%s')
         self.query_values.append(value)
 
     def filter_gte(self, key, value):
         key = self.map_virtual_fields(self.table_name, key)
-        self.query.append('`' + key + "`>=%s")
+        self.query.append('"' + key + '">=%s')
         self.query_values.append(value)
 
     def filter_lt(self, key, value):
         key = self.map_virtual_fields(self.table_name, key)
-        self.query.append('`' + key + "`<%s")
+        self.query.append('"' + key + '"<%s')
         self.query_values.append(value)
 
     def filter_lte(self, key, value):
         key = self.map_virtual_fields(self.table_name, key)
-        self.query.append('`' + key + "`<=%s")
+        self.query.append('"' + key + '"<=%s')
         self.query_values.append(value)
 
     def filter_eq(self, key, value):
         key = self.map_virtual_fields(self.table_name, key)
-        self.query.append('`' + key + "`=%s")
+        self.query.append('"' + key + '"=%s')
         self.query_values.append(value)
 
     def filter_ne(self, key, value):
         key = self.map_virtual_fields(self.table_name, key)
-        self.query.append('`' + key + "`!=%s")
+        self.query.append('"' + key + '"!=%s')
         self.query_values.append(value)
 
     def filter_in(self, key, value):
         key = self.map_virtual_fields(self.table_name, key)
-        self.query.append('`' + key + "` in %s")
-        self.query_values.append(value)
+        self.query.append('"' + key + '" in %s')
+        self.query_values.append(tuple(value))
 
     def filter_limit(self, count, start=None):
         if start:
@@ -66,7 +67,7 @@ class PostgresqlQueryBuilder(QueryBuilder):
             self.limit = (start, count)
 
     def order_by(self, key, direct=1):
-        self.orders.append(('`' + key + ("` ASC" if direct else "` DESC")))
+        self.orders.append(('"' + key + ('" ASC' if direct else '" DESC')))
 
     def map_virtual_fields(self, table_name, field):
         if table_name in self.db.tables:
@@ -83,15 +84,15 @@ class PostgresqlQueryBuilder(QueryBuilder):
                     continue
                 if isinstance(virtual_table["sql"], list):
                     virtual_table["sql"] = " ".join(virtual_table["sql"])
-                sql = virtual_table['sql'].replace('`%s`' % virtual_table["name"], '`%s`' % self.table_name)
+                sql = virtual_table['sql'].replace('"%s"' % virtual_table["name"], '"%s"' % self.table_name)
             elif virtual_table["name"] != self.table_name:
                 continue
             else:
                 if isinstance(virtual_table["sql"], list):
                     virtual_table["sql"] = " ".join(virtual_table["sql"])
                 sql = virtual_table['sql']
-            return '(%s) `virtual_%s`' % (sql, self.table_name), virtual_table.get("args", [])
-        return ("`%s`.`%s`" % (self.db.db_name, self.table_name)), []
+            return '(%s) "virtual_%s"' % (sql, self.table_name), virtual_table.get("args", [])
+        return ('"%s"' % self.table_name), []
 
     def format_query(self, db_name, virtual_args):
         if not virtual_args:
@@ -100,14 +101,14 @@ class PostgresqlQueryBuilder(QueryBuilder):
         query, query_values, virtual_query, virtual_values = [], [], {}, []
         for arg in virtual_args:
             if isinstance(arg, str):
-                virtual_q = "`" + arg[0] + "`=%s"
+                virtual_q = '"' + arg[0] + '"=%s'
             else:
-                virtual_q = "`" + arg[0] + "`" + arg[1] + "%s"
+                virtual_q = '"' + arg[0] + '"' + arg[1] + '%s'
             for i in range(len(self.query)):
                 if self.query[i] == virtual_q:
                     virtual_query[self.query[i]] = self.query_values[i]
                     if isinstance(arg, str):
-                        db_name = db_name.replace('`' + arg + '`', '`' + self.query_values[i] + '`')
+                        db_name = db_name.replace('"' + arg + '"', '"' + self.query_values[i] + '"')
                     else:
                         virtual_values.append(self.query_values[i])
                     break
@@ -133,19 +134,19 @@ class PostgresqlQueryBuilder(QueryBuilder):
             for field in self.fields:
                 virtual_field = self.map_virtual_fields(self.table_name, field)
                 if virtual_field == field:
-                    fields.append('`' + field + '`')
+                    fields.append('"' + field + '"')
                 else:
-                    fields.append('%s as `%s`' % (virtual_field, field))
+                    fields.append('%s as "%s"' % (virtual_field, field))
             fields = ", ".join(fields)
         else:
             fields = "*"
 
-        where = (" WHERE" + query) if query else ""
+        where = (" WHERE " + query) if query else ""
         order_by = (" ORDER BY " + ",".join(self.orders)) if self.orders else ""
         limit = (" LIMIT %s%s" % (("%s," % self.limit[0]) if self.limit[0] else "", self.limit[1])) if self.limit else ""
         self.sql = "SELECT %s FROM %s%s%s%s" % (fields, db_name, where, order_by, limit)
         connection = self.db.ensure_connection()
-        cursor = connection.cursor(cursor_factory = psycopg2.extras.DictCursor)
+        cursor = connection.cursor(cursor_factory=DictCursor)
         try:
             cursor.execute(self.sql, query_values)
             datas = [data for data in cursor]
@@ -178,12 +179,12 @@ class PostgresqlInsertBuilder(InsertBuilder):
             datas.append([data[field] for field in fields])
 
         db_name = self.name.split(".")
-        db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
-        self.sql = "INSERT INTO %s (%s) VALUES (%s)" % (db_name, ",".join(['`' + field + '`' for field in fields]), ",".join(["%s" for _ in fields]))
+        db_name = ('"%s"' % ".".join(db_name[1:])) if len(db_name) > 1 else ('"' + db_name[0] + '"')
+        self.sql = "INSERT INTO %s (%s) VALUES (%s)" % (db_name, ",".join(['"' + field + '"' for field in fields]), ",".join(["%s" for _ in fields]))
         connection = self.db.ensure_connection()
         cursor = connection.cursor()
         try:
-            cursor.executemany(self.sql, datas)
+            cursor.executemany(self.sql.replace('"', '"'), datas)
         finally:
             cursor.close()
             connection.commit()
@@ -198,44 +199,44 @@ class PostgresqlUpdateBuilder(UpdateBuilder):
         self.sql = None
 
     def filter_gt(self, key, value):
-        self.query.append('`' + key + "`>%s")
+        self.query.append('"' + key + '">%s')
         self.query_values.append(value)
 
     def filter_gte(self, key, value):
-        self.query.append('`' + key + "`>=%s")
+        self.query.append('"' + key + '">=%s')
         self.query_values.append(value)
 
     def filter_lt(self, key, value):
-        self.query.append('`' + key + "`<%s")
+        self.query.append('"' + key + '"<%s')
         self.query_values.append(value)
 
     def filter_lte(self, key, value):
-        self.query.append('`' + key + "`<=%s")
+        self.query.append('"' + key + '"<=%s')
         self.query_values.append(value)
 
     def filter_eq(self, key, value):
-        self.query.append('`' + key + "`=%s")
+        self.query.append('"' + key + '"=%s')
         self.query_values.append(value)
 
     def filter_ne(self, key, value):
-        self.query.append('`' + key + "`!=%s")
+        self.query.append('"' + key + '"!=%s')
         self.query_values.append(value)
 
     def filter_in(self, key, value):
-        self.query.append('`' + key + "` in %s")
-        self.query_values.append(value)
+        self.query.append('"' + key + '" in %s')
+        self.query_values.append(tuple(value))
 
     def commit(self):
         values, update = [], []
         for key, value in self.update.items():
             if self.diff_data and key not in self.diff_data:
                 continue
-            update.append('`' + key + "`=%s")
+            update.append('"' + key + '"=%s')
             values.append(value)
         values += self.query_values
 
         db_name = self.name.split(".")
-        db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
+        db_name = ('"%s"' % ".".join(db_name[1:])) if len(db_name) > 1 else ('"' + db_name[0] + '"')
         self.sql = "UPDATE %s SET %s WHERE %s" % (db_name, ",".join(update), " AND ".join(self.query))
         connection = self.db.ensure_connection()
         cursor = connection.cursor()
@@ -255,36 +256,36 @@ class PostgresqlDeleteBuilder(DeleteBuilder):
         self.sql = None
 
     def filter_gt(self, key, value):
-        self.query.append('`' + key + "`>%s")
+        self.query.append('"' + key + '">%s')
         self.query_values.append(value)
 
     def filter_gte(self, key, value):
-        self.query.append('`' + key + "`>=%s")
+        self.query.append('"' + key + '">=%s')
         self.query_values.append(value)
 
     def filter_lt(self, key, value):
-        self.query.append('`' + key + "`<%s")
+        self.query.append('"' + key + '"<%s')
         self.query_values.append(value)
 
     def filter_lte(self, key, value):
-        self.query.append('`' + key + "`<=%s")
+        self.query.append('"' + key + '"<=%s')
         self.query_values.append(value)
 
     def filter_eq(self, key, value):
-        self.query.append('`' + key + "`=%s")
+        self.query.append('"' + key + '"=%s')
         self.query_values.append(value)
 
     def filter_ne(self, key, value):
-        self.query.append('`' + key + "`!=%s")
+        self.query.append('"' + key + '"!=%s')
         self.query_values.append(value)
 
     def filter_in(self, key, value):
-        self.query.append('`' + key + "` in %s")
-        self.query_values.append(value)
+        self.query.append('"' + key + '" in %s')
+        self.query_values.append(tuple(value))
 
     def commit(self):
         db_name = self.name.split(".")
-        db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
+        db_name = ('"%s"' % ".".join(db_name[1:])) if len(db_name) > 1 else ('"' + db_name[0] + '"')
         self.sql = "DELETE FROM %s WHERE %s" % (db_name, " AND ".join(self.query))
         connection = self.db.ensure_connection()
         cursor = connection.cursor()

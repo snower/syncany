@@ -141,7 +141,7 @@ class MysqlQueryBuilder(QueryBuilder):
         else:
             fields = "*"
 
-        where = (" WHERE" + query) if query else ""
+        where = (" WHERE " + query) if query else ""
         order_by = (" ORDER BY " + ",".join(self.orders)) if self.orders else ""
         limit = (" LIMIT %s%s" % (("%s," % self.limit[0]) if self.limit[0] else "", self.limit[1])) if self.limit else ""
         self.sql = "SELECT %s FROM %s%s%s%s" % (fields, db_name, where, order_by, limit)
