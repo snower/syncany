@@ -343,7 +343,7 @@ class PostgresqlDB(DataBase):
     def ensure_connection(self):
         if not self.connection:
             if psycopg2 is None:
-                raise ImportError("psycopg2>=2.7.4 is required")
+                raise ImportError("psycopg2>=2.8.6 is required")
 
             self.connection = psycopg2.connect(**self.config)
         return self.connection

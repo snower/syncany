@@ -30,8 +30,10 @@ setup(
         "pymongo": ['pymongo>=3.6.1'],
         "pymysql": ['PyMySQL>=0.8.1'],
         "openpyxl": ["openpyxl>=2.5.0"],
-        "postgresql": ["psycopg2>=2.7.4"],
+        "postgresql": ["psycopg2>=2.8.6"],
         "elasticsearch": ["elasticsearch>=6.3.1"],
+        "influxdb": ["influxdb>=5.3.1"],
+        "clickhouse": ["clickhouse_driver>=0.1.5"],
     },
     package_data={
         '': ['README.md'],
@@ -41,6 +43,6 @@ setup(
             'syncany = syncany.main:main',
         ],
     },
-    description= '简单快捷数据同步导出框架',
-    long_description= long_description,
+    description='简单快捷数据同步导出框架',
+    long_description=long_description,
 )
