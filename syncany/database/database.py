@@ -54,13 +54,14 @@ class InsertBuilder(object):
         raise NotImplementedError()
 
 class UpdateBuilder(object):
-    def __init__(self, db, name, primary_keys, fields, update):
+    def __init__(self, db, name, primary_keys, fields, update, diff_data=None):
         self.db = db
         self.name = name
         self.primary_keys = primary_keys or []
         self.fields = fields
         self.query = {}
         self.update = update
+        self.diff_data = diff_data
 
     def filter_gt(self, key, value):
         raise NotImplementedError()
@@ -128,8 +129,8 @@ class DataBase(object):
     def insert(self, name, primary_keys=None, fields=(), datas=None):
         return InsertBuilder(self, name, primary_keys, fields, datas)
 
-    def update(self, name, primary_keys=None, fields=(), update=None):
-        return UpdateBuilder(self, name, primary_keys, fields, update)
+    def update(self, name, primary_keys=None, fields=(), update=None, diff_data=None):
+        return UpdateBuilder(self, name, primary_keys, fields, update, diff_data)
 
     def delete(self, name, primary_keys=None):
         return DeleteBuilder(self, name, primary_keys)

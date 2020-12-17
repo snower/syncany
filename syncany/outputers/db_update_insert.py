@@ -60,16 +60,16 @@ class DBUpdateInsertOutputer(DBOutputer):
             self.operators.append(insert)
 
     def update(self, data, load_data):
-        eq =  True
+        diff_data = {}
         for key, value in data.items():
             load_valuer = load_data[key]
-            if value != load_valuer.get() or getattr(load_valuer, "value_type_class") != value.__class__:
-                eq = False
-                break
-        if eq:
+            ovalue = load_valuer.get()
+            if value != ovalue or getattr(load_valuer, "value_type_class") != value.__class__:
+                diff_data[key] = ovalue
+        if not diff_data:
             return
 
-        update = self.db.update(self.name, self.primary_keys, list(self.schema.keys()), data)
+        update = self.db.update(self.name, self.primary_keys, list(self.schema.keys()), data, diff_data)
         for primary_key in self.primary_keys:
             update.filter_eq(primary_key, data[primary_key])
         update.commit()

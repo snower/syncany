@@ -407,6 +407,11 @@ class DateTimeFormatFilter(DateTimeFilter):
 class DateFilter(Filter):
     def filter(self, value):
         if isinstance(value, datetime.date):
+            if isinstance(value, datetime.datetime):
+                localzone = get_localzone()
+                if localzone != value.tzinfo:
+                    value = value.astimezone(tz=localzone)
+                return datetime.date(value.year, value.month, value.day)
             return value
 
         if isinstance(value, datetime.timedelta):
@@ -429,12 +434,6 @@ class DateFilter(Filter):
             for ck, cv in value.items():
                 results[ck] = self.filter(cv)
             return value
-
-        if isinstance(value, datetime.datetime):
-            localzone = get_localzone()
-            if localzone != value.tzinfo:
-                value = value.astimezone(tz=localzone)
-            return datetime.date(value.year, value.month, value.day)
 
         try:
             dt = datetime.datetime.strptime(value, self.args or "%Y-%m-%d").astimezone(tz=get_localzone())

@@ -269,8 +269,8 @@ class TextLineDB(DataBase):
     def insert(self, name, primary_keys=None, fields=(), datas=None):
         return TextLineInsertBuilder(self, name, primary_keys, fields, datas)
 
-    def update(self, name, primary_keys=None, fields=(), update=None):
-        return TextLineUpdateBuilder(self, name, primary_keys, fields, update)
+    def update(self, name, primary_keys=None, fields=(), update=None, diff_data=None):
+        return TextLineUpdateBuilder(self, name, primary_keys, fields, update, diff_data)
 
     def delete(self, name, primary_keys=None):
         return TextLineDeleteBuilder(self, name, primary_keys)

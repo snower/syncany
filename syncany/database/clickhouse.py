@@ -237,9 +237,10 @@ class ClickhouseUpdateBuilder(UpdateBuilder):
         self.query_values.append(value)
 
     def commit(self):
-        values = []
-        update = []
+        values, update = [], []
         for key, value in self.update.items():
+            if self.diff_data and key not in self.diff_data:
+                continue
             update.append('`' + key + "`=%s")
             values.append(value)
         values += self.query_values
@@ -355,8 +356,8 @@ class ClickhouseDB(DataBase):
     def insert(self, name, primary_keys=None, fields=(), datas=None):
         return ClickhouseInsertBuilder(self, name, primary_keys, fields, datas)
 
-    def update(self, name, primary_keys=None, fields=(), update=None):
-        return ClickhouseUpdateBuilder(self, name, primary_keys, fields, update)
+    def update(self, name, primary_keys=None, fields=(), update=None, diff_data=None):
+        return ClickhouseUpdateBuilder(self, name, primary_keys, fields, update, diff_data)
 
     def delete(self, name, primary_keys=None):
         return ClickhouseDeleteBuilder(self, name, primary_keys)

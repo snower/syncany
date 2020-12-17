@@ -126,7 +126,12 @@ class MongoUpdateBuilder(UpdateBuilder):
 
     def commit(self):
         connection = self.db.ensure_connection()
-        return connection[self.db_name][self.collection_name].update_one(self.query, self.update)
+        update = {}
+        for key, value in self.update.items():
+            if self.diff_data and key not in self.diff_data:
+                continue
+            update[key] = value
+        return connection[self.db_name][self.collection_name].update_one(self.query, {"$set": update})
 
 class MongoDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
@@ -208,8 +213,8 @@ class MongoDB(DataBase):
     def insert(self, name, primary_keys=None, fields=(), datas=None):
         return MongoInsertBuilder(self, name, primary_keys, fields, datas)
 
-    def update(self, name, primary_keys=None, fields=(), update=None):
-        return MongoUpdateBuilder(self, name, primary_keys, fields, update)
+    def update(self, name, primary_keys=None, fields=(), update=None, diff_data=None):
+        return MongoUpdateBuilder(self, name, primary_keys, fields, update, diff_data)
 
     def delete(self, name, primary_keys=None):
         return MongoDeleteBuilder(self, name, primary_keys)

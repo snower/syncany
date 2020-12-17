@@ -242,8 +242,8 @@ class JsonDB(DataBase):
     def insert(self, name, primary_keys=None, fields=(), datas=None):
         return JsonInsertBuilder(self, name, primary_keys, fields, datas)
 
-    def update(self, name, primary_keys=None, fields=(), update=None):
-        return JsonUpdateBuilder(self, name, primary_keys, fields, update)
+    def update(self, name, primary_keys=None, fields=(), update=None, diff_data=None):
+        return JsonUpdateBuilder(self, name, primary_keys, fields, update, diff_data)
 
     def delete(self, name, primary_keys=None):
         return JsonDeleteBuilder(self, name, primary_keys)
