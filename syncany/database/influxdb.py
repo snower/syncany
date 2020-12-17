@@ -3,29 +3,54 @@
 # create by: snower
 
 import re
+import datetime
+import pytz
 try:
-    import clickhouse_driver
-    from clickhouse_driver.util.escape import escape_param
+    from influxdb import InfluxDBClient
 except ImportError:
-    clickhouse_driver = None
+    InfluxDBClient = None
 
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
+escape_chars_map = {
+    "\b": "\\b",
+    "\f": "\\f",
+    "\r": "\\r",
+    "\n": "\\n",
+    "\t": "\\t",
+    "\0": "\\0",
+    "\a": "\\a",
+    "\v": "\\v",
+    "\\": "\\\\",
+    "'": "\\'"
+}
+
+def escape_param(item):
+    if item is None:
+        return 0
+    elif isinstance(item, datetime.datetime):
+        if item.tzinfo and item.utcoffset().total_seconds() > 0:
+            item = item.astimezone(pytz.UTC)
+        return "'%s'" % item.strftime('%Y-%m-%dT%H:%M:%SZ')
+    elif isinstance(item, datetime.date):
+        return "'%s'" % item.strftime('%Y-%m-%d')
+    elif isinstance(item, str):
+        return "'%s'" % ''.join(escape_chars_map.get(c, c) for c in item)
+    elif isinstance(item, (list, tuple, set)):
+        return "(%s)" % ', '.join(str(escape_param(x)) for x in item)
+    return item
 
 def escape_args(args):
-    if isinstance(args, set):
-        return tuple(escape_param(list(arg)) for arg in args)
-    elif isinstance(args, (list, tuple)):
+    if isinstance(args, (list, set, tuple)):
         return tuple(escape_param(arg) for arg in args)
     elif isinstance(args, dict):
         return {key: escape_param(val) for (key, val) in args.items()}
     else:
         return escape_param(args)
 
-
-class ClickhouseQueryBuilder(QueryBuilder):
+class InfluxDBQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
-        super(ClickhouseQueryBuilder, self).__init__(*args, **kwargs)
+        super(InfluxDBQueryBuilder, self).__init__(*args, **kwargs)
 
         self.query = []
         self.query_values = []
@@ -104,11 +129,22 @@ class ClickhouseQueryBuilder(QueryBuilder):
                     virtual_table["sql"] = " ".join(virtual_table["sql"])
                 sql = virtual_table['sql']
             return '(%s) `virtual_%s`' % (sql, self.table_name), virtual_table.get("args", [])
-        return ("`%s`.`%s`" % (self.db.db_name, self.table_name)), []
+        return ("`%s`" % self.table_name), []
 
     def format_query(self, db_name, virtual_args):
         if not virtual_args:
-            return db_name, (" AND ".join(self.query) if self.query else ""), self.query_values
+            query, query_values = [], []
+            for i in range(len(self.query)):
+                if self.query[i][-6:] == " in %s":
+                    in_querys = []
+                    for qv in self.query_values[i]:
+                        in_querys.append(self.query[i][:-6] + "=%s")
+                        query_values.append(qv)
+                    query.append("(" + " OR ".join(in_querys) + ")")
+                else:
+                    query.append(self.query[i])
+                    query_values.append(self.query_values[i])
+            return db_name, (" AND ".join(query) if query else ""), query_values
 
         query, query_values, virtual_query, virtual_values = [], [], {}, []
         for arg in virtual_args:
@@ -133,8 +169,15 @@ class ClickhouseQueryBuilder(QueryBuilder):
         for i in range(len(self.query)):
             if self.query[i] in virtual_query:
                 continue
-            query.append(self.query[i])
-            query_values.append(self.query_values[i])
+            if self.query[i][-6:] == " in %s":
+                in_querys = []
+                for qv in self.query_values[i]:
+                    in_querys.append(self.query[i][:-6] + "=%s")
+                    query_values.append(qv)
+                query.append("(" + " OR ".join(in_querys) + ")")
+            else:
+                query.append(self.query[i])
+                query_values.append(self.query_values[i])
         return db_name, (" AND ".join(query) if query else ""), (virtual_values + query_values)
 
     def commit(self):
@@ -153,28 +196,20 @@ class ClickhouseQueryBuilder(QueryBuilder):
         else:
             fields = "*"
 
-        where = (" WHERE" + query) if query else ""
+        where = (" WHERE " + query) if query else ""
         order_by = (" ORDER BY " + ",".join(self.orders)) if self.orders else ""
         limit = (" LIMIT %s%s" % (("%s," % self.limit[0]) if self.limit[0] else "", self.limit[1])) if self.limit else ""
         self.sql = "SELECT %s FROM %s%s%s%s" % (fields, db_name, where, order_by, limit)
         connection = self.db.ensure_connection()
-        cursor = connection.cursor()
-        try:
-            cursor.execute(self.sql % escape_args(query_values))
-            datas = cursor.fetchall()
-            names = [c.name for c in cursor.description]
-            datas = [dict(zip(names, data)) for data in datas]
-        finally:
-            cursor.close()
-        return datas
+        result = connection.query(self.sql.replace('`', '"') % escape_args(query_values))
+        return list(result.get_points())
 
-class ClickhouseInsertBuilder(InsertBuilder):
+class InfluxDBInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
-        super(ClickhouseInsertBuilder, self).__init__(*args, **kwargs)
+        super(InfluxDBInsertBuilder, self).__init__(*args, **kwargs)
 
         if isinstance(self.datas, dict):
             self.datas = [self.datas]
-        self.sql = None
 
     def get_fields(self):
         fields = None
@@ -187,24 +222,105 @@ class ClickhouseInsertBuilder(InsertBuilder):
 
     def commit(self):
         fields = self.get_fields() if not self.fields else self.fields
+        db_name = self.name.split(".")
+        table_name = ".".join(db_name[1:]) if len(db_name) > 1 else db_name[0]
+        if table_name in self.db.tables:
+            tags = self.db.tables[table_name].get("tags")
+        else:
+            tags = None
+
         datas = []
         for data in self.datas:
-            datas.append([data[field] for field in fields])
+            json_body = {"measurement": table_name, "tags": {}, "time": None, "fields": {}}
+            for field in fields:
+                value = escape_param(data[field]) if isinstance(data[field], datetime.date) else data[field]
+                if field == "time":
+                    json_body["time"] = value
+                elif tags:
+                    if field in tags:
+                        json_body["tags"][field] = value
+                    else:
+                        json_body["fields"][field] = value
+                else:
+                    if isinstance(data[field], (str, datetime.date)) or field in self.primary_keys:
+                        json_body["tags"][field] = value
+                    else:
+                        json_body["fields"][field] = value
+            if not json_body["time"]:
+                json_body["time"] = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+            datas.append(json_body)
 
-        db_name = self.name.split(".")
-        db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
-        self.sql = "INSERT INTO %s (%s) VALUES " % (db_name, ",".join(['`' + field + '`' for field in fields]))
         connection = self.db.ensure_connection()
-        cursor = connection.cursor()
-        try:
-            cursor.executemany(self.sql, datas)
-        finally:
-            cursor.close()
-        return cursor
+        return connection.write_points(datas)
 
-class ClickhouseUpdateBuilder(UpdateBuilder):
+class InfluxDBUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
-        super(ClickhouseUpdateBuilder, self).__init__(*args, **kwargs)
+        super(InfluxDBUpdateBuilder, self).__init__(*args, **kwargs)
+
+        self.query = []
+        self.query_values = []
+
+    def filter_gt(self, key, value):
+        self.query.append('`' + key + "`>%s")
+        self.query_values.append(value)
+
+    def filter_gte(self, key, value):
+        self.query.append('`' + key + "`>=%s")
+        self.query_values.append(value)
+
+    def filter_lt(self, key, value):
+        self.query.append('`' + key + "`<%s")
+        self.query_values.append(value)
+
+    def filter_lte(self, key, value):
+        self.query.append('`' + key + "`<=%s")
+        self.query_values.append(value)
+
+    def filter_eq(self, key, value):
+        self.query.append('`' + key + "`=%s")
+        self.query_values.append(value)
+
+    def filter_ne(self, key, value):
+        self.query.append('`' + key + "`!=%s")
+        self.query_values.append(value)
+
+    def filter_in(self, key, value):
+        self.query.append('`' + key + "` in %s")
+        self.query_values.append(value)
+
+    def commit(self):
+        fields = list(self.update.keys()) if not self.fields else self.fields
+        db_name = self.name.split(".")
+        table_name = ".".join(db_name[1:]) if len(db_name) > 1 else db_name[0]
+        if table_name in self.db.tables:
+            tags = self.db.tables[table_name].get("tags")
+        else:
+            tags = None
+
+        json_body = {"measurement": table_name, "tags": {}, "time": None, "fields": {}}
+        for field in fields:
+            value = escape_param(self.update[field]) if isinstance(self.update[field], datetime.date) else self.update[field]
+            if field == "time":
+                json_body["time"] = value
+            elif tags:
+                if field in tags:
+                    json_body["tags"][field] = value
+                else:
+                    json_body["fields"][field] = value
+            else:
+                if isinstance(self.update[field], (str, datetime.date)) or field in self.primary_keys:
+                    json_body["tags"][field] = value
+                else:
+                    json_body["fields"][field] = value
+        if not json_body["time"]:
+            json_body["time"] = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        connection = self.db.ensure_connection()
+        return connection.write_points([json_body])
+
+class InfluxDBDeleteBuilder(DeleteBuilder):
+    def __init__(self, *args, **kwargs):
+        super(InfluxDBDeleteBuilder, self).__init__(*args, **kwargs)
 
         self.query = []
         self.query_values = []
@@ -239,79 +355,30 @@ class ClickhouseUpdateBuilder(UpdateBuilder):
         self.query_values.append(value)
 
     def commit(self):
-        values, update = [], []
-        for key, value in self.update.items():
-            if self.diff_data and key not in self.diff_data:
-                continue
-            update.append('`' + key + "`=%s")
-            values.append(value)
-        values += self.query_values
-
         db_name = self.name.split(".")
-        db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
-        self.sql = "ALTER TABLE %s UPDATE %s WHERE %s" % (db_name, ",".join(update), " AND ".join(self.query))
+        db_name = ("`%s`" % ".".join(db_name[1:])) if len(db_name) > 1 else ('`' + db_name[0] + '`')
+        query, query_values = [], []
+        for i in range(len(self.query)):
+            if self.query[i][-6:] == " in %s":
+                in_querys = []
+                for qv in self.query_values[i]:
+                    in_querys.append(self.query[i][:-6] + "=%s")
+                    query_values.append(qv)
+                query.append("(" + " OR ".join(in_querys) + ")")
+            else:
+                query.append(self.query[i])
+                query_values.append(self.query_values[i])
+
+        self.sql = "DELETE FROM %s WHERE %s" % (db_name, " AND ".join(self.query))
         connection = self.db.ensure_connection()
-        cursor = connection.cursor()
-        try:
-            cursor.execute(self.sql % escape_args(values))
-        finally:
-            cursor.close()
-        return cursor
+        return connection.query(self.sql.replace('`', '"') % escape_args(query_values))
 
-class ClickhouseDeleteBuilder(DeleteBuilder):
-    def __init__(self, *args, **kwargs):
-        super(ClickhouseDeleteBuilder, self).__init__(*args, **kwargs)
-
-        self.query = []
-        self.query_values = []
-        self.sql = None
-
-    def filter_gt(self, key, value):
-        self.query.append('`' + key + "`>%s")
-        self.query_values.append(value)
-
-    def filter_gte(self, key, value):
-        self.query.append('`' + key + "`>=%s")
-        self.query_values.append(value)
-
-    def filter_lt(self, key, value):
-        self.query.append('`' + key + "`<%s")
-        self.query_values.append(value)
-
-    def filter_lte(self, key, value):
-        self.query.append('`' + key + "`<=%s")
-        self.query_values.append(value)
-
-    def filter_eq(self, key, value):
-        self.query.append('`' + key + "`=%s")
-        self.query_values.append(value)
-
-    def filter_ne(self, key, value):
-        self.query.append('`' + key + "`!=%s")
-        self.query_values.append(value)
-
-    def filter_in(self, key, value):
-        self.query.append('`' + key + "` in %s")
-        self.query_values.append(value)
-
-    def commit(self):
-        db_name = self.name.split(".")
-        db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
-        self.sql = "ALTER TABLE %s DELETE WHERE %s" % (db_name, " AND ".join(self.query))
-        connection = self.db.ensure_connection()
-        cursor = connection.cursor()
-        try:
-            cursor.execute(self.sql % escape_args(self.query_values))
-        finally:
-            cursor.close()
-        return cursor
-
-class ClickhouseDB(DataBase):
+class InfluxDB(DataBase):
     DEFAULT_CONFIG = {
         "host": "127.0.0.1",
-        "port": 9000,
-        "user": "root",
-        "password": "",
+        "port": 8086,
+        "username": "root",
+        "password": "root",
         "database": "",
         "tables": [
             # {
@@ -336,33 +403,33 @@ class ClickhouseDB(DataBase):
         all_config.update(self.DEFAULT_CONFIG)
         all_config.update(config)
 
-        self.db_name = all_config["database"] if "database" in all_config else all_config["name"]
+        self.db_name = all_config["db"] if "db" in all_config else all_config["name"]
         self.tables = {table["name"]: table for table in all_config.pop("tables")} if "tables" in all_config else {}
         self.virtual_tables = all_config.pop("virtual_tables") if "virtual_tables" in all_config else []
 
-        super(ClickhouseDB, self).__init__(all_config)
+        super(InfluxDB, self).__init__(all_config)
 
         self.connection = None
 
     def ensure_connection(self):
         if not self.connection:
-            if clickhouse_driver is None:
-                raise ImportError("clickhouse_driver>=0.1.5 is required")
+            if InfluxDBClient is None:
+                raise ImportError("influxdb>=5.3.1 is required")
 
-            self.connection = clickhouse_driver.connect(**self.config)
+            self.connection = InfluxDBClient(**self.config)
         return self.connection
 
     def query(self, name, primary_keys=None, fields=()):
-        return ClickhouseQueryBuilder(self, name, primary_keys, fields)
+        return InfluxDBQueryBuilder(self, name, primary_keys, fields)
 
     def insert(self, name, primary_keys=None, fields=(), datas=None):
-        return ClickhouseInsertBuilder(self, name, primary_keys, fields, datas)
+        return InfluxDBInsertBuilder(self, name, primary_keys, fields, datas)
 
     def update(self, name, primary_keys=None, fields=(), update=None, diff_data=None):
-        return ClickhouseUpdateBuilder(self, name, primary_keys, fields, update, diff_data)
+        return InfluxDBUpdateBuilder(self, name, primary_keys, fields, update, diff_data)
 
     def delete(self, name, primary_keys=None):
-        return ClickhouseDeleteBuilder(self, name, primary_keys)
+        return InfluxDBDeleteBuilder(self, name, primary_keys)
 
     def close(self):
         if self.connection:

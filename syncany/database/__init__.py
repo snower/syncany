@@ -9,6 +9,7 @@ from .mongodb import MongoDB
 from .mysql import MysqlDB
 from .postgresql import PostgresqlDB
 from .clickhouse import ClickhouseDB
+from .influxdb import InfluxDB
 from .elasticsearch import ElasticsearchDB
 from .excel import ExeclDB
 from .csv import CsvDB
@@ -23,6 +24,7 @@ DATABASES = {
     "mysql": MysqlDB,
     "postgresql": PostgresqlDB,
     "clickhouse": ClickhouseDB,
+    "influxdb": InfluxDB,
     "elasticsearch": ElasticsearchDB,
     "execl": ExeclDB,
     "csv": CsvDB,
