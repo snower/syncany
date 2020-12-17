@@ -64,37 +64,37 @@ class InfluxDBQueryBuilder(QueryBuilder):
 
     def filter_gt(self, key, value):
         key = self.map_virtual_fields(self.table_name, key)
-        self.query.append('`' + key + "`>%s")
+        self.query.append('"' + key + '">%s')
         self.query_values.append(value)
 
     def filter_gte(self, key, value):
         key = self.map_virtual_fields(self.table_name, key)
-        self.query.append('`' + key + "`>=%s")
+        self.query.append('"' + key + '">=%s')
         self.query_values.append(value)
 
     def filter_lt(self, key, value):
         key = self.map_virtual_fields(self.table_name, key)
-        self.query.append('`' + key + "`<%s")
+        self.query.append('"' + key + '"<%s')
         self.query_values.append(value)
 
     def filter_lte(self, key, value):
         key = self.map_virtual_fields(self.table_name, key)
-        self.query.append('`' + key + "`<=%s")
+        self.query.append('"' + key + '"<=%s')
         self.query_values.append(value)
 
     def filter_eq(self, key, value):
         key = self.map_virtual_fields(self.table_name, key)
-        self.query.append('`' + key + "`=%s")
+        self.query.append('"' + key + '"=%s')
         self.query_values.append(value)
 
     def filter_ne(self, key, value):
         key = self.map_virtual_fields(self.table_name, key)
-        self.query.append('`' + key + "`!=%s")
+        self.query.append('"' + key + '"!=%s')
         self.query_values.append(value)
 
     def filter_in(self, key, value):
         key = self.map_virtual_fields(self.table_name, key)
-        self.query.append('`' + key + "` in %s")
+        self.query.append('"' + key + '" in %s')
         self.query_values.append(value)
 
     def filter_limit(self, count, start=None):
@@ -104,7 +104,7 @@ class InfluxDBQueryBuilder(QueryBuilder):
             self.limit = (start, count)
 
     def order_by(self, key, direct=1):
-        self.orders.append(('`' + key + ("` ASC" if direct else "` DESC")))
+        self.orders.append(('"' + key + ('" ASC' if direct else '" DESC')))
 
     def map_virtual_fields(self, table_name, field):
         if table_name in self.db.tables:
@@ -121,15 +121,15 @@ class InfluxDBQueryBuilder(QueryBuilder):
                     continue
                 if isinstance(virtual_table["sql"], list):
                     virtual_table["sql"] = " ".join(virtual_table["sql"])
-                sql = virtual_table['sql'].replace('`%s`' % virtual_table["name"], '`%s`' % self.table_name)
+                sql = virtual_table['sql'].replace('"%s"' % virtual_table["name"], '"%s"' % self.table_name)
             elif virtual_table["name"] != self.table_name:
                 continue
             else:
                 if isinstance(virtual_table["sql"], list):
                     virtual_table["sql"] = " ".join(virtual_table["sql"])
                 sql = virtual_table['sql']
-            return '(%s) `virtual_%s`' % (sql, self.table_name), virtual_table.get("args", [])
-        return ("`%s`" % self.table_name), []
+            return '(%s) "virtual_%s"' % (sql, self.table_name), virtual_table.get("args", [])
+        return ('"%s"' % self.table_name), []
 
     def format_query(self, db_name, virtual_args):
         if not virtual_args:
@@ -149,14 +149,14 @@ class InfluxDBQueryBuilder(QueryBuilder):
         query, query_values, virtual_query, virtual_values = [], [], {}, []
         for arg in virtual_args:
             if isinstance(arg, str):
-                virtual_q = "`" + arg[0] + "`=%s"
+                virtual_q = '"' + arg[0] + '"=%s'
             else:
-                virtual_q = "`" + arg[0] + "`" + arg[1] + "%s"
+                virtual_q = '"' + arg[0] + '"' + arg[1] + "%s"
             for i in range(len(self.query)):
                 if self.query[i] == virtual_q:
                     virtual_query[self.query[i]] = self.query_values[i]
                     if isinstance(arg, str):
-                        db_name = db_name.replace('`' + arg + '`', '`' + self.query_values[i] + '`')
+                        db_name = db_name.replace('"' + arg + '"', '"' + self.query_values[i] + '"')
                     else:
                         virtual_values.append(self.query_values[i])
                     break
@@ -189,9 +189,9 @@ class InfluxDBQueryBuilder(QueryBuilder):
             for field in self.fields:
                 virtual_field = self.map_virtual_fields(self.table_name, field)
                 if virtual_field == field:
-                    fields.append('`' + field + '`')
+                    fields.append('"' + field + '"')
                 else:
-                    fields.append('%s as `%s`' % (virtual_field, field))
+                    fields.append('%s as "%s"' % (virtual_field, field))
             fields = ", ".join(fields)
         else:
             fields = "*"
@@ -201,7 +201,7 @@ class InfluxDBQueryBuilder(QueryBuilder):
         limit = (" LIMIT %s%s" % (("%s," % self.limit[0]) if self.limit[0] else "", self.limit[1])) if self.limit else ""
         self.sql = "SELECT %s FROM %s%s%s%s" % (fields, db_name, where, order_by, limit)
         connection = self.db.ensure_connection()
-        result = connection.query(self.sql.replace('`', '"') % escape_args(query_values))
+        result = connection.query(self.sql % escape_args(query_values))
         return list(result.get_points())
 
 class InfluxDBInsertBuilder(InsertBuilder):
@@ -261,31 +261,31 @@ class InfluxDBUpdateBuilder(UpdateBuilder):
         self.query_values = []
 
     def filter_gt(self, key, value):
-        self.query.append('`' + key + "`>%s")
+        self.query.append('"' + key + '">%s')
         self.query_values.append(value)
 
     def filter_gte(self, key, value):
-        self.query.append('`' + key + "`>=%s")
+        self.query.append('"' + key + '">=%s')
         self.query_values.append(value)
 
     def filter_lt(self, key, value):
-        self.query.append('`' + key + "`<%s")
+        self.query.append('"' + key + '"<%s')
         self.query_values.append(value)
 
     def filter_lte(self, key, value):
-        self.query.append('`' + key + "`<=%s")
+        self.query.append('"' + key + '"<=%s')
         self.query_values.append(value)
 
     def filter_eq(self, key, value):
-        self.query.append('`' + key + "`=%s")
+        self.query.append('"' + key + '"=%s')
         self.query_values.append(value)
 
     def filter_ne(self, key, value):
-        self.query.append('`' + key + "`!=%s")
+        self.query.append('"' + key + '"!=%s')
         self.query_values.append(value)
 
     def filter_in(self, key, value):
-        self.query.append('`' + key + "` in %s")
+        self.query.append('"' + key + '" in %s')
         self.query_values.append(value)
 
     def commit(self):
@@ -327,36 +327,36 @@ class InfluxDBDeleteBuilder(DeleteBuilder):
         self.sql = None
 
     def filter_gt(self, key, value):
-        self.query.append('`' + key + "`>%s")
+        self.query.append('"' + key + '">%s')
         self.query_values.append(value)
 
     def filter_gte(self, key, value):
-        self.query.append('`' + key + "`>=%s")
+        self.query.append('"' + key + '">=%s')
         self.query_values.append(value)
 
     def filter_lt(self, key, value):
-        self.query.append('`' + key + "`<%s")
+        self.query.append('"' + key + '"<%s')
         self.query_values.append(value)
 
     def filter_lte(self, key, value):
-        self.query.append('`' + key + "`<=%s")
+        self.query.append('"' + key + '"<=%s')
         self.query_values.append(value)
 
     def filter_eq(self, key, value):
-        self.query.append('`' + key + "`=%s")
+        self.query.append('"' + key + '"=%s')
         self.query_values.append(value)
 
     def filter_ne(self, key, value):
-        self.query.append('`' + key + "`!=%s")
+        self.query.append('"' + key + '"!=%s')
         self.query_values.append(value)
 
     def filter_in(self, key, value):
-        self.query.append('`' + key + "` in %s")
+        self.query.append('"' + key + '" in %s')
         self.query_values.append(value)
 
     def commit(self):
         db_name = self.name.split(".")
-        db_name = ("`%s`" % ".".join(db_name[1:])) if len(db_name) > 1 else ('`' + db_name[0] + '`')
+        db_name = ('"%s"' % ".".join(db_name[1:])) if len(db_name) > 1 else ('"' + db_name[0] + '"')
         query, query_values = [], []
         for i in range(len(self.query)):
             if self.query[i][-6:] == " in %s":
@@ -371,7 +371,7 @@ class InfluxDBDeleteBuilder(DeleteBuilder):
 
         self.sql = "DELETE FROM %s WHERE %s" % (db_name, " AND ".join(self.query))
         connection = self.db.ensure_connection()
-        return connection.query(self.sql.replace('`', '"') % escape_args(query_values))
+        return connection.query(self.sql % escape_args(query_values))
 
 class InfluxDB(DataBase):
     DEFAULT_CONFIG = {
