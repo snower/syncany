@@ -242,7 +242,7 @@ class SplitCalculater(Calculater):
                 if isinstance(data, dict) and self.args[2] in data \
                         and isinstance(data[self.args[2]], str):
                     result.extend(data[self.args[2]].split(self.args[2]))
-                return result
+            return result
 
         return self.split(self.args[1:])
 
@@ -275,7 +275,7 @@ class JoinCalculater(Calculater):
                 if isinstance(data, dict) and self.args[2] in data \
                         and isinstance(data[self.args[2]], str):
                     result.append(data[self.args[2]])
-                return self.args[1].join(result)
+            return self.args[1].join(result)
 
         join_key, dict_join_key = "", None
         if isinstance(self.args[0], list):
@@ -428,6 +428,9 @@ class MaxCalculater(Calculater):
             return self.args[0]
 
         if len(self.args) == 2 and isinstance(self.args[1], str):
+            if len(self.args[0]) == 1:
+                return self.args[0][0]
+
             datas = {}
             for d in self.args:
                 if isinstance(d, dict) and self.args[1] in d:
@@ -461,6 +464,9 @@ class MinCalculater(Calculater):
             return self.args[0]
 
         if len(self.args) == 2 and isinstance(self.args[1], str):
+            if len(self.args[0]) == 1:
+                return self.args[0][0]
+
             datas = {}
             for d in self.args:
                 if isinstance(d, dict) and self.args[1] in d:
