@@ -362,8 +362,15 @@ class MaxCalculater(Calculater):
                 return max(*tuple(self.args))
             return self.args[0]
 
-        max_key_value = max(*tuple(self.args[0]))
+        if len(self.args) == 2 and isinstance(self.args[1], str):
+            datas = {}
+            for d in self.args:
+                if isinstance(d, dict) and self.args[1] in d:
+                    datas[d[self.args[1]]] = d
+            max_key = max(*tuple(datas.keys()))
+            return datas[max_key]
 
+        max_key_value = max(*tuple(self.args[0]))
         if len(self.args) >= 2:
             if isinstance(self.args[1], (list, tuple, set)):
                 try:
@@ -373,9 +380,7 @@ class MaxCalculater(Calculater):
 
             if isinstance(self.args[1], dict):
                 return self.args[1].get(max_key_value)
-
             return max(*tuple([max_key_value] + list(self.args[1:])))
-
         return max_key_value
 
 class MinCalculater(Calculater):
@@ -390,8 +395,15 @@ class MinCalculater(Calculater):
                 return min(*tuple(self.args))
             return self.args[0]
 
-        min_key_value = min(*tuple(self.args[0]))
+        if len(self.args) == 2 and isinstance(self.args[1], str):
+            datas = {}
+            for d in self.args:
+                if isinstance(d, dict) and self.args[1] in d:
+                    datas[d[self.args[1]]] = d
+            min_key = min(*tuple(datas.keys()))
+            return datas[min_key]
 
+        min_key_value = min(*tuple(self.args[0]))
         if len(self.args) >= 2:
             if isinstance(self.args[1], (list, tuple, set)):
                 try:
@@ -401,9 +413,7 @@ class MinCalculater(Calculater):
 
             if isinstance(self.args[1], dict):
                 return self.args[1].get(min_key_value)
-
             return min(*tuple([min_key_value] + list(self.args[1:])))
-
         return min_key_value
 
 class LenCalculater(Calculater):
