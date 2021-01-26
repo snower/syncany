@@ -432,9 +432,11 @@ class MaxCalculater(Calculater):
                 return self.args[0][0]
 
             datas = {}
-            for d in self.args:
+            for d in self.args[0]:
                 if isinstance(d, dict) and self.args[1] in d:
                     datas[d[self.args[1]]] = d
+            if not datas:
+                return None
             max_key = max(*tuple(datas.keys()))
             return datas[max_key]
 
@@ -468,9 +470,11 @@ class MinCalculater(Calculater):
                 return self.args[0][0]
 
             datas = {}
-            for d in self.args:
+            for d in self.args[0]:
                 if isinstance(d, dict) and self.args[1] in d:
                     datas[d[self.args[1]]] = d
+            if not datas:
+                return None
             min_key = min(*tuple(datas.keys()))
             return datas[min_key]
 
