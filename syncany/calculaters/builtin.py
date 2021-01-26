@@ -47,6 +47,13 @@ class AddCalculater(Calculater):
         if not self.args:
             return 0
 
+        if len(self.args) == 3 and isinstance(self.args[0], (list, tuple, set)) \
+                and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data:
+                    data[self.args[1]] = data[self.args[1]] + self.args[2]
+            return self.args[0]
+
         if len(self.args) >= 2:
             if isinstance(self.args[0], datetime.datetime) and isinstance(self.args[1], (int, float)):
                 return self.args[0] + datetime.timedelta(seconds=int(self.args[1]))
@@ -64,6 +71,13 @@ class SubCalculater(Calculater):
     def calculate(self):
         if not self.args:
             return 0
+
+        if len(self.args) == 3 and isinstance(self.args[0], (list, tuple, set)) \
+                and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data:
+                    data[self.args[1]] = data[self.args[1]] - self.args[2]
+            return self.args[0]
 
         if len(self.args) >= 2:
             if isinstance(self.args[0], datetime.datetime) and isinstance(self.args[1], (int, float)):
@@ -83,6 +97,13 @@ class MulCalculater(Calculater):
         if not self.args:
             return 0
 
+        if len(self.args) == 3 and isinstance(self.args[0], (list, tuple, set)) \
+                and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data:
+                    data[self.args[1]] = data[self.args[1]] * self.args[2]
+            return self.args[0]
+
         result = self.args[0]
         for i in range(1, len(self.args)):
             result *= self.args[i]
@@ -93,6 +114,13 @@ class DivCalculater(Calculater):
     def calculate(self):
         if not self.args:
             return 0
+
+        if len(self.args) == 3 and isinstance(self.args[0], (list, tuple, set)) \
+                and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data:
+                    data[self.args[1]] = data[self.args[1]] / self.args[2]
+            return self.args[0]
 
         result = self.args[0]
         for i in range(1, len(self.args)):
@@ -105,6 +133,13 @@ class ModCalculater(Calculater):
         if not self.args:
             return 0
 
+        if len(self.args) == 3 and isinstance(self.args[0], (list, tuple, set)) \
+                and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data:
+                    data[self.args[1]] = data[self.args[1]] % self.args[2]
+            return self.args[0]
+
         result = self.args[0]
         for i in range(1, len(self.args)):
             result = result % self.args[i]
@@ -115,6 +150,24 @@ class BitCalculater(Calculater):
     def calculate(self):
         if not self.args:
             return 0
+
+        if len(self.args) in (3, 4) and isinstance(self.args[0], (list, tuple, set)) \
+                and isinstance(self.args[1], str) and isinstance(self.args[2], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data:
+                    if self.args[2] == ">>":
+                        data[self.args[1]] = data[self.args[1]] >> self.args[3]
+                    if self.args[2] == "<<":
+                        data[self.args[1]] = data[self.args[1]] << self.args[3]
+                    if self.args[2] == "&":
+                        data[self.args[1]] = data[self.args[1]] & self.args[3]
+                    if self.args[2] == "|":
+                        data[self.args[1]] = data[self.args[1]] | self.args[3]
+                    if self.args[2] == "^":
+                        data[self.args[1]] = data[self.args[1]] ^ self.args[3]
+                    if self.args[2] == "~":
+                        data[self.args[1]] = ~ data[self.args[1]]
+            return self.args[0]
 
         if len(self.args) == 3:
             if self.args[1] == ">>":
@@ -133,26 +186,20 @@ class BitCalculater(Calculater):
                 return ~ self.args[1]
         return 0
 
-class ConcatCalculater(Calculater):
-    def calculate(self):
-        if not self.args:
-            return ""
-
-        result = []
-        for arg in self.args:
-            if isinstance(arg, str):
-                result.append(arg)
-            elif isinstance(arg, bytes):
-                result.append(arg.decode("utf-8"))
-            else:
-                result.append(str(arg))
-
-        return "".join(result)
-
 class SubstringCalculater(Calculater):
     def calculate(self):
         if not self.args:
             return ""
+
+        if len(self.args) in (3, 4) and isinstance(self.args[0], (list, tuple, set)) \
+                and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data:
+                    if len(self.args) == 4:
+                        data[self.args[1]] = data[self.args[1]][self.args[2]: self.args[2] + self.args[3]]
+                    else:
+                        data[self.args[1]] = data[self.args[1]][self.args[2]:]
+            return self.args[0]
 
         if len(self.args) >= 3:
             if self.args[2] < 0:
@@ -188,6 +235,15 @@ class SplitCalculater(Calculater):
         if not self.args:
             return []
 
+        if len(self.args) == 3 and isinstance(self.args[0], (list, tuple, set)) \
+                and isinstance(self.args[1], str) and isinstance(self.args[2], str):
+            result = []
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[2] in data \
+                        and isinstance(data[self.args[2]], str):
+                    result.extend(data[self.args[2]].split(self.args[2]))
+                return result
+
         return self.split(self.args[1:])
 
 class JoinCalculater(Calculater):
@@ -211,6 +267,15 @@ class JoinCalculater(Calculater):
     def calculate(self):
         if not self.args:
             return []
+
+        if len(self.args) == 3 and isinstance(self.args[0], (list, tuple, set)) \
+                and isinstance(self.args[1], str) and isinstance(self.args[2], str):
+            result = []
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[2] in data \
+                        and isinstance(data[self.args[2]], str):
+                    result.append(data[self.args[2]])
+                return self.args[1].join(result)
 
         join_key, dict_join_key = "", None
         if isinstance(self.args[0], list):

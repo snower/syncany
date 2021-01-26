@@ -16,7 +16,6 @@ CALCULATERS = {
     "div": DivCalculater,
     "mod": ModCalculater,
     "bit": BitCalculater,
-    "concat": ConcatCalculater,
     "substring": SubstringCalculater,
     "split": SplitCalculater,
     "join": JoinCalculater,
