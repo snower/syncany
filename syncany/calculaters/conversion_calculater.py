@@ -6,80 +6,180 @@ from collections import OrderedDict
 from .calculater import Calculater
 
 
-class ConversionCalculater(Calculater):
-    def get_xykey_value(self, xkeys, ykeyses, vkeys, data):
-        xvalue, yvalue, vvalue = data, data, (data if vkeys else 1)
-        for k in xkeys:
-            if not isinstance(xvalue, dict) or k not in xvalue:
-                xvalue = None
-                break
-            xvalue = xvalue[k]
+class ConvV4HCalculater(Calculater):
+    def calculate(self):
+        if len(self.args) < 3:
+            return None
 
-        yvalues = []
-        for ykeys in ykeyses:
-            for k in ykeys:
-                if not isinstance(yvalue, dict) or k not in yvalue:
-                    yvalue = None
-                    break
-                yvalue = yvalue[k]
-            yvalues.append(yvalue)
-            yvalue = data
+        datas = self.args[0] if isinstance(self.args[0], list) else \
+            ([self.args[0]] if isinstance(self.args[0], dict) else [])
+        key, vkey = self.args[1], self.args[2]
+        if len(self.args) >= 4:
+            reserved_keys = set(self.args[3] if isinstance(self.args[3], list) else [self.args[3]])
+        else:
+            reserved_keys = set([])
+        result, reserved_data = [], {}
+        for data in datas:
+            for k, v in data.items():
+                if k in reserved_keys:
+                    reserved_data[k] = v
+            for k, v in data.items():
+                if k not in reserved_keys:
+                    reserved_data[key] = k
+                    reserved_data[vkey] = v
+                    result.append(dict(**reserved_data))
+        return result
 
-        for k in vkeys:
-            if not isinstance(vvalue, dict) or k not in vvalue:
-                vvalue = 0
-                break
-            vvalue = vvalue[k]
-        return xvalue, tuple(yvalues) if [yvalue for yvalue in yvalues if yvalue is not None] else None, vvalue
 
-    def update_outputer_schema(self, xtitles):
+class ConvH4VCalculater(Calculater):
+    def calculate(self):
+        if len(self.args) < 3:
+            return None
+
+        vhkey, vvkey = self.args[1], self.args[2]
+        vcount_key = self.args[3] if len(self.args) >= 4 else None
+        datas = self.args[0] if isinstance(self.args[0], list) else \
+            ([self.args[0]] if isinstance(self.args[0], dict) else [])
+
+        hkeys, vkeys, mdata = OrderedDict(), OrderedDict(), {}
+        for data in datas:
+            if vhkey not in data:
+                continue
+            if vvkey not in data:
+                continue
+            hvalue, vvalue = data[vhkey], data[vvkey]
+            if hvalue not in hkeys:
+                hkeys[hvalue] = True
+            if vvalue not in vkeys:
+                vkeys[vvalue] = True
+            if hvalue not in mdata:
+                mdata[hvalue] = {}
+            if vcount_key and vcount_key not in data and isinstance(data[vcount_key], int):
+                if vvalue not in mdata[hvalue]:
+                    mdata[hvalue][vvalue] = data[vcount_key]
+                else:
+                    mdata[hvalue][vvalue] += data[vcount_key]
+            else:
+                if vvalue not in mdata[hvalue]:
+                    mdata[hvalue][vvalue] = 1
+                else:
+                    mdata[hvalue][vvalue] += 1
+
+        result = []
+        for vkey in vkeys:
+            data = OrderedDict(**{vvkey: vkey})
+            for hkey in hkeys:
+                data[hkey] = mdata[hkey][vkey] if hkey in mdata and vkey in mdata[hkey] else 0
+            result.append(data)
+        return result
+
+
+class ConvV2HCalculater(Calculater):
+    def update_outputer_schema(self, xkeys):
         from ..taskers.tasker import current_tasker
         tasker = current_tasker()
         tasker.outputer.schema = OrderedDict()
-        for ykey in (self.args[2] if isinstance(self.args[2], list) else [self.args[2]]):
-            valuer = tasker.create_valuer(tasker.compile_db_valuer(ykey, None))
-            if valuer:
-                tasker.outputer.add_valuer(ykey, valuer)
-        for xvalue in xtitles:
-            valuer = tasker.create_valuer(tasker.compile_db_valuer(xvalue, None))
-            if valuer:
-                tasker.outputer.add_valuer(xvalue, valuer)
+        for key in xkeys:
+            valuer = tasker.create_valuer(tasker.compile_db_valuer(key, None))
+            if not valuer:
+                continue
+            tasker.outputer.add_valuer(key, valuer)
 
     def calculate(self):
         if len(self.args) < 3:
             return None
 
-        xkeys = str(self.args[1]).split(".")
-        ykeyses = [str(key).split(".") for key in self.args[2]] if isinstance(self.args[2], list) \
-            else [str(self.args[2]).split(".")]
-        vkeys = str(self.args[3]).split(".") if len(self.args) >= 4 else []
+        vhkey, vvkey = self.args[1], self.args[2]
+        vcount_key = self.args[3] if len(self.args) >= 4 else None
+        datas = self.args[0] if isinstance(self.args[0], list) else \
+            ([self.args[0]] if isinstance(self.args[0], dict) else [])
 
-        xtitles, ytitles, values = OrderedDict(), OrderedDict(), {}
-        for data in self.args[0]:
-            xvalue, yvalues, vvalue = self.get_xykey_value(xkeys, ykeyses, vkeys, data)
-            if xvalue is None or not yvalues:
+        hkeys, vkeys, mdata = OrderedDict(), OrderedDict(), {}
+        for data in datas:
+            if vhkey not in data:
                 continue
-
-            xtitles[xvalue] = True
-            ytitles[yvalues] = True
-            if xvalue not in values:
-                values[xvalue] = {}
-
-            if yvalues not in values[xvalue]:
-                values[xvalue][yvalues] = vvalue
-            else:
-                values[xvalue][yvalues] += vvalue
-
-        datas = []
-        for yvalues in ytitles:
-            data = OrderedDict()
-            for ykey, yvaue in zip(self.args[2] if isinstance(self.args[2], list) else [self.args[2]], yvalues):
-                data[ykey] = yvaue
-            for xvalue in xtitles:
-                if xvalue in values and yvalues in values[xvalue]:
-                    data[xvalue] = values[xvalue][yvalues]
+            if vvkey not in data:
+                continue
+            hvalue, vvalue = data[vhkey], data[vvkey]
+            if hvalue not in hkeys:
+                hkeys[hvalue] = True
+            if vvalue not in vkeys:
+                vkeys[vvalue] = True
+            if hvalue not in mdata:
+                mdata[hvalue] = {}
+            if vcount_key and vcount_key not in data and isinstance(data[vcount_key], int):
+                if vvalue not in mdata[hvalue]:
+                    mdata[hvalue][vvalue] = data[vcount_key]
                 else:
-                    data[xvalue] = 0
-            datas.append(data)
-        self.update_outputer_schema(xtitles)
-        return datas
+                    mdata[hvalue][vvalue] += data[vcount_key]
+            else:
+                if vvalue not in mdata[hvalue]:
+                    mdata[hvalue][vvalue] = 1
+                else:
+                    mdata[hvalue][vvalue] += 1
+
+        result = []
+        for vkey in vkeys:
+            data = OrderedDict(**{vvkey: vkey})
+            for hkey in hkeys:
+                data[hkey] = mdata[hkey][vkey] if hkey in mdata and vkey in mdata[hkey] else 0
+            result.append(data)
+        self.update_outputer_schema([vvkey] + list(hkeys.keys()))
+        return result
+
+
+class ConvH2VCalculater(Calculater):
+    def update_outputer_schema(self, xkeys):
+        from ..taskers.tasker import current_tasker
+        tasker = current_tasker()
+        tasker.outputer.schema = OrderedDict()
+        for key in xkeys:
+            valuer = tasker.create_valuer(tasker.compile_db_valuer(key, None))
+            if not valuer:
+                continue
+            tasker.outputer.add_valuer(key, valuer)
+
+    def calculate(self):
+        if len(self.args) < 3:
+            return None
+
+        datas = self.args[0] if isinstance(self.args[0], list) else \
+            ([self.args[0]] if isinstance(self.args[0], dict) else [])
+        key, vkey = self.args[1], self.args[2]
+        if len(self.args) >= 4:
+            reserved_keys = set(self.args[3] if isinstance(self.args[3], list) else [self.args[3]])
+        else:
+            reserved_keys = set([])
+        result, reserved_data = [], {}
+        for data in datas:
+            for k, v in data.items():
+                if k in reserved_keys:
+                    reserved_data[k] = v
+            for k, v in data.items():
+                if k not in reserved_keys:
+                    reserved_data[key] = k
+                    reserved_data[vkey] = v
+                    result.append(dict(**reserved_data))
+        self.update_outputer_schema(list(reserved_data.keys()))
+        return result
+
+
+class ConvCalculater(Calculater):
+    def __init__(self, *args, **kwargs):
+        super(ConvCalculater, self).__init__(*args, **kwargs)
+
+        if self.name == "conv::v4h":
+            self.conv = ConvV4HCalculater(*args, **kwargs)
+        elif self.name == "conv::h4v":
+            self.conv = ConvH4VCalculater(*args, **kwargs)
+        elif self.name == "conv::v2h":
+            self.conv = ConvV2HCalculater(*args, **kwargs)
+        elif self.name == "conv::h2v":
+            self.conv = ConvH2VCalculater(*args, **kwargs)
+        else:
+            self.conv = None
+
+    def calculate(self):
+        if self.conv:
+            return self.conv.calculate()
+        return None

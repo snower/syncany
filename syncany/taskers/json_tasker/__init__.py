@@ -16,7 +16,9 @@ from .valuer_creater import ValuerCreater
 from .loader_creater import LoaderCreater
 from .outputer_creater import OutputerCreater
 from ...hook import PipelinesHooker
-from ...errors import LoaderUnknownException, OutputerUnknownException, ValuerUnknownException, DatabaseUnknownException, CalculaterUnknownException
+from ...errors import LoaderUnknownException, OutputerUnknownException, \
+    ValuerUnknownException, DatabaseUnknownException, CalculaterUnknownException, \
+    SourceUnknownException
 
 class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerCreater):
     DEFAULT_CONFIG = {
@@ -26,6 +28,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         "querys": {},
         "databases": [],
         "imports": {},
+        "sources": {},
         "defines": {},
         "variables": {},
         "schema": {},
@@ -109,7 +112,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             self.load_json(extends)
 
         for k, v in config.items():
-            if k in ("imports", "defines", "variables", "logger"):
+            if k in ("imports", "defines", "variables", "sources", "logger"):
                 if not isinstance(v, dict) or not isinstance(self.config.get(k, {}), dict):
                     continue
 
@@ -159,9 +162,39 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             except CalculaterUnknownException:
                 self.register_calculater_driver(name, create_import_calculater(name, module))
 
-    def compile_logging(self):
+    def load_sources(self):
+        for name, filename in list(self.config["sources"].items()):
+            try:
+                with open(filename, "r") as fp:
+                    self.config["sources"][name] = fp.read()
+            except Exception as e:
+                raise SourceUnknownException("%s(%s)" % (filename, str(e)))
+
+    def config_logging(self):
         if "logger" in self.config and isinstance(self.config["logger"], dict):
             logging.config.dictConfig(self.config["logger"])
+
+    def compile_sources(self, config=None):
+        if config is None:
+            if "sources" not in self.config or not self.config["sources"]:
+                return
+            config = self.config
+
+        if isinstance(config, dict):
+            for key, value in list(config.items()):
+                if isinstance(value, str):
+                    if value[:1] == "%" and value[1:] in self.config["sources"]:
+                        config[key] = self.config["sources"][value[1:]]
+                elif isinstance(value, (dict, list)):
+                    self.compile_sources(value)
+        elif isinstance(config, list):
+            for i in range(len(config)):
+                value = config[i]
+                if isinstance(value, str):
+                    if value[:1] == "%" and value[1:] in self.config["sources"]:
+                        config[i] = self.config["sources"][value[1:]]
+                elif isinstance(value, (dict, list)):
+                    self.compile_sources(value)
 
     def compile_filter_calculater(self, calculater):
         keys = calculater[0][1:].split("|")
@@ -719,13 +752,15 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         super(JsonTasker, self).load()
         self.load_json(self.json_filename)
         self.name = self.config["name"]
-        self.compile_logging()
+        self.config_logging()
         self.load_imports()
+        self.load_sources()
         return self.compile_filters()
 
     def compile(self, arguments):
         super(JsonTasker, self).compile(arguments)
 
+        self.compile_sources()
         self.load_databases()
         self.compile_schema()
         self.compile_pipelines()

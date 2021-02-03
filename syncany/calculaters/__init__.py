@@ -4,7 +4,7 @@
 
 from .calculater import Calculater
 from .builtin import *
-from .conversion_calculater import ConversionCalculater
+from .conversion_calculater import ConvCalculater
 from ..errors import CalculaterUnknownException
 
 CALCULATERS = {
@@ -43,7 +43,7 @@ CALCULATERS = {
     "math": MathCalculater,
     "hash": HashCalculater,
     "json": JsonCalculater,
-    "conversion": ConversionCalculater,
+    "conv": ConvCalculater,
 }
 
 def find_calculater(name):

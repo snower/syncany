@@ -128,8 +128,8 @@ class InfluxDBQueryBuilder(QueryBuilder):
                 if isinstance(virtual_table["sql"], list):
                     virtual_table["sql"] = " ".join(virtual_table["sql"])
                 sql = virtual_table['sql']
-            return '(%s) "virtual_%s"' % (sql, self.table_name), virtual_table.get("args", [])
-        return ('"%s"' % self.table_name), []
+            return '(%s) "virtual_%s"' % (sql, self.table_name), virtual_table.get("args", []), True
+        return ('"%s"' % self.table_name), [], False
 
     def format_query(self, db_name, virtual_args):
         if not virtual_args:
@@ -181,10 +181,10 @@ class InfluxDBQueryBuilder(QueryBuilder):
         return db_name, (" AND ".join(query) if query else ""), (virtual_values + query_values)
 
     def commit(self):
-        db_name, virtual_args = self.format_table()
+        db_name, virtual_args, is_virtual = self.format_table()
         db_name, query, query_values = self.format_query(db_name, virtual_args)
 
-        if self.fields:
+        if self.fields and not is_virtual:
             fields = []
             for field in self.fields:
                 virtual_field = self.map_virtual_fields(self.table_name, field)

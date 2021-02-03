@@ -13,6 +13,7 @@ class DBLoader(Loader):
         self.db = db
         self.name = name
         self.querys = []
+        self.compiled = False
         self.last_data = None
 
     def clone(self):
@@ -64,33 +65,40 @@ class DBLoader(Loader):
 
         for primary_key in self.primary_keys:
             query.order_by(primary_key)
-        datas = query.commit()
-
-        for data in datas:
-            primary_key = self.get_data_primary_key(data)
-
-            values = {}
-            if not self.key_matchers:
-                for key, field in self.schema.items():
-                    values[key] = field.clone().fill(data)
-            else:
-                for key, value in data.items():
-                    if key in self.schema:
-                        values[key] = self.schema[key].clone().fill(data)
-                    else:
-                        for key_matcher in self.key_matchers:
-                            if key_matcher.match(key):
-                                valuer = key_matcher.clone_valuer()
-                                valuer.key = key
-                                self.schema[key] = valuer
-                                values[key] = valuer.clone().fill(data)
-
-            self.data_keys[primary_key] = values
-            self.datas.append(values)
-            self.last_data = data
-
+        self.datas = query.commit()
         self.querys.append(query)
+        self.compiled = False
         self.loaded = True
+
+    def get(self):
+        if not self.loaded:
+            self.load()
+
+        if not self.compiled:
+            datas, self.datas = self.datas, []
+            for data in datas:
+                primary_key = self.get_data_primary_key(data)
+
+                values = {}
+                if not self.key_matchers:
+                    for key, field in self.schema.items():
+                        values[key] = field.clone().fill(data)
+                else:
+                    for key, value in data.items():
+                        if key in self.schema:
+                            values[key] = self.schema[key].clone().fill(data)
+                        else:
+                            for key_matcher in self.key_matchers:
+                                if key_matcher.match(key):
+                                    valuer = key_matcher.clone_valuer()
+                                    valuer.key = key
+                                    self.schema[key] = valuer
+                                    values[key] = valuer.clone().fill(data)
+
+                self.data_keys[primary_key] = values
+                self.datas.append(values)
+                self.last_data = data
+        return super(DBLoader, self).get()
 
     def statistics(self):
         return {
