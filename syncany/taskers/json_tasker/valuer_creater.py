@@ -383,3 +383,22 @@ class ValuerCreater(object):
                 inherit_valuers.append(inherit_valuer)
 
         return valuer_cls(global_variables, calculate_valuer, return_valuer, current_inherit_valuers, config['key'], filter)
+
+    def create_lambda_valuer(self, config, inherit_valuers=None, **kwargs):
+        valuer_cls = self.find_valuer_driver(config["name"])
+        if not valuer_cls:
+            raise ValuerUnknownException(config["name"] + " is unknown")
+
+        calculate_inherit_valuers = []
+        calculate_valuer = self.create_valuer(config["calculate_valuer"], inherit_valuers=calculate_inherit_valuers,
+                                              **kwargs) if "calculate_valuer" in config and config["calculate_valuer"] else None
+
+        current_inherit_valuers = []
+        for inherit_valuer in calculate_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
+        return valuer_cls(calculate_valuer, current_inherit_valuers, config['key'], None)

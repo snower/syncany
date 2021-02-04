@@ -51,7 +51,10 @@ class AddCalculater(Calculater):
                 and isinstance(self.args[1], str):
             for data in self.args[0]:
                 if isinstance(data, dict) and self.args[1] in data:
-                    data[self.args[1]] = data[self.args[1]] + self.args[2]
+                    if callable(self.args[2]):
+                        data[self.args[1]] = data[self.args[1]] + self.args[2](data)
+                    else:
+                        data[self.args[1]] = data[self.args[1]] + self.args[2]
             return self.args[0]
 
         if len(self.args) >= 2:
@@ -76,7 +79,10 @@ class SubCalculater(Calculater):
                 and isinstance(self.args[1], str):
             for data in self.args[0]:
                 if isinstance(data, dict) and self.args[1] in data:
-                    data[self.args[1]] = data[self.args[1]] - self.args[2]
+                    if callable(self.args[2]):
+                        data[self.args[1]] = data[self.args[1]] - self.args[2](data)
+                    else:
+                        data[self.args[1]] = data[self.args[1]] - self.args[2]
             return self.args[0]
 
         if len(self.args) >= 2:
@@ -101,7 +107,10 @@ class MulCalculater(Calculater):
                 and isinstance(self.args[1], str):
             for data in self.args[0]:
                 if isinstance(data, dict) and self.args[1] in data:
-                    data[self.args[1]] = data[self.args[1]] * self.args[2]
+                    if callable(self.args[2]):
+                        data[self.args[1]] = data[self.args[1]] * self.args[2](data)
+                    else:
+                        data[self.args[1]] = data[self.args[1]] * self.args[2]
             return self.args[0]
 
         result = self.args[0]
@@ -119,7 +128,10 @@ class DivCalculater(Calculater):
                 and isinstance(self.args[1], str):
             for data in self.args[0]:
                 if isinstance(data, dict) and self.args[1] in data:
-                    data[self.args[1]] = data[self.args[1]] / self.args[2]
+                    if callable(self.args[2]):
+                        data[self.args[1]] = data[self.args[1]] / self.args[2](data)
+                    else:
+                        data[self.args[1]] = data[self.args[1]] / self.args[2]
             return self.args[0]
 
         result = self.args[0]
@@ -137,7 +149,10 @@ class ModCalculater(Calculater):
                 and isinstance(self.args[1], str):
             for data in self.args[0]:
                 if isinstance(data, dict) and self.args[1] in data:
-                    data[self.args[1]] = data[self.args[1]] % self.args[2]
+                    if callable(self.args[2]):
+                        data[self.args[1]] = data[self.args[1]] % self.args[2](data)
+                    else:
+                        data[self.args[1]] = data[self.args[1]] % self.args[2]
             return self.args[0]
 
         result = self.args[0]

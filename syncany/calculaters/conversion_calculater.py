@@ -38,6 +38,7 @@ class ConvH4VCalculater(Calculater):
 
         vhkey, vvkey = self.args[1], self.args[2]
         vcount_key = self.args[3] if len(self.args) >= 4 else None
+        vcount_callable = callable(vcount_key) if vcount_key else False
         datas = self.args[0] if isinstance(self.args[0], list) else \
             ([self.args[0]] if isinstance(self.args[0], dict) else [])
 
@@ -54,16 +55,23 @@ class ConvH4VCalculater(Calculater):
                 vkeys[vvalue] = True
             if hvalue not in mdata:
                 mdata[hvalue] = {}
-            if vcount_key and vcount_key not in data and isinstance(data[vcount_key], int):
-                if vvalue not in mdata[hvalue]:
-                    mdata[hvalue][vvalue] = data[vcount_key]
-                else:
-                    mdata[hvalue][vvalue] += data[vcount_key]
-            else:
+            if not vcount_key:
                 if vvalue not in mdata[hvalue]:
                     mdata[hvalue][vvalue] = 1
                 else:
                     mdata[hvalue][vvalue] += 1
+                continue
+
+            if vcount_callable:
+                if vvalue not in mdata[hvalue]:
+                    mdata[hvalue][vvalue] = vcount_key(dict(value=0, data=data))
+                else:
+                    mdata[hvalue][vvalue] = vcount_key(dict(value=mdata[hvalue][vvalue], data=data))
+            elif vcount_key in data and isinstance(data[vcount_key], (int, float)):
+                if vvalue not in mdata[hvalue]:
+                    mdata[hvalue][vvalue] = data[vcount_key]
+                else:
+                    mdata[hvalue][vvalue] += data[vcount_key]
 
         result = []
         for vkey in vkeys:
@@ -91,6 +99,7 @@ class ConvV2HCalculater(Calculater):
 
         vhkey, vvkey = self.args[1], self.args[2]
         vcount_key = self.args[3] if len(self.args) >= 4 else None
+        vcount_callable = callable(vcount_key) if vcount_key else False
         datas = self.args[0] if isinstance(self.args[0], list) else \
             ([self.args[0]] if isinstance(self.args[0], dict) else [])
 
@@ -107,16 +116,23 @@ class ConvV2HCalculater(Calculater):
                 vkeys[vvalue] = True
             if hvalue not in mdata:
                 mdata[hvalue] = {}
-            if vcount_key and vcount_key not in data and isinstance(data[vcount_key], int):
-                if vvalue not in mdata[hvalue]:
-                    mdata[hvalue][vvalue] = data[vcount_key]
-                else:
-                    mdata[hvalue][vvalue] += data[vcount_key]
-            else:
+            if not vcount_key:
                 if vvalue not in mdata[hvalue]:
                     mdata[hvalue][vvalue] = 1
                 else:
                     mdata[hvalue][vvalue] += 1
+                continue
+
+            if vcount_callable:
+                if vvalue not in mdata[hvalue]:
+                    mdata[hvalue][vvalue] = vcount_key(dict(value=0, data=data))
+                else:
+                    mdata[hvalue][vvalue] = vcount_key(dict(value=mdata[hvalue][vvalue], data=data))
+            elif vcount_key in data and isinstance(data[vcount_key], (int, float)):
+                if vvalue not in mdata[hvalue]:
+                    mdata[hvalue][vvalue] = data[vcount_key]
+                else:
+                    mdata[hvalue][vvalue] += data[vcount_key]
 
         result = []
         for vkey in vkeys:

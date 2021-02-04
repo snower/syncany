@@ -63,6 +63,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "aggregate_valuer": self.compile_aggregate_valuer,
             "call_valuer": self.compile_call_valuer,
             "assign_valuer": self.compile_assign_valuer,
+            "lambda_valuer": self.compile_lambda_valuer,
         }
 
         self.valuer_creater = {
@@ -79,6 +80,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
             "aggregate_valuer": self.create_aggregate_valuer,
             "call_valuer": self.create_call_valuer,
             "assign_valuer": self.create_assign_valuer,
+            "lambda_valuer": self.create_lambda_valuer,
         }
 
         self.loader_creater = {
@@ -486,6 +488,8 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 if key["key"] == "assign" and len(valuer) in (2, 3, 4):
                     return self.compile_assign_valuer(valuer[1], key["filter"], valuer[2] if len(valuer) >= 3 else None,
                                                     valuer[3] if len(valuer) >= 4 else None)
+                if key["key"] == "lambda" and len(valuer) == 2:
+                    return self.compile_lambda_valuer(key["key"], key["filter"], valuer[1])
 
             return self.compile_const_valuer(valuer)
 

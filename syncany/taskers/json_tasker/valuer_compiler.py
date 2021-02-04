@@ -333,3 +333,13 @@ class ValuerCompiler(object):
             "calculate_valuer": calculate_valuer,
             "return_valuer": return_valuer,
         }
+
+    def compile_lambda_valuer(self, key="", filter=None, calculate_arg=None):
+        calculate_valuer = self.compile_valuer(calculate_arg)
+
+        return {
+            "name": "lambda_valuer",
+            "key": key,
+            "filter": filter,
+            "calculate_valuer": calculate_valuer,
+        }

@@ -16,6 +16,7 @@ from .generator import YieldValuer
 from .aggregate import AggregateValuer
 from .call import CallValuer
 from .assign import AssignValuer
+from .function import LambdaValuer
 from ..errors import ValuerUnknownException
 
 VALUERS = {
@@ -32,6 +33,7 @@ VALUERS = {
     "aggregate_valuer": AggregateValuer,
     "call_valuer": CallValuer,
     "assign_valuer": AssignValuer,
+    "lambda_valuer": LambdaValuer,
 }
 
 def find_valuer(name):
