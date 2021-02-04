@@ -18,6 +18,8 @@ class ConvV4HCalculater(Calculater):
             reserved_keys = set(self.args[3] if isinstance(self.args[3], list) else [self.args[3]])
         else:
             reserved_keys = set([])
+        reserved_keys.add(key)
+        reserved_keys.add(vkey)
         result, reserved_data = [], {}
         for data in datas:
             for k, v in data.items():
@@ -166,6 +168,8 @@ class ConvH2VCalculater(Calculater):
             reserved_keys = set(self.args[3] if isinstance(self.args[3], list) else [self.args[3]])
         else:
             reserved_keys = set([])
+        reserved_keys.add(key)
+        reserved_keys.add(vkey)
         result, reserved_data = [], {}
         for data in datas:
             for k, v in data.items():

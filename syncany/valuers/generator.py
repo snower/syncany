@@ -128,8 +128,9 @@ class YieldValuer(Valuer):
 
     def get_fields(self):
         fields = []
-        for field in self.value_valuer.get_fields():
-            fields.append(field)
+        if self.value_valuer:
+            for field in self.value_valuer.get_fields():
+                fields.append(field)
 
         if not self.wait_loaded and self.return_valuer:
             for field in self.return_valuer.get_fields():
