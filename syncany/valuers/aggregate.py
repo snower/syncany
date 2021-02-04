@@ -31,6 +31,9 @@ class AggregateManager(object):
             self.datas[key][1][name] = value
 
     def add(self, key, name, data):
+        if key in self.datas:
+            self.datas[key][2][name] = True
+            return self.datas[key][0]
         scope_data = {k: v for k, v in data.items()}
         self.datas[key] = (scope_data, data, {name: True})
         return scope_data

@@ -618,8 +618,9 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         self.loader = self.create_loader(loader_config, [input_loader["foreign_key"]])
 
         if isinstance(self.schema, dict):
+            aggregate_valuers = []
             for name, valuer in self.schema.items():
-                inherit_valuers, yield_valuers, aggregate_valuers = [], [], []
+                inherit_valuers, yield_valuers = [], []
                 valuer = self.create_valuer(valuer, schema_field_name=name, inherit_valuers=inherit_valuers,
                                             join_loaders=self.join_loaders, yield_valuers=yield_valuers,
                                             aggregate_valuers=aggregate_valuers, define_valuers={},

@@ -136,7 +136,7 @@ class TextLineQueryBuilder(QueryBuilder):
                     index += 1
 
         if self.orders:
-            datas = sorted(datas, key=self.orders[0][0], reverse=True if self.orders[0][1] < 0 else False)
+            datas = sorted(datas, key=lambda x: x.get(self.orders[0][0]), reverse=True if self.orders[0][1] < 0 else False)
         return datas
 
 class TextLineInsertBuilder(InsertBuilder):

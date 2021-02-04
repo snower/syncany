@@ -36,6 +36,12 @@ class Valuer(object):
                 self.value = self.filter.filter(self.value)
             return self
 
+        if not isinstance(data, (dict, list, tuple, set)):
+            self.value = data
+            if self.filter:
+                self.value = self.filter.filter(self.value)
+            return self
+
         if self.key not in data:
             keys = self.key.split(".")
             for key in keys:

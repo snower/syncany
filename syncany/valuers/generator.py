@@ -105,12 +105,12 @@ class YieldValuer(Valuer):
                         try:
                             child_data = data.send(gdata)
                             child_data = self.filter_data(child_data)
-                            yield child_data
+                            gdata = yield child_data
                         except StopIteration:
                             break
                 else:
                     data = self.filter_data(data)
-                    yield data
+                    gdata = yield data
         g = gen_iter()
         g.send(None)
         return g
