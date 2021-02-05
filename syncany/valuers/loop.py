@@ -2,9 +2,11 @@
 # 2021/2/5
 # create by: snower
 
+import types
 from .valuer import Valuer, LoadAllFieldsException
 from ..filters import ArrayFilter
 
+range_type = type(range(1))
 
 class BreakReturn(Exception):
     NULL = object()
@@ -69,12 +71,23 @@ class ForeachValuer(Valuer):
             if isinstance(self.value, dict):
                 for k, v in self.value.items():
                     calculate_valuer = self.calculate_valuer.clone()
-                    calculate_valuer.fill(dict(_key_=k, **v))
+                    if isinstance(v, dict):
+                        calculate_valuer.fill(dict(_index_=k, **v))
+                    else:
+                        calculate_valuer.fill(dict(_index_=k, _value_=v))
                     self.calculated_values.append(calculate_valuer)
-            elif isinstance(self.value, (list, tuple, set)):
+            elif isinstance(self.value, (list, tuple, set, types.GeneratorType)):
                 for i in range(len(self.value)):
                     calculate_valuer = self.calculate_valuer.clone()
-                    calculate_valuer.fill(dict(_index_=i, **self.value[i]))
+                    if isinstance(self.value[i], dict):
+                        calculate_valuer.fill(dict(_index_=i, **self.value[i]))
+                    else:
+                        calculate_valuer.fill(dict(_index_=i, _value_=self.value[i]))
+                    self.calculated_values.append(calculate_valuer)
+            elif isinstance(self.value, range_type):
+                for i in self.value:
+                    calculate_valuer = self.calculate_valuer.clone()
+                    calculate_valuer.fill(dict(_index_=i))
                     self.calculated_values.append(calculate_valuer)
 
             if not self.calculate_wait_loaded:
@@ -103,12 +116,23 @@ class ForeachValuer(Valuer):
             if isinstance(self.value, dict):
                 for k, v in self.value.items():
                     calculate_valuer = self.calculate_valuer.clone()
-                    calculate_valuer.fill(dict(_key_=k, **v))
+                    if isinstance(v, dict):
+                        calculate_valuer.fill(dict(_index_=k, **v))
+                    else:
+                        calculate_valuer.fill(dict(_index_=k, _value_=v))
                     self.calculated_values.append(calculate_valuer)
-            elif isinstance(self.value, (list, tuple, set)):
+            elif isinstance(self.value, (list, tuple, set, types.GeneratorType)):
                 for i in range(len(self.value)):
                     calculate_valuer = self.calculate_valuer.clone()
-                    calculate_valuer.fill(dict(_index_=i, **self.value[i]))
+                    if isinstance(self.value[i], dict):
+                        calculate_valuer.fill(dict(_index_=i, **self.value[i]))
+                    else:
+                        calculate_valuer.fill(dict(_index_=i, _value_=self.value[i]))
+                    self.calculated_values.append(calculate_valuer)
+            elif isinstance(self.value, range_type):
+                for i in self.value:
+                    calculate_valuer = self.calculate_valuer.clone()
+                    calculate_valuer.fill(dict(_index_=i))
                     self.calculated_values.append(calculate_valuer)
 
         if self.calculate_wait_loaded:

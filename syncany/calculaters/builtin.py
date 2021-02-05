@@ -42,6 +42,10 @@ class TypeCalculater(Calculater):
 
         return type(self.args[0]).__module__ + "." + type(self.args[0]).__name__
 
+class RangeCalculater(Calculater):
+    def calculate(self):
+        return range(*tuple(self.args))
+
 class AddCalculater(Calculater):
     def calculate(self):
         if not self.args:

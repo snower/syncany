@@ -10,6 +10,7 @@ from ..errors import CalculaterUnknownException
 CALCULATERS = {
     "": Calculater,
     "type": TypeCalculater,
+    'range': RangeCalculater,
     "add": AddCalculater,
     "sub": SubCalculater,
     "mul": MulCalculater,
