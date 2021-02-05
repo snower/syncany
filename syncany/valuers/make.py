@@ -26,7 +26,7 @@ class MakeValuer(Valuer):
                 if value_valuer.require_loaded():
                     self.wait_loaded = True
                     return
-        elif isinstance(self.value_valuer, (list, tuple, set)):
+        elif isinstance(self.value_valuer, list):
             for value_valuer in self.value_valuer:
                 if value_valuer.require_loaded():
                     self.wait_loaded = True
@@ -43,7 +43,7 @@ class MakeValuer(Valuer):
         if isinstance(self.value_valuer, dict):
             value_valuer = {key: (key_valuer.clone(), value_valuer.clone())
                             for key, (key_valuer, value_valuer) in self.value_valuer.items()}
-        elif isinstance(self.value_valuer, (list, tuple, set)):
+        elif isinstance(self.value_valuer, list):
             value_valuer = [valuer.clone() for valuer in self.value_valuer]
         elif isinstance(self.value_valuer, Valuer):
             value_valuer = self.value_valuer.clone()
@@ -63,7 +63,7 @@ class MakeValuer(Valuer):
                 if key_valuer:
                     key_valuer.fill(data)
                 value_valuer.fill(data)
-        elif isinstance(self.value_valuer, (list, tuple, set)):
+        elif isinstance(self.value_valuer, list):
             for value_valuer in self.value_valuer:
                 value_valuer.fill(data)
         elif isinstance(self.value_valuer, Valuer):
@@ -75,14 +75,14 @@ class MakeValuer(Valuer):
                 for key, (key_valuer, value_valuer) in self.value_valuer.items():
                     kv = key_valuer.get()
                     vv = value_valuer.get()
-                    if isinstance(kv, (list, tuple, set)):
+                    if isinstance(kv, list):
                         for ki in range(len(kv)):
-                            result[kv[ki]] = vv[ki] if isinstance(vv, (list, tuple, set)) and len(vv) > ki else None
+                            result[kv[ki]] = vv[ki] if isinstance(vv, list) and len(vv) > ki else None
                     else:
                         result[kv] = vv
-            elif isinstance(self.value_valuer, (list, tuple, set)):
+            elif isinstance(self.value_valuer, list):
                 result = [value_valuer.get() for value_valuer in self.value_valuer]
-                if len(self.value) == 1 and isinstance(self.value[0], (list, tuple, set)):
+                if len(self.value) == 1 and isinstance(self.value[0], list):
                     self.value = self.value[0]
             elif isinstance(self.value_valuer, Valuer):
                 result = self.value_valuer.get()
@@ -98,14 +98,14 @@ class MakeValuer(Valuer):
                 for key, (key_valuer, value_valuer) in self.value_valuer.items():
                     kv = key_valuer.get()
                     vv = value_valuer.get()
-                    if isinstance(kv, (list, tuple, set)):
+                    if isinstance(kv, list):
                         for ki in range(len(kv)):
-                            self.value[kv[ki]] = vv[ki] if isinstance(vv, (list, tuple, set)) and len(vv) > ki else None
+                            self.value[kv[ki]] = vv[ki] if isinstance(vv, list) and len(vv) > ki else None
                     else:
                         self.value[kv] = vv
-            elif isinstance(self.value_valuer, (list, tuple, set)):
+            elif isinstance(self.value_valuer, list):
                 self.value = [value_valuer.get() for value_valuer in self.value_valuer]
-                if len(self.value) == 1 and isinstance(self.value[0], (list, tuple, set)):
+                if len(self.value) == 1 and isinstance(self.value[0], list):
                     self.value = self.value[0]
             elif isinstance(self.value_valuer, Valuer):
                 self.value = self.value_valuer.get()
@@ -123,7 +123,7 @@ class MakeValuer(Valuer):
             for _, (key_valuer, value_valuer) in self.value_valuer.items():
                 childs.append(key_valuer)
                 childs.append(value_valuer)
-        elif isinstance(self.value_valuer, (list, tuple, set)):
+        elif isinstance(self.value_valuer, list):
             for value_valuer in self.value_valuer:
                 childs.append(value_valuer)
         elif isinstance(self.value_valuer, Valuer):
@@ -142,7 +142,7 @@ class MakeValuer(Valuer):
                     fields.append(field)
                 for field in value_valuer.get_fields():
                     fields.append(field)
-        elif isinstance(self.value_valuer, (list, tuple, set)):
+        elif isinstance(self.value_valuer, list):
             for value_valuer in self.value_valuer:
                 for field in value_valuer.get_fields():
                     fields.append(field)

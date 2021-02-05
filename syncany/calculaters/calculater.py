@@ -19,7 +19,7 @@ class Calculater(object):
     def get_key_value(self, key, data):
         keys = key.split(".")
         for key in keys:
-            if isinstance(data, (list, tuple, set)):
+            if isinstance(data, list):
                 if key[0] != ":":
                     return data
 

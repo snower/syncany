@@ -57,7 +57,7 @@ class AssignValuer(Valuer):
             self.value = self.return_valuer.get()
 
         if self.filter:
-            if isinstance(self.value, (list, tuple, set)):
+            if isinstance(self.value, list):
                 values = []
                 for v in self.value:
                     values.append(self.filter.filter(v))

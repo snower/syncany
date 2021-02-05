@@ -55,7 +55,7 @@ class ValuerCompiler(object):
         return_arg = "$.*" if return_arg is None else return_arg
         if isinstance(return_arg, str) and return_arg[:1] == ":":
             return_arg = return_arg[1:]
-        if isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
+        if isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
             if return_arg[0] == ":":
                 return_arg = list(return_arg)[1:]
             elif return_arg[0][:1] == ":":
@@ -96,7 +96,7 @@ class ValuerCompiler(object):
             for arg in args:
                 if isinstance(arg, str) and arg[:1] == ":":
                     return_valuer = self.compile_valuer(arg[1:])
-                elif isinstance(arg, (list, tuple, set)) and arg and isinstance(arg[0], str):
+                elif isinstance(arg, list) and arg and isinstance(arg[0], str):
                     if arg[0] == ":":
                         return_valuer = self.compile_valuer(list(arg)[1:])
                     elif arg[0][:1] == ":":
@@ -135,7 +135,7 @@ class ValuerCompiler(object):
         if isinstance(value_arg, dict):
             value_valuer = {key: (self.compile_valuer(key), self.compile_valuer(value))
                       for key, value in value_arg.items()}
-        elif isinstance(value_arg, (list, tuple, set)):
+        elif isinstance(value_arg, list):
             if len(value_arg) == 1:
                 value_valuer = self.compile_valuer(value_arg[0])
             else:
@@ -145,7 +145,7 @@ class ValuerCompiler(object):
 
         if isinstance(return_arg, str) and return_arg[:1] == ":":
             return_arg = return_arg[1:]
-        elif isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
+        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
             if return_arg[0] == ":":
                 return_arg = list(return_arg)[1:]
             elif return_arg[0][:1] == ":":
@@ -165,7 +165,7 @@ class ValuerCompiler(object):
         key_valuer = self.compile_valuer(key_arg)
         if isinstance(return_arg, str) and return_arg[:1] == ":":
             return_arg = return_arg[1:]
-        elif isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
+        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
             if return_arg[0] == ":":
                 return_arg = list(return_arg)[1:]
             elif return_arg[0][:1] == ":":
@@ -185,7 +185,7 @@ class ValuerCompiler(object):
         value_valuer = self.compile_valuer(value_arg) if value_arg else None
         if isinstance(return_arg, str) and return_arg[:1] == ":":
             return_arg = return_arg[1:]
-        elif isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
+        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
             if return_arg[0] == ":":
                 return_arg = list(return_arg)[1:]
             elif return_arg[0][:1] == ":":
@@ -205,7 +205,7 @@ class ValuerCompiler(object):
         key_valuer = self.compile_valuer(key_arg)
         if isinstance(calculate_arg, str) and calculate_arg[:1] == ":":
             calculate_arg = calculate_arg[1:]
-        elif isinstance(calculate_arg, (list, tuple, set)) and calculate_arg and isinstance(calculate_arg[0], str):
+        elif isinstance(calculate_arg, list) and calculate_arg and isinstance(calculate_arg[0], str):
             if calculate_arg[0] == ":":
                 calculate_arg = list(calculate_arg)[1:]
             elif calculate_arg[0][:1] == ":":
@@ -224,7 +224,7 @@ class ValuerCompiler(object):
     def compile_call_valuer(self, key="", filter=None, value_arg=None, calculate_arg=None, return_arg=None):
         if isinstance(return_arg, str) and return_arg[:1] == ":":
             return_arg = return_arg[1:]
-        elif isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
+        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
             if return_arg[0] == ":":
                 return_arg = list(return_arg)[1:]
             elif return_arg[0][:1] == ":":
@@ -247,7 +247,7 @@ class ValuerCompiler(object):
     def compile_assign_valuer(self, key="", filter=None, calculate_arg=None, return_arg=None):
         if isinstance(calculate_arg, str) and calculate_arg[:1] == ":":
             return_arg, calculate_arg = calculate_arg[1:], None
-        elif isinstance(calculate_arg, (list, tuple, set)) and calculate_arg and isinstance(calculate_arg[0], str):
+        elif isinstance(calculate_arg, list) and calculate_arg and isinstance(calculate_arg[0], str):
             if calculate_arg[0] == ":":
                 return_arg, calculate_arg = list(calculate_arg)[1:], None
             elif calculate_arg[0][:1] == ":":
@@ -256,7 +256,7 @@ class ValuerCompiler(object):
 
         if isinstance(return_arg, str) and return_arg[:1] == ":":
             return_arg = return_arg[1:]
-        elif isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
+        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
             if return_arg[0] == ":":
                 return_arg = list(return_arg)[1:]
             elif return_arg[0][:1] == ":":
@@ -287,7 +287,7 @@ class ValuerCompiler(object):
     def compile_foreach_valuer(self, key="", filter=None, value_arg=None, calculate_arg=None, return_arg=None):
         if isinstance(calculate_arg, str) and calculate_arg[:1] == ":":
             return_arg, calculate_arg, value_arg = calculate_arg[1:], value_arg, None
-        elif isinstance(calculate_arg, (list, tuple, set)) and calculate_arg and isinstance(calculate_arg[0], str):
+        elif isinstance(calculate_arg, list) and calculate_arg and isinstance(calculate_arg[0], str):
             if calculate_arg[0] == ":":
                 return_arg, calculate_arg, value_arg = list(calculate_arg)[1:], value_arg, None
             elif calculate_arg[0][:1] == ":":
@@ -296,7 +296,7 @@ class ValuerCompiler(object):
 
         if isinstance(return_arg, str) and return_arg[:1] == ":":
             return_arg = return_arg[1:]
-        elif isinstance(return_arg, (list, tuple, set)) and return_arg and isinstance(return_arg[0], str):
+        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
             if return_arg[0] == ":":
                 return_arg = list(return_arg)[1:]
             elif return_arg[0][:1] == ":":

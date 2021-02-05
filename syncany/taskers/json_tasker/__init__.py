@@ -64,7 +64,7 @@ class JsonTasker(Tasker):
                 config = json.load(fp)
 
         extends = config.pop("extends") if "extends" in config else []
-        if isinstance(extends, (tuple, set, list)):
+        if isinstance(extends, list):
             for json_filename in extends:
                 self.load_json(json_filename)
         else:
@@ -251,14 +251,14 @@ class JsonTasker(Tasker):
                 arguments.append({"name": filter["name"], "type": filter_cls(filter.get("type_args")), "help": "%s" % filter["name"]})
 
         if "input" in self.config:
-            if isinstance(self.config["input"], (list, tuple)) and self.config["input"] and self.config["input"][0][0] == "@":
+            if isinstance(self.config["input"], list) and self.config["input"] and self.config["input"][0][0] == "@":
                 self.config["input"] = self.compile_filter_calculater(self.config["input"])
             if self.config["input"][:2] == "<<":
                 arguments.append({"name": "@input", "type": str, "default": self.config["input"][2:],
                                   "help": "data input (default: %s)" % self.config["input"][2:]})
 
         if "loader" in self.config:
-            if isinstance(self.config["loader"], (list, tuple)) and self.config["loader"] and self.config["loader"][0][0] == "@":
+            if isinstance(self.config["loader"], list) and self.config["loader"] and self.config["loader"][0][0] == "@":
                 self.config["loader"] = self.compile_filter_calculater(self.config["loader"])
             if self.config["loader"][:2] == "<<":
                 arguments.append({"name": "@loader", "type": str, "default": self.config["loader"][2:],
@@ -266,14 +266,14 @@ class JsonTasker(Tasker):
                                   "help": "data loader (default: %s)" % self.config["loader"][2:]})
 
         if "output" in self.config:
-            if isinstance(self.config["output"], (list, tuple)) and self.config["output"] and self.config["output"][0][0] == "@":
+            if isinstance(self.config["output"], list) and self.config["output"] and self.config["output"][0][0] == "@":
                 self.config["output"] = self.compile_filter_calculater(self.config["output"])
             if self.config["output"][:2] == ">>":
                 arguments.append({"name": "@output", "type": str, "default": self.config["output"][2:],
                                   "help": "data output (default: %s)" % self.config["output"][2:]})
 
         if "outputer" in self.config:
-            if isinstance(self.config["outputer"], (list, tuple)) and self.config["outputer"] and self.config["outputer"][0][0] == "@":
+            if isinstance(self.config["outputer"], list) and self.config["outputer"] and self.config["outputer"][0][0] == "@":
                 self.config["outputer"] = self.compile_filter_calculater(self.config["outputer"])
             if self.config["outputer"][:2] == ">>":
                 arguments.append({"name": "@outputer", "type": str, "default": self.config["outputer"][2:],
@@ -325,7 +325,7 @@ class JsonTasker(Tasker):
         }
 
     def compile_foreign_key(self, foreign_key):
-        if isinstance(foreign_key, (list, tuple, set)):
+        if isinstance(foreign_key, list):
             if not foreign_key or foreign_key[0][0] != "&":
                 return None
             foreign_key, foreign_filter_configs = foreign_key[0], (foreign_key[1] if len(foreign_key) >= 2 else {})
@@ -398,7 +398,7 @@ class JsonTasker(Tasker):
                 return self.valuer_compiler.compile_case_valuer('', None, case_case, cases, case_default)
             return valuer
 
-        if isinstance(valuer, (list, tuple, set)):
+        if isinstance(valuer, list):
             if not valuer:
                 return self.valuer_compiler.compile_const_valuer(valuer)
 
@@ -727,7 +727,7 @@ class JsonTasker(Tasker):
         if "dependency" not in self.config:
             return []
 
-        if isinstance(self.config["dependency"], (tuple, set, list)):
+        if isinstance(self.config["dependency"], list):
             return self.config["dependency"]
         return [self.config["dependency"]]
 

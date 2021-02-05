@@ -36,7 +36,7 @@ def escape_param(item):
         return "'%s'" % item.strftime('%Y-%m-%d')
     elif isinstance(item, str):
         return "'%s'" % ''.join(escape_chars_map.get(c, c) for c in item)
-    elif isinstance(item, (list, tuple, set)):
+    elif isinstance(item, list):
         return "(%s)" % ', '.join(str(escape_param(x)) for x in item)
     return item
 

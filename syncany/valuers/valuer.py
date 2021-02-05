@@ -9,11 +9,15 @@ class LoadAllFieldsException(SyncanyException):
 
 def dict_key(key):
     def _(data):
+        if isinstance(data, list) and len(data) == 1:
+            data = data[0]
         return data[key]
     return _
 
 def list_key(key):
     def _(data):
+        if isinstance(data, dict) and key[0] == 0:
+            return data
         return data[key]
     return _
 
@@ -68,7 +72,7 @@ class Valuer(object):
                 self.value = self.filter.filter(self.value)
             return self
 
-        if self.key == "*" or not isinstance(data, (dict, list, tuple, set)):
+        if self.key == "*" or not isinstance(data, (dict, list)):
             self.value = data
             if self.filter:
                 self.value = self.filter.filter(self.value)
@@ -89,7 +93,7 @@ class Valuer(object):
             self.value = data[self.key]
 
         if self.filter:
-            if isinstance(self.value, (list, tuple, set)):
+            if isinstance(self.value, list):
                 values = []
                 for value in self.value:
                     values.append(self.filter.filter(value))

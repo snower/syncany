@@ -11,7 +11,7 @@ class ImportCalculater(Calculater):
         if not hasattr(self._import_module, calculate_name):
             raise NotImplementedError("%s not implemented %s" % (self._import_module, calculate_name))
 
-        if len(self.args) == 1 and isinstance(self.args[0], (tuple, list, set)):
+        if len(self.args) == 1 and isinstance(self.args[0], list):
             return getattr(self._import_module, calculate_name)(*tuple(self.args[0]))
         return getattr(self._import_module, calculate_name)(*tuple(self.args))
 

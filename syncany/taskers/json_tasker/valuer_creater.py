@@ -213,7 +213,7 @@ class ValuerCreater(object):
                 value_valuer = {key: (self.create_valuer(key_config, inherit_valuers=inherit_valuers, **kwargs),
                                       self.create_valuer(value_config, inherit_valuers=inherit_valuers, **kwargs))
                                 for key, (key_config, value_config) in config["value_valuer"].items()}
-        elif isinstance(config["value_valuer"], (list, tuple, set)):
+        elif isinstance(config["value_valuer"], list):
             value_valuer = [self.create_valuer(value_config, inherit_valuers=inherit_valuers, **kwargs)
                             for value_config in config["value_valuer"]]
         else:

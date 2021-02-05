@@ -69,7 +69,7 @@ class CalculateValuer(Valuer):
                 self.value = calculater.calculate()
 
         if self.filter:
-            if isinstance(self.value, (list, tuple, set)):
+            if isinstance(self.value, list):
                 values = []
                 for value in self.value:
                     values.append(self.filter.filter(value))

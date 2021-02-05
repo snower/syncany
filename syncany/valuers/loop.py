@@ -76,7 +76,7 @@ class ForeachValuer(Valuer):
                     else:
                         calculate_valuer.fill(dict(_index_=k, _value_=v))
                     self.calculated_values.append(calculate_valuer)
-            elif isinstance(self.value, (list, tuple, set, types.GeneratorType)):
+            elif isinstance(self.value, (list, types.GeneratorType)):
                 for i in range(len(self.value)):
                     calculate_valuer = self.calculate_valuer.clone()
                     if isinstance(self.value[i], dict):
@@ -121,7 +121,7 @@ class ForeachValuer(Valuer):
                     else:
                         calculate_valuer.fill(dict(_index_=k, _value_=v))
                     self.calculated_values.append(calculate_valuer)
-            elif isinstance(self.value, (list, tuple, set, types.GeneratorType)):
+            elif isinstance(self.value, (list, types.GeneratorType)):
                 for i in range(len(self.value)):
                     calculate_valuer = self.calculate_valuer.clone()
                     if isinstance(self.value[i], dict):

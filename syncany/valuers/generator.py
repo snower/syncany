@@ -44,7 +44,7 @@ class YieldValuer(Valuer):
             if self.value_valuer:
                 data = self.value_valuer.get()
 
-            if isinstance(data, (list, tuple, set)):
+            if isinstance(data, list):
                 for d in data:
                     return_valuer = self.return_valuer.clone()
                     return_valuer.fill(d)
@@ -56,12 +56,12 @@ class YieldValuer(Valuer):
             return self
 
         if not self.value_valuer:
-            self.iter_datas = data if isinstance(data, (list, tuple, set)) else [data]
+            self.iter_datas = data if isinstance(data, list) else [data]
         return self
 
     def filter_data(self, data):
         if self.filter:
-            if isinstance(data, (list, tuple, set)):
+            if isinstance(data, list):
                 values = []
                 for value in data:
                     values.append(self.filter.filter(value))
@@ -79,7 +79,7 @@ class YieldValuer(Valuer):
                 else:
                     data = self.iter_datas
 
-                if isinstance(data, (list, tuple, set)):
+                if isinstance(data, list):
                     for d in data:
                         return_valuer = self.return_valuer.clone()
                         return_valuer.fill(d)
@@ -95,7 +95,7 @@ class YieldValuer(Valuer):
         else:
             if self.value_valuer:
                 data = self.value_valuer.get()
-                self.iter_datas = data if isinstance(data, (list, tuple, set)) else [data]
+                self.iter_datas = data if isinstance(data, list) else [data]
 
         def gen_iter():
             gdata = yield None

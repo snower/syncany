@@ -51,7 +51,7 @@ class AddCalculater(Calculater):
         if not self.args:
             return 0
 
-        if len(self.args) == 3 and isinstance(self.args[0], (list, tuple, set)) \
+        if len(self.args) == 3 and isinstance(self.args[0], list) \
                 and isinstance(self.args[1], str):
             for data in self.args[0]:
                 if isinstance(data, dict) and self.args[1] in data:
@@ -79,7 +79,7 @@ class SubCalculater(Calculater):
         if not self.args:
             return 0
 
-        if len(self.args) == 3 and isinstance(self.args[0], (list, tuple, set)) \
+        if len(self.args) == 3 and isinstance(self.args[0], list) \
                 and isinstance(self.args[1], str):
             for data in self.args[0]:
                 if isinstance(data, dict) and self.args[1] in data:
@@ -107,7 +107,7 @@ class MulCalculater(Calculater):
         if not self.args:
             return 0
 
-        if len(self.args) == 3 and isinstance(self.args[0], (list, tuple, set)) \
+        if len(self.args) == 3 and isinstance(self.args[0], list) \
                 and isinstance(self.args[1], str):
             for data in self.args[0]:
                 if isinstance(data, dict) and self.args[1] in data:
@@ -128,7 +128,7 @@ class DivCalculater(Calculater):
         if not self.args:
             return 0
 
-        if len(self.args) == 3 and isinstance(self.args[0], (list, tuple, set)) \
+        if len(self.args) == 3 and isinstance(self.args[0], list) \
                 and isinstance(self.args[1], str):
             for data in self.args[0]:
                 if isinstance(data, dict) and self.args[1] in data:
@@ -149,7 +149,7 @@ class ModCalculater(Calculater):
         if not self.args:
             return 0
 
-        if len(self.args) == 3 and isinstance(self.args[0], (list, tuple, set)) \
+        if len(self.args) == 3 and isinstance(self.args[0], list) \
                 and isinstance(self.args[1], str):
             for data in self.args[0]:
                 if isinstance(data, dict) and self.args[1] in data:
@@ -170,7 +170,7 @@ class BitCalculater(Calculater):
         if not self.args:
             return 0
 
-        if len(self.args) in (3, 4) and isinstance(self.args[0], (list, tuple, set)) \
+        if len(self.args) in (3, 4) and isinstance(self.args[0], list) \
                 and isinstance(self.args[1], str) and isinstance(self.args[2], str):
             for data in self.args[0]:
                 if isinstance(data, dict) and self.args[1] in data:
@@ -210,7 +210,7 @@ class SubstringCalculater(Calculater):
         if not self.args:
             return ""
 
-        if len(self.args) in (3, 4) and isinstance(self.args[0], (list, tuple, set)) \
+        if len(self.args) in (3, 4) and isinstance(self.args[0], list) \
                 and isinstance(self.args[1], str):
             for data in self.args[0]:
                 if isinstance(data, dict) and self.args[1] in data:
@@ -238,7 +238,7 @@ class SplitCalculater(Calculater):
                 result.extend(data.split(self.args[0]))
             elif isinstance(data, bytes):
                 result.extend(data.decode("utf-8").split(self.args[0]))
-            elif isinstance(data, (list, tuple, set)):
+            elif isinstance(data, list):
                 for cdata in data:
                     result.extend(self.split(cdata))
             elif isinstance(data, dict):
@@ -254,7 +254,7 @@ class SplitCalculater(Calculater):
         if not self.args:
             return []
 
-        if len(self.args) == 3 and isinstance(self.args[0], (list, tuple, set)) \
+        if len(self.args) == 3 and isinstance(self.args[0], list) \
                 and isinstance(self.args[1], str) and isinstance(self.args[2], str):
             result = []
             for data in self.args[0]:
@@ -273,7 +273,7 @@ class JoinCalculater(Calculater):
                 result.append(data)
             elif isinstance(data, bytes):
                 result.append(data.decode("utf-8"))
-            elif isinstance(data, (list, tuple, set)):
+            elif isinstance(data, list):
                 result.append(self.join(data, join_key, dict_join_key))
             elif isinstance(data, dict):
                 for key, value in data.items():
@@ -287,7 +287,7 @@ class JoinCalculater(Calculater):
         if not self.args:
             return []
 
-        if len(self.args) == 3 and isinstance(self.args[0], (list, tuple, set)) \
+        if len(self.args) == 3 and isinstance(self.args[0], list) \
                 and isinstance(self.args[1], str) and isinstance(self.args[2], str):
             result = []
             for data in self.args[0]:
@@ -439,7 +439,7 @@ class MaxCalculater(Calculater):
         if not self.args:
             return None
 
-        if not isinstance(self.args[0], (list, tuple, set)):
+        if not isinstance(self.args[0], list):
             if len(self.args) == 2:
                 return self.args[1]
             if len(self.args) > 2:
@@ -461,7 +461,7 @@ class MaxCalculater(Calculater):
 
         max_key_value = max(*tuple(self.args[0]))
         if len(self.args) >= 2:
-            if isinstance(self.args[1], (list, tuple, set)):
+            if isinstance(self.args[1], list):
                 try:
                     return self.args[1][self.args[0].index(max_key_value)]
                 except:
@@ -477,7 +477,7 @@ class MinCalculater(Calculater):
         if not self.args:
             return None
 
-        if not isinstance(self.args[0], (list, tuple, set)):
+        if not isinstance(self.args[0], list):
             if len(self.args) == 2:
                 return self.args[1]
             if len(self.args) >= 2:
@@ -499,7 +499,7 @@ class MinCalculater(Calculater):
 
         min_key_value = min(*tuple(self.args[0]))
         if len(self.args) >= 2:
-            if isinstance(self.args[1], (list, tuple, set)):
+            if isinstance(self.args[1], list):
                 try:
                     return self.args[1][self.args[0].index(min_key_value)]
                 except:
@@ -554,7 +554,7 @@ class IndexCalculater(Calculater):
         if not self.args or len(self.args) < 2:
             return None
 
-        if isinstance(self.args[1], (list, tuple, set)):
+        if isinstance(self.args[1], list):
             for data in self.args[1]:
                 if len(self.args) >= 3:
                     if self.args[2] not in data:
@@ -587,7 +587,7 @@ class FilterCalculater(Calculater):
             return []
 
         result = []
-        if isinstance(self.args[0], (list, tuple, set)):
+        if isinstance(self.args[0], list):
             for data in self.args[0]:
                 if isinstance(data, dict) and len(self.args) >= 3:
                     if self.args[2] not in data:
@@ -626,7 +626,7 @@ class SumCalculater(Calculater):
             return 0
 
         result = 0
-        if isinstance(self.args[0], (list, tuple, set)):
+        if isinstance(self.args[0], list):
             for data in self.args[0]:
                 if isinstance(data, dict) and len(self.args) >= 2:
                     if self.args[1] not in data:
@@ -658,7 +658,7 @@ class SortCalculater(Calculater):
                 if isinstance(x, dict) and k in x:
                     x = x[k]
 
-            if isinstance(x, (list, set, tuple, dict)):
+            if isinstance(x, (list, dict)):
                 return id(x)
             return x
         return sorted(self.args[0], key=sort_key,
@@ -685,7 +685,7 @@ class ArrayCalculater(Calculater):
             return None
 
         func_name = self.name[7:]
-        if isinstance(self.args[0], (list, tuple, set)):
+        if isinstance(self.args[0], list):
             value = list(self.args[0])
             if hasattr(value, func_name):
                 try:

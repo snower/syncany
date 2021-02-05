@@ -18,7 +18,7 @@ class DBJoinMatcher(object):
         return matcher
 
     def fill(self, values):
-        if isinstance(values, (list, tuple, set)):
+        if isinstance(values, list):
             self.data = [{key: valuer.get() for key, valuer in value.items()} for value in values]
         else:
             self.data = {key: valuer.get() for key, valuer in values.items()}
