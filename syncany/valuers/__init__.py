@@ -17,6 +17,7 @@ from .aggregate import AggregateValuer
 from .call import CallValuer
 from .assign import AssignValuer
 from .function import LambdaValuer
+from .loop import ForeachValuer, BreakValuer, ContinueValuer
 from ..errors import ValuerUnknownException
 
 VALUERS = {
@@ -34,6 +35,9 @@ VALUERS = {
     "call_valuer": CallValuer,
     "assign_valuer": AssignValuer,
     "lambda_valuer": LambdaValuer,
+    "foreach_valuer": ForeachValuer,
+    "break_valuer": BreakValuer,
+    "continue_valuer": ContinueValuer,
 }
 
 def find_valuer(name):

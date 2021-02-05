@@ -15,12 +15,15 @@ from .filter import Filter
 class IntFilter(Filter):
     def filter(self, value):
         if isinstance(value, int):
-            return value
+            return int(value)
 
         if isinstance(value, float):
             return int(value)
 
-        if value is None:
+        if value is True:
+            return 1
+
+        if value is None or value is False:
             return 0
 
         if isinstance(value, datetime.datetime):
@@ -58,12 +61,15 @@ class IntFilter(Filter):
 class FloatFilter(Filter):
     def filter(self, value):
         if isinstance(value, float):
-            return value
+            return float(value)
 
         if isinstance(value, int):
             return float(value)
 
-        if value is None:
+        if value is True:
+            return 1.0
+
+        if value is None or value is False:
             return 0.0
 
         if isinstance(value, datetime.datetime):

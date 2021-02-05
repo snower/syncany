@@ -90,7 +90,7 @@ class ConvV2HCalculater(Calculater):
         tasker = current_tasker()
         tasker.outputer.schema = OrderedDict()
         for key in xkeys:
-            valuer = tasker.create_valuer(tasker.compile_db_valuer(key, None))
+            valuer = tasker.create_valuer(tasker.valuer_compiler.compile_db_valuer(key, None))
             if not valuer:
                 continue
             tasker.outputer.add_valuer(key, valuer)
@@ -152,7 +152,7 @@ class ConvH2VCalculater(Calculater):
         tasker = current_tasker()
         tasker.outputer.schema = OrderedDict()
         for key in xkeys:
-            valuer = tasker.create_valuer(tasker.compile_db_valuer(key, None))
+            valuer = tasker.create_valuer(tasker.valuer_compiler.compile_db_valuer(key, None))
             if not valuer:
                 continue
             tasker.outputer.add_valuer(key, valuer)

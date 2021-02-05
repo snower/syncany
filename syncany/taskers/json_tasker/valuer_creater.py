@@ -41,6 +41,27 @@ class LoaderJoinWarp(object):
         return self
 
 class ValuerCreater(object):
+    def __init__(self, tasker):
+        self.tasker = tasker
+
+    def find_valuer_driver(self, *args, **kwargs):
+        return self.tasker.find_valuer_driver(*args, **kwargs)
+
+    def find_filter_driver(self, *args, **kwargs):
+        return self.tasker.find_filter_driver(*args, **kwargs)
+
+    def find_calculater_driver(self, *args, **kwargs):
+        return self.tasker.find_calculater_driver(*args, **kwargs)
+
+    def create_valuer(self, *args, **kwargs):
+        return self.tasker.create_valuer(*args, **kwargs)
+
+    def create_loader(self, *args, **kwargs):
+        return self.tasker.create_loader(*args, **kwargs)
+
+    def compile_db_valuer(self, *args, **kwargs):
+        return self.tasker.valuer_compiler.compile_db_valuer(*args, **kwargs)
+
     def create_const_valuer(self, config, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
@@ -143,18 +164,7 @@ class ValuerCreater(object):
         default_case_valuer = self.create_valuer(config["default_valuer"], inherit_valuers=inherit_valuers, **kwargs) \
             if "default_valuer" in config and config["default_valuer"] else None
 
-        return_inherit_valuers = []
-        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, **kwargs) \
-            if "return_valuer" in config and config["return_valuer"] else None
-
-        current_inherit_valuers = []
-        for inherit_valuer in return_inherit_valuers:
-            inherit_valuer["reflen"] -= 1
-            if inherit_valuer["reflen"] == 0:
-                current_inherit_valuers.append(inherit_valuer["valuer"])
-            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
-                inherit_valuers.append(inherit_valuer)
-        return valuer_cls(case_valuers, default_case_valuer, value_valuer, return_valuer, current_inherit_valuers, config["key"], None)
+        return valuer_cls(case_valuers, default_case_valuer, value_valuer, [], config["key"], None)
 
     def create_calculate_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])
@@ -196,22 +206,18 @@ class ValuerCreater(object):
         valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
-        if isinstance(config["valuer"], dict):
-            if "name" in config["valuer"] and isinstance(config["valuer"]["name"], str):
-                value_valuer = self.create_valuer(config["valuer"], inherit_valuers=inherit_valuers, **kwargs)
+        if isinstance(config["value_valuer"], dict):
+            if "name" in config["value_valuer"] and isinstance(config["value_valuer"]["name"], str):
+                value_valuer = self.create_valuer(config["value_valuer"], inherit_valuers=inherit_valuers, **kwargs)
             else:
                 value_valuer = {key: (self.create_valuer(key_config, inherit_valuers=inherit_valuers, **kwargs),
                                       self.create_valuer(value_config, inherit_valuers=inherit_valuers, **kwargs))
-                                for key, (key_config, value_config) in config["valuer"].items()}
-        elif isinstance(config["valuer"], (list, tuple, set)):
+                                for key, (key_config, value_config) in config["value_valuer"].items()}
+        elif isinstance(config["value_valuer"], (list, tuple, set)):
             value_valuer = [self.create_valuer(value_config, inherit_valuers=inherit_valuers, **kwargs)
-                            for value_config in config["valuer"]]
+                            for value_config in config["value_valuer"]]
         else:
             value_valuer = None
-        loop_valuer = self.create_valuer(config["loop_valuer"], inherit_valuers=inherit_valuers, **kwargs) \
-            if "loop_valuer" in config and config["loop_valuer"] else None
-        condition_valuer = self.create_valuer(config["condition_valuer"], inherit_valuers=inherit_valuers, **kwargs) \
-            if "condition_valuer" in config and config["condition_valuer"] else None
 
         return_inherit_valuers = []
         return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, **kwargs) \
@@ -224,8 +230,7 @@ class ValuerCreater(object):
                 current_inherit_valuers.append(inherit_valuer["valuer"])
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
-        return valuer_cls(value_valuer, config["loop"], loop_valuer, config["condition"], condition_valuer,
-                          config["condition_break"], return_valuer, current_inherit_valuers, config["key"], None)
+        return valuer_cls(value_valuer, return_valuer, current_inherit_valuers, config["key"], None)
 
     def create_let_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])
@@ -298,17 +303,6 @@ class ValuerCreater(object):
                                               aggregate_valuers=calculate_child_aggregate_valuers, **kwargs) \
             if "calculate_valuer" in config and config["calculate_valuer"] else None
 
-        pipeline_valuers = []
-        if "pipeline_valuers" in config and config["pipeline_valuers"]:
-            for pipeline_name, pipeline_valuer in config["pipeline_valuers"]:
-                pipeline_valuer = self.create_valuer(pipeline_valuer, schema_field_name=schema_field_name,
-                                   inherit_valuers=calculate_inherit_valuers,
-                                   aggregate_valuers=calculate_child_aggregate_valuers, **kwargs)
-                pipeline_valuers.append((pipeline_name, pipeline_valuer))
-
-        if calculate_child_aggregate_valuers:
-            raise SyntaxError("aggregate conflict")
-
         current_inherit_valuers = []
         for inherit_valuer in calculate_inherit_valuers:
             inherit_valuer["reflen"] -= 1
@@ -318,7 +312,7 @@ class ValuerCreater(object):
                 inherit_valuers.append(inherit_valuer)
 
         manager = aggregate_valuers[0].get_manager() if aggregate_valuers else None
-        aggregate_valuer = valuer_cls(key_valuer, calculate_valuer, pipeline_valuers, current_inherit_valuers, manager, schema_field_name, None)
+        aggregate_valuer = valuer_cls(key_valuer, calculate_valuer, current_inherit_valuers, manager, schema_field_name, None)
         if aggregate_valuers is not None:
             aggregate_valuers.append(aggregate_valuer)
         return aggregate_valuer
@@ -327,27 +321,33 @@ class ValuerCreater(object):
         valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
+        value_valuer = self.create_valuer(config["value_valuer"], inherit_valuers=inherit_valuers, **kwargs) \
+            if "value_valuer" in config and config["value_valuer"] else None
 
         calculate_inherit_valuers = []
         calculate_valuer = self.create_valuer(config["calculate_valuer"], inherit_valuers=calculate_inherit_valuers,
                                               define_valuers=define_valuers, **kwargs) \
             if "calculate_valuer" in config and config["calculate_valuer"] else None
+
+        current_inherit_valuers = []
         if not calculate_inherit_valuers:
             if define_valuers and config["key"] in define_valuers:
                 calculate_valuer = define_valuers[config["key"]]
             else:
                 define_valuers[config["key"]] = calculate_valuer
         else:
-            for calculate_inherit_valuer in calculate_inherit_valuers:
-                if inherit_valuers is not None:
-                    inherit_valuers.append(calculate_inherit_valuer)
+            for inherit_valuer in calculate_inherit_valuers:
+                inherit_valuer["reflen"] -= 1
+                if inherit_valuer["reflen"] == 0:
+                    current_inherit_valuers.append(inherit_valuer["valuer"])
+                elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                    inherit_valuers.append(inherit_valuer)
 
         return_inherit_valuers = []
         return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers,
                                            define_valuers=define_valuers, **kwargs) \
             if "return_valuer" in config and config["return_valuer"] else None
 
-        current_inherit_valuers = []
         for inherit_valuer in return_inherit_valuers:
             inherit_valuer["reflen"] -= 1
             if inherit_valuer["reflen"] == 0:
@@ -355,14 +355,15 @@ class ValuerCreater(object):
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
 
-        return valuer_cls(calculate_valuer, return_valuer, current_inherit_valuers, None, config['key'], None)
+        return valuer_cls(value_valuer, calculate_valuer, return_valuer, current_inherit_valuers, None, config['key'], None)
 
     def create_assign_valuer(self, config, inherit_valuers=None, global_variables=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
 
-        calculate_valuer = self.create_valuer(config["calculate_valuer"], inherit_valuers=inherit_valuers,
+        calculate_inherit_valuers = []
+        calculate_valuer = self.create_valuer(config["calculate_valuer"], inherit_valuers=calculate_inherit_valuers,
                                               global_variables=global_variables, **kwargs) \
             if "calculate_valuer" in config and config["calculate_valuer"] else None
 
@@ -375,6 +376,13 @@ class ValuerCreater(object):
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
 
         current_inherit_valuers = []
+        for inherit_valuer in calculate_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
         for inherit_valuer in return_inherit_valuers:
             inherit_valuer["reflen"] -= 1
             if inherit_valuer["reflen"] == 0:
@@ -402,3 +410,48 @@ class ValuerCreater(object):
                 inherit_valuers.append(inherit_valuer)
 
         return valuer_cls(calculate_valuer, current_inherit_valuers, config['key'], None)
+
+    def create_foreach_valuer(self, config, inherit_valuers=None, **kwargs):
+        valuer_cls = self.find_valuer_driver(config["name"])
+        if not valuer_cls:
+            raise ValuerUnknownException(config["name"] + " is unknown")
+        value_valuer = self.create_valuer(config["value_valuer"], inherit_valuers=inherit_valuers, **kwargs) \
+            if "value_valuer" in config and config["value_valuer"] else None
+
+        calculate_inherit_valuers = []
+        calculate_valuer = self.create_valuer(config["calculate_valuer"], inherit_valuers=calculate_inherit_valuers, **kwargs) \
+            if "calculate_valuer" in config and config["calculate_valuer"] else None
+
+        return_inherit_valuers = []
+        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, **kwargs) \
+            if "return_valuer" in config and config["return_valuer"] else None
+
+        current_inherit_valuers = []
+        for inherit_valuer in calculate_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
+        for inherit_valuer in return_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
+        return valuer_cls(value_valuer, calculate_valuer, return_valuer, current_inherit_valuers,
+                          config['key'], None)
+
+    def create_break_valuer(self, config, **kwargs):
+        valuer_cls = self.find_valuer_driver(config["name"])
+        if not valuer_cls:
+            raise ValuerUnknownException(config["name"] + " is unknown")
+        return valuer_cls(config['key'], None)
+
+    def create_continue_valuer(self, config, **kwargs):
+        valuer_cls = self.find_valuer_driver(config["name"])
+        if not valuer_cls:
+            raise ValuerUnknownException(config["name"] + " is unknown")
+        return valuer_cls(config['key'], None)

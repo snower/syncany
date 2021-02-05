@@ -89,10 +89,6 @@ class CalculateValuer(Valuer):
             for field in valuer.get_fields():
                 fields.append(field)
 
-        if not self.wait_loaded and self.return_valuer:
-            for field in self.return_valuer.get_fields():
-                fields.append(field)
-
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 for field in inherit_valuer.get_fields():

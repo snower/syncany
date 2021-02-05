@@ -20,7 +20,7 @@ from ...errors import LoaderUnknownException, OutputerUnknownException, \
     ValuerUnknownException, DatabaseUnknownException, CalculaterUnknownException, \
     SourceUnknownException
 
-class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerCreater):
+class JsonTasker(Tasker):
     DEFAULT_CONFIG = {
         "name": "",
         "input": "",
@@ -37,6 +37,11 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
     def __init__(self, json_filename):
         self.start_time = time.time()
+        self.closed = False
+        self.valuer_compiler = ValuerCompiler(self)
+        self.valuer_creater = ValuerCreater(self)
+        self.loader_creater = LoaderCreater(self)
+        self.outputer_creater = OutputerCreater(self)
         self.config = copy.deepcopy(self.DEFAULT_CONFIG)
         self.name = ""
 
@@ -46,55 +51,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         else:
             self.json_filename = json_filename
         super(JsonTasker, self).__init__()
-
         self.join_loaders = {}
-
-        self.valuer_compiler = {
-            "const_valuer": self.compile_const_valuer,
-            "db_valuer": self.compile_db_valuer,
-            "inherit_valuer": self.compile_inherit_valuer,
-            "db_join_valuer": self.compile_db_join_valuer,
-            "case_valuer": self.compile_case_valuer,
-            "calculate_valuer": self.compile_calculate_valuer,
-            "schema_valuer": self.compile_schema_valuer,
-            "make_valuer": self.compile_make_valuer,
-            "let_valuer": self.compile_let_valuer,
-            "yield_valuer": self.compile_yield_valuer,
-            "aggregate_valuer": self.compile_aggregate_valuer,
-            "call_valuer": self.compile_call_valuer,
-            "assign_valuer": self.compile_assign_valuer,
-            "lambda_valuer": self.compile_lambda_valuer,
-        }
-
-        self.valuer_creater = {
-            "const_valuer": self.create_const_valuer,
-            "db_valuer": self.create_db_valuer,
-            "inherit_valuer": self.create_inherit_valuer,
-            "db_join_valuer": self.create_db_join_valuer,
-            "case_valuer": self.create_case_valuer,
-            "calculate_valuer": self.create_calculate_valuer,
-            "schema_valuer": self.create_schema_valuer,
-            "make_valuer": self.create_make_valuer,
-            "let_valuer": self.create_let_valuer,
-            "yield_valuer": self.create_yield_valuer,
-            "aggregate_valuer": self.create_aggregate_valuer,
-            "call_valuer": self.create_call_valuer,
-            "assign_valuer": self.create_assign_valuer,
-            "lambda_valuer": self.create_lambda_valuer,
-        }
-
-        self.loader_creater = {
-            "const_loader": self.create_const_loader,
-            "db_loader": self.create_db_loader,
-            "db_join_loader": self.create_db_join_loader,
-        }
-
-        self.outputer_creater = {
-            "db_update_delete_insert_outputer": self.create_db_update_delete_insert_outputer,
-            "db_update_insert_outputer": self.create_db_update_insert_outputer,
-            "db_delete_insert_outputer": self.create_db_delete_insert_outputer,
-            "db_insert_outputer": self.create_db_insert_outputer,
-        }
 
     def load_json(self, filename):
         if filename[:12] == "__inline__::":
@@ -320,7 +277,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 self.config["outputer"] = self.compile_filter_calculater(self.config["outputer"])
             if self.config["outputer"][:2] == ">>":
                 arguments.append({"name": "@outputer", "type": str, "default": self.config["outputer"][2:],
-                                  "choices": tuple(self.outputer_creater.keys()),
+                                  "choices": tuple(self.outputer_creater.can_uses()),
                                   "help": "data outputer (default: %s)" % self.config["outputer"][2:]})
 
         arguments.append({"name": "@batch", "type": int, "default": 0, "help": "per sync batch count (default: 0 all)"})
@@ -428,89 +385,110 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         if isinstance(valuer, dict):
             if "name" not in valuer or not valuer["name"].endswith("_valuer"):
                 if "#case" not in valuer:
-                    return self.compile_const_valuer(valuer)
+                    return self.valuer_compiler.compile_const_valuer(valuer)
 
                 case_case = valuer.pop("#case")
                 cases = {}
                 case_default = valuer.pop("#end") if "#end" in valuer else None
-                case_return = valuer.pop(":") if ":" in valuer else None
                 for case_key, case_value in valuer.items():
                     if case_key and isinstance(case_key, str) and case_key[0] == ":" and case_key[1:].isdigit():
                         cases[int(case_key[1:])] = case_value
                     else:
                         cases[case_key] = case_value
-                return self.compile_case_valuer('', None, case_case, cases, case_default, case_return)
+                return self.valuer_compiler.compile_case_valuer('', None, case_case, cases, case_default)
             return valuer
 
         if isinstance(valuer, (list, tuple, set)):
             if not valuer:
-                return self.compile_const_valuer(valuer)
+                return self.valuer_compiler.compile_const_valuer(valuer)
 
             key = self.compile_key(valuer[0])
             if key["instance"] is None:
-                return self.compile_const_valuer(valuer)
+                return self.valuer_compiler.compile_const_valuer(valuer)
 
             if key["instance"] == "$":
                 if len(valuer) not in (2, 3):
                     if "inherit_reflen" in key and key["inherit_reflen"] > 0:
-                        return self.compile_inherit_valuer(key["key"], key["filter"], key["inherit_reflen"])
-                    return self.compile_db_valuer(key["key"], key["filter"])
+                        return self.valuer_compiler.compile_inherit_valuer(key["key"], key["filter"], key["inherit_reflen"])
+                    return self.valuer_compiler.compile_db_valuer(key["key"], key["filter"])
 
                 foreign_key = self.compile_foreign_key(valuer[1])
                 if foreign_key is None:
-                    return self.compile_const_valuer(valuer)
+                    return self.valuer_compiler.compile_const_valuer(valuer)
 
                 loader = {"name": "db_join_loader", "database": foreign_key["database"]}
-                return self.compile_db_join_valuer(key["key"], loader, foreign_key["foreign_key"], foreign_key["foreign_filters"],
+                return self.valuer_compiler.compile_db_join_valuer(key["key"], loader, foreign_key["foreign_key"], foreign_key["foreign_filters"],
                                                    None, valuer[0], valuer[2] if len(valuer) >= 3 else None)
 
             if key["instance"] == "@":
-                return self.compile_calculate_valuer(key["key"], key["filter"], valuer[1:])
+                return self.valuer_compiler.compile_calculate_valuer(key["key"], key["filter"], valuer[1:])
 
             if key["instance"] == "#":
                 if key["key"] == "const":
-                    return self.compile_const_valuer(valuer[1:] if len(valuer) > 2 else (valuer[1] if len(valuer) > 1 else None))
-                if key["key"] == "case" and len(valuer) in (2, 3, 4):
-                    return self.compile_case_valuer(key["key"], key["filter"], None, valuer[1:], None)
-                if key["key"] == "make" and len(valuer) in (2, 3, 4, 5):
-                    return self.compile_make_valuer(key["key"], key["filter"], valuer[1], valuer[2:])
+                    return self.valuer_compiler.compile_const_valuer(valuer[1:] if len(valuer) > 2 else
+                                                                     (valuer[1] if len(valuer) > 1 else None))
+                if key["key"] == "case" and len(valuer) in (3, 4):
+                    cases = {1: valuer[2]}
+                    if len(valuer) == 3:
+                        cases[0] = valuer[3]
+                    return self.valuer_compiler.compile_case_valuer(key["key"], key["filter"], valuer[1],
+                                                                    cases, None)
+                if key["key"] == "make" and len(valuer) in (2, 3):
+                    return self.valuer_compiler.compile_make_valuer(key["key"], key["filter"], valuer[1],
+                                                                    valuer[2] if len(valuer) >= 3 else None)
                 if key["key"] == "let" and len(valuer) in (2, 3):
-                    return self.compile_let_valuer(key["key"], key["filter"], valuer[1], valuer[2] if len(valuer) >= 3 else None)
+                    return self.valuer_compiler.compile_let_valuer(key["key"], key["filter"], valuer[1],
+                                                                   valuer[2] if len(valuer) >= 3 else None)
                 if key["key"] == "yield" and len(valuer) in (1, 2, 3):
-                    return self.compile_yield_valuer(key["key"], key["filter"], valuer[1] if len(valuer) >= 1 else None,
-                                                     valuer[2] if len(valuer) >= 3 else None)
-                if key["key"] == "aggregate" and len(valuer) >= 3:
-                    return self.compile_aggregate_valuer(key["key"], key["filter"], valuer[1], valuer[2] if len(valuer) == 3 else None,
-                                                         None if len(valuer) == 3 else valuer[2:])
-                if key["key"] == "call" and len(valuer) in (2, 3) and valuer[1] in self.config["defines"]:
-                    return self.compile_call_valuer(valuer[1], key["filter"], valuer[2] if len(valuer) >= 3 else None,
-                                                    self.config["defines"][valuer[1]])
+                    return self.valuer_compiler.compile_yield_valuer(key["key"], key["filter"],
+                                                                     valuer[1] if len(valuer) >= 1 else None,
+                                                                     valuer[2] if len(valuer) >= 3 else None)
+                if key["key"] == "aggregate" and len(valuer) in (2, 3):
+                    return self.valuer_compiler.compile_aggregate_valuer(key["key"], key["filter"], valuer[1],
+                                                                         valuer[2] if len(valuer) >= 3 else None)
+                if key["key"] == "call" and len(valuer) in (2, 3, 4) and valuer[1] in self.config["defines"]:
+                    return self.valuer_compiler.compile_call_valuer(valuer[1], key["filter"],
+                                                                    valuer[2] if len(valuer) >= 3 else None,
+                                                                    self.config["defines"][valuer[1]],
+                                                                    valuer[3] if len(valuer) >= 4 else None)
                 if key["key"] == "assign" and len(valuer) in (2, 3, 4):
-                    return self.compile_assign_valuer(valuer[1], key["filter"], valuer[2] if len(valuer) >= 3 else None,
-                                                    valuer[3] if len(valuer) >= 4 else None)
+                    return self.valuer_compiler.compile_assign_valuer(valuer[1], key["filter"],
+                                                                      valuer[2] if len(valuer) >= 3 else None,
+                                                                      valuer[3] if len(valuer) >= 4 else None)
                 if key["key"] == "lambda" and len(valuer) == 2:
-                    return self.compile_lambda_valuer(key["key"], key["filter"], valuer[1])
-
-            return self.compile_const_valuer(valuer)
+                    return self.valuer_compiler.compile_lambda_valuer(key["key"], key["filter"], valuer[1])
+                if key["key"] == "foreach" and len(valuer) in (2, 3, 4):
+                    return self.valuer_compiler.compile_foreach_valuer(key["key"], key["filter"], valuer[1],
+                                                                      valuer[2] if len(valuer) >= 3 else None,
+                                                                      valuer[3] if len(valuer) >= 4 else None)
+                if key["key"] == "break" and len(valuer) == 2:
+                    return self.valuer_compiler.compile_break_valuer(key["key"], key["filter"], valuer[1])
+                if key["key"] == "continue" and len(valuer) == 2:
+                    return self.valuer_compiler.compile_continue_valuer(key["key"], key["filter"], valuer[1])
+            return self.valuer_compiler.compile_const_valuer(valuer)
 
         key = self.compile_key(valuer)
         if key["instance"] is None:
-            return self.compile_const_valuer(key["value"])
+            return self.valuer_compiler.compile_const_valuer(key["value"])
 
         if key["instance"] == "$":
             if "inherit_reflen" in key and key["inherit_reflen"] > 0:
-                return self.compile_inherit_valuer(key["key"], key["filter"], key["inherit_reflen"])
-            return self.compile_db_valuer(key["key"], key["filter"])
+                return self.valuer_compiler.compile_inherit_valuer(key["key"], key["filter"], key["inherit_reflen"])
+            return self.valuer_compiler.compile_db_valuer(key["key"], key["filter"])
 
         if key["instance"] == "@":
-            return self.compile_calculate_valuer(key["key"], key["filter"], [])
+            return self.valuer_compiler.compile_calculate_valuer(key["key"], key["filter"], [])
 
         if key["instance"] == "#":
             if key["key"] == "const":
-                return self.compile_const_valuer(None)
+                return self.valuer_compiler.compile_const_valuer(None)
             if key["key"] == "yield":
-                return self.compile_yield_valuer(key["key"], key["filter"], None, None)
-        return self.compile_const_valuer(valuer)
+                return self.valuer_compiler.compile_yield_valuer(key["key"], key["filter"], None, None)
+            if key["key"] == "break":
+                return self.valuer_compiler.compile_break_valuer(key["key"], key["filter"], None)
+            if key["key"] == "continue":
+                return self.valuer_compiler.compile_continue_valuer(key["key"], key["filter"], None)
+        return self.valuer_compiler.compile_const_valuer(valuer)
 
     def compile_pipelines(self):
         if not self.config["pipelines"]:
@@ -557,40 +535,40 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
         if "name" not in config or not config["name"]:
             raise ValuerUnknownException(config["name"] + " is unknown")
 
-        if config["name"] not in self.valuer_creater:
+        if not hasattr(self.valuer_creater, "create_" + config["name"]):
             valuer_cls = self.find_valuer_driver(config["name"])
             if not valuer_cls:
                 raise ValuerUnknownException(config["name"] + " is unknown")
             config = {key: value for key, value in config.items() if key != "name"}
             return valuer_cls(**config)
 
-        return self.valuer_creater[config["name"]](config, **kwargs)
+        return getattr(self.valuer_creater, "create_" + config["name"])(config, **kwargs)
 
     def create_loader(self, config, primary_keys):
         if "name" not in config or not config["name"]:
             raise LoaderUnknownException(config["name"] + " is unknown")
 
-        if config["name"] not in self.loader_creater:
+        if not hasattr(self.loader_creater, "create_" + config["name"]):
             loader_cls = self.find_loader_driver(config["name"])
             if not loader_cls:
                 raise LoaderUnknownException(config["name"] + " is unknown")
             config = {key: value for key, value in config.items() if key != "name"}
             return loader_cls(**config)
 
-        return self.loader_creater[config["name"]](config, primary_keys)
+        return getattr(self.loader_creater, "create_" + config["name"])(config, primary_keys)
 
     def create_outputer(self, config, primary_keys):
         if "name" not in config or not config["name"]:
             raise OutputerUnknownException(config["name"] + " is unknown")
 
-        if config["name"] not in self.outputer_creater:
+        if not hasattr(self.outputer_creater, "create_" + config["name"]):
             outputer_cls = self.find_outputer_driver(config["name"])
             if not outputer_cls:
                 raise OutputerUnknownException(config["name"] + " is unknown")
             config = {key: value for key, value in config.items() if key != "name"}
             return outputer_cls(**config)
 
-        return self.outputer_creater[config["name"]](config, primary_keys)
+        return getattr(self.outputer_creater, "create_" + config["name"])(config, primary_keys)
 
     def compile_loader(self):
         if self.config["input"][:2] == "<<":
@@ -633,7 +611,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                     loader_config["is_yield"] = True
                     self.loader.is_yield = True
         elif self.schema == ".*":
-            self.loader.add_key_matcher(".*", self.create_valuer(self.compile_db_valuer("", None)))
+            self.loader.add_key_matcher(".*", self.create_valuer(self.valuer_compiler.compile_db_valuer("", None)))
 
         for filter in self.config["querys"]:
             filter_name = filter["name"]
@@ -680,7 +658,7 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
 
         if isinstance(self.schema, dict):
             for name, valuer in self.schema.items():
-                valuer = self.create_valuer(self.compile_db_valuer(name, None))
+                valuer = self.create_valuer(self.valuer_compiler.compile_db_valuer(name, None))
                 if valuer:
                     if name in self.loader.schema:
                         valuer.filter = self.loader.schema[name].get_final_filter()
@@ -853,8 +831,15 @@ class JsonTasker(Tasker, ValuerCompiler, ValuerCreater, LoaderCreater, OutputerC
                 statistics = self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders.values())
                 self.print_statistics(*statistics)
         finally:
-            for name, database in self.databases.items():
-                database.close()
+            self.close()
 
         get_logger().info("%s finish %s %s %.2fms", self.name, self.json_filename, self.config.get("name"), (time.time() - self.start_time) * 1000)
         return statistics
+
+    def close(self):
+        if self.closed:
+            return
+        self.closed = True
+        for name, database in self.databases.items():
+            database.close()
+        self.valuer_compiler, self.valuer_creater, self.loader_creater, self.outputer_creater = None, None, None, None

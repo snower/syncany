@@ -5,6 +5,21 @@
 from ...errors import LoaderUnknownException
 
 class LoaderCreater(object):
+    def __init__(self, tasker):
+        self.tasker = tasker
+
+    @property
+    def databases(self):
+        return self.tasker.databases
+
+    def can_uses(self):
+        return [
+            "db_loader",
+        ]
+
+    def find_loader_driver(self, *args, **kwargs):
+        return self.tasker.find_loader_driver(*args, **kwargs)
+
     def create_const_loader(self, config, primary_keys):
         loader_cls = self.find_loader_driver(config["name"])
         if not loader_cls:

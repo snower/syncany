@@ -3,7 +3,7 @@
 # create by: snower
 
 import types
-from .valuer import Valuer
+from .valuer import Valuer, LoadAllFieldsException
 
 class YieldValuer(Valuer):
     def __init__(self, value_valuer, return_valuer, inherit_valuers, *args, **kwargs):
@@ -127,12 +127,15 @@ class YieldValuer(Valuer):
         return childs
 
     def get_fields(self):
-        fields = []
-        if self.value_valuer:
-            for field in self.value_valuer.get_fields():
-                fields.append(field)
+        is_pass, fields = False, []
+        try:
+            if self.value_valuer:
+                for field in self.value_valuer.get_fields():
+                    fields.append(field)
+        except LoadAllFieldsException:
+            is_pass = True
 
-        if not self.wait_loaded and self.return_valuer:
+        if (not self.value_valuer or is_pass) and self.return_valuer:
             for field in self.return_valuer.get_fields():
                 fields.append(field)
 
