@@ -16,9 +16,8 @@ FILTERS = {
     'map': MapFilter,
     "ObjectId": ObjectIdFilter,
     "datetime": DateTimeFilter,
-    "datetimef": DateTimeFormatFilter,
     "date": DateFilter,
-    "datef": DateFormatFilter,
+    "time": TimeFilter,
 }
 
 def find_filter(name):

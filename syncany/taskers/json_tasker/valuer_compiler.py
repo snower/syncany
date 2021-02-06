@@ -33,11 +33,21 @@ class ValuerCompiler(object):
             "filter": filter,
         }
 
-    def compile_db_valuer(self, key="", filter=None):
+    def compile_db_valuer(self, key="", filter=None, return_arg=None):
+        if isinstance(return_arg, str) and return_arg[:1] == ":":
+            return_arg = return_arg[1:]
+        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
+            if return_arg[0] == ":":
+                return_arg = list(return_arg)[1:]
+            elif return_arg[0][:1] == ":":
+                return_arg = list(return_arg)
+                return_arg[0] = return_arg[0][1:]
+        return_valuer = self.compile_valuer(return_arg) if return_arg else None
         return {
             "name": "db_valuer",
             "key": key,
-            "filter": filter
+            "filter": filter,
+            "return_valuer": return_valuer,
         }
 
     def compile_inherit_valuer(self, key="", filter=None, reflen=0):

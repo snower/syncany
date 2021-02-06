@@ -124,6 +124,12 @@ class StringFilter(Filter):
             except:
                 return ""
 
+        if isinstance(value, datetime.time):
+            try:
+                return value.strftime(self.args or "%H:%M:%S")
+            except:
+                return ""
+
         if isinstance(value, datetime.date):
             try:
                 return value.strftime(self.args or "%Y-%m-%d")
@@ -153,7 +159,8 @@ class StringFilter(Filter):
         if self.args:
             try:
                 return self.args % value
-            except: pass
+            except:
+                return ""
 
         try:
             return str(value)
@@ -177,6 +184,12 @@ class BytesFilter(Filter):
         if isinstance(value, datetime.datetime):
             try:
                 return bytes(value.strftime(self.args or "%Y-%m-%d %H:%M:%S"), "utf-8")
+            except:
+                return b""
+
+        if isinstance(value, datetime.time):
+            try:
+                return bytes(value.strftime(self.args or "%H:%M:%S"), "utf-8")
             except:
                 return b""
 
@@ -380,36 +393,6 @@ class DateTimeFilter(Filter):
         except:
             return None
 
-class DateTimeFormatFilter(DateTimeFilter):
-    def filter(self, value):
-        value = super(DateTimeFormatFilter, self).filter(value)
-
-        if value is None:
-            return ""
-
-        if value is True:
-            return ""
-
-        if value is False:
-            return ""
-
-        if isinstance(value, datetime.timedelta):
-            return str(value)
-
-        if isinstance(value, (list, tuple, set)):
-            results = []
-            for cv in value:
-                cv.strftime(self.args or "%Y-%m-%d %H:%M:%S")
-            return results
-
-        if isinstance(value, dict):
-            results = {}
-            for ck, cv in value.items():
-                results[ck] = cv.strftime(self.args or "%Y-%m-%d %H:%M:%S")
-            return value
-
-        return value.strftime(self.args or "%Y-%m-%d %H:%M:%S")
-
 class DateFilter(Filter):
     def filter(self, value):
         if isinstance(value, datetime.date):
@@ -447,32 +430,42 @@ class DateFilter(Filter):
         except:
             return None
 
-class DateFormatFilter(DateFilter):
+class TimeFilter(Filter):
     def filter(self, value):
-        value = super(DateFormatFilter, self).filter(value)
+        if isinstance(value, datetime.time):
+            return value
 
-        if value is None:
-            return ""
-
-        if value is True:
-            return ""
-
-        if value is False:
-            return ""
+        if isinstance(value, datetime.date):
+            if isinstance(value, datetime.datetime):
+                localzone = get_localzone()
+                if localzone != value.tzinfo:
+                    value = value.astimezone(tz=localzone)
+                return datetime.time(value.hour, value.minute, value.second)
+            return datetime.time(0, 0, 0)
 
         if isinstance(value, datetime.timedelta):
-            return str(value)
+            localzone = get_localzone()
+            dt = datetime.datetime.now(tz=localzone) + value
+            return datetime.time(dt.hour, dt.minute, dt.second)
+
+        if isinstance(value, (int, float)):
+            dt = datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC).astimezone(tz=get_localzone())
+            return datetime.time(dt.hour, dt.minute, dt.second)
 
         if isinstance(value, (list, tuple, set)):
             results = []
             for cv in value:
-                cv.strftime(self.args or "%Y-%m-%d")
+                results.append(self.filter(cv))
             return results
 
         if isinstance(value, dict):
             results = {}
             for ck, cv in value.items():
-                results[ck] = cv.strftime(self.args or "%Y-%m-%d")
+                results[ck] = self.filter(cv)
             return value
 
-        return value.strftime(self.args or "%Y-%m-%d")
+        try:
+            dt = datetime.datetime.strptime("2000-01-01 " + value, "%Y-%m-%d " + (self.args or "%H:%M:%S")).astimezone(tz=get_localzone())
+            return datetime.time(dt.hour, dt.minute, dt.second)
+        except:
+            return None

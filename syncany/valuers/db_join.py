@@ -2,9 +2,9 @@
 # 18/8/6
 # create by: snower
 
-from .db import DBValuer
+from .db import Valuer
 
-class DBJoinValuer(DBValuer):
+class DBJoinValuer(Valuer):
     def __init__(self, loader, foreign_key, foreign_filters, args_valuer, return_valuer, inherit_valuers, *args, **kwargs):
         super(DBJoinValuer, self).__init__(*args, **kwargs)
 
@@ -43,7 +43,6 @@ class DBJoinValuer(DBValuer):
 
     def get(self):
         self.loader.load()
-
         return self.return_valuer.get()
 
     def childs(self):

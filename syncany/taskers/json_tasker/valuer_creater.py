@@ -70,13 +70,27 @@ class ValuerCreater(object):
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
         return valuer_cls(config["value"], "", filter)
 
-    def create_db_valuer(self, config, **kwargs):
+    def create_db_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
+
+        return_inherit_valuers = []
+        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, **kwargs) \
+            if "return_valuer" in config and config["return_valuer"] else None
+
         filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
-        return valuer_cls(config["key"], filter)
+
+        current_inherit_valuers = []
+        for inherit_valuer in return_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
+        return valuer_cls(return_valuer, current_inherit_valuers, config["key"], filter)
 
     def create_inherit_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])

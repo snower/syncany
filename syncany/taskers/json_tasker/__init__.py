@@ -412,6 +412,12 @@ class JsonTasker(Tasker):
                         return self.valuer_compiler.compile_inherit_valuer(key["key"], key["filter"], key["inherit_reflen"])
                     return self.valuer_compiler.compile_db_valuer(key["key"], key["filter"])
 
+                if len(valuer) == 2:
+                    if isinstance(valuer[1], str) and valuer[1][:1] == ":":
+                        return self.valuer_compiler.compile_db_valuer(key["key"], key["filter"], valuer[1])
+                    if isinstance(valuer[1], list) and valuer[1][0][:1] == ":":
+                        return self.valuer_compiler.compile_db_valuer(key["key"], key["filter"], valuer[1])
+
                 foreign_key = self.compile_foreign_key(valuer[1])
                 if foreign_key is None:
                     return self.valuer_compiler.compile_const_valuer(valuer)

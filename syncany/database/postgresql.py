@@ -26,37 +26,30 @@ class PostgresqlQueryBuilder(QueryBuilder):
             self.table_name = db_name[0]
 
     def filter_gt(self, key, value):
-        key = self.map_virtual_fields(self.table_name, key)
         self.query.append('"' + key + '">%s')
         self.query_values.append(value)
 
     def filter_gte(self, key, value):
-        key = self.map_virtual_fields(self.table_name, key)
         self.query.append('"' + key + '">=%s')
         self.query_values.append(value)
 
     def filter_lt(self, key, value):
-        key = self.map_virtual_fields(self.table_name, key)
         self.query.append('"' + key + '"<%s')
         self.query_values.append(value)
 
     def filter_lte(self, key, value):
-        key = self.map_virtual_fields(self.table_name, key)
         self.query.append('"' + key + '"<=%s')
         self.query_values.append(value)
 
     def filter_eq(self, key, value):
-        key = self.map_virtual_fields(self.table_name, key)
         self.query.append('"' + key + '"=%s')
         self.query_values.append(value)
 
     def filter_ne(self, key, value):
-        key = self.map_virtual_fields(self.table_name, key)
         self.query.append('"' + key + '"!=%s')
         self.query_values.append(value)
 
     def filter_in(self, key, value):
-        key = self.map_virtual_fields(self.table_name, key)
         self.query.append('"' + key + '" in %s')
         self.query_values.append(tuple(value))
 
@@ -68,13 +61,6 @@ class PostgresqlQueryBuilder(QueryBuilder):
 
     def order_by(self, key, direct=1):
         self.orders.append(('"' + key + ('" ASC' if direct else '" DESC')))
-
-    def map_virtual_fields(self, table_name, field):
-        if table_name in self.db.tables:
-            virtual_fields = self.db.tables[table_name].get("virtual_fields", {})
-            if field in virtual_fields:
-                return virtual_fields[field]
-        return field
 
     def format_table(self):
         for virtual_table in self.db.virtual_tables:
@@ -132,11 +118,7 @@ class PostgresqlQueryBuilder(QueryBuilder):
         if self.fields and not is_virtual:
             fields = []
             for field in self.fields:
-                virtual_field = self.map_virtual_fields(self.table_name, field)
-                if virtual_field == field:
-                    fields.append('"' + field + '"')
-                else:
-                    fields.append('%s as "%s"' % (virtual_field, field))
+                fields.append('"' + field + '"')
             fields = ", ".join(fields)
         else:
             fields = "*"
@@ -303,13 +285,7 @@ class PostgresqlDB(DataBase):
         "user": "root",
         "password": "",
         "dbname": "",
-        "tables": [
-            # {
-            #     "name": "",
-            #     "virtual_fields": {}
-            # }
-        ],
-        "virtual_tables": [
+        "virtual_views": [
             # {
             #     "name": "",
             #     "name_match": "",
@@ -334,7 +310,7 @@ class PostgresqlDB(DataBase):
 
         self.db_name = all_config["dbname"] if "dbname" in all_config else all_config["name"]
         self.tables = {table["name"]: table for table in all_config.pop("tables")} if "tables" in all_config else {}
-        self.virtual_tables = all_config.pop("virtual_tables") if "virtual_tables" in all_config else []
+        self.virtual_tables = all_config.pop("virtual_views") if "virtual_views" in all_config else []
 
         super(PostgresqlDB, self).__init__(all_config)
 
