@@ -50,14 +50,9 @@ class DBUpdateDeleteInsertOutputer(DBOutputer):
         self.querys.append(query)
 
     def insert(self, datas):
-        for i in range(int(len(datas) / 500.0 + 1)):
-            bdatas = datas[i * 500: (i + 1) * 500]
-            if not bdatas:
-                break
-
-            insert = self.db.insert(self.name, self.primary_keys, list(self.schema.keys()), bdatas)
-            insert.commit()
-            self.operators.append(insert)
+        insert = self.db.insert(self.name, self.primary_keys, list(self.schema.keys()), datas)
+        insert.commit()
+        self.operators.append(insert)
 
     def update(self, data, load_data):
         diff_data = {}
