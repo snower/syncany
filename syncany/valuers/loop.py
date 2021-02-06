@@ -94,7 +94,7 @@ class ForeachValuer(Valuer):
                 values = []
                 for valuer in self.calculated_values:
                     try:
-                        values.append(valuer.get())
+                        values.append(self.do_filter(valuer.get()))
                     except ContinueReturn as e:
                         if e.value != ContinueReturn.NULL:
                             values.append(e.value)
@@ -139,7 +139,7 @@ class ForeachValuer(Valuer):
             values = []
             for valuer in self.calculated_values:
                 try:
-                    values.append(valuer.get())
+                    values.append(self.do_filter(valuer.get()))
                 except ContinueReturn as e:
                     if e.value != ContinueReturn.NULL:
                         values.append(e.value)

@@ -68,41 +68,39 @@ class Valuer(object):
 
     def fill(self, data):
         if data is None or not self.key:
-            if self.filter:
-                self.value = self.filter.filter(self.value)
+            self.value = self.do_filter(None)
             return self
 
         if self.key == "*" or not isinstance(data, (dict, list)):
-            self.value = data
-            if self.filter:
-                self.value = self.filter.filter(self.value)
+            self.value = self.do_filter(data)
             return self
 
-        if self.key not in data:
-            if self.key in self.KEY_GETTER_CACHES:
-                self.key_getters = self.KEY_GETTER_CACHES[self.key]
-            else:
-                self.parse_key()
-            try:
-                for getter in self.key_getters:
-                    data = getter(data)
-                self.value = data
-            except:
-                self.value = None
-        else:
-            self.value = data[self.key]
+        if self.key in data:
+            self.value = self.do_filter(data[self.key])
+            return
 
-        if self.filter:
-            if isinstance(self.value, list):
-                values = []
-                for value in self.value:
-                    values.append(self.filter.filter(value))
-                self.value = values
-            else:
-                self.value = self.filter.filter(self.value)
+        if self.key in self.KEY_GETTER_CACHES:
+            self.key_getters = self.KEY_GETTER_CACHES[self.key]
+        else:
+            self.parse_key()
+        try:
+            for getter in self.key_getters:
+                data = getter(data)
+            self.value = data
+        except:
+            self.value = None
+        self.value = self.do_filter(self.value)
         return self
 
     def get(self):
+        return self.value
+
+    def do_filter(self, value):
+        if not self.filter:
+            self.value = value
+            return value
+
+        self.value = self.filter.filter(value)
         return self.value
 
     def childs(self):

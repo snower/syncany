@@ -68,7 +68,6 @@ class AggregateValuer(Valuer):
 
         if self.key_valuer:
             self.key_valuer.fill(data)
-
         return self
 
     def get(self):
@@ -78,19 +77,19 @@ class AggregateValuer(Valuer):
             loader_data = self.aggregate_manager.get(self.key_value)
 
             self.calculate_valuer.fill(loader_data)
-            self.value = self.calculate_valuer.get()
+            self.value = self.do_filter(self.calculate_valuer.get())
             self.aggregate_manager.set(self.key_value, self.key, self.value)
 
         def gen_iter():
             loader_data = yield None
             if not self.loader_loaded:
-                final_filter = self.calculate_valuer.get_final_filter()
+                final_filter = self.calculate_valuer.get_final_filter() if not self.filter else self.filter
                 if final_filter:
                     loader_data[self.key] = final_filter(None)
                 loader_data = self.aggregate_manager.add(self.key_value, self.key, loader_data)
 
                 self.calculate_valuer.fill(loader_data)
-                self.value = self.calculate_valuer.get()
+                self.value = self.do_filter(self.calculate_valuer.get())
                 self.aggregate_manager.set(self.key_value, self.key, self.value)
                 yield self.value
 

@@ -73,9 +73,9 @@ class LetValuer(Valuer):
         return fields
 
     def get_final_filter(self):
-        if self.filter:
-            return self.filter
-
         if self.return_valuer:
             return self.return_valuer.get_final_filter()
+
+        if self.filter:
+            return self.filter
         return None

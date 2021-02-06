@@ -50,32 +50,32 @@ class CalculateValuer(Valuer):
                 values.append(valuer.get())
 
             calculater = self.calculater(self.calculater_name, *values)
-            self.return_valuer.fill(calculater.calculate())
+            self.value = self.do_filter(calculater.calculate())
+            if self.filter:
+                if isinstance(self.value, list):
+                    values = []
+                    for value in self.value:
+                        values.append(self.filter.filter(value))
+                    self.value = values
+                else:
+                    self.value = self.filter.filter(self.value)
+
+            self.return_valuer.fill(self.value)
         return self
 
     def get(self):
-        if not self.wait_loaded:
-            self.value = self.return_valuer.get()
-        else:
+        if self.wait_loaded:
             values = []
             for valuer in self.args_valuers:
                 values.append(valuer.get())
 
             calculater = self.calculater(self.calculater_name, *values)
+            self.value = self.do_filter(calculater.calculate())
             if self.return_valuer:
-                self.return_valuer.fill(calculater.calculate())
-                self.value = self.return_valuer.get()
-            else:
-                self.value = calculater.calculate()
+                self.return_valuer.fill(self.value)
 
-        if self.filter:
-            if isinstance(self.value, list):
-                values = []
-                for value in self.value:
-                    values.append(self.filter.filter(value))
-                self.value = values
-            else:
-                self.value = self.filter.filter(self.value)
+        if self.return_valuer:
+            self.value = self.return_valuer.get()
         return self.value
 
     def childs(self):
@@ -96,11 +96,11 @@ class CalculateValuer(Valuer):
         return fields
 
     def get_final_filter(self):
-        if self.filter:
-            return self.filter
-
         if self.return_valuer:
             return self.return_valuer.get_final_filter()
+
+        if self.filter:
+            return self.filter
 
         final_filter = None
         for valuer in self.args_valuers:

@@ -34,7 +34,7 @@ class InheritValuer(Valuer):
 
     def fill(self, data):
         if self.value_valuer:
-            self.value_valuer.fill(data)
+            self.value_valuer.fill(self.do_filter(data))
         else:
             super(InheritValuer, self).fill(data)
         self.filled = True
@@ -95,10 +95,9 @@ class InheritChildValuer(Valuer):
         return []
 
     def get_final_filter(self):
-        if self.filter:
-            return self.filter
-
         if not self.value_valuer:
+            if self.filter:
+                return self.filter
             return None
         return self.value_valuer.get_final_filter()
 

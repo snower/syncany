@@ -47,29 +47,20 @@ class YieldValuer(Valuer):
             if isinstance(data, list):
                 for d in data:
                     return_valuer = self.return_valuer.clone()
-                    return_valuer.fill(d)
+                    return_valuer.fill(self.do_filter(d))
                     self.iter_valuers.append(return_valuer)
             else:
                 return_valuer = self.return_valuer.clone()
-                return_valuer.fill(data)
+                return_valuer.fill(self.do_filter(data))
                 self.iter_valuers.append(return_valuer)
             return self
 
         if not self.value_valuer:
-            self.iter_datas = data if isinstance(data, list) else [data]
-        return self
-
-    def filter_data(self, data):
-        if self.filter:
             if isinstance(data, list):
-                values = []
-                for value in data:
-                    values.append(self.filter.filter(value))
-                return values
+                self.iter_datas = [self.do_filter(d) for d in data]
             else:
-                return self.filter.filter(self.value)
-        else:
-            return data
+                self.iter_datas = [self.do_filter(data)]
+        return self
 
     def get(self):
         if self.return_valuer:
@@ -82,11 +73,11 @@ class YieldValuer(Valuer):
                 if isinstance(data, list):
                     for d in data:
                         return_valuer = self.return_valuer.clone()
-                        return_valuer.fill(d)
+                        return_valuer.fill(self.do_filter(d))
                         self.iter_valuers.append(return_valuer)
                 else:
                     return_valuer = self.return_valuer.clone()
-                    return_valuer.fill(data)
+                    return_valuer.fill(self.do_filter(data))
                     self.iter_valuers.append(return_valuer)
 
             self.iter_datas = []
@@ -95,7 +86,10 @@ class YieldValuer(Valuer):
         else:
             if self.value_valuer:
                 data = self.value_valuer.get()
-                self.iter_datas = data if isinstance(data, list) else [data]
+                if isinstance(data, list):
+                    self.iter_datas = [self.do_filter(d) for d in data]
+                else:
+                    self.iter_datas = [self.do_filter(data)]
 
         def gen_iter():
             gdata = yield None
@@ -104,12 +98,10 @@ class YieldValuer(Valuer):
                     while True:
                         try:
                             child_data = data.send(gdata)
-                            child_data = self.filter_data(child_data)
                             gdata = yield child_data
                         except StopIteration:
                             break
                 else:
-                    data = self.filter_data(data)
                     gdata = yield data
         g = gen_iter()
         g.send(None)
@@ -146,9 +138,9 @@ class YieldValuer(Valuer):
         return fields
 
     def get_final_filter(self):
-        if self.filter:
-            return self.filter
-
         if self.return_valuer:
             return self.return_valuer.get_final_filter()
+
+        if self.filter:
+            return self.filter
         return None

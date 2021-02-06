@@ -35,6 +35,20 @@ class DBValuer(Valuer):
             return self.return_valuer.get()
         return self.value
 
+    def do_filter(self, value):
+        if not self.filter:
+            self.value = value
+            return value
+
+        if isinstance(value, list):
+            self.value = []
+            for v in value:
+                self.value.append(self.filter.filter(v))
+            return self.value
+
+        self.value = self.filter.filter(value)
+        return self.value
+
     def get_fields(self):
         if not self.key or self.key == "*":
             if self.return_valuer:

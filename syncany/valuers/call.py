@@ -71,7 +71,7 @@ class CallValuer(Valuer):
             if not self.calculated:
                 self.calculate_valuer.fill(self.value)
                 if self.return_valuer and not self.calculate_wait_loaded:
-                    self.value = self.calculate_valuer.get()
+                    self.value = self.do_filter(self.calculate_valuer.get())
                     self.return_manager.set(self.calculated_key, self.value)
                     self.return_valuer.fill(self.value)
             else:
@@ -90,7 +90,7 @@ class CallValuer(Valuer):
             if not self.calculated:
                 self.calculate_valuer.fill(self.value)
                 if self.return_valuer and not self.calculate_wait_loaded:
-                    self.value = self.calculate_valuer.get()
+                    self.value = self.do_filter(self.calculate_valuer.get())
                     self.return_manager.set(self.calculated_key, self.value)
                     self.return_valuer.fill(self.value)
             else:
@@ -104,7 +104,7 @@ class CallValuer(Valuer):
             return self.value
 
         if self.calculate_wait_loaded:
-            self.value = self.calculate_valuer.get()
+            self.value = self.do_filter(self.calculate_valuer.get())
             self.return_manager.set(self.calculated_key, self.value)
             if self.return_valuer:
                 self.return_valuer.fill(self.value)
@@ -143,11 +143,11 @@ class CallValuer(Valuer):
         return fields
 
     def get_final_filter(self):
-        if self.filter:
-            return self.filter
-
         if self.return_valuer:
             return self.return_valuer.get_final_filter()
+
+        if self.filter:
+            return self.filter
 
         if self.calculate_valuer:
             return self.calculate_valuer.get_final_filter()

@@ -85,7 +85,7 @@ class MakeValuer(Valuer):
                 if len(self.value) == 1 and isinstance(self.value[0], list):
                     self.value = self.value[0]
             elif isinstance(self.value_valuer, Valuer):
-                result = self.value_valuer.get()
+                result = self.do_filter(self.value_valuer.get())
             else:
                 result = None
             self.return_valuer.fill(result)
@@ -108,7 +108,7 @@ class MakeValuer(Valuer):
                 if len(self.value) == 1 and isinstance(self.value[0], list):
                     self.value = self.value[0]
             elif isinstance(self.value_valuer, Valuer):
-                self.value = self.value_valuer.get()
+                self.value = self.do_filter(self.value_valuer.get())
             else:
                 self.value = None
             if self.return_valuer:
@@ -157,11 +157,11 @@ class MakeValuer(Valuer):
         return fields
 
     def get_final_filter(self):
-        if self.filter:
-            return self.filter
-
         if self.return_valuer:
             return self.return_valuer.get_final_filter()
+
+        if self.filter:
+            return self.filter
 
         if isinstance(self.value_valuer, Valuer):
             return self.value_valuer.get_final_filter()

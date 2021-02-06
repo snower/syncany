@@ -54,9 +54,9 @@ class CaseValuer(Valuer):
             self.value = self.value_valuer.get()
 
         if self.value in self.case_valuers:
-            self.value = self.case_valuers[self.value].get()
+            self.value = self.do_filter(self.case_valuers[self.value].get())
         elif self.default_case_valuer:
-            self.value = self.default_case_valuer.get()
+            self.value = self.do_filter(self.default_case_valuer.get())
         return self.value
 
     def childs(self):
