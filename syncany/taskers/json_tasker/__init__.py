@@ -155,7 +155,7 @@ class JsonTasker(Tasker):
                 elif isinstance(value, (dict, list)):
                     self.compile_sources(value)
 
-    def compile_filter_calculater(self, calculater):
+    def compile_filter_calculater(self, calculater, require_sprintf=False):
         keys = calculater[0][1:].split("|")
 
         calculater_cls = self.find_calculater_driver(keys[0])
@@ -173,7 +173,11 @@ class JsonTasker(Tasker):
         filters_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
         filter_cls = self.find_filter_driver(filters[0])
         if filter_cls:
-            return filter_cls(filters_args).filter(value)
+            filter_ins = filter_cls(filters_args)
+            value = filter_ins.filter(value)
+            if require_sprintf:
+                return filter_ins.sprintf(value)
+            return value
         return value
 
     def compile_filters_parse(self, config_querys):
@@ -241,7 +245,7 @@ class JsonTasker(Tasker):
                         if filter_cls is None:
                             filter_cls = self.find_filter_driver('str')
                         if isinstance(value, list) and value and value[0][0] == "@":
-                            value = self.compile_filter_calculater(value)
+                            value = self.compile_filter_calculater(value, True)
                         arguments.append({"name": '%s__%s' % (filter["name"], exp_name), "type": filter_cls(filter.get("type_args")),
                              "default": value, "help": "%s %s (default: %s)" % (filter["name"], exp, value)})
             else:

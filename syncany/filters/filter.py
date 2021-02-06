@@ -9,5 +9,8 @@ class Filter(object):
     def filter(self, value):
         return value
 
+    def sprintf(self, value):
+        return str(value)
+
     def __call__(self, value):
         return self.filter(value)

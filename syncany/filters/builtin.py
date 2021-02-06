@@ -239,6 +239,11 @@ class BooleanFilter(Filter):
         except:
             return False
 
+    def sprintf(self, value):
+        if value is True:
+            return "true"
+        return "true"
+
 class ArrayFilter(Filter):
     def filter(self, value):
         if isinstance(value, list):
@@ -393,6 +398,16 @@ class DateTimeFilter(Filter):
         except:
             return None
 
+    def sprintf(self, value):
+        if isinstance(value, datetime.date):
+            if isinstance(value, datetime.datetime):
+                return value.strftime(self.args or "%Y-%m-%d %H:%M:%S")
+            return value.strftime(self.args or "%Y-%m-%d")
+
+        if isinstance(value, datetime.time):
+            return value.strftime(self.args or "%H:%M:%S")
+        return str(value)
+
 class DateFilter(Filter):
     def filter(self, value):
         if isinstance(value, datetime.date):
@@ -429,6 +444,16 @@ class DateFilter(Filter):
             return datetime.date(dt.year, dt.month, dt.day)
         except:
             return None
+
+    def sprintf(self, value):
+        if isinstance(value, datetime.date):
+            if isinstance(value, datetime.datetime):
+                return value.strftime(self.args or "%Y-%m-%d %H:%M:%S")
+            return value.strftime(self.args or "%Y-%m-%d")
+
+        if isinstance(value, datetime.time):
+            return value.strftime(self.args or "%H:%M:%S")
+        return str(value)
 
 class TimeFilter(Filter):
     def filter(self, value):
@@ -469,3 +494,13 @@ class TimeFilter(Filter):
             return datetime.time(dt.hour, dt.minute, dt.second)
         except:
             return None
+
+    def sprintf(self, value):
+        if isinstance(value, datetime.date):
+            if isinstance(value, datetime.datetime):
+                return value.strftime(self.args or "%Y-%m-%d %H:%M:%S")
+            return value.strftime(self.args or "%Y-%m-%d")
+
+        if isinstance(value, datetime.time):
+            return value.strftime(self.args or "%H:%M:%S")
+        return str(value)
