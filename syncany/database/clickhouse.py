@@ -80,15 +80,15 @@ class ClickhouseQueryBuilder(QueryBuilder):
                 name_match = re.compile(virtual_table.get("name_match"))
                 if not name_match.match(self.table_name):
                     continue
-                if isinstance(virtual_table["sql"], list):
-                    virtual_table["sql"] = " ".join(virtual_table["sql"])
-                sql = virtual_table['sql'].replace('`%s`' % virtual_table["name"], '`%s`' % self.table_name)
+                if isinstance(virtual_table["query"], list):
+                    virtual_table["query"] = " ".join(virtual_table["query"])
+                sql = virtual_table['query'].replace('`%s`' % virtual_table["name"], '`%s`' % self.table_name)
             elif virtual_table["name"] != self.table_name:
                 continue
             else:
-                if isinstance(virtual_table["sql"], list):
-                    virtual_table["sql"] = " ".join(virtual_table["sql"])
-                sql = virtual_table['sql']
+                if isinstance(virtual_table["query"], list):
+                    virtual_table["query"] = " ".join(virtual_table["query"])
+                sql = virtual_table['query']
             return '(%s) `virtual_%s`' % (sql, self.table_name), virtual_table.get("args", []), True
         return ("`%s`.`%s`" % (self.db.db_name, self.table_name)), [], False
 
@@ -299,10 +299,8 @@ class ClickhouseDB(DataBase):
             # {
             #     "name": "",
             #     "name_match": "",
-            #     "sql": "",
+            #     "query": "",
             #     "args": [],
-            #     "schema": {
-            #     }
             # }
         ],
     }

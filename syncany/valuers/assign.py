@@ -31,24 +31,24 @@ class AssignValuer(Valuer):
         if self.calculate_valuer:
             self.calculate_valuer.fill(self.global_value)
             if not self.calculate_wait_loaded:
-                self.value = self.do_filter(self.calculate_valuer.get())
+                self.do_filter(self.calculate_valuer.get())
                 self.global_value[self.key] = self.value
                 if self.return_valuer:
                     self.return_valuer.fill(self.value)
         elif self.return_valuer:
-            self.value = self.do_filter(self.global_value.get(self.key, None))
+            self.do_filter(self.global_value.get(self.key, None))
             final_filter = self.return_valuer.get_final_filter()
             if final_filter:
                 self.value = final_filter.filter(self.value)
             self.return_valuer.fill(self.value)
         else:
-            self.value = self.do_filter(self.global_value.get(self.key, None))
+            self.do_filter(self.global_value.get(self.key, None))
         return self
 
     def get(self):
         if self.calculate_valuer:
             if self.calculate_wait_loaded:
-                self.value = self.do_filter(self.calculate_valuer.get())
+                self.do_filter(self.calculate_valuer.get())
                 self.global_value[self.key] = self.value
                 if self.return_valuer:
                     self.return_valuer.fill(self.value)

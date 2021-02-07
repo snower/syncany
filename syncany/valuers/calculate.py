@@ -50,7 +50,7 @@ class CalculateValuer(Valuer):
                 values.append(valuer.get())
 
             calculater = self.calculater(self.calculater_name, *values)
-            self.value = self.do_filter(calculater.calculate())
+            self.do_filter(calculater.calculate())
             if self.filter:
                 if isinstance(self.value, list):
                     values = []
@@ -70,7 +70,7 @@ class CalculateValuer(Valuer):
                 values.append(valuer.get())
 
             calculater = self.calculater(self.calculater_name, *values)
-            self.value = self.do_filter(calculater.calculate())
+            self.do_filter(calculater.calculate())
             if self.return_valuer:
                 self.return_valuer.fill(self.value)
 
@@ -79,9 +79,16 @@ class CalculateValuer(Valuer):
         return self.value
 
     def childs(self):
-        if not self.return_valuer:
-            return self.args_valuers
-        return self.args_valuers + [self.return_valuer] + (self.inherit_valuers or [])
+        childs = []
+        if self.args_valuers:
+            for args_valuer in self.args_valuers:
+                childs.append(args_valuer)
+        if self.return_valuer:
+            childs.append(self.return_valuer)
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                childs.append(inherit_valuer)
+        return childs
 
     def get_fields(self):
         fields = []

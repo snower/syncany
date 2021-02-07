@@ -50,14 +50,18 @@ class Valuer(object):
         for key in self.key.split("."):
             if key[:1] == ":":
                 slices = []
-                for slice in key.split(":"):
+                for slice in key[1:].split(":"):
                     try:
                         slices.append(int(slice))
                     except:
-                        pass
+                        slices.append(0 if not slices else None)
+                        if len(slices) == 3:
+                            break
+
                 if len(slices) == 1:
                     self.key_getters.append(list_key(slices[0]))
                 else:
+                    slices = [slice for slice in slices if slice is not None]
                     self.key_getters.append(slice_key(slices))
             else:
                 self.key_getters.append(dict_key(key))
@@ -68,16 +72,16 @@ class Valuer(object):
 
     def fill(self, data):
         if data is None or not self.key:
-            self.value = self.do_filter(None)
+            self.do_filter(None)
             return self
 
         if self.key == "*" or not isinstance(data, (dict, list)):
-            self.value = self.do_filter(data)
+            self.do_filter(data)
             return self
 
         if self.key in data:
-            self.value = self.do_filter(data[self.key])
-            return
+            self.do_filter(data[self.key])
+            return self
 
         if self.key in self.KEY_GETTER_CACHES:
             self.key_getters = self.KEY_GETTER_CACHES[self.key]
@@ -89,7 +93,7 @@ class Valuer(object):
             self.value = data
         except:
             self.value = None
-        self.value = self.do_filter(self.value)
+        self.do_filter(self.value)
         return self
 
     def get(self):

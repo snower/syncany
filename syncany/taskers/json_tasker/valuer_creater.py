@@ -59,8 +59,8 @@ class ValuerCreater(object):
     def create_loader(self, *args, **kwargs):
         return self.tasker.create_loader(*args, **kwargs)
 
-    def compile_db_valuer(self, *args, **kwargs):
-        return self.tasker.valuer_compiler.compile_db_valuer(*args, **kwargs)
+    def compile_data_valuer(self, *args, **kwargs):
+        return self.tasker.valuer_compiler.compile_data_valuer(*args, **kwargs)
 
     def create_const_valuer(self, config, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])
@@ -70,7 +70,7 @@ class ValuerCreater(object):
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
         return valuer_cls(config["value"], "", filter)
 
-    def create_db_valuer(self, config, inherit_valuers=None, **kwargs):
+    def create_data_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
@@ -140,15 +140,15 @@ class ValuerCreater(object):
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
 
         if config["foreign_key"] not in loader.schema:
-            loader.add_valuer(config["foreign_key"], self.create_valuer(self.compile_db_valuer(config["foreign_key"], None)))
+            loader.add_valuer(config["foreign_key"], self.create_valuer(self.compile_data_valuer(config["foreign_key"], None)))
 
         try:
             for key in return_valuer.get_fields():
                 if key not in loader.schema:
-                    loader.add_valuer(key, self.create_valuer(self.compile_db_valuer(key, None)))
+                    loader.add_valuer(key, self.create_valuer(self.compile_data_valuer(key, None)))
         except LoadAllFieldsException:
             loader.schema.clear()
-            loader.add_key_matcher(".*", self.create_valuer(self.compile_db_valuer("", None)))
+            loader.add_key_matcher(".*", self.create_valuer(self.compile_data_valuer("", None)))
 
         current_inherit_valuers = []
         for inherit_valuer in return_inherit_valuers:

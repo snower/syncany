@@ -33,7 +33,7 @@ class ValuerCompiler(object):
             "filter": filter,
         }
 
-    def compile_db_valuer(self, key="", filter=None, return_arg=None):
+    def compile_data_valuer(self, key="", filter=None, return_arg=None):
         if isinstance(return_arg, str) and return_arg[:1] == ":":
             return_arg = return_arg[1:]
         elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
@@ -44,7 +44,7 @@ class ValuerCompiler(object):
                 return_arg[0] = return_arg[0][1:]
         return_valuer = self.compile_valuer(return_arg) if return_arg else None
         return {
-            "name": "db_valuer",
+            "name": "data_valuer",
             "key": key,
             "filter": filter,
             "return_valuer": return_valuer,
@@ -56,7 +56,7 @@ class ValuerCompiler(object):
             "key": key,
             "filter": None,
             'reflen': reflen,
-            "value_valuer": self.compile_db_valuer(key, filter)
+            "value_valuer": self.compile_data_valuer(key, filter)
         }
 
     def compile_db_join_valuer(self, key="", loader=None, foreign_key="", foreign_filters=None, filter=None, args_arg=None, return_arg=None):

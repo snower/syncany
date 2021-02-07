@@ -4,9 +4,9 @@
 
 from .valuer import Valuer, LoadAllFieldsException
 
-class DBValuer(Valuer):
+class DataValuer(Valuer):
     def __init__(self, return_valuer, inherit_valuers, *args, **kwargs):
-        super(DBValuer, self).__init__(*args, **kwargs)
+        super(DataValuer, self).__init__(*args, **kwargs)
 
         self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
@@ -24,7 +24,7 @@ class DBValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
-        super(DBValuer, self).fill(data)
+        super(DataValuer, self).fill(data)
 
         if self.return_valuer:
             self.return_valuer.fill(self.value)
@@ -48,6 +48,11 @@ class DBValuer(Valuer):
 
         self.value = self.filter.filter(value)
         return self.value
+
+    def childs(self):
+        if self.return_valuer:
+            return [self.return_valuer]
+        return []
 
     def get_fields(self):
         if not self.key or self.key == "*":

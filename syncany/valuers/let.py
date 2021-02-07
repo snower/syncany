@@ -57,9 +57,15 @@ class LetValuer(Valuer):
         return super(LetValuer, self).get()
 
     def childs(self):
-        if not self.return_valuer:
-            return [self.key_valuer]
-        return [self.key_valuer, self.return_valuer] + (self.inherit_valuers or [])
+        childs = []
+        if self.key_valuer:
+            childs.append(self.key_valuer)
+        if self.return_valuer:
+            childs.append(self.return_valuer)
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                childs.append(inherit_valuer)
+        return childs
 
     def get_fields(self):
         fields = []

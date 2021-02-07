@@ -410,13 +410,13 @@ class JsonTasker(Tasker):
                 if len(valuer) not in (2, 3):
                     if "inherit_reflen" in key and key["inherit_reflen"] > 0:
                         return self.valuer_compiler.compile_inherit_valuer(key["key"], key["filter"], key["inherit_reflen"])
-                    return self.valuer_compiler.compile_db_valuer(key["key"], key["filter"])
+                    return self.valuer_compiler.compile_data_valuer(key["key"], key["filter"])
 
                 if len(valuer) == 2:
                     if isinstance(valuer[1], str) and valuer[1][:1] == ":":
-                        return self.valuer_compiler.compile_db_valuer(key["key"], key["filter"], valuer[1])
+                        return self.valuer_compiler.compile_data_valuer(key["key"], key["filter"], valuer[1])
                     if isinstance(valuer[1], list) and valuer[1][0][:1] == ":":
-                        return self.valuer_compiler.compile_db_valuer(key["key"], key["filter"], valuer[1])
+                        return self.valuer_compiler.compile_data_valuer(key["key"], key["filter"], valuer[1])
 
                 foreign_key = self.compile_foreign_key(valuer[1])
                 if foreign_key is None:
@@ -480,7 +480,7 @@ class JsonTasker(Tasker):
         if key["instance"] == "$":
             if "inherit_reflen" in key and key["inherit_reflen"] > 0:
                 return self.valuer_compiler.compile_inherit_valuer(key["key"], key["filter"], key["inherit_reflen"])
-            return self.valuer_compiler.compile_db_valuer(key["key"], key["filter"])
+            return self.valuer_compiler.compile_data_valuer(key["key"], key["filter"])
 
         if key["instance"] == "@":
             return self.valuer_compiler.compile_calculate_valuer(key["key"], key["filter"], [])
@@ -617,7 +617,7 @@ class JsonTasker(Tasker):
                     loader_config["is_yield"] = True
                     self.loader.is_yield = True
         elif self.schema == ".*":
-            self.loader.add_key_matcher(".*", self.create_valuer(self.valuer_compiler.compile_db_valuer("", None)))
+            self.loader.add_key_matcher(".*", self.create_valuer(self.valuer_compiler.compile_data_valuer("", None)))
 
         for filter in self.config["querys"]:
             filter_name = filter["name"]
@@ -664,7 +664,7 @@ class JsonTasker(Tasker):
 
         if isinstance(self.schema, dict):
             for name, valuer in self.schema.items():
-                valuer = self.create_valuer(self.valuer_compiler.compile_db_valuer(name, None))
+                valuer = self.create_valuer(self.valuer_compiler.compile_data_valuer(name, None))
                 if valuer:
                     if name in self.loader.schema:
                         valuer.filter = self.loader.schema[name].get_final_filter()

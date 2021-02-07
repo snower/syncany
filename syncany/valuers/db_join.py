@@ -2,7 +2,7 @@
 # 18/8/6
 # create by: snower
 
-from .db import Valuer
+from .data import Valuer
 
 class DBJoinValuer(Valuer):
     def __init__(self, loader, foreign_key, foreign_filters, args_valuer, return_valuer, inherit_valuers, *args, **kwargs):
@@ -67,10 +67,12 @@ class DBJoinValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 for field in inherit_valuer.get_fields():
                     fields.append(field)
-        return fields if fields else super(DBJoinValuer, self).get_fields()
+        return fields
 
     def get_final_filter(self):
-        return self.return_valuer.get_final_filter()
+        if self.return_valuer:
+            return self.return_valuer.get_final_filter()
+        return None
 
     def require_loaded(self):
         return True

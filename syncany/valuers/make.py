@@ -108,7 +108,7 @@ class MakeValuer(Valuer):
                 if len(self.value) == 1 and isinstance(self.value[0], list):
                     self.value = self.value[0]
             elif isinstance(self.value_valuer, Valuer):
-                self.value = self.do_filter(self.value_valuer.get())
+                self.do_filter(self.value_valuer.get())
             else:
                 self.value = None
             if self.return_valuer:

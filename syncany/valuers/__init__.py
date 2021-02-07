@@ -4,7 +4,7 @@
 
 from .valuer import Valuer
 from .const import ConstValuer
-from .db import DBValuer
+from .data import DataValuer
 from .inherit import InheritValuer
 from .db_join import DBJoinValuer
 from .case import CaseValuer
@@ -22,7 +22,7 @@ from ..errors import ValuerUnknownException
 
 VALUERS = {
     "const_valuer": ConstValuer,
-    "db_valuer": DBValuer,
+    "data_valuer": DataValuer,
     "inherit_valuer": InheritValuer,
     "db_join_valuer": DBJoinValuer,
     "case_valuer": CaseValuer,

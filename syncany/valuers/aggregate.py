@@ -77,7 +77,7 @@ class AggregateValuer(Valuer):
             loader_data = self.aggregate_manager.get(self.key_value)
 
             self.calculate_valuer.fill(loader_data)
-            self.value = self.do_filter(self.calculate_valuer.get())
+            self.do_filter(self.calculate_valuer.get())
             self.aggregate_manager.set(self.key_value, self.key, self.value)
 
         def gen_iter():
@@ -89,7 +89,7 @@ class AggregateValuer(Valuer):
                 loader_data = self.aggregate_manager.add(self.key_value, self.key, loader_data)
 
                 self.calculate_valuer.fill(loader_data)
-                self.value = self.do_filter(self.calculate_valuer.get())
+                self.do_filter(self.calculate_valuer.get())
                 self.aggregate_manager.set(self.key_value, self.key, self.value)
                 yield self.value
 
