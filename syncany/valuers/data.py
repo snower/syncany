@@ -2,6 +2,7 @@
 # 18/8/6
 # create by: snower
 
+from ..filters import ArrayFilter
 from .valuer import Valuer, LoadAllFieldsException
 
 class DataValuer(Valuer):
@@ -41,6 +42,10 @@ class DataValuer(Valuer):
             return value
 
         if isinstance(value, list):
+            if isinstance(value, ArrayFilter):
+                self.value = value
+                return value
+
             self.value = []
             for v in value:
                 self.value.append(self.filter.filter(v))
