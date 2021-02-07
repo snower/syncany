@@ -434,9 +434,9 @@ class JsonTasker(Tasker):
                     return self.valuer_compiler.compile_const_valuer(valuer[1:] if len(valuer) > 2 else
                                                                      (valuer[1] if len(valuer) > 1 else None))
                 if key["key"] == "case" and len(valuer) in (3, 4):
-                    cases = {1: valuer[2]}
-                    if len(valuer) == 3:
-                        cases[0] = valuer[3]
+                    cases = {True: valuer[2]}
+                    if len(valuer) == 4:
+                        cases[False] = valuer[3]
                     return self.valuer_compiler.compile_case_valuer(key["key"], key["filter"], valuer[1],
                                                                     cases, None)
                 if key["key"] == "make" and len(valuer) in (2, 3):

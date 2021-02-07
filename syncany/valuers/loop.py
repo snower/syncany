@@ -205,7 +205,8 @@ class BreakValuer(Valuer):
         return self.__class__(value_valuer, self.key, self.filter)
 
     def fill(self, data):
-        self.value_valuer.fill(data)
+        if self.value_valuer:
+            self.value_valuer.fill(data)
         return self
 
     def get(self):
@@ -243,7 +244,8 @@ class ContinueValuer(Valuer):
         return self.__class__(value_valuer, self.key, self.filter)
 
     def fill(self, data):
-        self.value_valuer.fill(data)
+        if self.value_valuer:
+            self.value_valuer.fill(data)
         return self
 
     def get(self):

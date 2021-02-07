@@ -36,7 +36,6 @@ class CalculateValuer(Valuer):
         return self.__class__(self.calculater, self.calculater_name, args_valuers, return_valuer, inherit_valuers, self.key, self.filter)
 
     def fill(self, data):
-        super(CalculateValuer, self).fill(data)
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
@@ -51,15 +50,6 @@ class CalculateValuer(Valuer):
 
             calculater = self.calculater(self.calculater_name, *values)
             self.do_filter(calculater.calculate())
-            if self.filter:
-                if isinstance(self.value, list):
-                    values = []
-                    for value in self.value:
-                        values.append(self.filter.filter(value))
-                    self.value = values
-                else:
-                    self.value = self.filter.filter(self.value)
-
             self.return_valuer.fill(self.value)
         return self
 

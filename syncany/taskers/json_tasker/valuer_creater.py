@@ -462,10 +462,14 @@ class ValuerCreater(object):
         valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
-        return valuer_cls(config['key'], None)
+        value_valuer = self.create_valuer(config["value_valuer"], **kwargs) \
+            if "value_valuer" in config and config["value_valuer"] else None
+        return valuer_cls(value_valuer, config['key'], None)
 
     def create_continue_valuer(self, config, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
-        return valuer_cls(config['key'], None)
+        value_valuer = self.create_valuer(config["value_valuer"], **kwargs) \
+            if "value_valuer" in config and config["value_valuer"] else None
+        return valuer_cls(value_valuer, config['key'], None)
