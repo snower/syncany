@@ -42,7 +42,7 @@ class DataValuer(Valuer):
             return value
 
         if isinstance(value, list):
-            if isinstance(value, ArrayFilter):
+            if isinstance(self.filter, ArrayFilter):
                 self.value = value
                 return value
 
