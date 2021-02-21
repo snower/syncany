@@ -34,6 +34,7 @@ setup(
         "elasticsearch": ["elasticsearch>=6.3.1"],
         "influxdb": ["influxdb>=5.3.1"],
         "clickhouse": ["clickhouse_driver>=0.1.5"],
+        "rich": ["rich>=9.11.1"],
     },
     package_data={
         '': ['README.md'],

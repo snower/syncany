@@ -6,6 +6,11 @@ import os
 from collections import OrderedDict
 import csv
 import json
+try:
+    import rich
+    from rich.table import Table
+except ImportError:
+    rich = None
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 class TextLineQueryBuilder(QueryBuilder):
@@ -94,9 +99,9 @@ class TextLineQueryBuilder(QueryBuilder):
                 return []
 
             fp = open(fileno, "r", newline='', encoding="utf-8", closefd=False)
-            if self.db.config["format"] == "csv":
+            if self.db.config.get("format") == "csv":
                 rdatas = self.csv_read(fp)
-            elif self.db.config["format"] == "json":
+            elif self.db.config.get("format") == "json":
                 rdatas = self.json_read(fp)
             else:
                 rdatas = self.text_read(fp)
@@ -105,9 +110,9 @@ class TextLineQueryBuilder(QueryBuilder):
             if not os.path.exists(filename):
                 return []
             with open(filename, "r", newline='', encoding="utf-8") as fp:
-                if self.db.config["format"] == "csv":
+                if self.db.config.get("format") == "csv":
                     rdatas = self.csv_read(fp)
-                elif self.db.config["format"] == "json":
+                elif self.db.config.get("format") == "json":
                     rdatas = self.json_read(fp)
                 else:
                     rdatas = self.text_read(fp)
@@ -145,6 +150,17 @@ class TextLineInsertBuilder(InsertBuilder):
 
         if isinstance(self.datas, dict):
             self.datas = [self.datas]
+
+    def rich_write(self, fp):
+        if rich is None:
+            raise ImportError("rich>=9.11.1 is required")
+
+        table = Table(show_header=True, collapse_padding=True, expand=True, highlight=True)
+        for field in self.fields:
+            table.add_column(field)
+        for data in self.datas:
+            table.add_row(*(str(data[field]) for field in self.fields))
+        rich.print(table, file=fp)
 
     def text_write(self, fp):
         if len(self.fields) != 1 or self.fields[0] != "line":
@@ -184,10 +200,14 @@ class TextLineInsertBuilder(InsertBuilder):
             if fileno <= 0:
                 return
             fp = open(fileno, "w", newline='', encoding="utf-8", closefd=False)
-            if self.db.config["format"] == "csv":
+            if self.db.config.get("format") == "csv":
                 self.csv_write(fp)
-            elif self.db.config["format"] == "json":
+            elif self.db.config.get("format") == "json":
                 self.json_write(fp)
+            elif self.db.config.get("format") == "richtable":
+                self.rich_write(fp)
+            elif rich:
+                self.rich_write(fp)
             else:
                 self.text_write(fp)
             return
@@ -196,10 +216,12 @@ class TextLineInsertBuilder(InsertBuilder):
         if not os.path.exists(filename):
             return []
         with open(filename, "w", newline='', encoding="utf-8") as fp:
-            if self.db.config["format"] == "csv":
+            if self.db.config.get("format") == "csv":
                 self.csv_write(fp)
-            elif self.db.config["format"] == "json":
+            elif self.db.config.get("format") == "json":
                 self.json_write(fp)
+            elif self.db.config.get("format") == "richtable":
+                self.rich_write(fp)
             else:
                 self.text_write(fp)
 
