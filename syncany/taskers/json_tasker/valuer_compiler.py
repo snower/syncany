@@ -12,6 +12,33 @@ class ValuerCompiler(object):
     def __init__(self, tasker):
         self.tasker = tasker
 
+    def parse_return_valuer(self, arg):
+        if arg is None:
+            return None, None
+
+        if isinstance(arg, str):
+            if arg[:1] == ":":
+                return arg[1:], None
+            return None, arg
+
+        if isinstance(arg, list):
+            if not arg or not isinstance(arg[0], str):
+                return None, arg
+
+            if arg[0] == ":":
+                if len(arg) == 2 and isinstance(arg[1], dict):
+                    return arg[1], None
+                return arg[1:], None
+            if arg[0][:1] == ":":
+                arg[0] = arg[0][1:]
+                return arg, None
+
+        if isinstance(arg, dict):
+            if "name" not in arg or not arg["name"].endswith("_valuer"):
+                return None, arg
+            return arg, None
+        return None, arg
+
     def compile_valuer(self, *args, **kwargs):
         return self.tasker.compile_valuer(*args, **kwargs)
 
@@ -34,14 +61,10 @@ class ValuerCompiler(object):
         }
 
     def compile_data_valuer(self, key="", filter=None, return_arg=None):
-        if isinstance(return_arg, str) and return_arg[:1] == ":":
-            return_arg = return_arg[1:]
-        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
-            if return_arg[0] == ":":
-                return_arg = list(return_arg)[1:]
-            elif return_arg[0][:1] == ":":
-                return_arg = list(return_arg)
-                return_arg[0] = return_arg[0][1:]
+        data_return_arg, _ = self.parse_return_valuer(return_arg)
+        if data_return_arg is not None:
+            return_arg = data_return_arg
+
         return_valuer = self.compile_valuer(return_arg) if return_arg else None
         return {
             "name": "data_valuer",
@@ -60,17 +83,13 @@ class ValuerCompiler(object):
         }
 
     def compile_db_join_valuer(self, key="", loader=None, foreign_key="", foreign_filters=None, filter=None, args_arg=None, return_arg=None):
-        args_valuer = self.compile_valuer(args_arg) if args_arg else None
+        join_return_arg, _ = self.parse_return_valuer(return_arg)
+        if join_return_arg is not None:
+            return_arg = join_return_arg
+        else:
+            return_arg = "$.*" if return_arg is None else return_arg
 
-        return_arg = "$.*" if return_arg is None else return_arg
-        if isinstance(return_arg, str) and return_arg[:1] == ":":
-            return_arg = return_arg[1:]
-        if isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
-            if return_arg[0] == ":":
-                return_arg = list(return_arg)[1:]
-            elif return_arg[0][:1] == ":":
-                return_arg = list(return_arg)
-                return_arg[0] = return_arg[0][1:]
+        args_valuer = self.compile_valuer(args_arg) if args_arg else None
         return_valuer = self.compile_valuer(return_arg)
 
         return {
@@ -85,14 +104,9 @@ class ValuerCompiler(object):
         }
 
     def compile_case_valuer(self, key="", filter=None, value_arg=None, cases_arg=None, default_arg=None, return_arg=None):
-        if isinstance(return_arg, str) and return_arg[:1] == ":":
-            return_arg = return_arg[1:]
-        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
-            if return_arg[0] == ":":
-                return_arg = list(return_arg)[1:]
-            elif return_arg[0][:1] == ":":
-                return_arg = list(return_arg)
-                return_arg[0] = return_arg[0][1:]
+        case_return_arg, _ = self.parse_return_valuer(return_arg)
+        if case_return_arg is not None:
+            return_arg = case_return_arg
 
         case_valuers = {}
         for case_value, field in cases_arg.items():
@@ -112,24 +126,17 @@ class ValuerCompiler(object):
         }
 
     def compile_calculate_valuer(self, key="", filter=None, args=None):
-        args_valuers, return_valuer = [], None
+        args_valuers, return_arg = [], None
         if isinstance(args, list):
             for arg in args:
-                if isinstance(arg, str) and arg[:1] == ":":
-                    return_valuer = self.compile_valuer(arg[1:])
-                elif isinstance(arg, list) and arg and isinstance(arg[0], str):
-                    if arg[0] == ":":
-                        return_valuer = self.compile_valuer(list(arg)[1:])
-                    elif arg[0][:1] == ":":
-                        arg = list(arg)
-                        arg[0] = arg[0][1:]
-                        return_valuer = self.compile_valuer(arg)
-                    else:
-                        args_valuers.append(self.compile_valuer(arg))
+                arg_return_arg, _ = self.parse_return_valuer(arg)
+                if arg_return_arg is not None:
+                    return_arg = arg_return_arg
                 else:
                     args_valuers.append(self.compile_valuer(arg))
         else:
             args_valuers.append(args)
+        return_valuer = self.compile_valuer(return_arg) if return_arg else None
 
         return {
             "name": "calculate_valuer",
@@ -153,9 +160,11 @@ class ValuerCompiler(object):
         }
 
     def compile_make_valuer(self, key="", filter=None, value_arg=None, return_arg=None):
+        return_arg, _ = self.parse_return_valuer(return_arg)
+
         if isinstance(value_arg, dict):
             value_valuer = {key: (self.compile_valuer(key), self.compile_valuer(value))
-                      for key, value in value_arg.items()}
+                            for key, value in value_arg.items()}
         elif isinstance(value_arg, list):
             if len(value_arg) == 1:
                 value_valuer = self.compile_valuer(value_arg[0])
@@ -163,15 +172,6 @@ class ValuerCompiler(object):
                 value_valuer = [self.compile_valuer(value) for value in value_arg]
         else:
             value_valuer = self.compile_valuer(value_arg)
-
-        if isinstance(return_arg, str) and return_arg[:1] == ":":
-            return_arg = return_arg[1:]
-        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
-            if return_arg[0] == ":":
-                return_arg = list(return_arg)[1:]
-            elif return_arg[0][:1] == ":":
-                return_arg = list(return_arg)
-                return_arg[0] = return_arg[0][1:]
         return_valuer = self.compile_valuer(return_arg) if return_arg else None
 
         return {
@@ -183,15 +183,9 @@ class ValuerCompiler(object):
         }
 
     def compile_let_valuer(self, key="", filter=None, key_arg=None, return_arg=None):
+        return_arg, _ = self.parse_return_valuer(return_arg)
+
         key_valuer = self.compile_valuer(key_arg)
-        if isinstance(return_arg, str) and return_arg[:1] == ":":
-            return_arg = return_arg[1:]
-        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
-            if return_arg[0] == ":":
-                return_arg = list(return_arg)[1:]
-            elif return_arg[0][:1] == ":":
-                return_arg = list(return_arg)
-                return_arg[0] = return_arg[0][1:]
         return_valuer = self.compile_valuer(return_arg) if return_arg else None
 
         return {
@@ -203,15 +197,9 @@ class ValuerCompiler(object):
         }
 
     def compile_yield_valuer(self, key="", filter=None, value_arg=None, return_arg=None):
+        return_arg, _ = self.parse_return_valuer(return_arg)
+
         value_valuer = self.compile_valuer(value_arg) if value_arg else None
-        if isinstance(return_arg, str) and return_arg[:1] == ":":
-            return_arg = return_arg[1:]
-        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
-            if return_arg[0] == ":":
-                return_arg = list(return_arg)[1:]
-            elif return_arg[0][:1] == ":":
-                return_arg = list(return_arg)
-                return_arg[0] = return_arg[0][1:]
         return_valuer = self.compile_valuer(return_arg) if return_arg else None
 
         return {
@@ -222,28 +210,11 @@ class ValuerCompiler(object):
             "return_valuer": return_valuer,
         }
 
-    def compile_aggregate_valuer(self, key="", filter=None, key_arg=None, calculate_arg=None, return_arg=None):
+    def compile_aggregate_valuer(self, key="", filter=None, key_arg=None, calculate_arg=None):
+        return_arg, _ = self.parse_return_valuer(calculate_arg)
+
         key_valuer = self.compile_valuer(key_arg)
-        if isinstance(calculate_arg, str) and calculate_arg[:1] == ":":
-            calculate_arg = calculate_arg[1:]
-        elif isinstance(calculate_arg, list) and calculate_arg and isinstance(calculate_arg[0], str):
-            if calculate_arg[0] == ":":
-                calculate_arg = list(calculate_arg)[1:]
-            elif calculate_arg[0][:1] == ":":
-                calculate_arg = list(calculate_arg)
-                calculate_arg[0] = calculate_arg[0][1:]
-
-        if isinstance(return_arg, str) and return_arg[:1] == ":":
-            return_arg = return_arg[1:]
-        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
-            if return_arg[0] == ":":
-                return_arg = list(return_arg)[1:]
-            elif return_arg[0][:1] == ":":
-                return_arg = list(return_arg)
-                return_arg[0] = return_arg[0][1:]
-
-        calculate_valuer = self.compile_valuer(calculate_arg)
-        return_valuer = self.compile_valuer(return_arg) if return_arg else None
+        calculate_valuer = self.compile_valuer(calculate_arg if return_arg is None else return_arg)
 
         return {
             "name": "aggregate_valuer",
@@ -251,18 +222,10 @@ class ValuerCompiler(object):
             "filter": filter,
             "key_valuer": key_valuer,
             "calculate_valuer": calculate_valuer,
-            "return_valuer": return_valuer,
         }
 
     def compile_call_valuer(self, key="", filter=None, value_arg=None, calculate_arg=None, return_arg=None):
-        if isinstance(return_arg, str) and return_arg[:1] == ":":
-            return_arg = return_arg[1:]
-        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
-            if return_arg[0] == ":":
-                return_arg = list(return_arg)[1:]
-            elif return_arg[0][:1] == ":":
-                return_arg = list(return_arg)
-                return_arg[0] = return_arg[0][1:]
+        return_arg, _ = self.parse_return_valuer(return_arg)
 
         value_valuer = self.compile_valuer(value_arg) if value_arg else None
         calculate_valuer = self.compile_valuer(calculate_arg)
@@ -278,23 +241,10 @@ class ValuerCompiler(object):
         }
 
     def compile_assign_valuer(self, key="", filter=None, calculate_arg=None, return_arg=None):
-        if isinstance(calculate_arg, str) and calculate_arg[:1] == ":":
-            return_arg, calculate_arg = calculate_arg[1:], None
-        elif isinstance(calculate_arg, list) and calculate_arg and isinstance(calculate_arg[0], str):
-            if calculate_arg[0] == ":":
-                return_arg, calculate_arg = list(calculate_arg)[1:], None
-            elif calculate_arg[0][:1] == ":":
-                return_arg, calculate_arg = list(calculate_arg), None
-                return_arg[0] = return_arg[0][1:]
-
-        if isinstance(return_arg, str) and return_arg[:1] == ":":
-            return_arg = return_arg[1:]
-        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
-            if return_arg[0] == ":":
-                return_arg = list(return_arg)[1:]
-            elif return_arg[0][:1] == ":":
-                return_arg = list(return_arg)
-                return_arg[0] = return_arg[0][1:]
+        calculated_return_arg, calculate_arg = self.parse_return_valuer(calculate_arg)
+        if return_arg:
+            return_arg, _ = self.parse_return_valuer(return_arg)
+        return_arg = return_arg or calculated_return_arg
 
         calculate_valuer = self.compile_valuer(calculate_arg) if calculate_arg else None
         return_valuer = self.compile_valuer(return_arg) if return_arg else None
@@ -318,23 +268,10 @@ class ValuerCompiler(object):
         }
 
     def compile_foreach_valuer(self, key="", filter=None, value_arg=None, calculate_arg=None, return_arg=None):
-        if isinstance(calculate_arg, str) and calculate_arg[:1] == ":":
-            return_arg, calculate_arg, value_arg = calculate_arg[1:], value_arg, None
-        elif isinstance(calculate_arg, list) and calculate_arg and isinstance(calculate_arg[0], str):
-            if calculate_arg[0] == ":":
-                return_arg, calculate_arg, value_arg = list(calculate_arg)[1:], value_arg, None
-            elif calculate_arg[0][:1] == ":":
-                return_arg, calculate_arg, value_arg = list(calculate_arg), value_arg, None
-                return_arg[0] = return_arg[0][1:]
-
-        if isinstance(return_arg, str) and return_arg[:1] == ":":
-            return_arg = return_arg[1:]
-        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
-            if return_arg[0] == ":":
-                return_arg = list(return_arg)[1:]
-            elif return_arg[0][:1] == ":":
-                return_arg = list(return_arg)
-                return_arg[0] = return_arg[0][1:]
+        calculated_return_arg, calculate_arg = self.parse_return_valuer(calculate_arg)
+        if return_arg:
+            return_arg, _ = self.parse_return_valuer(return_arg)
+        return_arg = return_arg or calculated_return_arg
 
         value_valuer = self.compile_valuer(value_arg) if value_arg else None
         calculate_valuer = self.compile_valuer(calculate_arg)
@@ -350,14 +287,7 @@ class ValuerCompiler(object):
         }
 
     def compile_break_valuer(self, key="", filter=None, return_arg=None):
-        if isinstance(return_arg, str) and return_arg[:1] == ":":
-            return_arg = return_arg[1:]
-        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
-            if return_arg[0] == ":":
-                return_arg = list(return_arg)[1:]
-            elif return_arg[0][:1] == ":":
-                return_arg = list(return_arg)
-                return_arg[0] = return_arg[0][1:]
+        return_arg, _ = self.parse_return_valuer(return_arg)
 
         return_valuer = self.compile_valuer(return_arg) if return_arg else None
         return {
@@ -368,14 +298,7 @@ class ValuerCompiler(object):
         }
 
     def compile_continue_valuer(self, key="", filter=None, return_arg=None):
-        if isinstance(return_arg, str) and return_arg[:1] == ":":
-            return_arg = return_arg[1:]
-        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
-            if return_arg[0] == ":":
-                return_arg = list(return_arg)[1:]
-            elif return_arg[0][:1] == ":":
-                return_arg = list(return_arg)
-                return_arg[0] = return_arg[0][1:]
+        return_arg, _ = self.parse_return_valuer(return_arg)
 
         return_valuer = self.compile_valuer(return_arg) if return_arg else None
         return {
@@ -386,23 +309,10 @@ class ValuerCompiler(object):
         }
 
     def compile_if_valuer(self, key="", filter=None, value_arg=None, true_arg=None, false_arg=None, return_arg=None):
-        if isinstance(false_arg, str) and false_arg[:1] == ":":
-            return_arg, false_arg = false_arg[1:], None
-        elif isinstance(false_arg, list) and false_arg and isinstance(false_arg[0], str):
-            if false_arg[0] == ":":
-                return_arg, false_arg = list(false_arg)[1:], None
-            elif false_arg[0][:1] == ":":
-                return_arg, false_arg = list(false_arg), None
-                return_arg[0] = return_arg[0][1:]
-
-        if isinstance(return_arg, str) and return_arg[:1] == ":":
-            return_arg = return_arg[1:]
-        elif isinstance(return_arg, list) and return_arg and isinstance(return_arg[0], str):
-            if return_arg[0] == ":":
-                return_arg = list(return_arg)[1:]
-            elif return_arg[0][:1] == ":":
-                return_arg = list(return_arg)
-                return_arg[0] = return_arg[0][1:]
+        false_return_arg, false_arg = self.parse_return_valuer(false_arg)
+        if return_arg:
+            return_arg, _ = self.parse_return_valuer(return_arg)
+        return_arg = return_arg or false_return_arg
 
         value_valuer = self.compile_valuer(value_arg) if value_arg else None
         true_valuer = self.compile_valuer(true_arg) if true_arg else None

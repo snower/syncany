@@ -451,10 +451,9 @@ class JsonTasker(Tasker):
                     return self.valuer_compiler.compile_yield_valuer(key["key"], key["filter"],
                                                                      valuer[1] if len(valuer) >= 1 else None,
                                                                      valuer[2] if len(valuer) >= 3 else None)
-                if key["key"] == "aggregate" and len(valuer) in (2, 3, 4):
+                if key["key"] == "aggregate" and len(valuer) in (2, 3):
                     return self.valuer_compiler.compile_aggregate_valuer(key["key"], key["filter"], valuer[1],
-                                                                         valuer[2] if len(valuer) >= 3 else None,
-                                                                         valuer[3] if len(valuer) >= 4 else None)
+                                                                         valuer[2] if len(valuer) >= 3 else None)
                 if key["key"] == "call" and len(valuer) in (2, 3, 4) and valuer[1] in self.config["defines"]:
                     return self.valuer_compiler.compile_call_valuer(valuer[1], key["filter"],
                                                                     valuer[2] if len(valuer) >= 3 else None,

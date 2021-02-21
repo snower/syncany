@@ -329,10 +329,6 @@ class ValuerCreater(object):
                                               aggregate_valuers=calculate_child_aggregate_valuers, **kwargs) \
             if "calculate_valuer" in config and config["calculate_valuer"] else None
 
-        return_inherit_valuers = []
-        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, **kwargs) \
-            if "return_valuer" in config and config["return_valuer"] else None
-
         current_inherit_valuers = []
         for inherit_valuer in calculate_inherit_valuers:
             inherit_valuer["reflen"] -= 1
@@ -341,15 +337,8 @@ class ValuerCreater(object):
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
 
-        for inherit_valuer in return_inherit_valuers:
-            inherit_valuer["reflen"] -= 1
-            if inherit_valuer["reflen"] == 0:
-                current_inherit_valuers.append(inherit_valuer["valuer"])
-            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
-                inherit_valuers.append(inherit_valuer)
-
         manager = aggregate_valuers[0].get_manager() if aggregate_valuers else None
-        aggregate_valuer = valuer_cls(key_valuer, calculate_valuer, return_valuer, current_inherit_valuers, manager, schema_field_name, None)
+        aggregate_valuer = valuer_cls(key_valuer, calculate_valuer, current_inherit_valuers, manager, schema_field_name, None)
         if aggregate_valuers is not None:
             aggregate_valuers.append(aggregate_valuer)
         return aggregate_valuer
