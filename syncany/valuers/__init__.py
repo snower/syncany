@@ -18,6 +18,7 @@ from .call import CallValuer
 from .assign import AssignValuer
 from .function import LambdaValuer
 from .loop import ForeachValuer, BreakValuer, ContinueValuer
+from .condition import IfValuer
 from ..errors import ValuerUnknownException
 
 VALUERS = {
@@ -38,6 +39,7 @@ VALUERS = {
     "foreach_valuer": ForeachValuer,
     "break_valuer": BreakValuer,
     "continue_valuer": ContinueValuer,
+    "if_valuer": IfValuer,
 }
 
 def find_valuer(name):

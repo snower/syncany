@@ -6,9 +6,8 @@ from .valuer import Valuer
 
 class SchemaValuer(Valuer):
     def __init__(self, schema_valuers, *args, **kwargs):
-        super(SchemaValuer, self).__init__(*args, **kwargs)
-
         self.schema_valuers = schema_valuers
+        super(SchemaValuer, self).__init__(*args, **kwargs)
 
     def clone(self):
         schema_valuers = {}

@@ -7,15 +7,16 @@ from .valuer import Valuer, LoadAllFieldsException
 
 class YieldValuer(Valuer):
     def __init__(self, value_valuer, return_valuer, inherit_valuers, *args, **kwargs):
-        super(YieldValuer, self).__init__(*args, **kwargs)
-
         self.value_valuer = value_valuer
         self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
-        self.wait_loaded = True if not self.return_valuer else False
+        super(YieldValuer, self).__init__(*args, **kwargs)
+
         self.iter_valuers = []
         self.iter_datas = []
 
+    def init_valuer(self):
+        self.wait_loaded = True if not self.return_valuer else False
         if self.return_valuer:
             self.check_wait_loaded()
 
@@ -30,7 +31,8 @@ class YieldValuer(Valuer):
         value_valuer = self.value_valuer.clone() if self.value_valuer else None
         return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
-        return self.__class__(value_valuer, return_valuer, inherit_valuers, self.key, self.filter)
+        return self.__class__(value_valuer, return_valuer, inherit_valuers,
+                              self.key, self.filter, wait_loaded=self.wait_loaded)
 
     def fill(self, data):
         if self.inherit_valuers:

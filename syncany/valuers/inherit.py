@@ -8,10 +8,10 @@ from .valuer import Valuer
 
 class InheritValuer(Valuer):
     def __init__(self, value_valuer, *args, **kwargs):
-        super(InheritValuer, self).__init__(*args, **kwargs)
-
         self.child_valuer = InheritChildValuer(self, value_valuer, *args, **kwargs)
         self.value_valuer = value_valuer
+        super(InheritValuer, self).__init__(*args, **kwargs)
+
         self.filled = False
         self.cloned_child_valuer = None
 
@@ -59,10 +59,10 @@ class InheritValuer(Valuer):
 
 class InheritChildValuer(Valuer):
     def __init__(self, inherit_valuer, value_valuer, *args, **kwargs):
-        super(InheritChildValuer, self).__init__(*args, **kwargs)
-
         self.inherit_valuer = weakref.proxy(inherit_valuer)
         self.value_valuer = value_valuer
+        super(InheritChildValuer, self).__init__(*args, **kwargs)
+
         self.cloned_inherit_valuer = None
 
     def clone(self):

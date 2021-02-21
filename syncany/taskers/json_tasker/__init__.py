@@ -390,12 +390,13 @@ class JsonTasker(Tasker):
                 case_case = valuer.pop("#case")
                 cases = {}
                 case_default = valuer.pop("#end") if "#end" in valuer else None
+                case_return = valuer.pop("::") if "::" in valuer else None
                 for case_key, case_value in valuer.items():
                     if case_key and isinstance(case_key, str) and case_key[0] == ":" and case_key[1:].isdigit():
                         cases[int(case_key[1:])] = case_value
                     else:
                         cases[case_key] = case_value
-                return self.valuer_compiler.compile_case_valuer('', None, case_case, cases, case_default)
+                return self.valuer_compiler.compile_case_valuer('', None, case_case, cases, case_default, case_return)
             return valuer
 
         if isinstance(valuer, list):
@@ -433,12 +434,13 @@ class JsonTasker(Tasker):
                 if key["key"] == "const":
                     return self.valuer_compiler.compile_const_valuer(valuer[1:] if len(valuer) > 2 else
                                                                      (valuer[1] if len(valuer) > 1 else None))
-                if key["key"] == "case" and len(valuer) in (3, 4):
+                if key["key"] == "if" and len(valuer) in (3, 4, 5):
                     cases = {True: valuer[2]}
                     if len(valuer) == 4:
                         cases[False] = valuer[3]
-                    return self.valuer_compiler.compile_case_valuer(key["key"], key["filter"], valuer[1],
-                                                                    cases, None)
+                    return self.valuer_compiler.compile_if_valuer(key["key"], key["filter"], valuer[1],
+                                                                  valuer[2], valuer[3] if len(valuer) >= 4 else None,
+                                                                  valuer[4] if len(valuer) >= 5 else None)
                 if key["key"] == "make" and len(valuer) in (2, 3):
                     return self.valuer_compiler.compile_make_valuer(key["key"], key["filter"], valuer[1],
                                                                     valuer[2] if len(valuer) >= 3 else None)
@@ -449,9 +451,10 @@ class JsonTasker(Tasker):
                     return self.valuer_compiler.compile_yield_valuer(key["key"], key["filter"],
                                                                      valuer[1] if len(valuer) >= 1 else None,
                                                                      valuer[2] if len(valuer) >= 3 else None)
-                if key["key"] == "aggregate" and len(valuer) in (2, 3):
+                if key["key"] == "aggregate" and len(valuer) in (2, 3, 4):
                     return self.valuer_compiler.compile_aggregate_valuer(key["key"], key["filter"], valuer[1],
-                                                                         valuer[2] if len(valuer) >= 3 else None)
+                                                                         valuer[2] if len(valuer) >= 3 else None,
+                                                                         valuer[3] if len(valuer) >= 4 else None)
                 if key["key"] == "call" and len(valuer) in (2, 3, 4) and valuer[1] in self.config["defines"]:
                     return self.valuer_compiler.compile_call_valuer(valuer[1], key["filter"],
                                                                     valuer[2] if len(valuer) >= 3 else None,

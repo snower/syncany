@@ -6,14 +6,14 @@ from .data import Valuer
 
 class DBJoinValuer(Valuer):
     def __init__(self, loader, foreign_key, foreign_filters, args_valuer, return_valuer, inherit_valuers, *args, **kwargs):
-        super(DBJoinValuer, self).__init__(*args, **kwargs)
-
         self.loader = loader
         self.foreign_key = foreign_key
         self.args_valuer = args_valuer
         self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
         self.foreign_filters = foreign_filters
+        super(DBJoinValuer, self).__init__(*args, **kwargs)
+
         self.matcher = None
 
     def add_inherit_valuer(self, valuer):

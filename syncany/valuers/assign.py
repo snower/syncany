@@ -6,12 +6,13 @@ from .valuer import Valuer
 
 class AssignValuer(Valuer):
     def __init__(self, global_value, calculate_valuer, return_valuer, inherit_valuers, *args, **kwargs):
-        super(AssignValuer, self).__init__(*args, **kwargs)
-
         self.global_value = global_value
         self.calculate_valuer = calculate_valuer
         self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
+        super(AssignValuer, self).__init__(*args, **kwargs)
+
+    def init_valuer(self):
         self.calculate_wait_loaded = self.calculate_valuer and self.calculate_valuer.require_loaded()
 
     def add_inherit_valuer(self, valuer):
@@ -21,7 +22,8 @@ class AssignValuer(Valuer):
         calculate_valuer = self.calculate_valuer.clone() if self.calculate_valuer else None
         return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
-        return self.__class__(self.global_value, calculate_valuer, return_valuer, inherit_valuers, self.key, self.filter)
+        return self.__class__(self.global_value, calculate_valuer, return_valuer, inherit_valuers,
+                              self.key, self.filter, calculate_wait_loaded=self.calculate_wait_loaded)
 
     def fill(self, data):
         if self.inherit_valuers:

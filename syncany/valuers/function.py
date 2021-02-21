@@ -15,10 +15,9 @@ class LambdaFunction(object):
 
 class LambdaValuer(Valuer):
     def __init__(self, calculate_valuer, inherit_valuers, *args, **kwargs):
-        super(LambdaValuer, self).__init__(*args, **kwargs)
-
         self.calculate_valuer = calculate_valuer
         self.inherit_valuers = inherit_valuers
+        super(LambdaValuer, self).__init__(*args, **kwargs)
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)

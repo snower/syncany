@@ -33,7 +33,7 @@ def slice_key(key):
 class Valuer(object):
     KEY_GETTER_CACHES = {}
 
-    def __init__(self, key, filter=None):
+    def __init__(self, key, filter=None, **state_kwargs):
         self.key = key
         self.filter = filter
         self.value = None
@@ -41,6 +41,15 @@ class Valuer(object):
 
         if self.filter:
             self.value = self.filter.filter(self.value)
+
+        if state_kwargs:
+            for name, value in state_kwargs.items():
+                setattr(self, name, value)
+        else:
+            self.init_valuer()
+
+    def init_valuer(self):
+        pass
 
     def parse_key(self):
         if self.key in self.KEY_GETTER_CACHES:

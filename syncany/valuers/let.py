@@ -6,14 +6,15 @@ from .valuer import Valuer
 
 class LetValuer(Valuer):
     def __init__(self, key_valuer, return_valuer, inherit_valuers, *args, **kwargs):
-        super(LetValuer, self).__init__(*args, **kwargs)
-
         self.key_valuer = key_valuer
         self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
-        self.wait_loaded = True if not self.return_valuer else False
+        super(LetValuer, self).__init__(*args, **kwargs)
+
         self.filled_data = None
 
+    def init_valuer(self):
+        self.wait_loaded = True if not self.return_valuer else False
         if self.return_valuer:
             self.check_wait_loaded()
 
@@ -28,7 +29,8 @@ class LetValuer(Valuer):
         key_valuer = self.key_valuer.clone() if self.key_valuer else None
         return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
-        return self.__class__(key_valuer, return_valuer, inherit_valuers, self.key, self.filter)
+        return self.__class__(key_valuer, return_valuer, inherit_valuers,
+                              self.key, self.filter, wait_loaded=self.wait_loaded)
 
     def fill(self, data):
         if self.inherit_valuers:

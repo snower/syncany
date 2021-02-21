@@ -8,11 +8,12 @@ from .valuer import Valuer
 
 class MakeValuer(Valuer):
     def __init__(self, value_valuer, return_valuer, inherit_valuers, *args, **kwargs):
-        super(MakeValuer, self).__init__(*args, **kwargs)
-
         self.value_valuer = value_valuer
         self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
+        super(MakeValuer, self).__init__(*args, **kwargs)
+
+    def init_valuer(self):
         self.wait_loaded = True if not self.return_valuer else False
         if not self.wait_loaded and self.return_valuer:
             self.check_wait_loaded()
@@ -51,7 +52,8 @@ class MakeValuer(Valuer):
             value_valuer = None
         return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
-        return self.__class__(value_valuer, return_valuer, inherit_valuers, self.key, self.filter)
+        return self.__class__(value_valuer, return_valuer, inherit_valuers,
+                              self.key, self.filter, wait_loaded=self.wait_loaded)
 
     def fill(self, data):
         if self.inherit_valuers:

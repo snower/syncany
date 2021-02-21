@@ -7,10 +7,9 @@ from .valuer import Valuer, LoadAllFieldsException
 
 class DataValuer(Valuer):
     def __init__(self, return_valuer, inherit_valuers, *args, **kwargs):
-        super(DataValuer, self).__init__(*args, **kwargs)
-
         self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
+        super(DataValuer, self).__init__(*args, **kwargs)
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)

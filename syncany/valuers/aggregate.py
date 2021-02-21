@@ -39,13 +39,14 @@ class AggregateManager(object):
         return scope_data
 
 class AggregateValuer(Valuer):
-    def __init__(self, key_valuer, calculate_valuer, inherit_valuers, aggregate_manager, *args, **kwargs):
-        super(AggregateValuer, self).__init__(*args, **kwargs)
-
+    def __init__(self, key_valuer, calculate_valuer, return_valuer, inherit_valuers, aggregate_manager, *args, **kwargs):
         self.key_valuer = key_valuer
         self.calculate_valuer = calculate_valuer
+        self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
         self.aggregate_manager = aggregate_manager or AggregateManager()
+        super(AggregateValuer, self).__init__(*args, **kwargs)
+
         self.key_value = None
         self.loader_loaded = False
 
@@ -58,8 +59,9 @@ class AggregateValuer(Valuer):
     def clone(self):
         key_valuer = self.key_valuer.clone() if self.key_valuer else None
         calculate_valuer = self.calculate_valuer.clone() if self.calculate_valuer else None
+        return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
-        return self.__class__(key_valuer, calculate_valuer, inherit_valuers, self.aggregate_manager, self.key, self.filter)
+        return self.__class__(key_valuer, calculate_valuer, return_valuer, inherit_valuers, self.aggregate_manager, self.key, self.filter)
 
     def fill(self, data):
         if self.inherit_valuers:
@@ -78,6 +80,9 @@ class AggregateValuer(Valuer):
 
             self.calculate_valuer.fill(loader_data)
             self.do_filter(self.calculate_valuer.get())
+            if self.return_valuer:
+                self.return_valuer.fill(self.value)
+                self.value = self.return_valuer.get()
             self.aggregate_manager.set(self.key_value, self.key, self.value)
 
         def gen_iter():
@@ -90,6 +95,9 @@ class AggregateValuer(Valuer):
 
                 self.calculate_valuer.fill(loader_data)
                 self.do_filter(self.calculate_valuer.get())
+                if self.return_valuer:
+                    self.return_valuer.fill(self.value)
+                    self.value = self.return_valuer.get()
                 self.aggregate_manager.set(self.key_value, self.key, self.value)
                 yield self.value
 
@@ -103,6 +111,8 @@ class AggregateValuer(Valuer):
             childs.append(self.key_valuer)
         if self.calculate_valuer:
             childs.append(self.calculate_valuer)
+        if self.return_valuer:
+            childs.append(self.return_valuer)
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 childs.append(inherit_valuer)
@@ -121,6 +131,9 @@ class AggregateValuer(Valuer):
         return fields
 
     def get_final_filter(self):
+        if self.return_valuer:
+            return self.return_valuer.get_final_filter()
+
         if self.filter:
             return self.filter
 
