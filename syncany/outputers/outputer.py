@@ -8,9 +8,7 @@ class Outputer(object):
         self.schema = {}
         self.filters = []
         self.load_datas = []
-        self.load_data_keys = {}
         self.datas = []
-        self.datas_keys = {}
 
     def clone(self):
         outputer = self.__class__(self.primary_keys)

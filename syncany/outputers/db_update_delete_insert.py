@@ -7,6 +7,11 @@ from .db import DBOutputer
 from ..valuers.valuer import LoadAllFieldsException
 
 class DBUpdateDeleteInsertOutputer(DBOutputer):
+    def __init__(self, *args, **kwargs):
+        super(DBUpdateDeleteInsertOutputer, self).__init__(*args, **kwargs)
+
+        self.load_data_keys = {}
+
     def load(self):
         fields = set([])
         try:

@@ -36,6 +36,7 @@ class DBJoinLoader(DBLoader):
     def __init__(self, *args, **kwargs):
         super(DBJoinLoader, self).__init__(*args, **kwargs)
 
+        self.data_keys = {}
         self.unload_primary_keys = set([])
         self.matchers = defaultdict(list)
 

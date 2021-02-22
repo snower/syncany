@@ -77,8 +77,6 @@ class DBLoader(Loader):
         if not self.compiled:
             datas, self.datas = self.datas, []
             for data in datas:
-                primary_key = self.get_data_primary_key(data)
-
                 values = {}
                 if not self.key_matchers:
                     for key, field in self.schema.items():
@@ -94,10 +92,9 @@ class DBLoader(Loader):
                                     valuer.key = key
                                     self.schema[key] = valuer
                                     values[key] = valuer.clone().fill(data)
-
-                self.data_keys[primary_key] = values
                 self.datas.append(values)
                 self.last_data = data
+
         return super(DBLoader, self).get()
 
     def statistics(self):

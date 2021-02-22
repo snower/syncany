@@ -25,12 +25,9 @@ class ConstLoader(Loader):
             return
 
         for data in self.const_datas:
-            primary_key = self.get_data_primary_key(data)
-
             values = {}
             for key, field in self.schema.items():
                 values[key] = field.clone().fill(data)
-
-            self.data_keys[primary_key] = values
             self.datas.append(values)
+
         self.loaded = True

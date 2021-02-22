@@ -30,7 +30,6 @@ class Loader(object):
         self.filters = []
         self.key_matchers = []
         self.datas = []
-        self.data_keys = {}
         self.loaded = False
 
     def clone(self):
@@ -58,20 +57,6 @@ class Loader(object):
 
     def load(self):
         self.loaded = True
-
-    def __getitem__(self, item):
-        if not self.loaded:
-            self.load()
-
-        if isinstance(item, str):
-            return self.data_keys[item]
-        return self.datas[item]
-
-    def __iter__(self):
-        if not self.loaded:
-            self.load()
-
-        return self.datas
 
     def get(self):
         if not self.loaded:
