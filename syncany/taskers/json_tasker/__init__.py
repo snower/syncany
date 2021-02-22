@@ -6,7 +6,6 @@ import time
 import copy
 import logging.config
 import json
-from collections import OrderedDict
 from ...logger import get_logger
 from ..tasker import Tasker
 from ...calculaters.import_calculater import create_import_calculater
@@ -360,7 +359,7 @@ class JsonTasker(Tasker):
             if self.config["schema"] == "$.*":
                 self.schema = ".*"
         else:
-            self.schema = OrderedDict()
+            self.schema = {}
             schema, order_names = {}, [''] * len(self.config["schema"])
             for name, field in self.config["schema"].items():
                 if name[0] == "$":

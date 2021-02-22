@@ -3,7 +3,6 @@
 # create by: snower
 
 import os
-from collections import OrderedDict
 import csv
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
@@ -222,7 +221,7 @@ class CsvDB(DataBase):
             if not descriptions:
                 descriptions = row
             else:
-                data = OrderedDict()
+                data = {}
                 for i in range(len(descriptions)):
                     data[descriptions[i]] = row[i]
                 datas.append(data)

@@ -5,7 +5,6 @@
 import os
 import datetime
 from tzlocal import get_localzone
-from collections import OrderedDict
 try:
     import openpyxl
 except ImportError:
@@ -202,7 +201,7 @@ class ExeclSheet(object):
                 for cel in row:
                     self.sheet_descriptions.append(cel.value)
             else:
-                data, index = OrderedDict(), 0
+                data, index = {}, 0
                 for cel in row:
                     if isinstance(cel.value, datetime.datetime) and not cel.value.tzinfo:
                         data[self.sheet_descriptions[index]] = cel.value.replace(tzinfo=get_localzone())

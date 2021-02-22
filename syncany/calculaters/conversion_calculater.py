@@ -2,7 +2,6 @@
 # 2020/12/15
 # create by: snower
 
-from collections import OrderedDict
 from .calculater import Calculater
 
 
@@ -44,7 +43,7 @@ class ConvH4VCalculater(Calculater):
         datas = self.args[0] if isinstance(self.args[0], list) else \
             ([self.args[0]] if isinstance(self.args[0], dict) else [])
 
-        hkeys, vkeys, mdata = OrderedDict(), OrderedDict(), {}
+        hkeys, vkeys, mdata = {}, {}, {}
         for data in datas:
             if vhkey not in data:
                 continue
@@ -77,7 +76,7 @@ class ConvH4VCalculater(Calculater):
 
         result = []
         for vkey in vkeys:
-            data = OrderedDict(**{vvkey: vkey})
+            data = {vvkey: vkey}
             for hkey in hkeys:
                 data[hkey] = mdata[hkey][vkey] if hkey in mdata and vkey in mdata[hkey] else 0
             result.append(data)
@@ -88,7 +87,7 @@ class ConvV2HCalculater(Calculater):
     def update_outputer_schema(self, xkeys):
         from ..taskers.tasker import current_tasker
         tasker = current_tasker()
-        tasker.outputer.schema = OrderedDict()
+        tasker.outputer.schema = {}
         for key in xkeys:
             valuer = tasker.create_valuer(tasker.valuer_compiler.compile_data_valuer(key, None))
             if not valuer:
@@ -105,7 +104,7 @@ class ConvV2HCalculater(Calculater):
         datas = self.args[0] if isinstance(self.args[0], list) else \
             ([self.args[0]] if isinstance(self.args[0], dict) else [])
 
-        hkeys, vkeys, mdata = OrderedDict(), OrderedDict(), {}
+        hkeys, vkeys, mdata = {}, {}, {}
         for data in datas:
             if vhkey not in data:
                 continue
@@ -138,7 +137,7 @@ class ConvV2HCalculater(Calculater):
 
         result = []
         for vkey in vkeys:
-            data = OrderedDict(**{vvkey: vkey})
+            data = {vvkey: vkey}
             for hkey in hkeys:
                 data[hkey] = mdata[hkey][vkey] if hkey in mdata and vkey in mdata[hkey] else 0
             result.append(data)
@@ -150,7 +149,7 @@ class ConvH2VCalculater(Calculater):
     def update_outputer_schema(self, xkeys):
         from ..taskers.tasker import current_tasker
         tasker = current_tasker()
-        tasker.outputer.schema = OrderedDict()
+        tasker.outputer.schema = {}
         for key in xkeys:
             valuer = tasker.create_valuer(tasker.valuer_compiler.compile_data_valuer(key, None))
             if not valuer:

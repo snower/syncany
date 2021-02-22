@@ -2,7 +2,6 @@
 # 18/8/6
 # create by: snower
 
-from collections import OrderedDict
 import threading
 from ..loaders import find_loader, Loader
 from ..outputers import find_outputer, Outputer
@@ -31,7 +30,7 @@ class Tasker(object):
         self.input = ""
         self.output = ""
         self.databases = {}
-        self.schema = OrderedDict()
+        self.schema = {}
         self.loader = None
         self.outputer = None
         self.hookers = set([])

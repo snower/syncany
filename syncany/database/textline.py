@@ -3,7 +3,6 @@
 # create by: snower
 
 import os
-from collections import OrderedDict
 import csv
 import json
 try:
@@ -68,7 +67,7 @@ class TextLineQueryBuilder(QueryBuilder):
             if not descriptions:
                 descriptions = row
             else:
-                data = OrderedDict()
+                data = {}
                 for i in range(len(descriptions)):
                     data[descriptions[i]] = row[i]
                 datas.append(data)

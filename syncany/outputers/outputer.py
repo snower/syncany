@@ -2,12 +2,10 @@
 # 18/8/6
 # create by: snower
 
-from collections import OrderedDict
-
 class Outputer(object):
     def __init__(self, primary_keys):
         self.primary_keys = primary_keys
-        self.schema = OrderedDict()
+        self.schema = {}
         self.filters = []
         self.load_datas = []
         self.load_data_keys = {}
@@ -16,7 +14,7 @@ class Outputer(object):
 
     def clone(self):
         outputer = self.__class__(self.primary_keys)
-        schema = OrderedDict()
+        schema = {}
         for key, valuer in self.schema.items():
             schema[key] = valuer.clone()
         outputer.schema = schema

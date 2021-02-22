@@ -4,7 +4,6 @@
 
 import types
 import re
-from collections import OrderedDict
 
 class KeyMatcher(object):
     def __init__(self, matcher, valuer):
@@ -27,7 +26,7 @@ class Loader(object):
     def __init__(self, primary_keys, is_yield=False):
         self.primary_keys = primary_keys
         self.is_yield = is_yield
-        self.schema = OrderedDict()
+        self.schema = {}
         self.filters = []
         self.key_matchers = []
         self.datas = []
@@ -36,7 +35,7 @@ class Loader(object):
 
     def clone(self):
         loader = self.__class__(self.primary_keys)
-        schema = OrderedDict()
+        schema = {}
         for key, valuer in self.schema.items():
             schema[key] = valuer.clone()
         loader.schema = schema
@@ -81,7 +80,7 @@ class Loader(object):
         datas = []
         if not self.is_yield:
             for data in self.datas:
-                odata = OrderedDict()
+                odata = {}
                 for name, valuer in self.schema.items():
                     if name not in data:
                         odata[name] = valuer.get()
@@ -90,9 +89,9 @@ class Loader(object):
                 datas.append(odata)
             return datas
 
-        oyields = OrderedDict()
+        oyields = {}
         for data in self.datas:
-            odata = OrderedDict()
+            odata = {}
             for name, valuer in self.schema.items():
                 if name not in data:
                     odata[name] = valuer.get()
@@ -110,7 +109,7 @@ class Loader(object):
 
             if oyields:
                 while oyields:
-                    oyield_data = OrderedDict()
+                    oyield_data = {}
                     for name, value in odata.items():
                         oyield_data[name] = value
                     has_oyield_data = False

@@ -2,7 +2,7 @@
 # 18/8/6
 # create by: snower
 
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 from .loader import Loader
 from ..valuers.valuer import LoadAllFieldsException
 
@@ -18,7 +18,7 @@ class DBLoader(Loader):
 
     def clone(self):
         loader = self.__class__(self.db, self.name, self.primary_keys)
-        schema = OrderedDict()
+        schema = {}
         for key, valuer in self.schema.items():
             schema[key] = valuer.clone()
         loader.schema = schema
