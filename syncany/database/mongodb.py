@@ -2,6 +2,13 @@
 # 18/8/6
 # create by: snower
 
+import datetime
+import uuid
+try:
+    from bson import SON, ObjectId, Binary, Code, DBRef, Decimal128, \
+        Int64, MaxKey, MinKey, Regex, Timestamp
+except ImportError:
+    pass
 try:
     import pymongo
 except ImportError:
@@ -58,15 +65,47 @@ class MongoQueryBuilder(QueryBuilder):
     def order_by(self, key, direct=1):
         self.orders.append((key, 1 if direct else -1))
 
+    def format_table(self):
+        for virtual_collection in self.db.virtual_collections:
+            if virtual_collection["name"] != self.collection_name:
+                continue
+            if isinstance(virtual_collection["query"], list):
+                virtual_collection["query"] = " ".join(virtual_collection["query"])
+            return virtual_collection['query']
+
+    def format_query(self, virtual_collection):
+        UUID, true, false, null = uuid.UUID, True, False, None
+        def Datetime(*args):
+            if len(args) == 1 and isinstance(args[0], str):
+                return datetime.datetime.strptime(args[0], "%Y-%m-%dT%H:%M:%S.%f%z")
+            return datetime.datetime(*args)
+
+        virtual_collection = eval(virtual_collection)
+        if isinstance(virtual_collection, list):
+            virtual_collection = [virtual_collection]
+        return [{"$match": self.query}] + virtual_collection
+
     def commit(self):
+        virtual_collection = self.format_table()
         connection = self.db.ensure_connection()
-        cursor = connection[self.db_name][self.collection_name].find(self.query, {field: 1 for field in self.fields} if self.fields else None)
-        if self.limit:
-            if self.limit[0]:
-                cursor.skip(self.limit[0])
-            cursor.limit(self.limit[1])
-        if self.orders:
-            cursor.sort(self.orders)
+
+        if virtual_collection:
+            virtual_collection = self.format_query(virtual_collection)
+            if self.limit:
+                if self.limit[0]:
+                    virtual_collection.append({"$skip": self.limit[0]})
+                virtual_collection.append({"$limit": self.limit[0]})
+            if self.orders:
+                virtual_collection.append({"$sort": SON(list(self.orders))})
+            cursor = connection[self.db_name][self.collection_name].aggregate(virtual_collection)
+        else:
+            cursor = connection[self.db_name][self.collection_name].find(self.query, {field: 1 for field in self.fields} if self.fields else None)
+            if self.limit:
+                if self.limit[0]:
+                    cursor.skip(self.limit[0])
+                cursor.limit(self.limit[1])
+            if self.orders:
+                cursor.sort(self.orders)
         return list(cursor)
 
 class MongoInsertBuilder(InsertBuilder):
@@ -194,6 +233,7 @@ class MongoDB(DataBase):
         all_config.update(config)
 
         self.db_name = all_config.pop("db") if "db" in all_config else all_config["name"]
+        self.virtual_collections = all_config.pop("virtual_views") if "virtual_views" in all_config else []
 
         super(MongoDB, self).__init__(all_config)
 

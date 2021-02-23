@@ -378,7 +378,6 @@ class InfluxDB(DataBase):
         all_config.update(config)
 
         self.db_name = all_config["db"] if "db" in all_config else all_config["name"]
-        self.tables = {table["name"]: table for table in all_config.pop("tables")} if "tables" in all_config else {}
         self.virtual_tables = all_config.pop("virtual_views") if "virtual_views" in all_config else []
 
         super(InfluxDB, self).__init__(all_config)
