@@ -71,14 +71,50 @@ class MongoQueryBuilder(QueryBuilder):
                 continue
             if isinstance(virtual_collection["query"], list):
                 virtual_collection["query"] = " ".join(virtual_collection["query"])
-            return virtual_collection['query']
+            return virtual_collection['query'], virtual_collection.get("args", [])
+        return None, None
 
-    def format_query(self, virtual_collection):
+    def format_value(self, value):
+        if isinstance(value, str):
+            return '"' + value + '"'
+        if isinstance(value, datetime.datetime):
+            return value.strftime("%Y-%m-%dT%H:%M:%S.%f%z")
+        if isinstance(value, datetime.date):
+            return value.strftime("%Y-%m-%d")
+        if isinstance(value, list):
+            return "[" + ", ".join([self.format_value(v) for v in value]) + "]"
+        if isinstance(value, dict):
+            return "{" + ", ".join([self.format_value(k) + ": " + self.format_value(v) for k, v in value.items()]) + "}"
+        if value is True:
+            return 'true'
+        if value is False:
+            return 'false'
+        if value is None:
+            return 'null'
+        return str(value)
+
+    def format_query(self, virtual_collection, virtual_args):
         UUID, true, false, null = uuid.UUID, True, False, None
         def Datetime(*args):
             if len(args) == 1 and isinstance(args[0], str):
                 return datetime.datetime.strptime(args[0], "%Y-%m-%dT%H:%M:%S.%f%z")
             return datetime.datetime(*args)
+
+        exps = {">": "$gt", ">=": "$gte", "<": "$lt", "<=": "$lte", "!=": "$ne", "in": "$in"}
+        virtual_values = []
+        for arg in virtual_args:
+            if isinstance(arg, str) or arg[1] == "=":
+                if arg in self.query and not isinstance(self.query[arg], dict):
+                    virtual_values.append(self.format_value(self.query[arg]))
+                else:
+                    virtual_values.append('""')
+            else:
+                if arg[0] in self.query and arg[1] in exps and exps[arg[1]] in self.query[arg[0]]:
+                    virtual_values.append(self.format_value(self.query[arg[0]][exps[arg[1]]]))
+                else:
+                    virtual_values.append('""')
+        if virtual_values:
+            virtual_collection = virtual_collection % tuple(virtual_values)
 
         virtual_collection = eval(virtual_collection)
         if isinstance(virtual_collection, list):
@@ -86,18 +122,18 @@ class MongoQueryBuilder(QueryBuilder):
         return [{"$match": self.query}] + virtual_collection
 
     def commit(self):
-        virtual_collection = self.format_table()
+        virtual_collection, virtual_args = self.format_table()
         connection = self.db.ensure_connection()
 
         if virtual_collection:
-            virtual_collection = self.format_query(virtual_collection)
+            virtual_collection = self.format_query(virtual_collection, virtual_args)
             if self.limit:
                 if self.limit[0]:
                     virtual_collection.append({"$skip": self.limit[0]})
                 virtual_collection.append({"$limit": self.limit[0]})
             if self.orders:
                 virtual_collection.append({"$sort": SON(list(self.orders))})
-            cursor = connection[self.db_name][self.collection_name].aggregate(virtual_collection)
+            cursor = connection[self.db_name][self.collection_name].aggregate(virtual_collection, allowDiskUse=True)
         else:
             cursor = connection[self.db_name][self.collection_name].find(self.query, {field: 1 for field in self.fields} if self.fields else None)
             if self.limit:
