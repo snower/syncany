@@ -2,6 +2,8 @@
 # 18/8/15
 # create by: snower
 
+import datetime
+import json
 try:
     import elasticsearch
     import elasticsearch.helpers
@@ -14,9 +16,9 @@ class ElasticsearchQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
         super(ElasticsearchQueryBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
-        self.query_values = []
-        self.sql = None
+        self.orders = {}
+        self.index_name = "".join(self.name.split(".")[1:])
+        self.equery = None
 
     def filter_gt(self, key, value):
         if key not in self.query:
@@ -39,7 +41,9 @@ class ElasticsearchQueryBuilder(QueryBuilder):
         self.query[key]["lte"] = value
 
     def filter_eq(self, key, value):
-        self.query[key] = value
+        if key not in self.query:
+            self.query[key] = {}
+        self.query[key]["eq"] = value
 
     def filter_ne(self, key, value):
         if key not in self.query:
@@ -58,15 +62,135 @@ class ElasticsearchQueryBuilder(QueryBuilder):
             self.limit = (start, count)
 
     def order_by(self, key, direct=1):
-        self.orders.append((key, 1 if direct else -1))
+        if key in {"_index", "_type", "_id", "_score", "_source"}:
+            return
+        self.orders[key] = {"order": "asc"} if direct == 1 else {"order": "desc"}
+
+    def format_table(self):
+        for virtual_view in self.db.virtual_views:
+            if virtual_view["name"] != self.index_name:
+                continue
+            if isinstance(virtual_view["query"], list):
+                virtual_view["query"] = " ".join(virtual_view["query"])
+            return virtual_view['query'], virtual_view.get("args", [])
+        return None, None
+
+    def format_value(self, value):
+        if isinstance(value, str):
+            return '"' + value + '"'
+        if isinstance(value, datetime.datetime):
+            return value.strftime("%Y-%m-%dT%H:%M:%S.%f%z")
+        if isinstance(value, datetime.date):
+            return value.strftime("%Y-%m-%d")
+        if isinstance(value, list):
+            return "[" + ", ".join([self.format_value(v) for v in value]) + "]"
+        if isinstance(value, dict):
+            return "{" + ", ".join([self.format_value(k) + ": " + self.format_value(v) for k, v in value.items()]) + "}"
+        if value is True:
+            return 'true'
+        if value is False:
+            return 'false'
+        if value is None:
+            return 'null'
+        return str(value)
+
+    def format_query(self, query, virtual_collection, virtual_args):
+        if not isinstance(virtual_collection, str):
+            if "query" in virtual_collection:
+                if not query:
+                    query = {"bool": {"must": []}}
+                query["bool"]["must"].append(virtual_collection["query"])
+            virtual_collection["query"] = query
+            return virtual_collection
+
+        exps = {">": "gt", ">=": "gte", "<": "lt", "<=": "lte", "==": "eq", "!=": "ne", "in": "in"}
+        virtual_values = []
+        for arg in virtual_args:
+            if isinstance(arg, str) or arg[1] == "==":
+                if arg in self.query and "eq" in self.query[arg]:
+                    virtual_values.append(self.format_value(self.query[arg]['eq']))
+                    self.query[arg].pop('eq')
+                    if not self.query[arg]:
+                        self.query.pop(arg)
+                else:
+                    virtual_values.append('""')
+            else:
+                if arg[0] in self.query and arg[1] in exps and exps[arg[1]] in self.query[arg[0]]:
+                    virtual_values.append(self.format_value(self.query[arg[0]][exps[arg[1]]]))
+                    self.query[arg[0]].pop(exps[arg[1]])
+                    if not self.query[arg[0]]:
+                        self.query.pop(arg[0])
+                else:
+                    virtual_values.append('""')
+        if virtual_values:
+            virtual_collection = virtual_collection % tuple(virtual_values)
+
+        virtual_collection = json.loads(virtual_collection)
+        if not isinstance(virtual_collection, str):
+            if "query" in virtual_collection:
+                if not query:
+                    query = {"bool": {"must": []}}
+                query["bool"]["must"].append(virtual_collection["query"])
+            virtual_collection["query"] = query
+            return virtual_collection
+
+    def build_query(self):
+        if not self.query:
+            return {}
+
+        query = {"bool": {"must": []}}
+        for key, qs in self.query.items():
+            for q, v in qs.items():
+                if q == "eq":
+                    query["bool"]["must"].append({"term": {key: v}})
+                elif q == "in":
+                    query["bool"]["must"].append({"terms": {key: v}})
+                elif q == "ne":
+                    if "must_not" not in query:
+                        query["bool"]["must_not"] = []
+                    query["bool"]["must_not"].append({"term": {key: v}})
+                else:
+                    query["bool"]["must"].append({"range": {key: v}})
+        return query
 
     def commit(self):
-        raise NotImplementedError()
+        self.equery = self.build_query()
+        virtual_collection, virtual_args = self.format_table()
+        if virtual_collection:
+            self.equery = self.format_query(self.equery, virtual_collection, virtual_args)
+        else:
+            self.equery = {"query": self.equery}
+            if self.fields:
+                esfields = {"_index", "_type", "_id", "_score", "_source"}
+                fields = [field[8:] for field in self.fields if field[:8] == "_source" and field not in esfields]
+                if fields:
+                    self.equery["_source"] = self.fields
+
+        if not self.equery["query"]:
+            self.equery.pop("query", None)
+        if self.limit:
+            if self.limit[0]:
+                self.equery["from"] = self.limit[0]
+            self.equery["size"] = self.limit[1]
+        if self.orders:
+            self.equery["sort"] = self.orders
+
+        connection = self.db.ensure_connection()
+        result = connection.search(self.equery, self.index_name)
+        if "aggregations" in result:
+            for k, v in result["aggregations"]:
+                if isinstance(v, dict) and "buckets" in v:
+                    return v["buckets"]
+            return []
+        if "hits" in result and "hits" in result["hits"]:
+            return result["hits"]["hits"]
+        return []
 
 class ElasticsearchInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
         super(ElasticsearchInsertBuilder, self).__init__(*args, **kwargs)
 
+        self.index_name = "".join(self.name.split(".")[1:])
         if isinstance(self.datas, dict):
             self.datas = [self.datas]
         self.sql = None
@@ -90,8 +214,8 @@ class ElasticsearchInsertBuilder(InsertBuilder):
         datas = []
         for data in self.datas:
             datas.append({
-                "_index": self.name,
-                "_type": self.name,
+                "_index": self.index_name,
+                "_type": self.index_name,
                 "_id": self.get_data_primary_key(data),
                 "_source": {field: data[field] for field in fields}
             })
@@ -103,87 +227,41 @@ class ElasticsearchUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
         super(ElasticsearchUpdateBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
-        self.query_values = []
+        self.index_name = "".join(self.name.split(".")[1:])
+        if isinstance(self.datas, dict):
+            self.datas = [self.datas]
         self.sql = None
 
-    def filter_gt(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["gt"] = value
+    def get_fields(self):
+        fields = None
+        for data in self.datas:
+            if fields is None:
+                fields = set(data.keys())
+            else:
+                fields = fields & set(data.keys())
+        return tuple(fields) if fields else tuple()
 
-    def filter_gte(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["gte"] = value
-
-    def filter_lt(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["lt"] = value
-
-    def filter_lte(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["lte"] = value
-
-    def filter_eq(self, key, value):
-        self.query[key] = value
-
-    def filter_ne(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["ne"] = value
-
-    def filter_in(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["in"] = value
+    def get_data_primary_key(self, data):
+        if len(self.primary_keys) == 1:
+            return data.get(self.primary_keys[0], '')
+        return ".".join([data.get(pk, '') for pk in self.primary_keys])
 
     def commit(self):
-        raise NotImplementedError()
+        fields = self.get_fields()
+        datas = []
+        for data in self.datas:
+            datas.append({
+                "_index": self.index_name,
+                "_type": self.index_name,
+                "_id": self.get_data_primary_key(data),
+                "_source": {field: data[field] for field in fields}
+            })
+
+        connection = self.db.ensure_connection()
+        return elasticsearch.helpers.bulk(connection, datas, raise_on_exception=False, raise_on_error=False)
+
 
 class ElasticsearchDeleteBuilder(DeleteBuilder):
-    def __init__(self, *args, **kwargs):
-        super(ElasticsearchDeleteBuilder, self).__init__(*args, **kwargs)
-
-        self.query = []
-        self.query_values = []
-        self.sql = None
-
-    def filter_gt(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["gt"] = value
-
-    def filter_gte(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["gte"] = value
-
-    def filter_lt(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["lt"] = value
-
-    def filter_lte(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["lte"] = value
-
-    def filter_eq(self, key, value):
-        self.query[key] = value
-
-    def filter_ne(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["ne"] = value
-
-    def filter_in(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["in"] = value
-
     def commit(self):
         raise NotImplementedError()
 
@@ -199,6 +277,8 @@ class ElasticsearchDB(DataBase):
         all_config = {}
         all_config.update(self.DEFAULT_CONFIG)
         all_config.update(config)
+
+        self.virtual_views = all_config.pop("virtual_views") if "virtual_views" in all_config else []
 
         super(ElasticsearchDB, self).__init__(all_config)
 

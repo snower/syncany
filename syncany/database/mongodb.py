@@ -22,6 +22,7 @@ class MongoQueryBuilder(QueryBuilder):
         name = self.name.split(".")
         self.db_name = self.db.db_name
         self.collection_name = ".".join(name[1:])
+        self.bquery = None
 
     def filter_gt(self, key, value):
         if key not in self.query:
@@ -69,7 +70,8 @@ class MongoQueryBuilder(QueryBuilder):
         for virtual_collection in self.db.virtual_collections:
             if virtual_collection["name"] != self.collection_name:
                 continue
-            if isinstance(virtual_collection["query"], list):
+            if isinstance(virtual_collection["query"], list) and \
+                    virtual_collection["query"] and isinstance(virtual_collection["query"][0], str):
                 virtual_collection["query"] = " ".join(virtual_collection["query"])
             return virtual_collection['query'], virtual_collection.get("args", [])
         return None, None
@@ -94,6 +96,11 @@ class MongoQueryBuilder(QueryBuilder):
         return str(value)
 
     def format_query(self, virtual_collection, virtual_args):
+        if not isinstance(virtual_collection, str):
+            if not isinstance(virtual_collection, list):
+                virtual_collection = [virtual_collection]
+            return [{"$match": self.query}] + virtual_collection
+
         UUID, true, false, null = uuid.UUID, True, False, None
         def Datetime(*args):
             if len(args) == 1 and isinstance(args[0], str):
@@ -103,21 +110,25 @@ class MongoQueryBuilder(QueryBuilder):
         exps = {">": "$gt", ">=": "$gte", "<": "$lt", "<=": "$lte", "!=": "$ne", "in": "$in"}
         virtual_values = []
         for arg in virtual_args:
-            if isinstance(arg, str) or arg[1] == "=":
+            if isinstance(arg, str) or arg[1] == "==":
                 if arg in self.query and not isinstance(self.query[arg], dict):
                     virtual_values.append(self.format_value(self.query[arg]))
+                    self.query.pop(arg)
                 else:
                     virtual_values.append('""')
             else:
                 if arg[0] in self.query and arg[1] in exps and exps[arg[1]] in self.query[arg[0]]:
                     virtual_values.append(self.format_value(self.query[arg[0]][exps[arg[1]]]))
+                    self.query[arg[0]].pop(exps[arg[1]])
+                    if not self.query[arg[0]]:
+                        self.query.pop(arg[0])
                 else:
                     virtual_values.append('""')
         if virtual_values:
             virtual_collection = virtual_collection % tuple(virtual_values)
 
         virtual_collection = eval(virtual_collection)
-        if isinstance(virtual_collection, list):
+        if not isinstance(virtual_collection, list):
             virtual_collection = [virtual_collection]
         return [{"$match": self.query}] + virtual_collection
 
@@ -130,11 +141,13 @@ class MongoQueryBuilder(QueryBuilder):
             if self.limit:
                 if self.limit[0]:
                     virtual_collection.append({"$skip": self.limit[0]})
-                virtual_collection.append({"$limit": self.limit[0]})
+                virtual_collection.append({"$limit": self.limit[1]})
             if self.orders:
                 virtual_collection.append({"$sort": SON(list(self.orders))})
+            self.bquery = virtual_collection
             cursor = connection[self.db_name][self.collection_name].aggregate(virtual_collection, allowDiskUse=True)
         else:
+            self.bquery = self.query
             cursor = connection[self.db_name][self.collection_name].find(self.query, {field: 1 for field in self.fields} if self.fields else None)
             if self.limit:
                 if self.limit[0]:
