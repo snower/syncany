@@ -94,14 +94,14 @@ class ElasticsearchQueryBuilder(QueryBuilder):
             return 'null'
         return str(value)
 
-    def format_query(self, query, virtual_collection, virtual_args):
-        if not isinstance(virtual_collection, str):
-            if "query" in virtual_collection:
+    def format_query(self, query, virtual_query, virtual_args):
+        if not isinstance(virtual_query, str):
+            if "query" in virtual_query:
                 if not query:
                     query = {"bool": {"must": []}}
-                query["bool"]["must"].append(virtual_collection["query"])
-            virtual_collection["query"] = query
-            return virtual_collection
+                query["bool"]["must"].append(virtual_query["query"])
+            virtual_query["query"] = query
+            return virtual_query
 
         exps = {">": "gt", ">=": "gte", "<": "lt", "<=": "lte", "==": "eq", "!=": "ne", "in": "in"}
         virtual_values = []
@@ -123,16 +123,16 @@ class ElasticsearchQueryBuilder(QueryBuilder):
                 else:
                     virtual_values.append('""')
         if virtual_values:
-            virtual_collection = virtual_collection % tuple(virtual_values)
+            virtual_query = virtual_query % tuple(virtual_values)
 
-        virtual_collection = json.loads(virtual_collection)
-        if not isinstance(virtual_collection, str):
-            if "query" in virtual_collection:
+        virtual_query = json.loads(virtual_query)
+        if not isinstance(virtual_query, str):
+            if "query" in virtual_query:
                 if not query:
                     query = {"bool": {"must": []}}
-                query["bool"]["must"].append(virtual_collection["query"])
-            virtual_collection["query"] = query
-            return virtual_collection
+                query["bool"]["must"].append(virtual_query["query"])
+            virtual_query["query"] = query
+            return virtual_query
 
     def build_query(self):
         if not self.query:
@@ -155,9 +155,9 @@ class ElasticsearchQueryBuilder(QueryBuilder):
 
     def commit(self):
         self.equery = self.build_query()
-        virtual_collection, virtual_args = self.format_table()
-        if virtual_collection:
-            self.equery = self.format_query(self.equery, virtual_collection, virtual_args)
+        virtual_query, virtual_args = self.format_table()
+        if virtual_query:
+            self.equery = self.format_query(self.equery, virtual_query, virtual_args)
         else:
             self.equery = {"query": self.equery}
             if self.fields:
