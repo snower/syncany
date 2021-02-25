@@ -162,7 +162,7 @@ class ElasticsearchQueryBuilder(QueryBuilder):
             self.equery = {"query": self.equery}
             if self.fields:
                 esfields = {"_index", "_type", "_id", "_score", "_source"}
-                fields = [field[8:] for field in self.fields if field[:8] == "_source" and field not in esfields]
+                fields = [field[8:] for field in self.fields if field[:8] == "_source." and field not in esfields]
                 if fields:
                     self.equery["_source"] = self.fields
 
