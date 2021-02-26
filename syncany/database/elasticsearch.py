@@ -104,26 +104,32 @@ class ElasticsearchQueryBuilder(QueryBuilder):
             return virtual_query
 
         exps = {">": "gt", ">=": "gte", "<": "lt", "<=": "lte", "==": "eq", "!=": "ne", "in": "in"}
-        virtual_values = []
+        virtual_values, matched_querys = [], []
         for arg in virtual_args:
             if isinstance(arg, str) or arg[1] == "==":
                 if arg in self.query and "eq" in self.query[arg]:
                     virtual_values.append(self.format_value(self.query[arg]['eq']))
-                    self.query[arg].pop('eq')
-                    if not self.query[arg]:
-                        self.query.pop(arg)
+                    matched_querys.append((arg[0], 'eq'))
                 else:
                     virtual_values.append('""')
             else:
                 if arg[0] in self.query and arg[1] in exps and exps[arg[1]] in self.query[arg[0]]:
                     virtual_values.append(self.format_value(self.query[arg[0]][exps[arg[1]]]))
-                    self.query[arg[0]].pop(exps[arg[1]])
-                    if not self.query[arg[0]]:
-                        self.query.pop(arg[0])
+                    matched_querys.append((arg[0], arg[1]))
                 else:
                     virtual_values.append('""')
         if virtual_values:
             virtual_query = virtual_query % tuple(virtual_values)
+
+        for mq in matched_querys:
+            if isinstance(mq, tuple):
+                if mq[0] not in self.query:
+                    continue
+                self.query[mq[0]].pop(exps[mq[1]], None)
+                if not self.query[mq[0]]:
+                    self.query.pop(mq[0], None)
+            else:
+                self.query.pop(mq, None)
 
         virtual_query = json.loads(virtual_query)
         if not isinstance(virtual_query, str):
