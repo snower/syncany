@@ -295,3 +295,6 @@ class CsvDB(DataBase):
                     self.write_file(fp, csv_file)
 
         self.csvs = {}
+
+    def verbose(self):
+        return "%s<%s>" % (self.name, self.config["path"])

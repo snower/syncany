@@ -52,12 +52,13 @@ class DBUpdateDeleteInsertOutputer(DBOutputer):
 
             self.load_data_keys[primary_key] = values
             self.load_datas.append(values)
-        self.querys.append(query)
+        self.outputer_state["query_count"] += 1
+        self.outputer_state["load_count"] += len(datas)
 
     def insert(self, datas):
         insert = self.db.insert(self.name, self.primary_keys, list(self.schema.keys()), datas)
         insert.commit()
-        self.operators.append(insert)
+        self.outputer_state["insert_count"] += 1
 
     def update(self, data, load_data):
         diff_data = {}
@@ -73,7 +74,7 @@ class DBUpdateDeleteInsertOutputer(DBOutputer):
         for primary_key in self.primary_keys:
             update.filter_eq(primary_key, data[primary_key])
         update.commit()
-        self.operators.append(update)
+        self.outputer_state["update_count"] += 1
 
     def remove(self, datas):
         if len(self.primary_keys) == 1:
@@ -83,14 +84,14 @@ class DBUpdateDeleteInsertOutputer(DBOutputer):
             delete = self.db.delete(self.name, self.primary_keys)
             delete.filter_in(self.primary_keys[0], primary_key_datas)
             delete.commit()
-            self.operators.append(delete)
+            self.outputer_state["delete_count"] += 1
         else:
             for data in datas:
                 delete = self.db.delete(self.name, self.primary_keys)
                 for primary_key in self.primary_keys:
                     delete.filter_eq(primary_key, data[primary_key])
                 delete.commit()
-                self.operators.append(delete)
+                self.outputer_state["delete_count"] += 1
 
     def store(self, datas):
         super(DBUpdateDeleteInsertOutputer, self).store(datas)

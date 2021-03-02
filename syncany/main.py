@@ -3,10 +3,41 @@
 # create by: snower
 
 import sys
+import time
 import argparse
 import traceback
 from .logger import get_logger
 from .taskers.json_tasker import JsonTasker
+
+def warp_database_logging(tasker):
+    def commit_warper(database, builder, func):
+        def _(*args, **kwargs):
+            start_time = time.time()
+            result = func(*args, **kwargs)
+            database_verbose = database.verbose()
+            builder_verbose = builder.verbose()
+            if builder_verbose:
+                get_logger().info("%s %s -> %s %.2fms\n%s\n", database.__class__.__name__, database_verbose,
+                                  builder.__class__.__name__, (time.time() - start_time) * 1000,
+                                  builder.verbose())
+            else:
+                get_logger().info("%s %s -> %s %.2fms", database.__class__.__name__, database_verbose, builder.__class__.__name__,
+                                  (time.time() - start_time) * 1000)
+            return result
+        return _
+
+    def builder_warper(database, func):
+        def _(*args, **kwargs):
+            builder = func(*args, **kwargs)
+            builder.commit = commit_warper(database, builder, builder.commit)
+            return builder
+        return _
+
+    for name, database in list(tasker.databases.items()):
+        database.query = builder_warper(database, database.query)
+        database.insert = builder_warper(database, database.insert)
+        database.update = builder_warper(database, database.update)
+        database.delete = builder_warper(database, database.delete)
 
 def load_dependency(json_filename, ap, register_aps):
     tasker = JsonTasker(json_filename)
@@ -39,6 +70,8 @@ def compile_dependency(arguments, tasker, dependency_taskers):
     kn, knl = (tasker.name + "@"), len(tasker.name + "@")
     arguments = {key[knl:]: value for key, value in arguments.items() if key[:knl] == kn}
     tasker.compile(arguments)
+    if "@verbose" in arguments and arguments["@verbose"]:
+        warp_database_logging(tasker)
 
 def run_dependency(tasker, dependency_taskers):
     dependency_statistics = []
@@ -68,6 +101,8 @@ def main():
             description = 'syncany %s' % tasker.name
         ap = argparse.ArgumentParser(description=description)
         ap.add_argument("json", type=str, help="json filename")
+        ap.add_argument('--@verbose', dest='@verbose', nargs='?', const=True, metavar=False,
+                        default=False, type=bool, help='is show detail info (defualt: False)')
 
         register_aps = {}
         for argument in arguments:
@@ -91,6 +126,9 @@ def main():
         for dependency_tasker in dependency_taskers:
             compile_dependency(arguments, *dependency_tasker)
         tasker.compile(arguments)
+        if "@verbose" in arguments and arguments["@verbose"]:
+            warp_database_logging(tasker)
+
         for dependency_tasker in dependency_taskers:
             run_dependency(*dependency_tasker)
         tasker.run()

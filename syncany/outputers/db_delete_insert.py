@@ -29,12 +29,12 @@ class DBDeleteInsertOutputer(DBOutputer):
             getattr(delete, "filter_%s" % exp)(key, value)
 
         delete.commit()
-        self.operators.append(delete)
+        self.outputer_state["delete_count"] += 1
 
     def insert(self, datas):
         insert = self.db.insert(self.name, self.primary_keys, list(self.schema.keys()), datas)
         insert.commit()
-        self.operators.append(insert)
+        self.outputer_state["insert_count"] += 1
 
     def store(self, datas):
         super(DBDeleteInsertOutputer, self).store(datas)

@@ -4,6 +4,7 @@
 
 import types
 import re
+from collections import defaultdict
 
 class KeyMatcher(object):
     def __init__(self, matcher, valuer):
@@ -32,6 +33,7 @@ class Loader(object):
         self.key_matchers = []
         self.datas = []
         self.loaded = False
+        self.loader_state = defaultdict(int)
 
     def clone(self):
         loader = self.__class__(self.primary_keys)

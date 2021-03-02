@@ -195,6 +195,9 @@ class ElasticsearchQueryBuilder(QueryBuilder):
             return result["hits"]["hits"]
         return []
 
+    def verbose(self):
+        return "%s\n%s" % (self.index_name, self.query)
+
 class ElasticsearchInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
         super(ElasticsearchInsertBuilder, self).__init__(*args, **kwargs)

@@ -12,7 +12,6 @@ class DBLoader(Loader):
 
         self.db = db
         self.name = name
-        self.querys = []
         self.compiled = False
         self.last_data = None
 
@@ -70,7 +69,8 @@ class DBLoader(Loader):
             query.order_by(primary_key)
 
         self.datas = query.commit()
-        self.querys.append(query)
+        self.loader_state["query_count"] += 1
+        self.loader_state["load_count"] += len(self.datas)
         self.compiled = False
         self.loaded = True
 
@@ -103,6 +103,6 @@ class DBLoader(Loader):
 
     def statistics(self):
         return {
-            "querys": len(self.querys),
-            "rows": len(self.datas)
+            "querys": self.loader_state["query_count"],
+            "rows": self.loader_state["load_count"]
         }

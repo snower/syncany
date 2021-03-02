@@ -348,3 +348,6 @@ class ExeclDB(DataBase):
 
         self.execls = {}
         self.execl_fps = {}
+
+    def verbose(self):
+        return "%s<%s>" % (self.name, self.config["path"])

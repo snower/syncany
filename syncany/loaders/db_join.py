@@ -111,7 +111,8 @@ class DBJoinLoader(DBLoader):
                         self.data_keys[primary_key].append(values)
                     self.datas.append(values)
 
-                self.querys.append(query)
+                self.loader_state["query_count"] += 1
+                self.loader_state["load_count"] += len(datas)
 
             self.unload_primary_keys = set([])
 

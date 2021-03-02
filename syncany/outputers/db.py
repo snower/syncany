@@ -10,8 +10,6 @@ class DBOutputer(Outputer):
 
         self.db = db
         self.name = name
-        self.querys = []
-        self.operators = []
 
     def clone(self):
         outputer = self.__class__(self.db, self.name, self.primary_keys)
@@ -23,9 +21,11 @@ class DBOutputer(Outputer):
         return outputer
 
     def statistics(self):
+        operator_count = self.outputer_state["insert_count"] + self.outputer_state["update_count"] \
+                         + self.outputer_state["delete_count"]
         return {
-            "querys": len(self.querys),
-            "operators": len(self.operators),
-            "load_rows": len(self.load_datas),
+            "querys": self.outputer_state["query_count"],
+            "operators": operator_count,
+            "load_rows": self.outputer_state["load_count"],
             "rows": len(self.datas)
         }

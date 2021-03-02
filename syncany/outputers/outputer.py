@@ -2,6 +2,8 @@
 # 18/8/6
 # create by: snower
 
+from collections import defaultdict
+
 class Outputer(object):
     def __init__(self, primary_keys):
         self.primary_keys = primary_keys
@@ -9,6 +11,7 @@ class Outputer(object):
         self.filters = []
         self.load_datas = []
         self.datas = []
+        self.outputer_state = defaultdict(int)
 
     def clone(self):
         outputer = self.__class__(self.primary_keys)

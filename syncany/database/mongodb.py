@@ -160,18 +160,24 @@ class MongoQueryBuilder(QueryBuilder):
                 virtual_collection.append({"$limit": self.limit[1]})
             if self.orders:
                 virtual_collection.append({"$sort": SON(list(self.orders))})
-            self.bquery = virtual_collection
             cursor = connection[self.db_name][self.collection_name].aggregate(virtual_collection, allowDiskUse=True)
+            self.bquery = virtual_collection
         else:
-            self.bquery = self.query
-            cursor = connection[self.db_name][self.collection_name].find(self.query, {field: 1 for field in self.fields} if self.fields else None)
+            fields = {field: 1 for field in self.fields} if self.fields else None
+            cursor = connection[self.db_name][self.collection_name].find(self.query, fields)
             if self.limit:
                 if self.limit[0]:
                     cursor.skip(self.limit[0])
                 cursor.limit(self.limit[1])
             if self.orders:
                 cursor.sort(self.orders)
+            self.bquery = (self.query, fields) if fields else self.query
         return list(cursor)
+
+    def verbose(self):
+        if isinstance(self.bquery, tuple):
+            return "%s\n%s %s" % (self.collection_name, self.bquery[0], self.bquery[1])
+        return "%s\n%s" % (self.collection_name, self.bquery)
 
 class MongoInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
@@ -237,6 +243,14 @@ class MongoUpdateBuilder(UpdateBuilder):
             update[key] = value
         return connection[self.db_name][self.collection_name].update_one(self.query, {"$set": update})
 
+    def verbose(self):
+        update = {}
+        for key, value in self.update.items():
+            if self.diff_data and key not in self.diff_data:
+                continue
+            update[key] = value
+        return "%s\n%s\n%s" % (self.collection_name, self.query, update)
+
 class MongoDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
         super(MongoDeleteBuilder, self).__init__(*args, **kwargs)
@@ -281,6 +295,9 @@ class MongoDeleteBuilder(DeleteBuilder):
     def commit(self):
         connection = self.db.ensure_connection()
         return connection[self.db_name][self.collection_name].remove(self.query, multi=True)
+
+    def verbose(self):
+        return "%s\n%s" % (self.collection_name, self.query)
 
 class MongoDB(DataBase):
     DEFAULT_CONFIG = {
@@ -328,3 +345,6 @@ class MongoDB(DataBase):
         if self.connection:
             self.connection.close()
         self.connection = None
+
+    def verbose(self):
+        return "%s<%s>" % (self.name, self.db_name)

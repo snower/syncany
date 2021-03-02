@@ -267,3 +267,6 @@ class JsonDB(DataBase):
                     self.write_file(fp, json_file)
 
         self.jsons = {}
+
+    def verbose(self):
+        return "%s<%s>" % (self.name, self.config["path"])

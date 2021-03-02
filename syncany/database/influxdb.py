@@ -188,10 +188,16 @@ class InfluxDBQueryBuilder(QueryBuilder):
         where = (" WHERE " + query) if query else ""
         order_by = (" ORDER BY " + ",".join(self.orders)) if self.orders else ""
         limit = (" LIMIT %s%s" % (("%s," % self.limit[0]) if self.limit[0] else "", self.limit[1])) if self.limit else ""
-        self.sql = "SELECT %s FROM %s%s%s%s" % (fields, db_name, where, order_by, limit)
+        sql = "SELECT %s FROM %s%s%s%s" % (fields, db_name, where, order_by, limit)
         connection = self.db.ensure_connection()
-        result = connection.query(self.sql % escape_args(query_values))
+        result = connection.query(sql % escape_args(query_values))
+        self.sql = (sql, query_values)
         return list(result.get_points())
+
+    def verbose(self):
+        if isinstance(self.sql, tuple):
+            return "%s\n%s" % self.sql
+        return ''
 
 class InfluxDBInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
@@ -358,9 +364,15 @@ class InfluxDBDeleteBuilder(DeleteBuilder):
                 query.append(self.query[i])
                 query_values.append(self.query_values[i])
 
-        self.sql = "DELETE FROM %s WHERE %s" % (db_name, " AND ".join(self.query))
+        sql = "DELETE FROM %s WHERE %s" % (db_name, " AND ".join(self.query))
         connection = self.db.ensure_connection()
-        return connection.query(self.sql % escape_args(query_values))
+        self.sql = (sql, query_values)
+        return connection.query(sql % escape_args(query_values))
+
+    def verbose(self):
+        if isinstance(self.sql, tuple):
+            return "%s\n%s" % self.sql
+        return ''
 
 class InfluxDB(DataBase):
     DEFAULT_CONFIG = {
@@ -415,3 +427,6 @@ class InfluxDB(DataBase):
         if self.connection:
             self.connection.close()
         self.connection = None
+
+    def verbose(self):
+        return "%s<%s>" % (self.name, self.db_name)

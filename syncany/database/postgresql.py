@@ -133,16 +133,22 @@ class PostgresqlQueryBuilder(QueryBuilder):
         where = (" WHERE " + query) if query else ""
         order_by = (" ORDER BY " + ",".join(self.orders)) if self.orders else ""
         limit = (" LIMIT %s%s" % (("%s," % self.limit[0]) if self.limit[0] else "", self.limit[1])) if self.limit else ""
-        self.sql = "SELECT %s FROM %s%s%s%s" % (fields, db_name, where, order_by, limit)
+        sql = "SELECT %s FROM %s%s%s%s" % (fields, db_name, where, order_by, limit)
         connection = self.db.ensure_connection()
         cursor = connection.cursor(cursor_factory=DictCursor)
         try:
-            cursor.execute(self.sql, query_values)
+            cursor.execute(sql, query_values)
             datas = [data for data in cursor]
         finally:
             cursor.close()
             connection.commit()
+        self.sql = (sql, query_values)
         return datas
+
+    def verbose(self):
+        if isinstance(self.sql, tuple):
+            return "%s\n%s" % self.sql
+        return ''
 
 class PostgresqlInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
@@ -169,15 +175,21 @@ class PostgresqlInsertBuilder(InsertBuilder):
 
         db_name = self.name.split(".")
         db_name = ('"%s"' % ".".join(db_name[1:])) if len(db_name) > 1 else ('"' + db_name[0] + '"')
-        self.sql = "INSERT INTO %s (%s) VALUES (%s)" % (db_name, ",".join(['"' + field + '"' for field in fields]), ",".join(["%s" for _ in fields]))
+        sql = "INSERT INTO %s (%s) VALUES (%s)" % (db_name, ",".join(['"' + field + '"' for field in fields]), ",".join(["%s" for _ in fields]))
         connection = self.db.ensure_connection()
         cursor = connection.cursor()
         try:
-            cursor.executemany(self.sql.replace('"', '"'), datas)
+            cursor.executemany(sql, datas)
         finally:
             cursor.close()
             connection.commit()
+        self.sql = (sql, datas)
         return cursor
+
+    def verbose(self):
+        if isinstance(self.sql, tuple):
+            return "%s\n%s" % self.sql
+        return ''
 
 class PostgresqlUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -226,15 +238,21 @@ class PostgresqlUpdateBuilder(UpdateBuilder):
 
         db_name = self.name.split(".")
         db_name = ('"%s"' % ".".join(db_name[1:])) if len(db_name) > 1 else ('"' + db_name[0] + '"')
-        self.sql = "UPDATE %s SET %s WHERE %s" % (db_name, ",".join(update), " AND ".join(self.query))
+        sql = "UPDATE %s SET %s WHERE %s" % (db_name, ",".join(update), " AND ".join(self.query))
         connection = self.db.ensure_connection()
         cursor = connection.cursor()
         try:
-            cursor.execute(self.sql, values)
+            cursor.execute(sql, values)
         finally:
             cursor.close()
             connection.commit()
+        self.sql = (sql, values)
         return cursor
+
+    def verbose(self):
+        if isinstance(self.sql, tuple):
+            return "%s\n%s" % self.sql
+        return ''
 
 class PostgresqlDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
@@ -275,15 +293,21 @@ class PostgresqlDeleteBuilder(DeleteBuilder):
     def commit(self):
         db_name = self.name.split(".")
         db_name = ('"%s"' % ".".join(db_name[1:])) if len(db_name) > 1 else ('"' + db_name[0] + '"')
-        self.sql = "DELETE FROM %s WHERE %s" % (db_name, " AND ".join(self.query))
+        sql = "DELETE FROM %s WHERE %s" % (db_name, " AND ".join(self.query))
         connection = self.db.ensure_connection()
         cursor = connection.cursor()
         try:
-            cursor.execute(self.sql, self.query_values)
+            cursor.execute(sql, self.query_values)
         finally:
             cursor.close()
             connection.commit()
+        self.sql = (sql, self.query_values)
         return cursor
+
+    def verbose(self):
+        if isinstance(self.sql, tuple):
+            return "%s\n%s" % self.sql
+        return ''
 
 class PostgresqlDB(DataBase):
     DEFAULT_CONFIG = {
@@ -344,3 +368,6 @@ class PostgresqlDB(DataBase):
         if self.connection:
             self.connection.close()
         self.connection = None
+
+    def verbose(self):
+        return "%s<%s>" % (self.name, self.db_name)

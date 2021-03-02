@@ -8,7 +8,7 @@ class DBInsertOutputer(DBOutputer):
     def insert(self, datas):
         insert = self.db.insert(self.name, self.primary_keys, list(self.schema.keys()), datas)
         insert.commit()
-        self.operators.append(insert)
+        self.outputer_state["insert_count"] += 1
 
     def store(self, datas):
         super(DBInsertOutputer, self).store(datas)

@@ -45,6 +45,9 @@ class QueryBuilder(object):
     def commit(self):
         raise NotImplementedError()
 
+    def verbose(self):
+        return ""
+
 class InsertBuilder(object):
     def __init__(self, db, name, primary_keys, fields, datas):
         self.db = db
@@ -55,6 +58,9 @@ class InsertBuilder(object):
 
     def commit(self):
         raise NotImplementedError()
+
+    def verbose(self):
+        return ""
 
 class UpdateBuilder(object):
     def __init__(self, db, name, primary_keys, fields, update, diff_data=None):
@@ -90,6 +96,9 @@ class UpdateBuilder(object):
     def commit(self):
         raise NotImplementedError()
 
+    def verbose(self):
+        return ""
+
 class DeleteBuilder(object):
     def __init__(self, db, name, primary_keys):
         self.db = db
@@ -121,6 +130,9 @@ class DeleteBuilder(object):
     def commit(self):
         raise NotImplementedError()
 
+    def verbose(self):
+        return ""
+
 class DataBase(object):
     def __init__(self, config):
         self.name = config.pop("name")
@@ -146,3 +158,6 @@ class DataBase(object):
 
     def get_default_outputer(self):
         return "db_update_delete_insert_outputer"
+
+    def verbose(self):
+        return self.name

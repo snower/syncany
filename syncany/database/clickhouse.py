@@ -145,17 +145,23 @@ class ClickhouseQueryBuilder(QueryBuilder):
         where = (" WHERE " + query) if query else ""
         order_by = (" ORDER BY " + ",".join(self.orders)) if self.orders else ""
         limit = (" LIMIT %s%s" % (("%s," % self.limit[0]) if self.limit[0] else "", self.limit[1])) if self.limit else ""
-        self.sql = "SELECT %s FROM %s%s%s%s" % (fields, db_name, where, order_by, limit)
+        sql = "SELECT %s FROM %s%s%s%s" % (fields, db_name, where, order_by, limit)
         connection = self.db.ensure_connection()
         cursor = connection.cursor()
         try:
-            cursor.execute(self.sql % escape_args(query_values))
+            cursor.execute(sql % escape_args(query_values))
             datas = cursor.fetchall()
             names = [c.name for c in cursor.description]
             datas = [dict(zip(names, data)) for data in datas]
         finally:
             cursor.close()
+        self.sql = (sql, datas)
         return datas
+
+    def verbose(self):
+        if isinstance(self.sql, tuple):
+            return "%s\n%s" % self.sql
+        return ''
 
 class ClickhouseInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
@@ -182,14 +188,20 @@ class ClickhouseInsertBuilder(InsertBuilder):
 
         db_name = self.name.split(".")
         db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
-        self.sql = "INSERT INTO %s (%s) VALUES " % (db_name, ",".join(['`' + field + '`' for field in fields]))
+        sql = "INSERT INTO %s (%s) VALUES " % (db_name, ",".join(['`' + field + '`' for field in fields]))
         connection = self.db.ensure_connection()
         cursor = connection.cursor()
         try:
-            cursor.executemany(self.sql, datas)
+            cursor.executemany(sql, datas)
         finally:
             cursor.close()
+        self.sql = (sql, datas)
         return cursor
+
+    def verbose(self):
+        if isinstance(self.sql, tuple):
+            return "%s\n%s" % self.sql
+        return ''
 
 class ClickhouseUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -238,14 +250,20 @@ class ClickhouseUpdateBuilder(UpdateBuilder):
 
         db_name = self.name.split(".")
         db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
-        self.sql = "ALTER TABLE %s UPDATE %s WHERE %s" % (db_name, ",".join(update), " AND ".join(self.query))
+        sql = "ALTER TABLE %s UPDATE %s WHERE %s" % (db_name, ",".join(update), " AND ".join(self.query))
         connection = self.db.ensure_connection()
         cursor = connection.cursor()
         try:
-            cursor.execute(self.sql % escape_args(values))
+            cursor.execute(sql % escape_args(values))
         finally:
             cursor.close()
+        self.sql = (sql, values)
         return cursor
+
+    def verbose(self):
+        if isinstance(self.sql, tuple):
+            return "%s\n%s" % self.sql
+        return ''
 
 class ClickhouseDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
@@ -286,14 +304,20 @@ class ClickhouseDeleteBuilder(DeleteBuilder):
     def commit(self):
         db_name = self.name.split(".")
         db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
-        self.sql = "ALTER TABLE %s DELETE WHERE %s" % (db_name, " AND ".join(self.query))
+        sql = "ALTER TABLE %s DELETE WHERE %s" % (db_name, " AND ".join(self.query))
         connection = self.db.ensure_connection()
         cursor = connection.cursor()
         try:
-            cursor.execute(self.sql % escape_args(self.query_values))
+            cursor.execute(sql % escape_args(self.query_values))
         finally:
             cursor.close()
+        self.sql = (sql, self.query_values)
         return cursor
+
+    def verbose(self):
+        if isinstance(self.sql, tuple):
+            return "%s\n%s" % self.sql
+        return ''
 
 class ClickhouseDB(DataBase):
     DEFAULT_CONFIG = {
@@ -348,3 +372,6 @@ class ClickhouseDB(DataBase):
         if self.connection:
             self.connection.close()
         self.connection = None
+
+    def verbose(self):
+        return "%s<%s>" % (self.name, self.db_name)

@@ -33,7 +33,7 @@ class DBUpdateInsertOutputer(DBOutputer):
                 query.filter_in(self.primary_keys[0], primary_values)
 
                 load_datas.extend(query.commit())
-                self.querys.append(query)
+                self.outputer_state["query_count"] += 1
         else:
             for data in datas:
                 query = self.db.query(self.name, self.primary_keys, list(fields))
@@ -41,7 +41,8 @@ class DBUpdateInsertOutputer(DBOutputer):
                     query.filter_eq(primary_key, data[primary_key])
 
                 load_datas.extend(query.commit())
-                self.querys.append(query)
+                self.outputer_state["query_count"] += 1
+        self.outputer_state["load_count"] += len(load_datas)
 
         for data in load_datas:
             primary_key = self.get_data_primary_key(data)
@@ -57,7 +58,7 @@ class DBUpdateInsertOutputer(DBOutputer):
     def insert(self, datas):
         insert = self.db.insert(self.name, self.primary_keys, list(self.schema.keys()), datas)
         insert.commit()
-        self.operators.append(insert)
+        self.outputer_state["insert_count"] += 1
 
     def update(self, data, load_data):
         diff_data = {}
@@ -73,7 +74,7 @@ class DBUpdateInsertOutputer(DBOutputer):
         for primary_key in self.primary_keys:
             update.filter_eq(primary_key, data[primary_key])
         update.commit()
-        self.operators.append(update)
+        self.outputer_state["update_count"] += 1
 
     def store(self, datas):
         super(DBUpdateInsertOutputer, self).store(datas)
