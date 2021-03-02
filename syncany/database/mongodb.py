@@ -63,6 +63,14 @@ class MongoQueryBuilder(QueryBuilder):
         else:
             self.limit = (start, count)
 
+    def filter_cursor(self, last_data, offset, count):
+        if len(self.primary_keys) == 1 and self.primary_keys[0] in last_data:
+            if self.primary_keys[0] not in self.query:
+                self.query[self.primary_keys[0]] = {}
+            self.query[self.primary_keys[0]]["$gt"] = last_data[self.primary_keys[0]]
+        else:
+            self.limit = (offset, count)
+
     def order_by(self, key, direct=1):
         self.orders.append((key, 1 if direct else -1))
 

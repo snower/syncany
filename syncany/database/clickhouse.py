@@ -71,6 +71,13 @@ class ClickhouseQueryBuilder(QueryBuilder):
         else:
             self.limit = (start, count)
 
+    def filter_cursor(self, last_data, offset, count):
+        if len(self.primary_keys) == 1 and self.primary_keys[0] in last_data:
+            self.query.append('`' + self.primary_keys[0] + "`>%s")
+            self.query_values.append(last_data[self.primary_keys[0]])
+        else:
+            self.limit = (offset, count)
+
     def order_by(self, key, direct=1):
         self.orders.append(('`' + key + ("` ASC" if direct else "` DESC")))
 

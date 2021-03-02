@@ -43,6 +43,9 @@ class TextLineQueryBuilder(QueryBuilder):
         else:
             self.limit = (start, start + count)
 
+    def filter_cursor(self, last_data, offset, count):
+        self.limit = (offset, offset + count)
+
     def order_by(self, key, direct=1):
         self.orders.append((key, direct))
 

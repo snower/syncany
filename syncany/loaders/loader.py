@@ -28,6 +28,7 @@ class Loader(object):
         self.is_yield = is_yield
         self.schema = {}
         self.filters = []
+        self.current_cursor = None
         self.key_matchers = []
         self.datas = []
         self.loaded = False
@@ -156,6 +157,9 @@ class Loader(object):
 
     def filter_limit(self, value):
         self.add_filter(None, "limit", value)
+
+    def filter_cursor(self, last_data, offset, count):
+        self.current_cursor = (last_data, offset, count)
 
     def statistics(self):
         return {

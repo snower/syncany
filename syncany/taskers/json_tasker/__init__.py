@@ -777,12 +777,11 @@ class JsonTasker(Tasker):
             self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
 
             if cursor_data:
+                loader.filter_cursor(cursor_data, (batch_index - 1) * batch_count, batch_count)
                 vcursor = []
                 for primary_key in loader.primary_keys:
                     cv = cursor_data.get(primary_key, '')
-                    loader.filter_gt(primary_key, cv)
                     vcursor.append("%s -> %s" % (primary_key, cv))
-
                 get_logger().info("%s start %s -> %s batch cursor: %s", self.name, batch_index, batch_count,
                                   " ".join(vcursor))
 

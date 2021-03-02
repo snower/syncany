@@ -63,8 +63,12 @@ class DBLoader(Loader):
             else:
                 getattr(query, "filter_%s" % exp)(key, value)
 
+        if self.current_cursor:
+            query.filter_cursor(*self.current_cursor)
+
         for primary_key in self.primary_keys:
             query.order_by(primary_key)
+
         self.datas = query.commit()
         self.querys.append(query)
         self.compiled = False

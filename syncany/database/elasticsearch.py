@@ -61,6 +61,9 @@ class ElasticsearchQueryBuilder(QueryBuilder):
         else:
             self.limit = (start, count)
 
+    def filter_cursor(self, last_data, offset, count):
+        self.limit = (offset, offset + count)
+
     def order_by(self, key, direct=1):
         if key in {"_index", "_type", "_id", "_score", "_source"}:
             return
