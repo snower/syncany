@@ -37,6 +37,7 @@ class JsonTasker(Tasker):
     def __init__(self, json_filename):
         self.start_time = time.time()
         self.closed = False
+        self.terminated = False
         self.valuer_compiler = ValuerCompiler(self)
         self.valuer_creater = ValuerCreater(self)
         self.loader_creater = LoaderCreater(self)
@@ -280,6 +281,7 @@ class JsonTasker(Tasker):
                                   "help": "data outputer (default: %s)" % self.config["outputer"][2:]})
 
         arguments.append({"name": "@batch", "type": int, "default": 0, "help": "per sync batch count (default: 0 all)"})
+        arguments.append({"name": "@timeout", "type": int, "default": 0, "help": "loader timeout (default: 0 none timeout)"})
         return arguments
 
     def compile_key(self, key):
@@ -583,6 +585,9 @@ class JsonTasker(Tasker):
         if " use " in self.config["input"]:
             input_info = self.config["input"].split(" use ")
             if len(input_info) == 2:
+                short_names = {"P": "pull"}
+                if input_info[1] in short_names:
+                    input_info[1] = short_names[input_info[1]]
                 self.config["input"], self.config["loader"] = input_info[0].strip(), ("db_" + input_info[1] + "_loader").strip()
         input_loader = self.compile_foreign_key(self.config["input"])
         if not input_loader:
@@ -761,86 +766,105 @@ class JsonTasker(Tasker):
         for hooker in self.hookers:
             hooker.compiled(self)
 
-    def run_batch(self, batch_count):
-        batch_index = 0
-        loader_statistics = {}
-        outputer_statistics = {}
-        join_loaders_statistics = {}
-
-        cursor_data, ocursor_data = None, None
+    def run_batch(self, batch_count, loader_timeout):
+        loader_statistics, outputer_statistics, join_loaders_statistics = {}, {}, {}
+        batch_index, load_count, cursor_data, ocursor_data = 0, 0, None, None
         get_logger().info("%s start %s -> %s batch cursor: %s", self.name, 1, batch_count, "")
 
-        while True:
+        while not self.terminated:
             batch_index += 1
-            loader = self.loader.clone()
-            outputer = self.outputer.clone()
+            self.loader, self.outputer = self.loader.clone(), self.outputer.clone()
             self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
 
             if cursor_data:
-                loader.filter_cursor(cursor_data, (batch_index - 1) * batch_count, batch_count)
-                vcursor = []
-                for primary_key in loader.primary_keys:
-                    cv = cursor_data.get(primary_key, '')
-                    vcursor.append("%s -> %s" % (primary_key, cv))
-                get_logger().info("%s start %s -> %s batch cursor: %s", self.name, batch_index, batch_count,
-                                  " ".join(vcursor))
+                self.loader.filter_cursor(cursor_data, (batch_index - 1) * batch_count, batch_count)
+                vcursor = ["%s -> %s" % (primary_key, cursor_data.get(primary_key, ''))
+                           for primary_key in self.loader.primary_keys]
+                get_logger().info("%s start %s -> %s batch cursor: %s", self.name,
+                                  batch_index, batch_count, " ".join(vcursor))
 
-            loader.filter_limit(batch_count)
-            loader.load()
+            self.loader.filter_limit(batch_count)
+            self.loader.load(loader_timeout)
+            load_count = len(self.loader.datas)
             for hooker in self.hookers:
-                loader.datas = hooker.queried(self, loader.datas)
+                self.loader.datas = hooker.queried(self, self.loader.datas)
 
-            datas = loader.get()
+            datas = self.loader.get()
             if not datas:
                 break
             for hooker in self.hookers:
                 datas = hooker.loaded(self, datas)
 
-            cursor_data = loader.last_data
             if ocursor_data:
-                for primary_key in outputer.primary_keys:
-                    outputer.filter_gt(primary_key, ocursor_data.get(primary_key, ''))
-            outputer.store(datas)
-            ocursor_data = datas[-1]
+                self.outputer.filter_cursor(ocursor_data, (batch_index - 1) * batch_count, batch_count)
+            self.outputer.store(datas)
             for hooker in self.hookers:
                 hooker.outputed(self, datas)
 
-            self.print_statistics(*self.merge_statistics({}, {}, {}, loader, outputer, self.join_loaders.values()))
-            self.merge_statistics(loader_statistics, outputer_statistics, join_loaders_statistics, loader,
-                                  outputer, self.join_loaders.values())
+            self.print_statistics(*self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders.values()))
+            self.merge_statistics(loader_statistics, outputer_statistics, join_loaders_statistics, self.loader,
+                                  self.outputer, self.join_loaders.values())
+
+            if load_count < batch_count:
+                break
+            cursor_data, ocursor_data = self.loader.last_data, datas[-1]
 
         get_logger().info("%s end %s -> %s batch show statistics", self.name, batch_index - 1, batch_count)
         statistics = (self.loader.__class__.__name__, loader_statistics, self.outputer.__class__.__name__, outputer_statistics,
                       len(self.join_loaders), join_loaders_statistics)
         self.print_statistics(*statistics)
-        return statistics
+        return self.loader.next()
+
+    def run_once(self, loader_timeout):
+        self.loader.load(loader_timeout)
+        for hooker in self.hookers:
+            self.loader.datas = hooker.queried(self, self.loader.datas)
+
+        datas = self.loader.get()
+        if not datas:
+            statistics = self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders.values())
+            self.print_statistics(*statistics)
+            return self.loader.next()
+
+        for hooker in self.hookers:
+            datas = hooker.loaded(self, datas)
+
+        self.outputer.store(datas)
+        for hooker in self.hookers:
+            hooker.outputed(self, datas)
+
+        statistics = self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders.values())
+        self.print_statistics(*statistics)
+        return self.loader.next()
 
     def run(self):
         batch_count = int(self.arguments.get("@batch", 0))
+        loader_timeout = int(self.arguments.get("@timeout", None))
+
         try:
-            if batch_count > 0:
-                statistics = self.run_batch(batch_count)
-            else:
-                self.loader.load()
-                for hooker in self.hookers:
-                    self.loader.datas = hooker.queried(self, self.loader.datas)
+            while not self.terminated:
+                if batch_count > 0:
+                    if not self.run_batch(batch_count, loader_timeout):
+                        break
+                    continue
 
-                datas = self.loader.get()
-                if datas:
-                    for hooker in self.hookers:
-                        datas = hooker.loaded(self, datas)
-
-                    self.outputer.store(datas)
-                    for hooker in self.hookers:
-                        hooker.outputed(self, datas)
-
-                statistics = self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders.values())
-                self.print_statistics(*statistics)
+                if not self.run_once(loader_timeout):
+                    break
+                self.loader = self.loader.clone()
+                self.outputer = self.outputer.clone()
+                self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
         finally:
             self.close()
-
         get_logger().info("%s finish %s %s %.2fms", self.name, self.json_filename, self.config.get("name"), (time.time() - self.start_time) * 1000)
-        return statistics
+
+    def terminate(self):
+        if self.terminated:
+            return
+        self.terminated = True
+        if hasattr(self.loader, "terminate") and callable(self.loader.terminate):
+            self.loader.terminate()
+        if hasattr(self.outputer, "terminate") and callable(self.outputer.terminate):
+            self.outputer.terminate()
 
     def close(self):
         if self.closed:

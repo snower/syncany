@@ -6,12 +6,14 @@ from .loader import Loader
 from .const import ConstLoader
 from .db import DBLoader
 from .db_join import DBJoinLoader
+from .db_pull import DBPullLoader
 from ..errors import LoaderUnknownException
 
 LOADERS = {
     "const_loader": ConstLoader,
     "db_loader": DBLoader,
     "db_join_loader": DBJoinLoader,
+    "db_pull_loader": DBPullLoader,
 }
 
 def find_loader(name):

@@ -53,7 +53,7 @@ class DBJoinLoader(DBLoader):
         self.loaded = False
         return matcher
 
-    def load(self):
+    def load(self, timeout=None):
         if self.loaded:
             return
 

@@ -9,6 +9,7 @@ class Outputer(object):
         self.primary_keys = primary_keys
         self.schema = {}
         self.filters = []
+        self.current_cursor = None
         self.load_datas = []
         self.datas = []
         self.outputer_state = defaultdict(int)
@@ -76,6 +77,9 @@ class Outputer(object):
 
     def filter_in(self, key, value):
         self.add_filter(key, "in", value)
+
+    def filter_cursor(self, last_data, offset, count):
+        self.current_cursor = (last_data, offset, count)
 
     def statistics(self):
         return {

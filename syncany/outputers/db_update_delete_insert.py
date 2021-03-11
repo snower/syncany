@@ -41,6 +41,9 @@ class DBUpdateDeleteInsertOutputer(DBOutputer):
 
             getattr(query, "filter_%s" % exp)(key, value)
 
+        if self.current_cursor:
+            query.filter_cursor(*self.current_cursor)
+
         datas = query.commit()
         for data in datas:
             primary_key = self.get_data_primary_key(data)

@@ -6,6 +6,7 @@ import sys
 import time
 import argparse
 import traceback
+import signal
 from .logger import get_logger
 from .taskers.json_tasker import JsonTasker
 
@@ -93,6 +94,10 @@ def main():
 
     try:
         tasker = JsonTasker(sys.argv[1])
+        signal.signal(signal.SIGHUP, lambda signum, frame: tasker.terminate())
+        signal.signal(signal.SIGINT, lambda signum, frame: tasker.terminate())
+        signal.signal(signal.SIGTERM, lambda signum, frame: tasker.terminate())
+
         arguments = tasker.load()
 
         if "description" in tasker.config and tasker.config["description"]:
@@ -132,6 +137,9 @@ def main():
         for dependency_tasker in dependency_taskers:
             run_dependency(*dependency_tasker)
         tasker.run()
+    except SystemExit:
+        get_logger().error("signal exited")
+        exit(130)
     except KeyboardInterrupt:
         get_logger().error("Crtl+C exited")
         exit(130)

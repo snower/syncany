@@ -28,6 +28,12 @@ class DBDeleteInsertOutputer(DBOutputer):
 
             getattr(delete, "filter_%s" % exp)(key, value)
 
+        if self.current_cursor:
+            for primary_key in self.primary_keys:
+                if primary_key not in self.current_cursor[0]:
+                    continue
+                delete.filter_gt(primary_key, self.current_cursor[0][primary_key])
+
         delete.commit()
         self.outputer_state["delete_count"] += 1
 

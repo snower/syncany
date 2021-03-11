@@ -58,7 +58,12 @@ class Loader(object):
             return data.get(self.primary_keys[0], '')
         return ".".join([data.get(pk, '') for pk in self.primary_keys])
 
-    def load(self):
+    def next(self):
+        if not self.loaded:
+            return True
+        return False
+
+    def load(self, timeout=None):
         self.loaded = True
 
     def get(self):

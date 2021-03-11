@@ -25,7 +25,7 @@ class DBLoader(Loader):
         loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
         return loader
 
-    def load(self):
+    def load(self, timeout=None):
         if self.loaded:
             return
 
