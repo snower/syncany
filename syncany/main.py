@@ -95,7 +95,6 @@ def main():
     try:
         tasker = JsonTasker(sys.argv[1])
         signal.signal(signal.SIGHUP, lambda signum, frame: tasker.terminate())
-        signal.signal(signal.SIGINT, lambda signum, frame: tasker.terminate())
         signal.signal(signal.SIGTERM, lambda signum, frame: tasker.terminate())
 
         arguments = tasker.load()
