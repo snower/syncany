@@ -328,3 +328,25 @@ class ValuerCompiler(object):
             "false_valuer": false_valuer,
             "return_valuer": return_valuer,
         }
+
+    def compile_match_valuer(self, key="", filter=None, value_arg=None, matchs_arg=None, default_arg=None, return_arg=None):
+        match_return_arg, _ = self.parse_return_valuer(return_arg)
+        if match_return_arg is not None:
+            return_arg = match_return_arg
+
+        match_valuers = {}
+        for match_value, field in matchs_arg.items():
+            match_valuers[match_value] = self.compile_valuer(field)
+        value_valuer = self.compile_valuer(value_arg) if value_arg else None
+        default_valuer = self.compile_valuer(default_arg) if default_arg else None
+        return_valuer = self.compile_valuer(return_arg) if return_arg else None
+
+        return {
+            "name": "match_valuer",
+            "key": key,
+            "filter": filter,
+            'value_valuer': value_valuer,
+            "match_valuers": match_valuers,
+            "default_valuer": default_valuer,
+            "return_valuer": return_valuer,
+        }

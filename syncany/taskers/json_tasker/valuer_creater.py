@@ -537,3 +537,41 @@ class ValuerCreater(object):
                 inherit_valuers.append(inherit_valuer)
 
         return valuer_cls(true_valuer, false_valuer, value_valuer, return_valuer, current_inherit_valuers, config["key"], None)
+
+    def create_match_valuer(self, config, inherit_valuers=None, **kwargs):
+        valuer_cls = self.find_valuer_driver(config["name"])
+        if not valuer_cls:
+            raise ValuerUnknownException(config["name"] + " is unknown")
+
+        if "value_valuer" in config and config["value_valuer"]:
+            value_valuer = self.create_valuer(config["value_valuer"], inherit_valuers=inherit_valuers, **kwargs)
+        else:
+            value_valuer = None
+
+        match_valuers, match_inherit_valuers = {}, []
+        for key, valuer_config in config["match_valuers"].items():
+            match_valuers[key] = self.create_valuer(valuer_config, inherit_valuers=match_inherit_valuers, **kwargs)
+
+        default_match_valuer = self.create_valuer(config["default_valuer"], inherit_valuers=inherit_valuers, **kwargs) \
+            if "default_valuer" in config and config["default_valuer"] else None
+
+        return_inherit_valuers = []
+        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, **kwargs) \
+            if "return_valuer" in config and config["return_valuer"] else None
+
+        current_inherit_valuers = []
+        for inherit_valuer in match_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
+        for inherit_valuer in return_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
+        return valuer_cls(match_valuers, default_match_valuer, value_valuer, return_valuer, current_inherit_valuers, config["key"], None)

@@ -385,19 +385,29 @@ class JsonTasker(Tasker):
     def compile_valuer(self, valuer):
         if isinstance(valuer, dict):
             if "name" not in valuer or not valuer["name"].endswith("_valuer"):
-                if "#case" not in valuer:
-                    return self.valuer_compiler.compile_const_valuer(valuer)
+                if "#case" in valuer:
+                    case_case = valuer.pop("#case")
+                    cases = {}
+                    case_default = valuer.pop("#end") if "#end" in valuer else None
+                    case_return = valuer.pop("::") if "::" in valuer else None
+                    for case_key, case_value in valuer.items():
+                        if case_key and isinstance(case_key, str) and case_key[0] == ":" and case_key[1:].isdigit():
+                            cases[int(case_key[1:])] = case_value
+                        else:
+                            cases[case_key] = case_value
+                    return self.valuer_compiler.compile_case_valuer('', None, case_case, cases, case_default, case_return)
 
-                case_case = valuer.pop("#case")
-                cases = {}
-                case_default = valuer.pop("#end") if "#end" in valuer else None
-                case_return = valuer.pop("::") if "::" in valuer else None
-                for case_key, case_value in valuer.items():
-                    if case_key and isinstance(case_key, str) and case_key[0] == ":" and case_key[1:].isdigit():
-                        cases[int(case_key[1:])] = case_value
-                    else:
-                        cases[case_key] = case_value
-                return self.valuer_compiler.compile_case_valuer('', None, case_case, cases, case_default, case_return)
+                if "#match" in valuer:
+                    match_match = valuer.pop("#match")
+                    matchs = {}
+                    match_default = valuer.pop("#end") if "#end" in valuer else None
+                    match_return = valuer.pop("::") if "::" in valuer else None
+                    for match_key, match_value in valuer.items():
+                        if not isinstance(match_key, str):
+                            continue
+                        matchs[match_key] = match_value
+                    return self.valuer_compiler.compile_match_valuer('', None, match_match, matchs, match_default, match_return)
+                return self.valuer_compiler.compile_const_valuer(valuer)
             return valuer
 
         if isinstance(valuer, list):
