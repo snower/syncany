@@ -7,8 +7,27 @@ import json
 from .valuer import Valuer
 
 class Matcher(object):
-    def __init__(self, matcher):
+    ARRAY_SEPS = {"{": "}", "[": "]", "(": ")"}
+
+    def __init__(self, matcher, valuer):
         self.matcher = matcher
+        self.valuer = valuer
+
+    @staticmethod
+    def compile(matcher, valuer):
+        if not isinstance(matcher, str):
+            return None
+        if matcher[:1] == "/":
+            if matcher.rindex("/") == 0:
+                return None
+            return ReMatcher(matcher, valuer)
+        elif matcher[:1] in ("{", "[", "("):
+            if matcher[-1:] != Matcher.ARRAY_SEPS[matcher[0]]:
+                return None
+            return InMatcher(matcher, valuer)
+        elif matcher[:1] in (">", "<") or matcher[:2] in ("<=", ">="):
+            return CmpMatcher(matcher, valuer)
+        return None
 
     def match(self, value):
         return None
@@ -42,6 +61,10 @@ class InMatcher(Matcher):
         try:
             if self.matcher[:1] == "(" and self.matcher[-1:] == ")":
                 self.values = json.loads("[" + self.matcher[1:-1] + "]")
+                for i in range(len(self.values)):
+                    matcher = Matcher.compile(self.values[i], self.valuer)
+                    if matcher is not None:
+                        self.values[i] = matcher
             else:
                 self.values = json.loads(self.matcher)
         except:
@@ -54,6 +77,11 @@ class InMatcher(Matcher):
             return {"match_key": value, "match_value": self.values[value], "match": self.matcher, "value": value}
 
         for i in range(len(self.values)):
+            if isinstance(self.values[i], Matcher):
+                match = self.values[i].match(value)
+                if match is None:
+                    continue
+                return match
             if self.values[i] == value:
                 return {"match_key": i, "match_value": self.values[i], "match": self.matcher, "value": value}
         return None
@@ -101,20 +129,11 @@ class MatchValuer(Valuer):
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
         self.matchers = []
 
-        array_seps = {"{": "}", "[": "]", "(": ")"}
         for matcher, valuer in self.match_valuers.items():
-            if not isinstance(matcher, str):
+            matcher = Matcher.compile(matcher, valuer)
+            if matcher is None:
                 continue
-            if matcher[:1] == "/":
-                if matcher.rindex("/") == 0:
-                    continue
-                self.matchers.append(ReMatcher(matcher))
-            elif matcher[:1] in ("{", "[", "("):
-                if matcher[-1:] != array_seps[matcher[0]]:
-                    continue
-                self.matchers.append(InMatcher(matcher))
-            elif matcher[:1] in (">", "<") or matcher[:2] in ("<=", ">="):
-                self.matchers.append(CmpMatcher(matcher))
+            self.matchers.append(matcher)
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
@@ -165,6 +184,11 @@ class MatchValuer(Valuer):
     def get(self):
         if self.value_valuer and self.value_wait_loaded:
             self.value = self.value_valuer.get()
+            for matcher in self.matchers:
+                self.matched_value = matcher.match(self.value)
+                if self.matched_value is not None:
+                    self.match_valuers[matcher.matcher].fill(self.matched_value)
+                    break
         elif self.wait_loaded:
             return self.return_valuer.get()
 
