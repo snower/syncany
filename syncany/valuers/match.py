@@ -139,14 +139,14 @@ class MatchValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self):
-        case_valuers = {}
+        match_valuers = {}
         for name, valuer in self.match_valuers.items():
-            case_valuers[name] = valuer.clone()
-        default_case_valuer = self.default_match_valuer.clone() if self.default_match_valuer else None
+            match_valuers[name] = valuer.clone()
+        default_match_valuer = self.default_match_valuer.clone() if self.default_match_valuer else None
         value_valuer = self.value_valuer.clone() if self.value_valuer else None
         return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
-        return self.__class__(case_valuers, default_case_valuer, value_valuer, return_valuer, inherit_valuers,
+        return self.__class__(match_valuers, default_match_valuer, value_valuer, return_valuer, inherit_valuers,
                               self.key, self.filter, value_wait_loaded=self.value_wait_loaded, wait_loaded=self.wait_loaded,
                               matchers=self.matchers)
 
