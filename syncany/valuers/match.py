@@ -217,9 +217,6 @@ class MatchValuer(Valuer):
 
     def get_fields(self):
         fields = self.value_valuer.get_fields() if self.value_valuer else [self.key]
-        for _, valuer in self.match_valuers.items():
-            for field in valuer.get_fields():
-                fields.append(field)
 
         if self.default_match_valuer:
             for field in self.default_match_valuer.get_fields():
