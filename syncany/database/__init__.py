@@ -15,6 +15,7 @@ from .excel import ExeclDB
 from .csv import CsvDB
 from .json import JsonDB
 from .beanstalk import BeanstalkDB
+from .redis import RedisDB
 from ..errors import DatabaseUnknownException
 
 DATABASES = {
@@ -30,6 +31,7 @@ DATABASES = {
     "csv": CsvDB,
     "json": JsonDB,
     "beanstalk": BeanstalkDB,
+    "redis": RedisDB,
 }
 
 def find_database(name):
