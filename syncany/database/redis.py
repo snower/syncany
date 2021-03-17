@@ -5,14 +5,6 @@
 
 import pickle
 import json
-try:
-    import msgpack
-except ImportError:
-    msgpack = None
-try:
-    import redis
-except ImportError:
-    redis = None
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 class StringSerialize(object):
@@ -31,14 +23,17 @@ class JsonSerialize(object):
 
 class MsgpackSerialize(object):
     def __init__(self):
-        if not msgpack:
+        try:
+            import msgpack
+        except ImportError:
             raise ImportError("msgpack is required")
+        self.msgpack = msgpack
 
     def loads(self, data):
-        return msgpack.loads(data)
+        return self.msgpack.loads(data)
 
     def dumps(self, value):
-        return msgpack.dumps(value)
+        return self.msgpack.dumps(value)
 
 class PickleSerialize(object):
     def loads(self, data):
@@ -403,7 +398,9 @@ class RedisDB(DataBase):
 
     def ensure_connection(self):
         if not self.connection:
-            if redis is None:
+            try:
+                import redis
+            except ImportError:
                 raise ImportError("redis>=3.5.3 is required")
 
             self.connection = redis.Redis(**self.config)

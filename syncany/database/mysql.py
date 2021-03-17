@@ -3,12 +3,6 @@
 # create by: snower
 
 import re
-try:
-    import pymysql
-    from pymysql.cursors import DictCursor
-except ImportError:
-    pymysql = None
-
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 class MysqlQueryBuilder(QueryBuilder):
@@ -135,7 +129,7 @@ class MysqlQueryBuilder(QueryBuilder):
         limit = (" LIMIT %s%s" % (("%s," % self.limit[0]) if self.limit[0] else "", self.limit[1])) if self.limit else ""
         sql = "SELECT %s FROM %s%s%s%s" % (fields, db_name, where, order_by, limit)
         connection = self.db.ensure_connection()
-        cursor = connection.cursor(DictCursor)
+        cursor = connection.cursor(self.db.DictCursor)
         try:
             cursor.execute(sql, query_values)
             datas = cursor.fetchall()
@@ -178,7 +172,7 @@ class MysqlInsertBuilder(InsertBuilder):
         db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
         sql = "INSERT INTO %s (%s) VALUES (%s)" % (db_name, ",".join(['`' + field + '`' for field in fields]), ",".join(["%s" for _ in fields]))
         connection = self.db.ensure_connection()
-        cursor = connection.cursor(DictCursor)
+        cursor = connection.cursor(self.db.DictCursor)
         try:
             cursor.executemany(sql, datas)
         finally:
@@ -241,7 +235,7 @@ class MysqlUpdateBuilder(UpdateBuilder):
         db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
         sql = "UPDATE %s SET %s WHERE %s" % (db_name, ",".join(update), " AND ".join(self.query))
         connection = self.db.ensure_connection()
-        cursor = connection.cursor(DictCursor)
+        cursor = connection.cursor(self.db.DictCursor)
         try:
             cursor.execute(sql, values)
         finally:
@@ -296,7 +290,7 @@ class MysqlDeleteBuilder(DeleteBuilder):
         db_name = ("`%s`.`%s`" % (self.db.db_name, ".".join(db_name[1:]))) if len(db_name) > 1 else ('`' + db_name[0] + '`')
         sql = "DELETE FROM %s WHERE %s" % (db_name, " AND ".join(self.query))
         connection = self.db.ensure_connection()
-        cursor = connection.cursor(DictCursor)
+        cursor = connection.cursor(self.db.DictCursor)
         try:
             cursor.execute(sql, self.query_values)
         finally:
@@ -311,6 +305,7 @@ class MysqlDeleteBuilder(DeleteBuilder):
         return ''
 
 class MysqlDB(DataBase):
+    DictCursor = None
     DEFAULT_CONFIG = {
         "host": "127.0.0.1",
         "port": 3306,
@@ -342,10 +337,14 @@ class MysqlDB(DataBase):
 
     def ensure_connection(self):
         if not self.connection:
-            if pymysql is None:
+            try:
+                import pymysql
+                from pymysql.cursors import DictCursor
+            except ImportError:
                 raise ImportError("PyMySQL>=0.8.1 is required")
 
             self.connection = pymysql.Connection(**self.config)
+            self.DictCursor = DictCursor
         return self.connection
 
     def query(self, name, primary_keys=None, fields=()):

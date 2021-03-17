@@ -6,16 +6,8 @@
 import time
 import pickle
 import json
-try:
-    import msgpack
-except ImportError:
-    msgpack = None
-
-try:
-    import pystalkd
-except ImportError:
-    pystalkd = None
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
+
 
 class StringSerialize(object):
     def loads(self, data):
@@ -24,6 +16,7 @@ class StringSerialize(object):
     def dumps(self, value):
         return value
 
+
 class JsonSerialize(object):
     def loads(self, data):
         return json.loads(data, encoding="utf-8")
@@ -31,16 +24,23 @@ class JsonSerialize(object):
     def dumps(self, value):
         return json.dumps(value, ensure_ascii=False).encode("utf-8")
 
+
 class MsgpackSerialize(object):
+    msgpack = None
+
     def __init__(self):
-        if not msgpack:
+        try:
+            import msgpack
+        except ImportError:
             raise ImportError("msgpack is required")
+        self.msgpack = msgpack
 
     def loads(self, data):
-        return msgpack.loads(data)
+        return self.msgpack.loads(data)
 
     def dumps(self, value):
-        return msgpack.dumps(value)
+        return self.msgpack.dumps(value)
+
 
 class PickleSerialize(object):
     def loads(self, data):
@@ -48,6 +48,7 @@ class PickleSerialize(object):
 
     def dumps(self, value):
         return pickle.dumps(value)
+
 
 class BeanstalkQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
@@ -140,6 +141,7 @@ class BeanstalkQueryBuilder(QueryBuilder):
             datas = sorted(datas, key=lambda x: x.get(self.orders[0][0]), reverse=True if self.orders[0][1] < 0 else False)
         return datas
 
+
 class BeanstalkInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
         super(BeanstalkInsertBuilder, self).__init__(*args, **kwargs)
@@ -157,11 +159,14 @@ class BeanstalkInsertBuilder(InsertBuilder):
                 continue
             connection.put()
 
+
 class BeanstalkUpdateBuilder(UpdateBuilder):
     pass
 
+
 class BeanstalkDeleteBuilder(DeleteBuilder):
     pass
+
 
 class BeanstalkDB(DataBase):
     DEFAULT_CONFIG = {
@@ -202,7 +207,9 @@ class BeanstalkDB(DataBase):
 
     def ensure_connection(self):
         if not self.connection:
-            if pystalkd is None:
+            try:
+                import pystalkd
+            except ImportError:
                 raise ImportError("pystalkd>=1.3.0 is required")
 
             self.connection = pystalkd.Beanstalkd.Connection(**self.config)

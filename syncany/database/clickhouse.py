@@ -3,24 +3,7 @@
 # create by: snower
 
 import re
-try:
-    import clickhouse_driver
-    from clickhouse_driver.util.escape import escape_param
-except ImportError:
-    clickhouse_driver = None
-
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
-
-
-def escape_args(args):
-    if isinstance(args, set):
-        return tuple(escape_param(list(arg)) for arg in args)
-    elif isinstance(args, (list, tuple)):
-        return tuple(escape_param(arg) for arg in args)
-    elif isinstance(args, dict):
-        return {key: escape_param(val) for (key, val) in args.items()}
-    else:
-        return escape_param(args)
 
 
 class ClickhouseQueryBuilder(QueryBuilder):
@@ -149,7 +132,7 @@ class ClickhouseQueryBuilder(QueryBuilder):
         connection = self.db.ensure_connection()
         cursor = connection.cursor()
         try:
-            cursor.execute(sql % escape_args(query_values))
+            cursor.execute(sql % self.db.escape_args(query_values))
             datas = cursor.fetchall()
             names = [c.name for c in cursor.description]
             datas = [dict(zip(names, data)) for data in datas]
@@ -162,6 +145,7 @@ class ClickhouseQueryBuilder(QueryBuilder):
         if isinstance(self.sql, tuple):
             return "%s\n%s" % self.sql
         return ''
+
 
 class ClickhouseInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
@@ -202,6 +186,7 @@ class ClickhouseInsertBuilder(InsertBuilder):
         if isinstance(self.sql, tuple):
             return "%s\n%s" % self.sql
         return ''
+
 
 class ClickhouseUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -254,7 +239,7 @@ class ClickhouseUpdateBuilder(UpdateBuilder):
         connection = self.db.ensure_connection()
         cursor = connection.cursor()
         try:
-            cursor.execute(sql % escape_args(values))
+            cursor.execute(sql % self.db.escape_args(values))
         finally:
             cursor.close()
         self.sql = (sql, values)
@@ -264,6 +249,7 @@ class ClickhouseUpdateBuilder(UpdateBuilder):
         if isinstance(self.sql, tuple):
             return "%s\n%s" % self.sql
         return ''
+
 
 class ClickhouseDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
@@ -308,7 +294,7 @@ class ClickhouseDeleteBuilder(DeleteBuilder):
         connection = self.db.ensure_connection()
         cursor = connection.cursor()
         try:
-            cursor.execute(sql % escape_args(self.query_values))
+            cursor.execute(sql % self.db.escape_args(self.query_values))
         finally:
             cursor.close()
         self.sql = (sql, self.query_values)
@@ -318,6 +304,7 @@ class ClickhouseDeleteBuilder(DeleteBuilder):
         if isinstance(self.sql, tuple):
             return "%s\n%s" % self.sql
         return ''
+
 
 class ClickhouseDB(DataBase):
     DEFAULT_CONFIG = {
@@ -350,10 +337,14 @@ class ClickhouseDB(DataBase):
 
     def ensure_connection(self):
         if not self.connection:
-            if clickhouse_driver is None:
+            try:
+                import clickhouse_driver
+                from clickhouse_driver.util.escape import escape_param
+            except ImportError:
                 raise ImportError("clickhouse_driver>=0.1.5 is required")
 
             self.connection = clickhouse_driver.connect(**self.config)
+            self.escape_param = escape_param
         return self.connection
 
     def query(self, name, primary_keys=None, fields=()):
@@ -375,3 +366,16 @@ class ClickhouseDB(DataBase):
 
     def verbose(self):
         return "%s<%s>" % (self.name, self.db_name)
+
+    def escape_param(self, arg):
+        return arg
+
+    def escape_args(self, args):
+        if isinstance(args, set):
+            return tuple(self.escape_param(list(arg)) for arg in args)
+        elif isinstance(args, (list, tuple)):
+            return tuple(self.escape_param(arg) for arg in args)
+        elif isinstance(args, dict):
+            return {key: self.escape_param(val) for (key, val) in args.items()}
+        else:
+            return self.escape_param(args)

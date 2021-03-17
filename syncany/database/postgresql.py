@@ -3,12 +3,6 @@
 # create by: snower
 
 import re
-try:
-    import psycopg2
-    from psycopg2.extras import DictCursor
-except ImportError:
-    psycopg2 = None
-
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 class PostgresqlQueryBuilder(QueryBuilder):
@@ -135,7 +129,7 @@ class PostgresqlQueryBuilder(QueryBuilder):
         limit = (" LIMIT %s%s" % (("%s," % self.limit[0]) if self.limit[0] else "", self.limit[1])) if self.limit else ""
         sql = "SELECT %s FROM %s%s%s%s" % (fields, db_name, where, order_by, limit)
         connection = self.db.ensure_connection()
-        cursor = connection.cursor(cursor_factory=DictCursor)
+        cursor = connection.cursor(cursor_factory=self.db.DictCursor)
         try:
             cursor.execute(sql, query_values)
             datas = [data for data in cursor]
@@ -310,6 +304,7 @@ class PostgresqlDeleteBuilder(DeleteBuilder):
         return ''
 
 class PostgresqlDB(DataBase):
+    DictCursor = None
     DEFAULT_CONFIG = {
         "host": "127.0.0.1",
         "port": 5432,
@@ -346,10 +341,14 @@ class PostgresqlDB(DataBase):
 
     def ensure_connection(self):
         if not self.connection:
-            if psycopg2 is None:
+            try:
+                import psycopg2
+                from psycopg2.extras import DictCursor
+            except ImportError:
                 raise ImportError("psycopg2>=2.8.6 is required")
 
             self.connection = psycopg2.connect(**self.config)
+            self.DictCursor = DictCursor
         return self.connection
 
     def query(self, name, primary_keys=None, fields=()):

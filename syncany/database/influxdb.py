@@ -5,11 +5,6 @@
 import re
 import datetime
 import pytz
-try:
-    from influxdb import InfluxDBClient
-except ImportError:
-    InfluxDBClient = None
-
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 escape_chars_map = {
@@ -24,6 +19,7 @@ escape_chars_map = {
     "\\": "\\\\",
     "'": "\\'"
 }
+
 
 def escape_param(item):
     if item is None:
@@ -40,6 +36,7 @@ def escape_param(item):
         return "(%s)" % ', '.join(str(escape_param(x)) for x in item)
     return item
 
+
 def escape_args(args):
     if isinstance(args, (list, set, tuple)):
         return tuple(escape_param(arg) for arg in args)
@@ -47,6 +44,7 @@ def escape_args(args):
         return {key: escape_param(val) for (key, val) in args.items()}
     else:
         return escape_param(args)
+
 
 class InfluxDBQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
@@ -199,6 +197,7 @@ class InfluxDBQueryBuilder(QueryBuilder):
             return "%s\n%s" % self.sql
         return ''
 
+
 class InfluxDBInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
         super(InfluxDBInsertBuilder, self).__init__(*args, **kwargs)
@@ -247,6 +246,7 @@ class InfluxDBInsertBuilder(InsertBuilder):
 
         connection = self.db.ensure_connection()
         return connection.write_points(datas)
+
 
 class InfluxDBUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -313,6 +313,7 @@ class InfluxDBUpdateBuilder(UpdateBuilder):
         connection = self.db.ensure_connection()
         return connection.write_points([json_body])
 
+
 class InfluxDBDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
         super(InfluxDBDeleteBuilder, self).__init__(*args, **kwargs)
@@ -374,6 +375,7 @@ class InfluxDBDeleteBuilder(DeleteBuilder):
             return "%s\n%s" % self.sql
         return ''
 
+
 class InfluxDB(DataBase):
     DEFAULT_CONFIG = {
         "host": "127.0.0.1",
@@ -405,7 +407,9 @@ class InfluxDB(DataBase):
 
     def ensure_connection(self):
         if not self.connection:
-            if InfluxDBClient is None:
+            try:
+                from influxdb import InfluxDBClient
+            except ImportError:
                 raise ImportError("influxdb>=5.3.1 is required")
 
             self.connection = InfluxDBClient(**self.config)

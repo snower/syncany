@@ -4,13 +4,8 @@
 
 import datetime
 import json
-try:
-    import elasticsearch
-    import elasticsearch.helpers
-except ImportError:
-    elasticsearch = None
-
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
+
 
 class ElasticsearchQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
@@ -198,6 +193,7 @@ class ElasticsearchQueryBuilder(QueryBuilder):
     def verbose(self):
         return "%s\n%s" % (self.index_name, self.query)
 
+
 class ElasticsearchInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
         super(ElasticsearchInsertBuilder, self).__init__(*args, **kwargs)
@@ -233,7 +229,8 @@ class ElasticsearchInsertBuilder(InsertBuilder):
             })
 
         connection = self.db.ensure_connection()
-        return elasticsearch.helpers.bulk(connection, datas, raise_on_exception=False, raise_on_error=False)
+        return self.db.helpers().bulk(connection, datas, raise_on_exception=False, raise_on_error=False)
+
 
 class ElasticsearchUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -270,12 +267,13 @@ class ElasticsearchUpdateBuilder(UpdateBuilder):
             })
 
         connection = self.db.ensure_connection()
-        return elasticsearch.helpers.bulk(connection, datas, raise_on_exception=False, raise_on_error=False)
+        return self.db.helpers().bulk(connection, datas, raise_on_exception=False, raise_on_error=False)
 
 
 class ElasticsearchDeleteBuilder(DeleteBuilder):
     def commit(self):
         raise NotImplementedError()
+
 
 class ElasticsearchDB(DataBase):
     DEFAULT_CONFIG = {
@@ -298,10 +296,14 @@ class ElasticsearchDB(DataBase):
 
     def ensure_connection(self):
         if not self.connection:
-            if elasticsearch is None:
+            try:
+                import elasticsearch
+                import elasticsearch.helpers
+            except ImportError:
                 raise ImportError("elasticsearch>=6.3.1 is required")
 
             self.connection = elasticsearch.Elasticsearch(**self.config)
+            self.helpers = lambda: elasticsearch.helpers
         return self.connection
 
     def query(self, name, primary_keys=None, fields=()):
@@ -315,6 +317,10 @@ class ElasticsearchDB(DataBase):
 
     def delete(self, name, primary_keys=None):
         return ElasticsearchDeleteBuilder(self, name, primary_keys)
+
+    def helpers(self):
+        import elasticsearch.helpers
+        return elasticsearch.helpers
 
     def close(self):
         self.connection = None

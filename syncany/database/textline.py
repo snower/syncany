@@ -5,11 +5,6 @@
 import os
 import csv
 import json
-try:
-    import rich
-    from rich.table import Table
-except ImportError:
-    rich = None
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 class TextLineQueryBuilder(QueryBuilder):
@@ -154,7 +149,9 @@ class TextLineInsertBuilder(InsertBuilder):
             self.datas = [self.datas]
 
     def rich_write(self, fp):
-        if rich is None:
+        from rich.table import Table
+
+        if self.db.rich is None:
             raise ImportError("rich>=9.11.1 is required")
 
         table = Table(show_header=True, collapse_padding=True, expand=True, highlight=True)
@@ -162,7 +159,7 @@ class TextLineInsertBuilder(InsertBuilder):
             table.add_column(field)
         for data in self.datas:
             table.add_row(*(str(data[field]) for field in self.fields))
-        rich.print(table, file=fp)
+        self.db.rich.print(table, file=fp)
 
     def text_write(self, fp):
         if len(self.fields) != 1 or self.fields[0] != "line":
@@ -208,7 +205,7 @@ class TextLineInsertBuilder(InsertBuilder):
                 self.json_write(fp)
             elif self.db.config.get("format") == "richtable":
                 self.rich_write(fp)
-            elif rich:
+            elif self.db.rich:
                 self.rich_write(fp)
             else:
                 self.text_write(fp)
@@ -284,8 +281,16 @@ class TextLineDeleteBuilder(DeleteBuilder):
         return []
 
 class TextLineDB(DataBase):
+    rich = None
+
     def __init__(self, config):
         super(TextLineDB, self).__init__(dict(**config))
+
+        try:
+            import rich
+            self.rich = rich
+        except ImportError:
+            pass
 
     def query(self, name, primary_keys=None, fields=()):
         return TextLineQueryBuilder(self, name, primary_keys, fields)

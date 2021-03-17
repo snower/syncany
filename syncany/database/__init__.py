@@ -3,41 +3,39 @@
 # create by: snower
 
 from .database import DataBase
-from .memory import MemoryDB
-from .textline import TextLineDB
-from .mongodb import MongoDB
-from .mysql import MysqlDB
-from .postgresql import PostgresqlDB
-from .clickhouse import ClickhouseDB
-from .influxdb import InfluxDB
-from .elasticsearch import ElasticsearchDB
-from .excel import ExeclDB
-from .csv import CsvDB
-from .json import JsonDB
-from .beanstalk import BeanstalkDB
-from .redis import RedisDB
 from ..errors import DatabaseUnknownException
 
 DATABASES = {
-    "memory": MemoryDB,
-    "textline": TextLineDB,
-    "mongo": MongoDB,
-    "mysql": MysqlDB,
-    "postgresql": PostgresqlDB,
-    "clickhouse": ClickhouseDB,
-    "influxdb": InfluxDB,
-    "elasticsearch": ElasticsearchDB,
-    "execl": ExeclDB,
-    "csv": CsvDB,
-    "json": JsonDB,
-    "beanstalk": BeanstalkDB,
-    "redis": RedisDB,
+    "memory": ".memory.MemoryDB",
+    "textline": ".textline.TextLineDB",
+    "mongo": ".mongodb.MongoDB",
+    "mysql": ".mysql.MysqlDB",
+    "postgresql": ".postgresql.PostgresqlDB",
+    "clickhouse": ".clickhouse.ClickhouseDB",
+    "influxdb": ".influxdb.InfluxDB",
+    "elasticsearch": ".elasticsearch.ElasticsearchDB",
+    "execl": ".excel.ExeclDB",
+    "csv": ".csv.CsvDB",
+    "json": ".json.JsonDB",
+    "beanstalk": ".beanstalk.BeanstalkDB",
+    "redis": ".redis.RedisDB",
 }
+
 
 def find_database(name):
     if name not in DATABASES:
         raise DatabaseUnknownException("%s is unknown database driver" % name)
+
+    if isinstance(DATABASES[name], str):
+        module_name, _, cls_name = DATABASES[name].rpartition(".")
+        if module_name[0] == ".":
+            module_name = module_name[1:]
+            module = __import__(module_name, globals(), globals(), [module_name], 1)
+        else:
+            module = __import__(module_name)
+        DATABASES[name] = getattr(module, cls_name)
     return DATABASES[name]
+
 
 def register_database(name, database):
     if not issubclass(database, DataBase):

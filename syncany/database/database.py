@@ -2,6 +2,7 @@
 # 18/8/6
 # create by: snower
 
+
 class QueryBuilder(object):
     def __init__(self, db, name, primary_keys, fields):
         self.db = db
@@ -48,6 +49,7 @@ class QueryBuilder(object):
     def verbose(self):
         return ""
 
+
 class InsertBuilder(object):
     def __init__(self, db, name, primary_keys, fields, datas):
         self.db = db
@@ -61,6 +63,7 @@ class InsertBuilder(object):
 
     def verbose(self):
         return ""
+
 
 class UpdateBuilder(object):
     def __init__(self, db, name, primary_keys, fields, update, diff_data=None):
@@ -99,6 +102,7 @@ class UpdateBuilder(object):
     def verbose(self):
         return ""
 
+
 class DeleteBuilder(object):
     def __init__(self, db, name, primary_keys):
         self.db = db
@@ -132,6 +136,7 @@ class DeleteBuilder(object):
 
     def verbose(self):
         return ""
+
 
 class DataBase(object):
     def __init__(self, config):

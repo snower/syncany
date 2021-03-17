@@ -9,10 +9,6 @@ try:
         Int64, MaxKey, MinKey, Regex, Timestamp
 except ImportError:
     pass
-try:
-    import pymongo
-except ImportError:
-    pymongo = None
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 class MongoQueryBuilder(QueryBuilder):
@@ -323,7 +319,9 @@ class MongoDB(DataBase):
 
     def ensure_connection(self):
         if not self.connection:
-            if pymongo is None:
+            try:
+                import pymongo
+            except ImportError:
                 raise ImportError("pymongo>=3.6.1 is required")
 
             self.connection = pymongo.MongoClient(**self.config)

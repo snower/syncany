@@ -3,11 +3,12 @@
 # create by: snower
 
 import os
-import csv
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
+
 
 class CsvFileNotFound(Exception):
     pass
+
 
 class CsvQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
@@ -75,6 +76,7 @@ class CsvQueryBuilder(QueryBuilder):
             datas = sorted(datas, key=lambda x: x.get(self.orders[0][0]), reverse=True if self.orders[0][1] < 0 else False)
         return datas
 
+
 class CsvInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
         super(CsvInsertBuilder, self).__init__(*args, **kwargs)
@@ -87,6 +89,7 @@ class CsvInsertBuilder(InsertBuilder):
         csv_file.fields = self.fields
         csv_file.datas.extend(self.datas)
         csv_file.changed = True
+
 
 class CsvUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -136,6 +139,7 @@ class CsvUpdateBuilder(UpdateBuilder):
         csv_file.changed = True
         return datas
 
+
 class CsvDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
         super(CsvDeleteBuilder, self).__init__(*args, **kwargs)
@@ -181,6 +185,7 @@ class CsvDeleteBuilder(DeleteBuilder):
         csv_file.changed = True
         return datas
 
+
 class CsvFile(object):
     def __init__(self, name, filename, datas):
         self.name = name
@@ -201,6 +206,7 @@ class CsvFile(object):
                 fields = fields & set(data.keys())
         return tuple(fields) if fields else tuple()
 
+
 class CsvDB(DataBase):
     DEFAULT_CONFIG = {
         "path": "./",
@@ -218,6 +224,7 @@ class CsvDB(DataBase):
         self.csvs = {}
 
     def read_file(self, name, filename, fp):
+        import csv
         reader = csv.reader(fp, quotechar='"')
         descriptions, datas = [], []
         for row in reader:
@@ -231,6 +238,7 @@ class CsvDB(DataBase):
         return CsvFile(name, filename, datas)
 
     def write_file(self, fp, csv_file):
+        import csv
         fields = csv_file.get_fields()
         writer = csv.writer(fp, quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
         writer.writerow(fields)

@@ -5,14 +5,12 @@
 import os
 import datetime
 from tzlocal import get_localzone
-try:
-    import openpyxl
-except ImportError:
-    openpyxl = None
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
+
 
 class ExeclFileNotFound(Exception):
     pass
+
 
 class ExeclQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
@@ -80,6 +78,7 @@ class ExeclQueryBuilder(QueryBuilder):
             datas = sorted(datas, key=lambda x: x.get(self.orders[0][0]), reverse=True if self.orders[0][1] < 0 else False)
         return datas
 
+
 class ExeclInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
         super(ExeclInsertBuilder, self).__init__(*args, **kwargs)
@@ -92,6 +91,7 @@ class ExeclInsertBuilder(InsertBuilder):
         execl_sheet.sheet_descriptions = self.fields
         execl_sheet.sheet_datas.extend(self.datas)
         execl_sheet.changed = True
+
 
 class ExeclUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -141,6 +141,7 @@ class ExeclUpdateBuilder(UpdateBuilder):
         execl_sheet.changed = True
         return datas
 
+
 class ExeclDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
         super(ExeclDeleteBuilder, self).__init__(*args, **kwargs)
@@ -185,6 +186,7 @@ class ExeclDeleteBuilder(DeleteBuilder):
         execl_sheet.sheet_datas = datas
         execl_sheet.changed = True
         return datas
+
 
 class ExeclSheet(object):
     def __init__(self, name, filename, sheet_name, execl_fp, execl_sheet):
@@ -249,6 +251,7 @@ class ExeclSheet(object):
                         col = col.encode("utf-8")
                     self.execl_sheet.cell(row_index + 2, col_index + 1, col)
 
+
 class ExeclDB(DataBase):
     DEFAULT_CONFIG = {
         "path": "./",
@@ -287,7 +290,9 @@ class ExeclDB(DataBase):
             if not filename:
                 raise ExeclFileNotFound()
 
-            if openpyxl is None:
+            try:
+                import openpyxl
+            except ImportError:
                 raise ImportError("openpyxl>=2.5.0 is required")
 
             filename = os.path.join(self.config["path"], filename)
