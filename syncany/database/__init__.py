@@ -3,50 +3,38 @@
 # create by: snower
 
 from .database import DataBase
+from .memory import MemoryDB
+from .textline import TextLineDB
+from .mongodb import MongoDB
+from .mysql import MysqlDB
+from .postgresql import PostgresqlDB
+from .clickhouse import ClickhouseDB
+from .influxdb import InfluxDB
+from .elasticsearch import ElasticsearchDB
+from .excel import ExeclDB
+from .csv import CsvDB
+from .json import JsonDB
+from .beanstalk import BeanstalkDB
+from .redis import RedisDB
 from ..errors import DatabaseUnknownException
 
-DATABASES = {}
+DATABASES = {
+    "memory": MemoryDB,
+    "textline": TextLineDB,
+    "mongo": MongoDB,
+    "mysql": MysqlDB,
+    "postgresql": PostgresqlDB,
+    "clickhouse": ClickhouseDB,
+    "influxdb": InfluxDB,
+    "elasticsearch": ElasticsearchDB,
+    "execl": ExeclDB,
+    "csv": CsvDB,
+    "json": JsonDB,
+    "beanstalk": BeanstalkDB,
+    "redis": RedisDB,
+}
 
 def find_database(name):
-    if name == "memory":
-        from .memory import MemoryDB
-        return MemoryDB
-    if name == "textline":
-        from .textline import TextLineDB
-        return TextLineDB
-    if name == "mongo":
-        from .mongodb import MongoDB
-        return MongoDB
-    if name == "mysql":
-        from .mysql import MysqlDB
-        return MysqlDB
-    if name == "postgresql":
-        from .postgresql import PostgresqlDB
-        return PostgresqlDB
-    if name == "clickhouse":
-        from .clickhouse import ClickhouseDB
-        return ClickhouseDB
-    if name == "influxdb":
-        from .influxdb import InfluxDB
-        return InfluxDB
-    if name == "elasticsearch":
-        from .elasticsearch import ElasticsearchDB
-        return ElasticsearchDB
-    if name == "execl":
-        from .excel import ExeclDB
-        return ExeclDB
-    if name == "csv":
-        from .csv import CsvDB
-        return CsvDB
-    if name == "json":
-        from .json import JsonDB
-        return JsonDB
-    if name == "beanstalk":
-        from .beanstalk import BeanstalkDB
-        return BeanstalkDB
-    if name == "redis":
-        from .redis import RedisDB
-        return RedisDB
     if name not in DATABASES:
         raise DatabaseUnknownException("%s is unknown database driver" % name)
     return DATABASES[name]
