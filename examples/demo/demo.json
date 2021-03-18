@@ -1,0 +1,44 @@
+{
+  "extends": ["examples/demo/json/database.json", "examples/demo/json/log.json"],
+  "name": "demo",
+  "input": "<<&.data.demo.json::_id",
+  "output": ">>&.stdio.&1::site_id use I",
+  "querys": {
+    "start_date": {">=": "2021-01-01"}
+  },
+  "schema": {
+    "site_id": ["#yield", "$.sites", [
+      ":#aggregate", "$.*|int", "$$.*|int"
+    ]],
+    "site_name": ["#yield", "$.sites", [
+      ":#aggregate", "$.*|int", [
+        "$$.*|int", "&.data.sites.json::site_id", ":$.name"
+      ]
+    ]],
+    "site_amount": ["#yield", "$.sites", [
+      ":#aggregate", "$.*|int", [
+        "$$.*|int", "&.data.orders.json::site_id", [
+          ":#foreach|int", "$.*|array", [
+            "#if", ["@lte", "$.status", 0], ["#make", {"value": "$.amount"}], "#continue"
+          ], [
+            ":@sum", "$.*|array", "value"
+          ]
+        ]
+      ]
+    ]],
+    "timeout_at": ["#yield", "$.sites", [
+      ":#aggregate", "$.*|int", {
+        "#case": "$$$.vip_type",
+        "1": "$.timeout_at",
+        "#end": "$$$.rules.:0.timeout_time"
+      }
+    ]],
+    "vip_timeout_at": ["#yield", "$.sites", [
+      ":#aggregate", "$.*|int", {
+        "#match": "$$$.vip_type",
+        "/2/": "$$.vip_timeout_at",
+        "#end": "$$$.rules.:0.timeout_time"
+      }
+    ]]
+  }
+}
