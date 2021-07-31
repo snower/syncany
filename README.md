@@ -6,6 +6,8 @@
 
 syncany支持mysql、mongodb、postgresql、redis、elasticsearch、influxdb、clickhouse、execl、beanstalk等数据源读入或写结果数据，同时支持从不同DB不同数据库类型读入关联数据，并对数据进行转换计算，之后配合superset等图形报表框架，快速完成复杂报表分析系统搭建。
 
+[https://pysyncany.readthedocs.io/](https://pysyncany.readthedocs.io/)
+
 # 安装
 
 ```
