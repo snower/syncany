@@ -1,0 +1,10 @@
+site_name: syncany - 简单易用的数据同步转换导出框架
+nav:
+    - 快速开始: get-started.md
+    - 配置文件: configuration-json.md
+    - 数据库适配: database-driver.md
+    - 语法格式: grammar-structure.md
+    - 指令格式: directive.md
+    - 过滤器: filter-directive.md
+    - 计算器: calculate-directive
+theme: readthedocs
