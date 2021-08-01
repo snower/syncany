@@ -57,3 +57,7 @@ python3 bin/syncany examples/demo/demo.json
 2021-04-16 11:18:20,868 3292 INFO demo outputer: DBInsertOutputer -> &.stdio.&1::site_id outputer_querys: 0 outputer_operators: 1 outputer_load_rows: 0 outputer_rows: 6
 2021-04-16 11:18:20,868 3292 INFO demo finish examples/demo/demo.json demo 148.39ms
 ```
+
+# 更多示例
+
+[https://github.com/snower/syncany/tree/master/examples](https://github.com/snower/syncany/tree/master/examples)
