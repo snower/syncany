@@ -1,0 +1,38 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "operator_daily",
+  "input": ["@add","<<&.mysql_ebox_order.order_", ["@now|str %Y%m", "-1d"], "::operator_id_date"],
+  "output": ">>&.mysql_analysis.operator_daily::operator_id_date use UI",
+  "databases": [
+    {
+      "name": "mysql_ebox_order",
+      "virtual_views": [{
+        "name": "ebox_order",
+        "name_match": "order_\\d+?",
+        "query": ["SELECT concat(operator_id, ':', order_date) as operator_id_date, operator_id, order_date, dot_id, delivery_cnt, terminal_cnt FROM (",
+          "    SELECT if(a.operator_id is NULL, b.operator_id, a.operator_id) as operator_id, if(a.delivery_date is NULL, b.delivery_date, a.delivery_date) as order_date, if(a.dot_id is NULL, b.dot_id, a.dot_id) as dot_id, a.delivery_cnt, b.terminal_cnt FROM (",
+          "        SELECT operator_id, date(delivery_at) as delivery_date, dot_id, count(*) AS delivery_cnt FROM `ebox_order` WHERE delivery_at>=%s AND delivery_at<%s GROUP BY operator_id, date(delivery_at), dot_id",
+          "    ) a LEFT OUTER JOIN (",
+          "        SELECT operator_id, date(delivery_at) as delivery_date, dot_id, count(DISTINCT terminal_code) AS terminal_cnt FROM `ebox_order` WHERE delivery_at>=%s AND delivery_at<%s GROUP BY operator_id, date(delivery_at), dot_id",
+          "    ) b on a.operator_id=b.operator_id and a.delivery_date=b.delivery_date and a.dot_id=b.dot_id",
+          ") aa"],
+        "args": [["delivery_at", ">=", ""], ["delivery_at", "<", ""], ["delivery_at", ">=", ""], ["delivery_at", "<", ""]]
+      }]
+    }
+  ],
+  "querys": {
+    "delivery_at|datetime": {">=": ["@now|str %Y-%m-%d 00:00:00", "-1d"], "<": ["@now|str %Y-%m-%d 00:00:00"]}
+  },
+  "schema": {
+    "operator_id_date": "$.operator_id_date",
+    "operator_id": "$.operator_id",
+    "order_date": "$.order_date|date",
+    "username": ["$.operator_id", "&.mysql_ebox.operator::id", ":$.username"],
+    "operator_name": ["$.operator_id", "&.mysql_ebox.operator::id", ":$.operator_name"],
+    "dot_id": "$.dot_id",
+    "dot_name": ["$.dot_id", "&.mysql_ebox.dot::id", ":$.name|str"],
+    "terminal_cnt": "$.terminal_cnt|int",
+    "delivery_cnt": "$.delivery_cnt|int",
+    "updated_at": ["@now|datetime"]
+  }
+}

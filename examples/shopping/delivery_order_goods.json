@@ -1,0 +1,108 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "delivery_order_goods",
+  "input":"&.mysql_trading.delivery_order_goods::id",
+  "output":">>&.mysql_analysis.delivery_order_goods::id use UI",
+  "querys": {
+    "updated_at|datetime": {">=": ["@now|str", "-5M"], "<=":  ["@now|str"]}
+  },
+  "schema": {
+    "id": "$.id",
+    "dot_id": "$.dot_id",
+    "order_id": "$.order_id",
+    "delivery_id": "$.delivery_id",
+    "uid": "$.uid",
+    "username": ["$.uid|ObjectId", "&.mongo_user.user::_id", ":$.username"],
+    "nickname": ["$.uid|ObjectId", "&.mongo_user.user::_id", ":$.nickname"],
+    "shop_id": ["$.delivery_id", "&.mysql_trading.delivery_order::id", [
+      ":$.warehouse_id|int", "&.mongo_shop.shop::warehouse_id", ":$._id|str"
+    ]],
+    "shop_name": ["$.delivery_id", "&.mysql_trading.delivery_order::id", [
+      ":$.warehouse_id|int", "&.mongo_shop.shop::warehouse_id", ":$.name"
+    ]],
+    "community_id": ["$.order_id", "&.mongo_trading.order_address::order_id", [
+      ":$.address_id|ObjectId", "&.mongo_ebox.canopy::_id", ":$.community_id|str"
+    ]],
+    "community_name": ["$.order_id", "&.mongo_trading.order_address::order_id", [
+      ":$.address_id|ObjectId", "&.mongo_ebox.canopy::_id", [
+        ":$.community_id|ObjectId", "&.mongo_ebox.community::_id", ":$.name"
+      ]
+    ]],
+    "canopy_id": ["$.order_id", "&.mongo_trading.order_address::order_id", [
+      ":$.address_id|ObjectId", "&.mongo_ebox.canopy::_id", ":$._id|str"
+    ]],
+    "canopy_name": ["$.order_id", "&.mongo_trading.order_address::order_id", [
+      ":$.address_id|ObjectId", "&.mongo_ebox.canopy::_id", ":$.name"
+    ]],
+    "delivery_time": ["$.delivery_id", "&.mysql_trading.delivery_order::id", ":$.delivery_time|datetime %Y-%m-%d %H:%M:%S"],
+    "delivery_type": ["$.delivery_id", "&.mysql_trading.delivery_order::id", ":$.delivery_type"],
+    "package_type": ["$.delivery_id", "&.mysql_trading.delivery_order::id", ":$.package_type"],
+    "meal_type": ["$.delivery_id", "&.mysql_trading.delivery_order::id", ":$.package_type"],
+    "meal_name": ["$.delivery_id", "&.mysql_trading.delivery_order::id", {
+      "#case": "$.package_type",
+      "breakfast": "早餐",
+      "lunch": "午餐",
+      "dinner": "晚餐",
+      "#end": "$.package_type"
+    }],
+    "sku_id": "$.sku_id",
+    "trading_id": ["$.order_id", "&.mongo_trading.order_trading_snapshots::order_id", [
+      ":@index", "$$.sku_id|ObjectId", "$.*|array", "sku_id", ":$.trading_id|str"
+    ]],
+    "title": ["$.order_id", "&.mongo_trading.order_trading_snapshots::order_id", [
+      ":@index", "$$.sku_id|ObjectId", "$.*|array", "sku_id", ":$.trading.title|str"
+    ]],
+    "num": "$.num",
+    "price": ["$.order_id", "&.mysql_trading.trading_order_goods::order_id", [
+      ":@index", "$$.sku_id", "$.*|array", "sku_id", ":$.price|int"
+    ]],
+    "fee": ["$.order_id", "&.mysql_trading.trading_order_goods::order_id", [
+      ":@index", "$$.sku_id", "$.*|array", "sku_id", [
+        ":@mul|int", "$.price|int", "$$$.num"
+      ]
+    ]],
+    "tracking_uid": ["$.order_id", "&.mongo_tracking.tracking_orders::order_id", [
+      ":@max", "$.*|array", "_id", ":$.tracking_uid|str"
+    ]],
+    "tracking_username": ["$.order_id", "&.mongo_tracking.tracking_orders::order_id", [
+      ":@max", "$.*|array", "_id",  [
+        ":$.tracking_uid|ObjectId", "&.mongo_user.user::_id", ":$.username|str"
+      ]
+    ]],
+    "tracking_nickname": ["$.order_id", "&.mongo_tracking.tracking_orders::order_id", [
+      ":@max", "$.*|array", "_id",  [
+        ":$.tracking_uid|ObjectId", "&.mongo_user.user::_id", ":$.nickname|str"
+      ]
+    ]],
+    "delivery_status": ["$.delivery_id", "&.mysql_trading.delivery_order::id", ":$.status"],
+    "delivery_status_name": ["$.delivery_id", "&.mysql_trading.delivery_order::id", {
+      "#case": "$.status",
+      ":100": "已取消",
+      ":200": "待配送",
+      ":300": "已确认",
+      ":400": "已发货",
+      ":500": "已到柜",
+      ":600": "配送完成",
+      ":700": "已退回",
+      "#end": "$.status|str"
+    }],
+    "status": "$.status",
+    "status_name": {
+      "#case": "$.status",
+      ":100": "已取消",
+      ":200": "待配送",
+      ":300": "已确认",
+      ":400": "已发货",
+      ":500": "已到柜",
+      ":600": "配送完成",
+      ":700": "已退回",
+      "#end": "$.status|str"
+    },
+    "order_at": ["$.order_id", "&.mysql_trading.trading_order::order_id", ":$.order_at|datetime %Y-%m-%d %H:%M:%S"],
+    "sendout_at": ["$.delivery_id", "&.mysql_trading.delivery_order::id", "$.sendout_at|datetime %Y-%m-%d %H:%M:%S"],
+    "received_at": ["$.delivery_id", "&.mysql_trading.delivery_order::id", "$.received_at|datetime %Y-%m-%d %H:%M:%S"],
+    "succed_at": ["$.delivery_id", "&.mysql_trading.delivery_order::id", "$.succed_at|datetime %Y-%m-%d %H:%M:%S"],
+    "created_at": "$.created_at|datetime %Y-%m-%d %H:%M:%S",
+    "updated_at": "$.updated_at|datetime %Y-%m-%d %H:%M:%S"
+  }
+}

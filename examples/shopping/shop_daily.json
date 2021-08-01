@@ -1,0 +1,33 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "shop_daily",
+  "input": "<<&.mysql_analysis.delivery_order_daily::shop_id",
+  "output": ">>&.mysql_analysis.shop_daily::shop_date use UI",
+  "databases": [
+    {
+      "name": "mysql_analysis",
+      "virtual_views": [{
+        "name": "delivery_order_daily",
+        "query": "SELECT shop_id, date(order_at) as order_date, count(order_id) as order_cnt, sum(total_fee) as total_fee, sum(order_pay_fee / order_total_fee * total_fee) as pay_fee FROM statistics.delivery_order where status>=200 and order_at>=%s and order_at<%s group by shop_id, date(order_at)",
+        "args": [["order_at", ">=", ""], ["order_at", "<", ""]]
+      }]
+    }
+  ],
+  "querys": {
+    "order_at|datetime": {">=": ["@now|str %Y-%m-%d 00:00:00", "-7d"], "<": ["@now|str %Y-%m-%d 00:00:00"]}
+  },
+  "schema": {
+    "shop_date": ["@add", "$.shop_id", "-", "$.order_date|str %Y-%m-%d"],
+    "shop_id": "$.shop_id",
+    "order_date": "$.order_date|date",
+    "shop_name": ["$.shop_id|ObjectId", "&.mongo_shop.shop::_id", ":$.name"],
+    "dot_id": ["$.shop_id|ObjectId", "&.mongo_shop.shop::_id", ":$.dot_id|int"],
+    "dot_name": ["$.shop_id|ObjectId", "&.mongo_shop.shop::_id", [
+      ":$.dot_id|int", "&.mysql_ebox.dot::id", "$.name"
+    ]],
+    "order_cnt": "$.order_cnt|int",
+    "total_fee": "$.total_fee|int",
+    "pay_fee": "$.pay_fee|int",
+    "updated_at": ["@now|datetime"]
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "operator_terminal_daily",
+  "input": ["@add","<<&.mysql_ebox_order.order_", ["@now|str %Y%m", "-1d"], "::operator_id"],
+  "output": ">>&.mysql_analysis.operator_terminal_daily::operator_terminal_date use UI",
+  "databases": [
+    {
+      "name": "mysql_ebox_order",
+      "virtual_views": [{
+        "name": "ebox_order",
+        "name_match": "order_\\d+?",
+        "query": "SELECT operator_id, terminal_code, date(delivery_at) as order_date, count(*) AS delivery_cnt FROM `ebox_order` WHERE delivery_at>=%s AND delivery_at<%s GROUP BY operator_id, terminal_code, date(delivery_at)",
+        "args": [["delivery_at", ">=", ""], ["delivery_at", "<", ""]]
+      }]
+    }
+  ],
+  "querys": {
+    "delivery_at|datetime": {">=": ["@now|str %Y-%m-%d 00:00:00", "-1d"], "<": ["@now|str %Y-%m-%d 00:00:00"]}
+  },
+  "schema": {
+    "operator_terminal_date": ["@add", "$.operator_id|str", "-", "$.terminal_code", "-", "$.order_date|str %Y-%m-%d"],
+    "operator_id": "$.operator_id",
+    "terminal_code": "$.terminal_code",
+    "order_date": "$.order_date|date",
+    "username": ["$.operator_id", "&.mysql_ebox.operator::id", ":$.username"],
+    "operator_name": ["$.operator_id", "&.mysql_ebox.operator::id", ":$.operator_name"],
+    "terminal_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", ":$.terminal_name"],
+    "dot_id": ["$.terminal_code", "&.mysql_ebox.terminal::code", ":$.dot_id"],
+    "dot_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.dot_id", "&.mysql_ebox.dot::id", ":$.name|str"
+    ]],
+    "region_id": ["$.terminal_code", "&.mysql_ebox.terminal::code", ":$.region_id"],
+    "region_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.name"
+    ]],
+    "city_id": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.cid|int"
+    ]],
+    "city_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.cname|str"
+    ]],
+    "delivery_cnt": "$.delivery_cnt|int",
+    "updated_at": ["@now|datetime"]
+  }
+}

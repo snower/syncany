@@ -1,0 +1,25 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "coupon_channel_users",
+  "input":"&.mongo_trading.coupon_channel_users::_id",
+  "output":">>&.mysql_analysis.coupon_channel_users::channel_user_coupon_id use UI",
+  "querys": {
+    "upts|datetime": {">=": ["@now|str", "-10M"], "<=":  ["@now|str"]}
+  },
+  "schema": {
+    "channel_user_coupon_id": ["#yield","$.user_coupons", [
+      ":#yield", "$.user_coupon_ids", [
+        ":@add", "$$$._id|str", "$.*|str"
+      ]
+    ]],
+    "dot_id": "$.dot_id|int",
+    "channel_id": "$.channel_id|str",
+    "uid": "$.uid|str",
+    "user_coupon_id": ["#yield","$.user_coupons", [
+      ":#yield", "$.user_coupon_ids", ":$.*|str"
+    ]],
+    "status": "$.status|int",
+    "created_at": "$.crts|datetime %Y-%m-%d %H:%M:%S",
+    "updated_at": "$.upts|datetime %Y-%m-%d %H:%M:%S"
+  }
+}

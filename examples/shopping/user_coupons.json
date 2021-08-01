@@ -1,0 +1,56 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "user_coupons",
+  "input":"&.mongo_trading.user_coupons::_id",
+  "output":">>&.mysql_analysis.user_coupons::user_coupon_id use UI",
+  "querys": {
+    "upts|datetime": {">=": ["@now|str", "-10M"], "<=":  ["@now|str"]}
+  },
+  "schema": {
+    "user_coupon_id": "$._id|str",
+    "dot_id": "$.dot_id|int",
+    "coupon_id": "$.coupon_id|str",
+    "coupon_batch": ["$.coupon_id|ObjectId", "&.mongo_trading.coupon::_id", ":$.batch"],
+    "coupon_name": ["$.coupon_id|ObjectId", "&.mongo_trading.coupon::_id", ":$.name"],
+    "start_time": "$.start_time|datetime %Y-%m-%d %H:%M:%S",
+    "expried_time": "$.expried_time|datetime %Y-%m-%d %H:%M:%S",
+    "coupon_channel": "$.channel_name|str",
+    "channel_name": {
+      "#case": "$.channel_name|str",
+      "admin": "管理后台发送",
+      "#end": ["$._id|str", "&.mysql_analysis.coupon_channel_users::user_coupon_id", [
+        ":$.channel_id|ObjectId", "&.mongo_trading.coupon_channels::_id", ":$.name|str"
+      ]]
+    },
+    "uid": "$.uid|str",
+    "username": ["$.uid|ObjectId", "&.mongo_user.user::_id", ":$.username"],
+    "nickname": ["$.uid|ObjectId", "&.mongo_user.user::_id", ":$.nickname"],
+    "order_id": ["$._id", ["&.mongo_trading.order_coupons::user_coupon_id", {"status":  0}], ":$.order_id|str"],
+    "total_fee": ["$._id", ["&.mongo_trading.order_coupons::user_coupon_id", {"status":  0}], [
+      ":$.order_id|str", "&.mysql_trading.trading_order::order_id", ":$.total_fee|int"
+    ]],
+    "pay_fee": ["$._id", ["&.mongo_trading.order_coupons::user_coupon_id", {"status":  0}], [
+      ":$.order_id|str", "&.mysql_trading.trading_order::order_id", ":$.pay_fee|int"
+    ]],
+    "refund_fee": ["$._id", ["&.mongo_trading.order_coupons::user_coupon_id", {"status":  0}], [
+      ":$.order_id|str", "&.mysql_trading.trading_order::order_id", ":$.refund_fee|int"
+    ]],
+    "order_status": ["$._id", ["&.mongo_trading.order_coupons::user_coupon_id", {"status":  0}], [
+      ":$.order_id|str", "&.mysql_trading.trading_order::order_id", ":$.status|int"
+    ]],
+    "order_at": ["$._id", ["&.mongo_trading.order_coupons::user_coupon_id", {"status":  0}], [
+      ":$.order_id|str", "&.mysql_trading.trading_order::order_id", ":$.order_at|datetime %Y-%m-%d %H:%M:%S"
+    ]],
+    "coupon_fee": "$.fee|int",
+    "status": "$.status|int",
+    "status_name": {
+      "#case": "$.status|int",
+      ":0": "未使用",
+      ":1": "已使用",
+      ":2": "已过期",
+      "#end": "$.status|str"
+    },
+    "created_at": "$.crts|datetime %Y-%m-%d %H:%M:%S",
+    "updated_at": "$.upts|datetime %Y-%m-%d %H:%M:%S"
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "terminal_daily",
+  "input": "<<&.mysql_ebox.terminal_daily::terminal_code_date",
+  "output": ">>&.mysql_analysis.terminal_daily::terminal_code_date use UI",
+  "databases": [
+    {
+      "name": "mysql_ebox",
+      "virtual_views": [{
+        "name": "terminal_daily",
+        "query": ["select a.code, concat(code, ':', %s) as terminal_code_date, %s as order_date, a.dot_id, a.region_id, b.box_cnt from ebox.terminal a left join (",
+            "SELECT terminal_code, count(code) as box_cnt FROM ebox.box where fault_state!=5 and status=0 group by terminal_code",
+          ") b on a.code=b.terminal_code where a.status in (0, 1)"],
+        "args": [["order_date", "=", ""], ["order_date", "=", ""]]
+      }]
+    }
+  ],
+  "querys": {
+    "order_date": {"==": ["@now|str %Y-%m-%d", "-1d"]}
+  },
+  "schema": {
+    "terminal_code_date": "$.terminal_code_date",
+    "terminal_code": "$.code",
+    "order_date": "$.order_date|date",
+    "terminal_name": ["$.code", "&.mysql_ebox.terminal::code", ":$.terminal_name"],
+    "dot_id": ["$.code", "&.mysql_ebox.terminal::code", ":$.dot_id"],
+    "dot_name": ["$.code", "&.mysql_ebox.terminal::code", [
+      ":$.dot_id", "&.mysql_ebox.dot::id", ":$.name|str"
+    ]],
+    "region_id": ["$.code", "&.mysql_ebox.terminal::code", ":$.region_id"],
+    "region_name": ["$.code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.name"
+    ]],
+    "city_id": ["$.code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.cid|int"
+    ]],
+    "city_name": ["$.code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.cname|str"
+    ]],
+    "box_cnt": ["$.box_cnt|int"],
+    "delivery_cnt": ["$.terminal_code_date", "&.mysql_analysis.ebox_order_daily::terminal_code_date", "$.delivery_cnt|int"],
+    "fetch_cnt": ["$.terminal_code_date", "&.mysql_analysis.ebox_order_daily::terminal_code_date", "$.fetch_cnt|int"],
+    "charge": ["@add", [
+      "$.terminal_code_date", "&.mysql_analysis.ebox_charge_daily::terminal_code_date", [
+        ":@sum|int", "$.*|array", "charge"
+      ]], [
+      "$.terminal_code_date", "&.mysql_analysis.timeout_user_pay_daily::terminal_date", ":$.pay_fee|int"
+    ]],
+    "charge_cnt": ["@add", [
+      "$.terminal_code_date", "&.mysql_analysis.ebox_charge_daily::terminal_code_date", [
+        ":@sum|int", "$.*|array", "charge_cnt"
+      ]], {
+        "#case": ["$.terminal_code_date", "&.mysql_analysis.timeout_user_pay_daily::terminal_date", ":$.pay_fee|int"],
+        ":0": 0,
+        "#end": 1
+      }
+    ],
+    "discounted_charge": ["$.terminal_code_date", "&.mysql_analysis.ebox_charge_daily::terminal_code_date", [
+      ":@sum", "$.*|array", "discounted_charge"
+    ]],
+    "discounted_charge_cnt": ["$.terminal_code_date", "&.mysql_analysis.ebox_charge_daily::terminal_code_date", [
+      ":@sum", "$.*|array", "discounted_charge_cnt"
+    ]],
+    "updated_at": ["@now|datetime"]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "coopartor_terminal_daily",
+  "input": "<<&.mysql_analysis.terminal_daily::terminal_code_date",
+  "output": ">>&.mysql_analysis.coopartor_terminal_daily::coopartor_terminal_code_date use UI",
+  "querys": {
+    "order_date": {"==": ["@now|str %Y-%m-%d", "-1d"]}
+  },
+  "schema": {
+    "terminal_code_date": ["$.dot_id", "&.mongo_coopartor.dots::dot_id", [
+      ":#yield", "$.parent_link_ids|array", [":@add", "$.*|str", "-", "$$$.terminal_code_date"]
+    ]],
+    "coopartor_id": ["$.dot_id", "&.mongo_coopartor.dots::dot_id", [
+      ":#yield|str", "$.parent_link_ids|array"
+    ]],
+    "terminal_code": "$.terminal_code",
+    "order_date": "$.order_date|date",
+    "coopartor_name": ["$.dot_id", "&.mongo_coopartor.dots::dot_id", [
+      ":#yield", "$.parent_link_ids|array", ["$.*|ObjectId", "&.mongo_coopartor.coopartor::_id", "$.name"]
+    ]],
+    "terminal_name": "$.terminal_name",
+    "dot_id": "$.dot_id",
+    "dot_name": "$.dot_name",
+    "region_id": "$.region_id",
+    "region_name": "$.region_name",
+    "city_id": "$.city_id",
+    "city_name": "$.city_name",
+    "box_cnt": "$.box_cnt",
+    "delivery_cnt": "$.delivery_cnt",
+    "fetch_cnt": "$.fetch_cnt",
+    "charge": "$.charge",
+    "discounted_charge": "$.discounted_charge",
+    "updated_at": ["@now|datetime"]
+  }
+}

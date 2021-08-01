@@ -1,0 +1,7 @@
+{
+  "extends": [
+    "json/delivery_acceptance_rate.json"
+  ],
+  "name": "delivery_acceptance_rate_execl",
+  "output": ">>&.exports.delivery_acceptance_rate.xlsx#deliverys::acceptance_rate_id"
+}

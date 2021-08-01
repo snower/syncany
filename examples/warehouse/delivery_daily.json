@@ -1,0 +1,60 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "delivery_daily",
+  "input": "<<&.mysql_warehouse.delivery_daily::site_date_id",
+  "output": ">>&.mysql_analysis.delivery_daily::site_date_id use UI",
+  "sources": {
+    "delivery_daily": "json/sql/delivery_daily.sql"
+  },
+  "databases": [
+    {
+      "name": "mysql_warehouse",
+      "virtual_views": [{
+        "name": "delivery_daily",
+        "query": "%delivery_daily",
+        "args": [
+          ["m_created_at", ">=", ""], ["m_created_at", "<", ""],
+          ["date", ">=", ""], ["date", "<", ""],
+          ["m_created_at", ">=", ""], ["m_created_at", "<", ""],
+          ["m_created_at", ">=", ""], ["m_created_at", "<", ""]
+        ]
+      }]
+    }
+  ],
+  "querys": {
+    "m_created_at|datetime": {">=": ["@now|str %Y-%m-%d 22:00:00", "-3d"], "<": ["@now|str %Y-%m-%d 22:00:00"]},
+    "date|datetime": {">=": ["@now|str %Y-%m-%d 22:00:00", "-3d"], "<": ["@now|str %Y-%m-%d 22:00:00"]}
+  },
+  "schema": {
+    "site_date_id": "$.site_date_id",
+    "dot_id": ["$.site_id|int", "&.mysql_warehouse.site::id", ":$.dot_id|int"],
+    "dot_name": ["$.site_id|int", "&.mysql_warehouse.site::id", [
+      ":$.dot_id|int", "&.mysql_dot.dot::id", ":$.name|str"
+    ]],
+    "site_id": "$.site_id|int",
+    "site_name": ["$.site_id|int", "&.mysql_warehouse.site::id", ":$.name|str"],
+    "city_id": ["$.site_id|int", "&.mysql_warehouse.site::id", ":$.city|int"],
+    "city_name": ["$.site_id|int", "&.mysql_warehouse.site::id", [
+      ":$.city|int", "&.mysql_warehouse.region::cid", ":$.:0.cname|str"
+    ]],
+    "delivery_date": "$.delivery_date|date",
+    "team_cnt": "$.team_cnt|int",
+    "vip_team_cnt": "$.vip_team_cnt|int",
+    "abnormal_sign_cnt": "$.abnormal_sign_cnt|int",
+    "driver_cnt": "$.driver_cnt|int",
+    "sorter_cnt": "$.sorter_cnt|int",
+    "delivery_cnt": "$.delivery_cnt|int",
+    "vip_delivery_cnt": "$.vip_delivery_cnt|int",
+    "delivery_start_time": "$.delivery_start_time|datetime",
+    "delivery_finish_time": "$.delivery_finish_time|datetime",
+    "vip_delivery_start_time": "$.vip_delivery_start_time|datetime",
+    "vip_delivery_finish_time": "$.vip_delivery_finish_time|datetime",
+    "sort_start_time": "$.sort_start_time|datetime",
+    "sort_end_time": "$.sort_end_time|datetime",
+    "timeout_at": "$.timeout_at",
+    "vip_timeout_at": "$.vip_timeout_at",
+    "timeout_cnt": "$.timeout_cnt|int",
+    "vip_timeout_cnt": "$.vip_timeout_cnt|int",
+    "delivery_ttime": "$.delivery_ttime|int"
+  }
+}

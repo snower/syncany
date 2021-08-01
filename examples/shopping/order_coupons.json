@@ -1,0 +1,39 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "order_coupons",
+  "input":"&.mongo_trading.order_coupons::_id",
+  "output":">>&.mysql_analysis.order_coupons::order_coupon_id use UI",
+  "querys": {
+    "upts|datetime": {">=": ["@now|str", "-10M"], "<=":  ["@now|str"]}
+  },
+  "schema": {
+    "order_coupon_id": "$._id|str",
+    "dot_id": "$.dot_id|int",
+    "coupon_id": "$.coupon_id|str",
+    "coupon_batch": ["$.coupon_id|ObjectId", "&.mongo_trading.coupon::_id", ":$.batch"],
+    "coupon_name": ["$.coupon_id|ObjectId", "&.mongo_trading.coupon::_id", ":$.name"],
+    "user_coupon_id": "$.user_coupon_id|str",
+    "uid": "$.uid|str",
+    "username": ["$.uid|ObjectId", "&.mongo_user.user::_id", ":$.username"],
+    "nickname": ["$.uid|ObjectId", "&.mongo_user.user::_id", ":$.nickname"],
+    "order_id": "$.order_id",
+    "total_fee": ["$.order_id", "&.mysql_trading.trading_order::order_id", ":$.total_fee"],
+    "pay_fee": ["$.order_id", "&.mysql_trading.trading_order::order_id", ":$.pay_fee"],
+    "refund_fee": ["$.order_id", "&.mysql_trading.trading_order::order_id", ":$.refund_fee|int"],
+    "order_status": ["$.order_id", "&.mysql_trading.trading_order::order_id", ":$.status"],
+    "order_at": ["$.order_id", "&.mysql_trading.trading_order::order_id", ":$.order_at|datetime %Y-%m-%d %H:%M:%S"],
+    "coupon_fee": "$.fee|int",
+    "expried_time": ["$.user_coupon_id|ObjectId", "&.mongo_trading.user_coupons::_id", ":$.expried_time|datetime %Y-%m-%d %H:%M:%S"],
+    "coupon_channel": ["$.user_coupon_id|ObjectId", "&.mongo_trading.user_coupons::_id", ":$.channel_name"],
+    "status": "$.status|int",
+    "status_name": {
+      "#case": "$.status|int",
+      ":0": "已使用",
+      ":1": "已取消",
+      ":2": "已过期",
+      "#end": "$.status|str"
+    },
+    "created_at": "$.crts|datetime %Y-%m-%d %H:%M:%S",
+    "updated_at": "$.upts|datetime %Y-%m-%d %H:%M:%S"
+  }
+}

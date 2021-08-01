@@ -1,0 +1,53 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "delivery_acceptance_rate",
+  "input": "<<&.mysql_warehouse.delivery_acceptance_rates::acceptance_rate_id",
+  "output": ">>&.mysql_analysis.delivery_acceptance_rates::acceptance_rate_id use UI",
+  "sources": {
+    "delivery_acceptance_rate_sql": "json/sql/delivery_acceptance_rate.sql"
+  },
+  "databases": [
+    {
+      "name": "mysql_warehouse",
+      "virtual_views": [{
+        "name": "delivery_acceptance_rates",
+        "query": "%delivery_acceptance_rate_sql",
+        "args": [["m_created_at", ">=", ""], ["m_created_at", "<", ""]]
+      }]
+    }
+  ],
+  "querys": {
+    "m_created_at|datetime": {">=": ["@now|str %Y-%m-%d 22:00:00", "-3d"], "<": ["@now|str %Y-%m-%d 22:00:00"]}
+  },
+  "pipelines": [
+    [">@conv::v4h", "$.*", "ctime", "time_cnt", [
+      "acceptance_rate_id", "site_id", "is_vip", "delivery_date", "cnt"
+    ]]
+  ],
+  "schema": {
+    "acceptance_rate_id": ["@add", "$.acceptance_rate_id", "-", [
+      "@substring|int", "$.ctime", 4, ":$.*|str %02d:00:00"
+    ]],
+    "dot_id": ["$.site_id|int", "&.mysql_warehouse.site::id", ":$.dot_id|int"],
+    "dot_name": ["$.site_id|int", "&.mysql_warehouse.site::id", [
+      ":$.dot_id|int", "&.mysql_dot.dot::id", ":$.name|str"
+    ]],
+    "site_id": "$.site_id|int",
+    "site_name": ["$.site_id|int", "&.mysql_warehouse.site::id", ":$.name|str"],
+    "city_id": ["$.site_id|int", "&.mysql_warehouse.site::id", ":$.city|int"],
+    "city_name": ["$.site_id|int", "&.mysql_warehouse.site::id", [
+      ":$.city|int", "&.mysql_warehouse.region::cid", ":$.:0.cname|str"
+    ]],
+    "is_vip": "$.is_vip|int",
+    "is_vip_name": {
+      "#case": "$.is_vip",
+      ":0": "否",
+      ":1": "是",
+      "#end": "$.is_vip|str"
+    },
+    "delivery_date": "$.delivery_date|date",
+    "ctime": ["@substring|int", "$.ctime", 4, [":$.*|str 2021-01-01 %02d:00:00", ":$.*|datetime"]],
+    "time_cnt": "$.time_cnt|int",
+    "cnt": "$.cnt|int"
+  }
+}

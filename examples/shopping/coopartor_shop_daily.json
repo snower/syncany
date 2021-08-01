@@ -1,0 +1,31 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "coopartor_shop_daily",
+  "input": "<<&.mysql_analysis.shop_daily::shop_date",
+  "output": ">>&.mysql_analysis.coopartor_shop_daily::coopartor_shop_date use UI",
+  "querys": {
+    "order_date": {"==": ["@now|str %Y-%m-%d", "-1d"]}
+  },
+  "schema": {
+    "coopartor_shop_date": ["$.dot_id", "&.mongo_coopartor.dots::dot_id", [
+      ":#yield", "$.parent_link_ids|array", [":@add", "$.*|str", "-", "$$$.shop_date"]
+    ]],
+    "coopartor_id": ["$.dot_id", "&.mongo_coopartor.dots::dot_id", [
+      ":#yield|str", "$.parent_link_ids|array"
+    ]],
+    "shop_id": "$.shop_id",
+    "order_date": "$.order_date|date",
+    "coopartor_name": ["$.dot_id", "&.mongo_coopartor.dots::dot_id", [
+      ":#yield", "$.parent_link_ids|array", [
+        ":$.*|ObjectId", "&.mongo_coopartor.coopartor::_id", "$.name"
+      ]
+    ]],
+    "shop_name": "$.shop_name",
+    "dot_id": "$.dot_id",
+    "dot_name": "$.dot_name",
+    "order_cnt": "$.order_cnt",
+    "total_fee": "$.total_fee",
+    "pay_fee": "$.pay_fee",
+    "updated_at": ["@now|datetime"]
+  }
+}

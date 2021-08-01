@@ -1,0 +1,158 @@
+{
+  "databases": [
+    {
+      "name": "stdio",
+      "driver": "textline"
+    },
+    {
+      "name": "mysql_analysis",
+      "driver": "mysql",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "user": "root",
+      "passwd": "123456",
+      "db": "statistics",
+      "charset":"utf8mb4"
+    },
+    {
+      "name": "mysql_trading",
+      "driver": "mysql",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "user": "root",
+      "passwd": "123456",
+      "db": "trading",
+      "charset":"utf8mb4"
+    },
+    {
+      "name": "mysql_shop",
+      "driver": "mysql",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "user": "root",
+      "passwd": "123456",
+      "db": "shop",
+      "charset":"utf8mb4"
+    },
+    {
+      "name": "mysql_pay",
+      "driver": "mysql",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "user": "root",
+      "passwd": "123456",
+      "db": "pay",
+      "charset":"utf8mb4"
+    },
+    {
+      "name": "mysql_ebox",
+      "driver": "mysql",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "user": "root",
+      "passwd": "123456",
+      "db": "ebox",
+      "charset":"utf8mb4"
+    },
+    {
+      "name": "mysql_ebox_order",
+      "driver": "mysql",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "user": "root",
+      "passwd": "123456",
+      "db": "ebox_order",
+      "charset":"utf8mb4"
+    },
+    {
+      "name": "mysql_ebox_charge",
+      "driver": "mysql",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "user": "root",
+      "passwd": "123456",
+      "db": "ebox_charge",
+      "charset":"utf8mb4"
+    },
+    {
+      "name": "mongo_trading",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "trading"
+    },
+    {
+      "name": "mongo_shop",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "shop"
+    },
+    {
+      "name": "mongo_user",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "user"
+    },
+    {
+      "name": "mongo_weixin",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "weixin"
+    },
+    {
+      "name": "mongo_ebox",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "ebox"
+    },
+    {
+      "name": "mongo_dot",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "dot"
+    },
+    {
+      "name": "mongo_coopartor",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "coopartor"
+    },
+    {
+      "name": "mongo_tracking",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "tracking"
+    },
+    {
+      "name": "mongo_brand",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "brand"
+    },
+    {
+      "name": "mongo_operator",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "operator"
+    },
+    {
+      "name": "exports",
+      "driver": "execl",
+      "path": "./exports"
+    },
+    {
+      "name": "json",
+      "driver": "json",
+      "path": "./json"
+    }
+  ]
+}

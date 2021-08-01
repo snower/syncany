@@ -1,0 +1,118 @@
+{
+  "databases": [
+    {
+      "name": "stdio",
+      "driver": "textline"
+    },
+    {
+      "name": "memory",
+      "driver": "memory"
+    },
+    {
+      "name": "mysql_analysis",
+      "driver": "mysql",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "user": "root",
+      "passwd": "123456",
+      "db": "statistics",
+      "charset":"utf8mb4"
+    },
+    {
+      "name": "mysql_warehouse",
+      "driver": "mysql",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "user": "root",
+      "passwd": "123456",
+      "db": "warehouse",
+      "charset":"utf8mb4"
+    },
+    {
+      "name": "mysql_ebox",
+      "driver": "mysql",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "user": "root",
+      "passwd": "123456",
+      "db": "ebox",
+      "charset":"utf8mb4"
+    },
+    {
+      "name": "mysql_dot",
+      "driver": "mysql",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "user": "root",
+      "passwd": "123456",
+      "db": "dot",
+      "charset":"utf8mb4"
+    },
+    {
+      "name": "mongo_driver",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "driver"
+    },
+    {
+      "name": "mongo_sorter",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "sorter"
+    },
+    {
+      "name": "mongo_user",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "user"
+    },
+    {
+      "name": "mongo_weixin",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "weixin"
+    },
+    {
+      "name": "mongo_ebox",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "ebox"
+    },
+    {
+      "name": "mongo_dot",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "dot"
+    },
+    {
+      "name": "mongo_tracking",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "tracking"
+    },
+    {
+      "name": "mongo_analysis",
+      "driver": "mongo",
+      "host": "127.0.0.1",
+      "port": 27017,
+      "db": "analysis"
+    },
+    {
+      "name": "exports",
+      "driver": "execl",
+      "path": "./exports"
+    },
+    {
+      "name": "json",
+      "driver": "json",
+      "path": "./json"
+    }
+  ]
+}

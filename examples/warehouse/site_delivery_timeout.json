@@ -1,0 +1,28 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "site_delivery_timeout",
+  "input": "<<&.mongo_analysis.site_threshold::_id",
+  "output": ">>&.mysql_analysis.site_delivery_timeout::site_id use UI",
+  "querys": {
+    "type": {"==": "2"}
+  },
+  "schema": {
+    "site_id": ["#yield", "$.site", [
+      ":#aggregate", "$.*|int", "$$.*|int"
+    ]],
+    "timeout_at": ["#yield", "$.site", [
+      ":#aggregate", "$.*|int", {
+        "#case": "$$$.vip",
+        "1": "$.timeout_at",
+        "#end": "$$$.rule.:0.start_time"
+      }
+    ]],
+    "vip_timeout_at": ["#yield", "$.site", [
+      ":#aggregate", "$.*|int", {
+        "#case": "$$$.vip",
+        "2": "$.vip_timeout_at",
+        "#end": "$$$.rule.:0.start_time"
+      }
+    ]]
+  }
+}

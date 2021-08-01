@@ -1,0 +1,51 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "ebox_charge_daily",
+  "input": ["@add","<<&.mysql_ebox_charge.charge_", ["@now|str %Y%m", "-1d"], "::terminal_code_date_type"],
+  "output": ">>&.mysql_analysis.ebox_charge_daily::terminal_code_date_type use UI",
+  "sources": {
+    "ebox_charge_daily": "json/sql/ebox_charge_daily.sql"
+  },
+  "databases": [
+    {
+      "name": "mysql_ebox_charge",
+      "virtual_views": [{
+        "name": "ebox_charge",
+        "name_match": "charge_\\d+?",
+        "query": "%ebox_charge_daily",
+        "args": [["created_at", ">=", ""], ["created_at", "<", ""]]
+      }]
+    }
+  ],
+  "querys": {
+    "created_at|datetime": {">=": ["@now|str %Y-%m-%d 00:00:00", "-1d"], "<": ["@now|str %Y-%m-%d 00:00:00"]}
+  },
+  "schema": {
+    "terminal_code_date_type": "$.terminal_code_date_type",
+    "terminal_code_date": ["@add", "$.terminal_code", ["#const", ":"], "$.order_date|str %Y-%m-%d"],
+    "terminal_code": "$.terminal_code",
+    "order_date": "$.order_date|date",
+    "charge_type": "$.charge_type|int",
+    "terminal_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", ":$.terminal_name"],
+    "dot_id": ["$.terminal_code", "&.mysql_ebox.terminal::code", ":$.dot_id"],
+    "dot_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.dot_id", "&.mysql_ebox.dot::id", ":$.name|str"
+    ]],
+    "region_id": ["$.terminal_code", "&.mysql_ebox.terminal::code", ":$.region_id"],
+    "region_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.name"
+    ]],
+    "city_id": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.cid|int"
+    ]],
+    "city_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.cname|str"
+    ]],
+    "order_cnt": "$.order_cnt|int",
+    "charge": "$.charge|int",
+    "charge_cnt": "$.charge_cnt|int",
+    "discounted_charge": "$.discounted_charge|int",
+    "discounted_charge_cnt": "$.discounted_charge_cnt|int",
+    "updated_at": ["@now|datetime"]
+  }
+}

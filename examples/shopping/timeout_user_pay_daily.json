@@ -1,0 +1,42 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "timeout_user_pay_daily",
+  "input": "<<&.mysql_ebox.timeout_user_pay_daily::terminal_code",
+  "output": ">>&.mysql_analysis.timeout_user_pay_daily::terminal_date use UI",
+  "databases": [
+    {
+      "name": "mysql_ebox",
+      "virtual_views": [{
+        "name": "timeout_user_pay_daily",
+        "query": "SELECT terminal_code, date(created_at) as order_date, count(order_id) as order_cnt, sum(pay_fee) as pay_fee FROM ebox.order_timeout_user_pay where status=301 and created_at>=%s and created_at<%s group by terminal_code, date(created_at)",
+        "args": [["created_at", ">=", ""], ["created_at", "<", ""]]
+      }]
+    }
+  ],
+  "querys": {
+    "created_at|datetime": {">=": ["@now|str %Y-%m-%d 00:00:00", "-7d"], "<": ["@now|str %Y-%m-%d 00:00:00"]}
+  },
+  "schema": {
+    "terminal_date": ["@add", "$.terminal_code", "-", "$.order_date|str %Y-%m-%d"],
+    "terminal_code": "$.terminal_code",
+    "order_date": "$.order_date|date",
+    "terminal_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", ":$.terminal_name"],
+    "dot_id": ["$.terminal_code", "&.mysql_ebox.terminal::code", ":$.dot_id"],
+    "dot_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.dot_id", "&.mysql_ebox.dot::id", ":$.name|str"
+    ]],
+    "region_id": ["$.terminal_code", "&.mysql_ebox.terminal::code", ":$.region_id"],
+    "region_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.name"
+    ]],
+    "city_id": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.cid|int"
+    ]],
+    "city_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.cname|str"
+    ]],
+    "order_cnt": "$.order_cnt|int",
+    "pay_fee": "$.pay_fee|int",
+    "updated_at": ["@now|datetime"]
+  }
+}

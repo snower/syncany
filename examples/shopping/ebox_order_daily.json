@@ -1,0 +1,50 @@
+{
+  "extends": ["json/base/database.json", "json/base/log.json"],
+  "name": "ebox_order_daily",
+  "input": ["@add","<<&.mysql_ebox_order.order_", ["@now|str %Y%m", "-1d"], "::terminal_code_date"],
+  "output": ">>&.mysql_analysis.ebox_order_daily::terminal_code_date use UI",
+  "databases": [
+    {
+      "name": "mysql_ebox_order",
+      "virtual_views": [{
+        "name": "ebox_order",
+        "name_match": "order_\\d+?",
+        "query": ["SELECT concat(terminal_code, ':', order_date) as terminal_code_date, terminal_code, order_date, delivery_cnt, fetch_cnt FROM (",
+          "    SELECT if(a.terminal_code is NULL, b.terminal_code, a.terminal_code) as terminal_code, if(a.delivery_date is NULL, b.fetch_date, a.delivery_date) as order_date, a.delivery_cnt, b.fetch_cnt FROM (",
+          "        SELECT terminal_code, date(delivery_at) as delivery_date, count(*) AS delivery_cnt FROM `ebox_order` WHERE delivery_at>=%s AND delivery_at<%s GROUP BY terminal_code, date(delivery_at)",
+          "    ) a LEFT OUTER JOIN (",
+          "        SELECT terminal_code, date(fetch_at) as fetch_date, count(*) AS fetch_cnt FROM `ebox_order` WHERE fetch_at>=%s AND fetch_at<%s GROUP BY terminal_code, date(fetch_at)",
+          "    ) b on a.terminal_code=b.terminal_code and a.delivery_date=b.fetch_date",
+          ") aa"],
+        "args": [["delivery_at", ">=", ""], ["delivery_at", "<", ""], ["fetch_at", ">=", ""], ["fetch_at", "<", ""]]
+      }]
+    }
+  ],
+  "querys": {
+    "delivery_at|datetime": {">=": ["@now|str %Y-%m-%d 00:00:00", "-1d"], "<": ["@now|str %Y-%m-%d 00:00:00"]},
+    "fetch_at|datetime": {">=": ["@now|str %Y-%m-%d 00:00:00", "-1d"], "<": ["@now|str %Y-%m-%d 00:00:00"]}
+  },
+  "schema": {
+    "terminal_code_date": "$.terminal_code_date",
+    "terminal_code": "$.terminal_code",
+    "order_date": "$.order_date|date",
+    "terminal_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", ":$.terminal_name"],
+    "dot_id": ["$.terminal_code", "&.mysql_ebox.terminal::code", ":$.dot_id"],
+    "dot_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.dot_id", "&.mysql_ebox.dot::id", ":$.name|str"
+    ]],
+    "region_id": ["$.terminal_code", "&.mysql_ebox.terminal::code", ":$.region_id"],
+    "region_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.name"
+    ]],
+    "city_id": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.cid|int"
+    ]],
+    "city_name": ["$.terminal_code", "&.mysql_ebox.terminal::code", [
+      ":$.region_id", "&.mysql_ebox.region::id", ":$.cname|str"
+    ]],
+    "delivery_cnt": "$.delivery_cnt|int",
+    "fetch_cnt": "$.fetch_cnt|int",
+    "updated_at": ["@now|datetime"]
+  }
+}

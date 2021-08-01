@@ -1,0 +1,7 @@
+{
+  "extends": [
+    "json/delivery_order.json"
+  ],
+  "name": "delivery_order_execl",
+  "output": ">>&.exports.delivery_order.xlsx#orders::id"
+}
