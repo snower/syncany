@@ -90,7 +90,10 @@ class MysqlQueryBuilder(QueryBuilder):
             if isinstance(arg, str):
                 virtual_q = "`" + arg[0] + "`=%s"
             else:
-                virtual_q = "`" + arg[0] + "`" + arg[1] + "%s"
+                if arg[1] == "in":
+                    virtual_q = "`" + arg[0] + "` " + arg[1] + " %s"
+                else:
+                    virtual_q = "`" + arg[0] + "`" + arg[1] + "%s"
             for i in range(len(self.query)):
                 if self.query[i] == virtual_q:
                     virtual_query[self.query[i]] = self.query_values[i]
@@ -137,7 +140,7 @@ class MysqlQueryBuilder(QueryBuilder):
             cursor.close()
             if connection.autocommit_mode == False:
                 connection.commit()
-        self.sql = (sql, query_values)
+            self.sql = (sql, query_values)
         return datas
 
     def verbose(self):
@@ -178,7 +181,7 @@ class MysqlInsertBuilder(InsertBuilder):
         finally:
             cursor.close()
             connection.commit()
-        self.sql = (sql, datas)
+            self.sql = (sql, datas)
         return cursor
 
     def verbose(self):
@@ -241,7 +244,7 @@ class MysqlUpdateBuilder(UpdateBuilder):
         finally:
             cursor.close()
             connection.commit()
-        self.sql = (sql, values)
+            self.sql = (sql, values)
         return cursor
 
     def verbose(self):
@@ -296,7 +299,7 @@ class MysqlDeleteBuilder(DeleteBuilder):
         finally:
             cursor.close()
             connection.commit()
-        self.sql = (sql, self.query_values)
+            self.sql = (sql, self.query_values)
         return cursor
 
     def verbose(self):

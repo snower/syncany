@@ -14,16 +14,18 @@ def warp_database_logging(tasker):
     def commit_warper(database, builder, func):
         def _(*args, **kwargs):
             start_time = time.time()
-            result = func(*args, **kwargs)
-            database_verbose = database.verbose()
-            builder_verbose = builder.verbose()
-            if builder_verbose:
-                get_logger().info("%s %s -> %s %.2fms\n%s\n", database.__class__.__name__, database_verbose,
-                                  builder.__class__.__name__, (time.time() - start_time) * 1000,
-                                  builder.verbose())
-            else:
-                get_logger().info("%s %s -> %s %.2fms", database.__class__.__name__, database_verbose, builder.__class__.__name__,
-                                  (time.time() - start_time) * 1000)
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                database_verbose = database.verbose()
+                builder_verbose = builder.verbose()
+                if builder_verbose:
+                    get_logger().info("%s %s -> %s %.2fms\n%s\n", database.__class__.__name__, database_verbose,
+                                      builder.__class__.__name__, (time.time() - start_time) * 1000,
+                                      builder_verbose)
+                else:
+                    get_logger().info("%s %s -> %s %.2fms", database.__class__.__name__, database_verbose, builder.__class__.__name__,
+                                      (time.time() - start_time) * 1000)
             return result
         return _
 

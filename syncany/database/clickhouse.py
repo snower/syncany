@@ -91,7 +91,10 @@ class ClickhouseQueryBuilder(QueryBuilder):
             if isinstance(arg, str):
                 virtual_q = "`" + arg[0] + "`=%s"
             else:
-                virtual_q = "`" + arg[0] + "`" + arg[1] + "%s"
+                if arg[1] == "in":
+                    virtual_q = "`" + arg[0] + "` " + arg[1] + " %s"
+                else:
+                    virtual_q = "`" + arg[0] + "`" + arg[1] + "%s"
             for i in range(len(self.query)):
                 if self.query[i] == virtual_q:
                     virtual_query[self.query[i]] = self.query_values[i]
@@ -138,7 +141,7 @@ class ClickhouseQueryBuilder(QueryBuilder):
             datas = [dict(zip(names, data)) for data in datas]
         finally:
             cursor.close()
-        self.sql = (sql, datas)
+            self.sql = (sql, datas)
         return datas
 
     def verbose(self):
@@ -179,7 +182,7 @@ class ClickhouseInsertBuilder(InsertBuilder):
             cursor.executemany(sql, datas)
         finally:
             cursor.close()
-        self.sql = (sql, datas)
+            self.sql = (sql, datas)
         return cursor
 
     def verbose(self):
@@ -242,7 +245,7 @@ class ClickhouseUpdateBuilder(UpdateBuilder):
             cursor.execute(sql % self.db.escape_args(values))
         finally:
             cursor.close()
-        self.sql = (sql, values)
+            self.sql = (sql, values)
         return cursor
 
     def verbose(self):
@@ -297,7 +300,7 @@ class ClickhouseDeleteBuilder(DeleteBuilder):
             cursor.execute(sql % self.db.escape_args(self.query_values))
         finally:
             cursor.close()
-        self.sql = (sql, self.query_values)
+            self.sql = (sql, self.query_values)
         return cursor
 
     def verbose(self):
