@@ -238,15 +238,31 @@ class JsonTasker(Tasker):
 
         arguments = []
         for name, argument in self.config["arguments"].items():
+            keys = name.split("|")
+            filters = (keys[1] if len(keys) >= 2 else "").split(" ")
+            filter_cls = self.find_filter_driver(filters[0])
+            filter_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
+
             if isinstance(argument, dict):
-                if "name" not in argument or "type" not in argument or "help" not in argument:
+                if "name" not in argument:
                     continue
                 if "default" in argument:
                     argument["default"] = self.compile_run_calculater(argument["default"])
+                if "type" not in argument:
+                    if filter_cls:
+                        argument["type"] = filter_cls(filter_args)
+                    else:
+                        argument["type"] = type(argument.get("default", ""))
+                if "help" not in argument:
+                    argument["help"] = "%s (default: %s)" % (name, argument.get("default", ""))
                 arguments.append(argument)
             else:
                 argument = self.compile_run_calculater(argument)
-                arguments.append({"name":  name, "type": type(argument).__name__, "default": argument,
+                if filter_cls:
+                    argument_type = filter_cls(filter_args)
+                else:
+                    argument_type = type(argument)
+                arguments.append({"name":  name, "type": argument_type, "default": argument,
                                   "help": "%s (default: %s)" % (name, argument)})
 
         for filter in self.config["querys"]:
@@ -369,15 +385,26 @@ class JsonTasker(Tasker):
         foreign_filters = []
         if isinstance(foreign_filter_configs, dict):
             for key, exps in foreign_filter_configs.items():
+                keys = key.split("|")
+                filters = (keys[1] if len(keys) >= 2 else "").split(" ")
+                filter_cls = self.find_filter_driver(filters[0])
+                filter_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
+
                 if isinstance(exps, dict):
                     for exp, value in exps.items():
                         try:
                             exp = get_expression_name(exp)
-                            foreign_filters.append((key, exp, self.compile_run_calculater(value)))
+                            value = self.compile_run_calculater(value)
+                            if filter_cls:
+                                value = filter_cls(filter_args).filter(value)
+                            foreign_filters.append((key, exp, value))
                         except KeyError:
                             pass
                 else:
-                    foreign_filters.append((key, 'eq', self.compile_run_calculater(exps)))
+                    value = self.compile_run_calculater(exps)
+                    if filter_cls:
+                        value = filter_cls(filter_args).filter(value)
+                    foreign_filters.append((key, 'eq', value))
 
         return {
             "database": foreign_key[0],
