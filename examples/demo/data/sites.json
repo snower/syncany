@@ -1,26 +1,32 @@
 [
   {
     "site_id": 8,
-    "name": "黄豆网"
+    "name": "黄豆网",
+    "status": 0
   },
   {
     "site_id": 15,
-    "name": "青菜网"
+    "name": "青菜网",
+    "status": 0
   },
   {
     "site_id": 21,
-    "name": "去啥网"
+    "name": "去啥网",
+    "status": 0
   },
   {
     "site_id": 26,
-    "name": "汽车网"
+    "name": "汽车网",
+    "status": 0
   },
   {
     "site_id": 28,
-    "name": "火箭网"
+    "name": "火箭网",
+    "status": 0
   },
   {
     "site_id": 34,
-    "name": "卫星网"
+    "name": "卫星网",
+    "status": 0
   }
 ]

@@ -32,7 +32,7 @@ pip3 install syncany
     ]],
     "site_name": ["#yield", "$.sites", [
       ":#aggregate", "$.*|int", [
-        "$$.*|int", "&.data.sites.json::site_id", ":$.name"
+        "$$.*|int", ["&.data.sites.json::site_id", {"status|int": {">=": 0}}], ":$.name"
       ]
     ]],
     "site_amount": ["#yield", "$.sites", [
