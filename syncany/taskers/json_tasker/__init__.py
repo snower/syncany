@@ -24,6 +24,7 @@ class JsonTasker(Tasker):
         "name": "",
         "input": "",
         "output": "",
+        "arguments": {},
         "querys": {},
         "databases": [],
         "imports": {},
@@ -71,7 +72,7 @@ class JsonTasker(Tasker):
             self.load_json(extends)
 
         for k, v in config.items():
-            if k in ("imports", "defines", "variables", "sources", "logger"):
+            if k in ("arguments", "imports", "defines", "variables", "sources", "logger"):
                 if not isinstance(v, dict) or not isinstance(self.config.get(k, {}), dict):
                     continue
 
@@ -144,6 +145,8 @@ class JsonTasker(Tasker):
                 if isinstance(value, str):
                     if value[:1] == "%" and value[1:] in self.config["sources"]:
                         config[key] = self.config["sources"][value[1:]]
+                    elif value[:2] == "--" and value[2:] in self.arguments:
+                        config[key] = self.arguments[value[2:]]
                 elif isinstance(value, (dict, list)):
                     self.compile_sources(value)
         elif isinstance(config, list):
@@ -152,21 +155,34 @@ class JsonTasker(Tasker):
                 if isinstance(value, str):
                     if value[:1] == "%" and value[1:] in self.config["sources"]:
                         config[i] = self.config["sources"][value[1:]]
+                    elif value[:2] == "--" and value[2:] in self.arguments:
+                        config[i] = self.arguments[value[2:]]
                 elif isinstance(value, (dict, list)):
                     self.compile_sources(value)
 
-    def compile_filter_calculater(self, calculater):
-        keys = calculater[0][1:].split("|")
+    def compile_run_calculater(self, calculater):
+        if not calculater or not isinstance(calculater, (tuple, set, list, str)):
+            return calculater
 
+        if isinstance(calculater, str):
+            if calculater[0] != "@":
+                return calculater
+            keys = calculater[1:].split("|")
+        else:
+            if not calculater[0] or calculater[0][0] != "@":
+                return calculater
+            keys = calculater[0][1:].split("|")
         calculater_cls = self.find_calculater_driver(keys[0])
         if not calculater_cls:
             return calculater
+
         calculater_args = []
-        for value in calculater[1:]:
-            if isinstance(value, list) and value and value[0][0] == "@":
-                calculater_args.append(self.compile_filter_calculater(value))
-            else:
-                calculater_args.append(value)
+        if not isinstance(calculater, str):
+            for value in calculater[1:]:
+                if isinstance(value, list) and value and value[0][0] == "@":
+                    calculater_args.append(self.compile_run_calculater(value))
+                else:
+                    calculater_args.append(value)
         value = calculater_cls(keys[0], *tuple(calculater_args)).calculate()
 
         filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
@@ -221,6 +237,18 @@ class JsonTasker(Tasker):
         self.config["querys"] = self.compile_filters_parse(self.config["querys"])
 
         arguments = []
+        for name, argument in self.config["arguments"].items():
+            if isinstance(argument, dict):
+                if "name" not in argument or "type" not in argument or "help" not in argument:
+                    continue
+                if "default" in argument:
+                    argument["default"] = self.compile_run_calculater(argument["default"])
+                arguments.append(argument)
+            else:
+                argument = self.compile_run_calculater(argument)
+                arguments.append({"name":  name, "type": type(argument).__name__, "default": argument,
+                                  "help": "%s (default: %s)" % (name, argument)})
+
         for filter in self.config["querys"]:
             if "exps" in filter:
                 if isinstance(filter["exps"], str):
@@ -241,7 +269,7 @@ class JsonTasker(Tasker):
                         if filter_cls is None:
                             filter_cls = self.find_filter_driver('str')
                         if isinstance(value, list) and value and value[0][0] == "@":
-                            value = self.compile_filter_calculater(value)
+                            value = self.compile_run_calculater(value)
                         arguments.append({"name": '%s__%s' % (filter["name"], exp_name), "type": filter_cls(filter.get("type_args")),
                              "default": value, "help": "%s %s (default: %s)" % (filter["name"], exp, value)})
             else:
@@ -252,14 +280,14 @@ class JsonTasker(Tasker):
 
         if "input" in self.config:
             if isinstance(self.config["input"], list) and self.config["input"] and self.config["input"][0][0] == "@":
-                self.config["input"] = self.compile_filter_calculater(self.config["input"])
+                self.config["input"] = self.compile_run_calculater(self.config["input"])
             if self.config["input"][:2] == "<<":
                 arguments.append({"name": "@input", "type": str, "default": self.config["input"][2:],
                                   "help": "data input (default: %s)" % self.config["input"][2:]})
 
         if "loader" in self.config:
             if isinstance(self.config["loader"], list) and self.config["loader"] and self.config["loader"][0][0] == "@":
-                self.config["loader"] = self.compile_filter_calculater(self.config["loader"])
+                self.config["loader"] = self.compile_run_calculater(self.config["loader"])
             if self.config["loader"][:2] == "<<":
                 arguments.append({"name": "@loader", "type": str, "default": self.config["loader"][2:],
                                   "choices": ("db_loader",),
@@ -267,14 +295,14 @@ class JsonTasker(Tasker):
 
         if "output" in self.config:
             if isinstance(self.config["output"], list) and self.config["output"] and self.config["output"][0][0] == "@":
-                self.config["output"] = self.compile_filter_calculater(self.config["output"])
+                self.config["output"] = self.compile_run_calculater(self.config["output"])
             if self.config["output"][:2] == ">>":
                 arguments.append({"name": "@output", "type": str, "default": self.config["output"][2:],
                                   "help": "data output (default: %s)" % self.config["output"][2:]})
 
         if "outputer" in self.config:
             if isinstance(self.config["outputer"], list) and self.config["outputer"] and self.config["outputer"][0][0] == "@":
-                self.config["outputer"] = self.compile_filter_calculater(self.config["outputer"])
+                self.config["outputer"] = self.compile_run_calculater(self.config["outputer"])
             if self.config["outputer"][:2] == ">>":
                 arguments.append({"name": "@outputer", "type": str, "default": self.config["outputer"][2:],
                                   "choices": tuple(self.outputer_creater.can_uses()),
@@ -345,10 +373,11 @@ class JsonTasker(Tasker):
                     for exp, value in exps.items():
                         try:
                             exp = get_expression_name(exp)
-                            foreign_filters.append((key, exp, value))
-                        except KeyError: pass
+                            foreign_filters.append((key, exp, self.compile_run_calculater(value)))
+                        except KeyError:
+                            pass
                 else:
-                    foreign_filters.append((key, 'eq', exps))
+                    foreign_filters.append((key, 'eq', self.compile_run_calculater(exps)))
 
         return {
             "database": foreign_key[0],

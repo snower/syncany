@@ -138,13 +138,13 @@ class StringFilter(Filter):
 
         if isinstance(value, int):
             try:
-                return ((self.args or "%d") % value)
+                return (self.args or "%d") % value
             except:
                 return "0"
 
         if isinstance(value, float):
             try:
-                return ((self.args or "%f") % value)
+                return (self.args or "%f") % value
             except:
                 return "0.0"
 
