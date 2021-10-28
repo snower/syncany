@@ -244,8 +244,7 @@ class JsonTasker(Tasker):
             filter_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
 
             if isinstance(argument, dict):
-                if "name" not in argument:
-                    continue
+                argument["name"] = keys[0]
                 if "default" in argument:
                     argument["default"] = self.compile_run_calculater(argument["default"])
                 if "type" not in argument:
@@ -262,7 +261,7 @@ class JsonTasker(Tasker):
                     argument_type = filter_cls(filter_args)
                 else:
                     argument_type = type(argument)
-                arguments.append({"name":  name, "type": argument_type, "default": argument,
+                arguments.append({"name":  keys[0], "type": argument_type, "default": argument,
                                   "help": "%s (default: %s)" % (name, argument)})
 
         for filter in self.config["querys"]:
@@ -397,14 +396,14 @@ class JsonTasker(Tasker):
                             value = self.compile_run_calculater(value)
                             if filter_cls:
                                 value = filter_cls(filter_args).filter(value)
-                            foreign_filters.append((key, exp, value))
+                            foreign_filters.append((keys[0], exp, value))
                         except KeyError:
                             pass
                 else:
                     value = self.compile_run_calculater(exps)
                     if filter_cls:
                         value = filter_cls(filter_args).filter(value)
-                    foreign_filters.append((key, 'eq', value))
+                    foreign_filters.append((keys[0], 'eq', value))
 
         return {
             "database": foreign_key[0],
