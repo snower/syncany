@@ -8,7 +8,7 @@ import argparse
 import traceback
 import signal
 from .logger import get_logger
-from .taskers.json_tasker import JsonTasker
+from .taskers.core import CoreTasker
 
 def warp_database_logging(tasker):
     def commit_warper(database, builder, func):
@@ -42,8 +42,8 @@ def warp_database_logging(tasker):
         database.update = builder_warper(database, database.update)
         database.delete = builder_warper(database, database.delete)
 
-def load_dependency(json_filename, ap, register_aps):
-    tasker = JsonTasker(json_filename)
+def load_dependency(filename, ap, register_aps):
+    tasker = CoreTasker(filename)
     arguments = tasker.load()
 
     for argument in arguments:
@@ -63,8 +63,8 @@ def load_dependency(json_filename, ap, register_aps):
                                                              dest=("%s@%s") % (tasker.name, argument["name"]), **kwargs)
 
     dependency_taskers = []
-    for json_filename in tasker.get_dependency():
-        dependency_taskers.append(load_dependency(json_filename, ap, register_aps))
+    for filename in tasker.get_dependency():
+        dependency_taskers.append(load_dependency(filename, ap, register_aps))
     return (tasker, dependency_taskers)
 
 def compile_dependency(arguments, tasker, dependency_taskers):
@@ -85,17 +85,17 @@ def run_dependency(tasker, dependency_taskers):
 
 def main():
     if len(sys.argv) < 2:
-        print("usage: syncany [-h] json")
+        print("usage: syncany [-h] json|yaml")
         print("syncany error: too few arguments")
         exit(2)
 
-    if not sys.argv[1].endswith("json"):
-        print("usage: syncany [-h] json")
-        print("syncany error: require json file")
+    if not sys.argv[1].endswith("json") and not sys.argv[1].endswith("yaml"):
+        print("usage: syncany [-h] json|yaml")
+        print("syncany error: require json or yaml file")
         exit(2)
 
     try:
-        tasker = JsonTasker(sys.argv[1])
+        tasker = CoreTasker(sys.argv[1])
         signal.signal(signal.SIGHUP, lambda signum, frame: tasker.terminate())
         signal.signal(signal.SIGTERM, lambda signum, frame: tasker.terminate())
 
@@ -106,7 +106,7 @@ def main():
         else:
             description = 'syncany %s' % tasker.name
         ap = argparse.ArgumentParser(description=description)
-        ap.add_argument("json", type=str, help="json filename")
+        ap.add_argument("filename", type=str, help="json|yaml filename")
         ap.add_argument('--@verbose', dest='@verbose', nargs='?', const=True, metavar=False,
                         default=False, type=bool, help='is show detail info (defualt: False)')
 
@@ -123,8 +123,8 @@ def main():
             register_aps[argument["name"]] = ap.add_argument('--%s' % argument["name"], dest=argument["name"], **kwargs)
 
         dependency_taskers = []
-        for json_filename in tasker.get_dependency():
-            dependency_taskers.append(load_dependency(json_filename, ap, register_aps))
+        for filename in tasker.get_dependency():
+            dependency_taskers.append(load_dependency(filename, ap, register_aps))
 
         arguments = ap.parse_args()
         arguments = arguments.__dict__

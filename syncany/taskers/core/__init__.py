@@ -5,9 +5,9 @@
 import time
 import copy
 import logging.config
-import json
 from ...logger import get_logger
 from ..tasker import Tasker
+from ..parsers import load_file
 from ...calculaters.import_calculater import create_import_calculater
 from ...utils import get_expression_name
 from .valuer_compiler import ValuerCompiler
@@ -19,7 +19,7 @@ from ...errors import LoaderUnknownException, OutputerUnknownException, \
     ValuerUnknownException, DatabaseUnknownException, CalculaterUnknownException, \
     SourceUnknownException
 
-class JsonTasker(Tasker):
+class CoreTasker(Tasker):
     DEFAULT_CONFIG = {
         "name": "",
         "input": "",
@@ -35,7 +35,7 @@ class JsonTasker(Tasker):
         "pipelines": [],
     }
 
-    def __init__(self, json_filename):
+    def __init__(self, config_filename):
         self.start_time = time.time()
         self.closed = False
         self.terminated = False
@@ -46,12 +46,12 @@ class JsonTasker(Tasker):
         self.config = copy.deepcopy(self.DEFAULT_CONFIG)
         self.name = ""
 
-        if isinstance(json_filename, dict):
-            self.config.update(copy.deepcopy(json_filename))
-            self.json_filename = "__inline__::" + json_filename.get("name", str(int(time.time())))
+        if isinstance(config_filename, dict):
+            self.config.update(copy.deepcopy(config_filename))
+            self.config_filename = "__inline__::" + config_filename.get("name", str(int(time.time())))
         else:
-            self.json_filename = json_filename
-        super(JsonTasker, self).__init__()
+            self.config_filename = config_filename
+        super(CoreTasker, self).__init__()
         self.join_loaders = {}
 
     def load_json(self, filename):
@@ -61,13 +61,12 @@ class JsonTasker(Tasker):
                 if k in config and not config[k]:
                     config.pop(k)
         else:
-            with open(filename, "r") as fp:
-                config = json.load(fp)
+            config = load_file(filename)
 
         extends = config.pop("extends") if "extends" in config else []
         if isinstance(extends, list):
-            for json_filename in extends:
-                self.load_json(json_filename)
+            for config_filename in extends:
+                self.load_json(config_filename)
         else:
             self.load_json(extends)
 
@@ -125,8 +124,7 @@ class JsonTasker(Tasker):
     def load_sources(self):
         for name, filename in list(self.config["sources"].items()):
             try:
-                with open(filename, "r") as fp:
-                    self.config["sources"][name] = fp.read()
+                self.config["sources"][name] = load_file(filename)
             except Exception as e:
                 raise SourceUnknownException("%s(%s)" % (filename, str(e)))
 
@@ -138,6 +136,8 @@ class JsonTasker(Tasker):
         if config is None:
             if "sources" not in self.config or not self.config["sources"]:
                 return
+            for name, source_config in self.config["sources"].items():
+                self.compile_sources(source_config)
             config = self.config
 
         if isinstance(config, dict):
@@ -809,8 +809,8 @@ class JsonTasker(Tasker):
         return [self.config["dependency"]]
 
     def load(self):
-        super(JsonTasker, self).load()
-        self.load_json(self.json_filename)
+        super(CoreTasker, self).load()
+        self.load_json(self.config_filename)
         self.name = self.config["name"]
         self.config_logging()
         self.load_imports()
@@ -818,7 +818,7 @@ class JsonTasker(Tasker):
         return self.compile_filters()
 
     def compile(self, arguments):
-        super(JsonTasker, self).compile(arguments)
+        super(CoreTasker, self).compile(arguments)
 
         self.compile_sources()
         self.load_databases()
@@ -920,7 +920,7 @@ class JsonTasker(Tasker):
                 self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
         finally:
             self.close()
-        get_logger().info("%s finish %s %s %.2fms", self.name, self.json_filename, self.config.get("name"), (time.time() - self.start_time) * 1000)
+        get_logger().info("%s finish %s %s %.2fms", self.name, self.config_filename, self.config.get("name"), (time.time() - self.start_time) * 1000)
 
     def terminate(self):
         if self.terminated:
