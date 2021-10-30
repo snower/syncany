@@ -125,7 +125,7 @@ class YamlParser(Parser):
 
     def load(self):
         import yaml
-        with open("./examples/demo/demo.yaml", "r") as fp:
+        with open(self.filename, "r") as fp:
             config = yaml.load(fp, yaml.Loader)
         config = self.parse(config)
         return config
