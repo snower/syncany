@@ -136,17 +136,17 @@ class CoreTasker(Tasker):
         if config is None:
             if "sources" not in self.config or not self.config["sources"]:
                 return
-            for name, source_config in self.config["sources"].items():
-                self.compile_sources(source_config)
             config = self.config
 
         if isinstance(config, dict):
             for key, value in list(config.items()):
                 if isinstance(value, str):
                     if value[:1] == "%" and value[1:] in self.config["sources"]:
-                        config[key] = self.config["sources"][value[1:]]
-                    elif value[:2] == "--" and value[2:] in self.arguments:
-                        config[key] = self.arguments[value[2:]]
+                        config[key] = copy.deepcopy(self.config["sources"][value[1:]])
+                        if isinstance(config[key], (dict, list)):
+                            self.compile_sources(config[key])
+                    elif value[:1] == "?" and value[1:] in self.arguments:
+                        config[key] = self.arguments[value[1:]]
                 elif isinstance(value, (dict, list)):
                     self.compile_sources(value)
         elif isinstance(config, list):
@@ -154,9 +154,11 @@ class CoreTasker(Tasker):
                 value = config[i]
                 if isinstance(value, str):
                     if value[:1] == "%" and value[1:] in self.config["sources"]:
-                        config[i] = self.config["sources"][value[1:]]
-                    elif value[:2] == "--" and value[2:] in self.arguments:
-                        config[i] = self.arguments[value[2:]]
+                        config[i] = copy.deepcopy(self.config["sources"][value[1:]])
+                        if isinstance(config[i], (dict, list)):
+                            self.compile_sources(config[i])
+                    elif value[:1] == "?" and value[1:] in self.arguments:
+                        config[i] = self.arguments[value[1:]]
                 elif isinstance(value, (dict, list)):
                     self.compile_sources(value)
 
