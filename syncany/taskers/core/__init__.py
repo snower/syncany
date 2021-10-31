@@ -144,6 +144,8 @@ class CoreTasker(Tasker):
                         name = value[1:].split("|")
                         if name[0] in self.arguments:
                             config[key] = self.arguments[name[0]]
+                    elif value[:2] in ("\\%", "\\?", "\\\\"):
+                        config[key] = value[1:]
                 elif isinstance(value, (dict, list)):
                     self.compile_sources(value)
         elif isinstance(config, list):
@@ -158,6 +160,8 @@ class CoreTasker(Tasker):
                         name = value[1:].split("|")
                         if name[0] in self.arguments:
                             config[i] = self.arguments[name[0]]
+                    elif value[:2] in ("\\%", "\\?", "\\\\"):
+                        config[i] = value[1:]
                 elif isinstance(value, (dict, list)):
                     self.compile_sources(value)
 
