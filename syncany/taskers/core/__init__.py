@@ -133,11 +133,6 @@ class CoreTasker(Tasker):
             logging.config.dictConfig(self.config["logger"])
 
     def compile_sources(self, config=None):
-        if config is None:
-            if "sources" not in self.config or not self.config["sources"]:
-                return
-            config = self.config
-
         if isinstance(config, dict):
             for key, value in list(config.items()):
                 if isinstance(value, str):
@@ -145,8 +140,10 @@ class CoreTasker(Tasker):
                         config[key] = copy.deepcopy(self.config["sources"][value[1:]])
                         if isinstance(config[key], (dict, list)):
                             self.compile_sources(config[key])
-                    elif value[:1] == "?" and value[1:] in self.arguments:
-                        config[key] = self.arguments[value[1:]]
+                    elif value[:1] == "?":
+                        name = value[1:].split("|")
+                        if name[0] in self.arguments:
+                            config[key] = self.arguments[name[0]]
                 elif isinstance(value, (dict, list)):
                     self.compile_sources(value)
         elif isinstance(config, list):
@@ -157,8 +154,10 @@ class CoreTasker(Tasker):
                         config[i] = copy.deepcopy(self.config["sources"][value[1:]])
                         if isinstance(config[i], (dict, list)):
                             self.compile_sources(config[i])
-                    elif value[:1] == "?" and value[1:] in self.arguments:
-                        config[i] = self.arguments[value[1:]]
+                    elif value[:1] == "?":
+                        name = value[1:].split("|")
+                        if name[0] in self.arguments:
+                            config[i] = self.arguments[name[0]]
                 elif isinstance(value, (dict, list)):
                     self.compile_sources(value)
 
@@ -235,10 +234,86 @@ class CoreTasker(Tasker):
             return querys
         return []
 
-    def compile_filters(self):
+    def compile_merge_argument(self, a, b):
+        for k, v in b.items():
+            if k == "name":
+                continue
+            if k != "type" and k in a:
+                continue
+            a[k] = v
+        return a
+
+    def compile_filters_arguments(self, arguments_names, arguments):
         self.config["querys"] = self.compile_filters_parse(self.config["querys"])
 
-        arguments = []
+        for filter in self.config["querys"]:
+            if "exps" in filter:
+                if isinstance(filter["exps"], str):
+                    filter["exps"] = [filter["exps"]]
+
+                if isinstance(filter["exps"], list):
+                    for exp in filter["exps"]:
+                        exp_name = get_expression_name(exp)
+                        filter_cls = self.find_filter_driver(filter["type"])
+                        if filter_cls is None:
+                            filter_cls = self.find_filter_driver('str')
+                        argument = {"name": '%s__%s' % (filter["name"], exp_name), "type": filter_cls(filter.get("type_args")),
+                                    "help": "%s %s" % (filter["name"], exp)}
+                        if argument["name"] in arguments_names:
+                            self.compile_merge_argument(arguments_names[argument["name"]], argument)
+                            continue
+                        arguments.append(argument)
+                        arguments_names[argument["name"]] = argument
+                elif isinstance(filter["exps"], dict):
+                    for exp, value in filter["exps"].items():
+                        exp_name = get_expression_name(exp)
+                        filter_cls = self.find_filter_driver(filter["type"])
+                        if filter_cls is None:
+                            filter_cls = self.find_filter_driver('str')
+                        if isinstance(value, list) and value and value[0][0] == "@":
+                            value = self.compile_run_calculater(value)
+                        argument = {"name": '%s__%s' % (filter["name"], exp_name), "type": filter_cls(filter.get("type_args")),
+                                    "default": value, "help": "%s %s (default: %s)" % (filter["name"], exp, value)}
+                        if argument["name"] in arguments_names:
+                            self.compile_merge_argument(arguments_names[argument["name"]], argument)
+                            continue
+                        arguments.append(argument)
+                        arguments_names[argument["name"]] = argument
+            else:
+                filter_cls = self.find_filter_driver(filter["type"])
+                if filter_cls is None:
+                    filter_cls = self.find_filter_driver('str')
+                argument = {"name": filter["name"], "type": filter_cls(filter.get("type_args")), "help": "%s" % filter["name"]}
+                if argument["name"] in arguments_names:
+                    self.compile_merge_argument(arguments_names[argument["name"]], argument)
+                    continue
+                arguments.append(argument)
+                arguments_names[argument["name"]] = argument
+
+    def compile_sources_arguments(self, arguments_names, arguments, config):
+        if isinstance(config, dict):
+            for key, value in config.items():
+                self.compile_sources_arguments(arguments_names, arguments, value)
+        elif isinstance(config, list):
+            for value in config:
+                self.compile_sources_arguments(arguments_names, arguments, value)
+        elif isinstance(config, str):
+            if config[:1] != "?":
+                return
+            name = config[1:]
+            keys = name.split("|")
+            filters = (keys[1] if len(keys) >= 2 else "").split(" ")
+            filter_cls = self.find_filter_driver(filters[0])
+            filter_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
+            argument = {"name": keys[0], "type": filter_cls(filter_args) if filter_cls else str, "help": "%s" % keys[0]}
+            if argument["name"] in arguments_names:
+                self.compile_merge_argument(arguments_names[argument["name"]], argument)
+                return
+            arguments.append(argument)
+            arguments_names[argument["name"]] = argument
+
+    def compile_arguments(self):
+        arguments_names, arguments = {}, []
         for name, argument in self.config["arguments"].items():
             keys = name.split("|")
             filters = (keys[1] if len(keys) >= 2 else "").split(" ")
@@ -256,44 +331,23 @@ class CoreTasker(Tasker):
                         argument["type"] = type(argument.get("default", ""))
                 if "help" not in argument:
                     argument["help"] = "%s (default: %s)" % (name, argument.get("default", ""))
-                arguments.append(argument)
             else:
                 argument = self.compile_run_calculater(argument)
                 if filter_cls:
                     argument_type = filter_cls(filter_args)
                 else:
                     argument_type = type(argument)
-                arguments.append({"name":  keys[0], "type": argument_type, "default": argument,
-                                  "help": "%s (default: %s)" % (name, argument)})
+                argument = {"name":  keys[0], "type": argument_type, "default": argument,
+                            "help": "%s (default: %s)" % (name, argument)}
 
-        for filter in self.config["querys"]:
-            if "exps" in filter:
-                if isinstance(filter["exps"], str):
-                    filter["exps"] = [filter["exps"]]
+            if argument["name"] in arguments_names:
+                self.compile_merge_argument(arguments_names[argument["name"]], argument)
+                continue
+            arguments.append(argument)
+            arguments_names[argument["name"]] = argument
 
-                if isinstance(filter["exps"], list):
-                    for exp in filter["exps"]:
-                        exp_name = get_expression_name(exp)
-                        filter_cls = self.find_filter_driver(filter["type"])
-                        if filter_cls is None:
-                            filter_cls = self.find_filter_driver('str')
-                        arguments.append({"name": '%s__%s' % (filter["name"], exp_name), "type": filter_cls(filter.get("type_args")),
-                                          "help": "%s %s" % (filter["name"], exp)})
-                elif isinstance(filter["exps"], dict):
-                    for exp, value in filter["exps"].items():
-                        exp_name = get_expression_name(exp)
-                        filter_cls = self.find_filter_driver(filter["type"])
-                        if filter_cls is None:
-                            filter_cls = self.find_filter_driver('str')
-                        if isinstance(value, list) and value and value[0][0] == "@":
-                            value = self.compile_run_calculater(value)
-                        arguments.append({"name": '%s__%s' % (filter["name"], exp_name), "type": filter_cls(filter.get("type_args")),
-                             "default": value, "help": "%s %s (default: %s)" % (filter["name"], exp, value)})
-            else:
-                filter_cls = self.find_filter_driver(filter["type"])
-                if filter_cls is None:
-                    filter_cls = self.find_filter_driver('str')
-                arguments.append({"name": filter["name"], "type": filter_cls(filter.get("type_args")), "help": "%s" % filter["name"]})
+        self.compile_sources_arguments(arguments_names, arguments, self.config)
+        self.compile_filters_arguments(arguments_names, arguments)
 
         if "input" in self.config:
             if isinstance(self.config["input"], list) and self.config["input"] and self.config["input"][0][0] == "@":
@@ -817,12 +871,12 @@ class CoreTasker(Tasker):
         self.config_logging()
         self.load_imports()
         self.load_sources()
-        return self.compile_filters()
+        return self.compile_arguments()
 
     def compile(self, arguments):
         super(CoreTasker, self).compile(arguments)
 
-        self.compile_sources()
+        self.compile_sources(self.config)
         self.load_databases()
         self.compile_schema()
         self.compile_pipelines()
