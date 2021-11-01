@@ -7,11 +7,11 @@ from setuptools import find_packages, setup
 
 version = "0.0.7"
 
-if os.path.exists("README.rst"):
-    with open("README.rst") as fp:
+if os.path.exists("README.md"):
+    with open("README.md") as fp:
         long_description = fp.read()
 else:
-    long_description = ''
+    long_description = 'https://github.com/snower/syncany'
 
 setup(
     name='syncany',
@@ -27,6 +27,7 @@ setup(
         "tzlocal>=1.5.1",
     ],
     extras_require={
+        "pyyaml": ['pyyaml>=5.1.2'],
         "pymongo": ['pymongo>=3.6.1'],
         "pymysql": ['PyMySQL>=0.8.1'],
         "openpyxl": ["openpyxl>=2.5.0"],
@@ -45,6 +46,7 @@ setup(
             'syncany = syncany.main:main',
         ],
     },
-    description='简单快捷数据同步导出框架',
+    description='简单易用的数据同步转换导出框架',
     long_description=long_description,
+    long_description_content_type='text/markdown'
 )
