@@ -5,7 +5,7 @@
 import os
 from setuptools import find_packages, setup
 
-version = "0.0.7"
+version = "0.0.8"
 
 if os.path.exists("README.md"):
     with open("README.md") as fp:
