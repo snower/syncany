@@ -10,7 +10,6 @@ from ..tasker import Tasker
 from ..parsers import load_file
 from ...calculaters.import_calculater import create_import_calculater
 from ...utils import get_expression_name
-from ...valuers.data import DataValuer
 from .valuer_compiler import ValuerCompiler
 from .valuer_creater import ValuerCreater
 from .loader_creater import LoaderCreater
@@ -208,7 +207,8 @@ class CoreTasker(Tasker):
                 "name": keys[0],
                 "exps": exps,
                 "type": filters[0],
-                'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
+                'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None,
+                'refs': {}
             }]
 
         if isinstance(config_querys, dict):
@@ -224,7 +224,8 @@ class CoreTasker(Tasker):
                     "name": keys[0],
                     "exps": exps,
                     "type": filters[0],
-                    'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
+                    'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None,
+                    'refs': {}
                 })
             return querys
 
@@ -272,6 +273,7 @@ class CoreTasker(Tasker):
                 elif isinstance(filter["exps"], dict):
                     for exp, value in filter["exps"].items():
                         if value[:1] == "?":
+                            filter["refs"][exp] = value[1:]
                             continue
                         exp_name = get_expression_name(exp)
                         filter_cls = self.find_filter_driver(filter["type"])
@@ -763,12 +765,16 @@ class CoreTasker(Tasker):
 
                 for exp in exps:
                     exp_name = get_expression_name(exp)
-                    argument_name = "%s__%s" % (filter_name, exp_name)
+                    if exp in filter["refs"]:
+                        argument_name = filter["refs"][exp]
+                    else:
+                        argument_name = "%s__%s" % (filter_name, exp_name)
                     if hasattr(self.loader, "filter_%s" % exp_name) and argument_name in self.arguments:
                         getattr(self.loader, "filter_%s" % exp_name)(filter_name, self.arguments[argument_name])
             else:
-                if hasattr(self.loader, "filter_eq") and filter_name in self.arguments:
-                    getattr(self.loader, "filter_eq")(filter_name, self.arguments[filter_name])
+                argument_name = filter["refs"].get("==", filter_name)
+                if hasattr(self.loader, "filter_eq") and argument_name in self.arguments:
+                    getattr(self.loader, "filter_eq")(filter_name, self.arguments[argument_name])
 
     def compile_outputer(self):
         if self.config["output"][:2] == ">>":
@@ -832,12 +838,16 @@ class CoreTasker(Tasker):
 
                 for exp in exps:
                     exp_name = get_expression_name(exp)
-                    argument_name = "%s__%s" % (filter["name"], exp_name)
+                    if exp in filter["refs"]:
+                        argument_name = filter["refs"][exp]
+                    else:
+                        argument_name = "%s__%s" % (filter["name"], exp_name)
                     if hasattr(self.outputer, "filter_%s" % exp_name) and argument_name in self.arguments:
                         getattr(self.outputer, "filter_%s" % exp_name)(filter_name, value_filter(self.arguments[argument_name]))
             else:
-                if hasattr(self.outputer, "filter_eq") and filter["name"] in self.arguments:
-                    getattr(self.outputer, "filter_eq")(filter_name, value_filter(self.arguments[filter["name"]]))
+                argument_name = filter["refs"].get("==", filter["name"])
+                if hasattr(self.outputer, "filter_eq") and argument_name in self.arguments:
+                    getattr(self.outputer, "filter_eq")(filter_name, value_filter(self.arguments[argument_name]))
 
     def print_statistics(self, loader_name, loader_statistics, outputer_name, outputer_statistics, join_loader_count, join_loader_statistics):
         statistics = ["loader_%s: %s" % (key, value) for key, value in loader_statistics.items()]
