@@ -100,3 +100,15 @@ $.a.:0|string /* 读取值并格式化为字符串 */
 ["@add", 1, 2] /* 计算1+2 */
 ["@sum", "$.*|array", "num", [":@add", "$.*|int", 3]] /* 对数组求sum和，然后加3 */
 ```
+
+## 引用输入参数
+
+操作符：?
+
+引用外部输入参数arguments的值，不在arguments声明则添加一个，运行时被替换。
+
+```
+例：
+["?update_time__gte"] /* 引用update_time__gte */
+["?status|int"] /* 引用status，类型时int型 */
+```

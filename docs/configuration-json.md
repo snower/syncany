@@ -150,9 +150,34 @@ databases: [
 
 日志配置，和python内置logging配置格式相同，请自行阅读python logging文档。
 
+
+## arguments
+
+定义外部输入参数，querys定义的查询条件会自定加入外部查询参数，命令行执行时即为定义命令行参数。
+
+```
+type: Object{
+    name: Object{
+        type: argument_type,
+        default: default_value #可选
+        help: help_message #可选
+        ... #命令行时其余参数请查看 https://docs.python.org/3/library/argparse.html 文档
+    }
+}
+
+例：
+arguments: {
+    "status": {
+        type: int,
+        default: 0,
+        help: "订单状态（默认值：0）"
+    }
+}
+```
+
 ## querys
 
-数据数据查询条件。
+数据数据查询条件，默认自动加入arguments。
 
 ```
 type: Object
