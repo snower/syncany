@@ -808,17 +808,19 @@ class CoreTasker(Tasker):
             filter_name = filter["name"]
             if filter_name not in self.outputer.schema:
                 for field_name, valuer in self.schema.items():
-                    if valuer.get("key") != field_name:
+                    if valuer.get("key") != filter_name:
                         continue
                     if valuer.get("name") == "data_valuer" and not valuer.get("return_valuer"):
                         filter_name = field_name
                         break
 
-            value_filter = lambda v: v
-            if filter_name in self.outputer.schema:
-                valuer = self.outputer.schema[filter_name]
-                if valuer.filter:
-                    value_filter = valuer.filter.filter
+            if filter_name not in self.outputer.schema:
+                continue
+            valuer = self.outputer.schema[filter_name]
+            if valuer.filter:
+                value_filter = valuer.filter.filter
+            else:
+                value_filter = lambda v: v
 
             if "exps" in filter:
                 if isinstance(filter["exps"], str):
