@@ -10,6 +10,7 @@ from ..tasker import Tasker
 from ..parsers import load_file
 from ...calculaters.import_calculater import create_import_calculater
 from ...utils import get_expression_name
+from ...valuers.data import DataValuer
 from .valuer_compiler import ValuerCompiler
 from .valuer_creater import ValuerCreater
 from .loader_creater import LoaderCreater
@@ -760,8 +761,9 @@ class CoreTasker(Tasker):
 
                 for exp in exps:
                     exp_name = get_expression_name(exp)
-                    if hasattr(self.loader, "filter_%s" % exp_name) and "%s__%s" % (filter_name, exp_name) in self.arguments:
-                        getattr(self.loader, "filter_%s" % exp_name)(filter_name, self.arguments["%s__%s" % (filter_name, exp_name)])
+                    argument_name = "%s__%s" % (filter_name, exp_name)
+                    if hasattr(self.loader, "filter_%s" % exp_name) and argument_name in self.arguments:
+                        getattr(self.loader, "filter_%s" % exp_name)(filter_name, self.arguments[argument_name])
             else:
                 if hasattr(self.loader, "filter_eq") and filter_name in self.arguments:
                     getattr(self.loader, "filter_eq")(filter_name, self.arguments[filter_name])
@@ -796,31 +798,27 @@ class CoreTasker(Tasker):
         if isinstance(self.schema, dict):
             for name, valuer in self.schema.items():
                 valuer = self.create_valuer(self.valuer_compiler.compile_data_valuer(name, None))
-                if valuer:
-                    if name in self.loader.schema:
-                        valuer.filter = self.loader.schema[name].get_final_filter()
-                    self.outputer.add_valuer(name, valuer)
+                if not valuer:
+                    continue
+                if name in self.loader.schema:
+                    valuer.filter = self.loader.schema[name].get_final_filter()
+                self.outputer.add_valuer(name, valuer)
 
         for filter in self.config["querys"]:
             filter_name = filter["name"]
-            value_filter = lambda v: v
             if filter_name not in self.outputer.schema:
-                for field_name, valuer in self.outputer.schema.items():
-                    fields = valuer.get_fields()
-                    if filter_name in fields:
-                        if not valuer.childs():
-                            filter_name = field_name
-                            if valuer.filter:
-                                value_filter = valuer.filter.filter
+                for field_name, valuer in self.schema.items():
+                    if valuer.get("key") != field_name:
+                        continue
+                    if valuer.get("name") == "data_valuer" and not valuer.get("return_valuer"):
+                        filter_name = field_name
                         break
 
-                if filter_name == filter["name"]:
-                    continue
-            else:
+            value_filter = lambda v: v
+            if filter_name in self.outputer.schema:
                 valuer = self.outputer.schema[filter_name]
                 if valuer.filter:
                     value_filter = valuer.filter.filter
-
 
             if "exps" in filter:
                 if isinstance(filter["exps"], str):
@@ -830,13 +828,12 @@ class CoreTasker(Tasker):
 
                 for exp in exps:
                     exp_name = get_expression_name(exp)
-                    if hasattr(self.outputer, "filter_%s" % exp_name) and "%s__%s" % (filter_name, exp_name) in self.arguments:
-                        value = value_filter(self.arguments["%s__%s" % (filter_name, exp_name)])
-                        getattr(self.outputer, "filter_%s" % exp_name)(filter_name, value)
+                    argument_name = "%s__%s" % (filter["name"], exp_name)
+                    if hasattr(self.outputer, "filter_%s" % exp_name) and argument_name in self.arguments:
+                        getattr(self.outputer, "filter_%s" % exp_name)(filter_name, value_filter(self.arguments[argument_name]))
             else:
-                if hasattr(self.outputer, "filter_eq") and filter_name in self.arguments:
-                    value = value_filter(self.arguments[filter_name])
-                    getattr(self.outputer, "filter_eq")(filter_name, value)
+                if hasattr(self.outputer, "filter_eq") and filter["name"] in self.arguments:
+                    getattr(self.outputer, "filter_eq")(filter_name, value_filter(self.arguments[filter["name"]]))
 
     def print_statistics(self, loader_name, loader_statistics, outputer_name, outputer_statistics, join_loader_count, join_loader_statistics):
         statistics = ["loader_%s: %s" % (key, value) for key, value in loader_statistics.items()]
