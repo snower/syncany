@@ -271,6 +271,8 @@ class CoreTasker(Tasker):
                         arguments_names[argument["name"]] = argument
                 elif isinstance(filter["exps"], dict):
                     for exp, value in filter["exps"].items():
+                        if value[:1] == "?":
+                            continue
                         exp_name = get_expression_name(exp)
                         filter_cls = self.find_filter_driver(filter["type"])
                         if filter_cls is None:
