@@ -25,7 +25,7 @@ class CoreTasker(Tasker):
         "input": "",
         "output": "",
         "arguments": {},
-        "querys": {},
+        "querys": [],
         "databases": [],
         "imports": {},
         "sources": {},
@@ -197,15 +197,34 @@ class CoreTasker(Tasker):
             return filter_cls(filters_args).filter(value)
         return value
 
+    def compile_filters_parse_exps(self, exps):
+        if isinstance(exps, dict):
+            result = {}
+            for exp, value in exps.items():
+                try:
+                    exp_name = get_expression_name(exp)
+                except KeyError:
+                    continue
+                result[exp_name] = value
+            return result if result else None
+        if isinstance(exps, list):
+            result = []
+            for exp in exps:
+                try:
+                    exp_name = get_expression_name(exp)
+                except KeyError:
+                    continue
+                result.append(exp_name)
+            return result if result else None
+        return {"eq": exps}
+
     def compile_filters_parse(self, config_querys):
         if isinstance(config_querys, str):
             keys = config_querys.split("|")
-            exps = "=="
             filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
-
             return [{
                 "name": keys[0],
-                "exps": exps,
+                "exps": ["eq"],
                 "type": filters[0],
                 'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None,
                 'refs': {}
@@ -214,11 +233,19 @@ class CoreTasker(Tasker):
         if isinstance(config_querys, dict):
             if len(config_querys) == 4 and "name" in config_querys and "exps" in config_querys \
                     and "type" in config_querys and "type_args" in config_querys:
+                exps = self.compile_filters_parse_exps(config_querys["exps"])
+                if not exps:
+                    return []
+                config_querys["exps"] = exps
+                config_querys["refs"] = {}
                 return [config_querys]
 
             querys = []
             for name, exps in config_querys.items():
                 keys = name.split("|")
+                exps = self.compile_filters_parse_exps(exps)
+                if not exps:
+                    continue
                 filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
                 querys.append({
                     "name": keys[0],
@@ -236,7 +263,12 @@ class CoreTasker(Tasker):
                     querys.extend(self.compile_filters_parse(cq))
                 elif isinstance(cq, dict) and len(cq) == 4 and "name" in cq \
                     and "exps" in cq and "type" in cq and "type_args" in cq:
-                    querys.extend(cq)
+                    exps = self.compile_filters_parse_exps(cq["exps"])
+                    if not exps:
+                        continue
+                    cq["exps"] = exps
+                    cq["refs"] = {}
+                    querys.append(cq)
             return querys
         return []
 
@@ -252,52 +284,46 @@ class CoreTasker(Tasker):
     def compile_filters_arguments(self, arguments_names, arguments):
         self.config["querys"] = self.compile_filters_parse(self.config["querys"])
 
-        for filter in self.config["querys"]:
-            if "exps" in filter:
-                if isinstance(filter["exps"], str):
-                    filter["exps"] = [filter["exps"]]
+        for query in self.config["querys"]:
+            if isinstance(query["exps"], list):
+                for exp_name in query["exps"]:
+                    filter_cls = self.find_filter_driver(query["type"])
+                    if filter_cls is None:
+                        filter_cls = self.find_filter_driver('str')
 
-                if isinstance(filter["exps"], list):
-                    for exp in filter["exps"]:
-                        exp_name = get_expression_name(exp)
-                        filter_cls = self.find_filter_driver(filter["type"])
-                        if filter_cls is None:
-                            filter_cls = self.find_filter_driver('str')
-                        argument = {"name": '%s__%s' % (filter["name"], exp_name), "type": filter_cls(filter.get("type_args")),
-                                    "help": "%s %s" % (filter["name"], exp)}
-                        if argument["name"] in arguments_names:
-                            self.compile_merge_argument(arguments_names[argument["name"]], argument)
-                            continue
-                        arguments.append(argument)
-                        arguments_names[argument["name"]] = argument
-                elif isinstance(filter["exps"], dict):
-                    for exp, value in filter["exps"].items():
-                        if value[:1] == "?":
-                            filter["refs"][exp] = value[1:]
-                            continue
-                        exp_name = get_expression_name(exp)
-                        filter_cls = self.find_filter_driver(filter["type"])
-                        if filter_cls is None:
-                            filter_cls = self.find_filter_driver('str')
-                        if isinstance(value, list) and value and value[0][0] == "@":
-                            value = self.compile_run_calculater(value)
-                        argument = {"name": '%s__%s' % (filter["name"], exp_name), "type": filter_cls(filter.get("type_args")),
-                                    "default": value, "help": "%s %s (default: %s)" % (filter["name"], exp, value)}
-                        if argument["name"] in arguments_names:
-                            self.compile_merge_argument(arguments_names[argument["name"]], argument)
-                            continue
-                        arguments.append(argument)
-                        arguments_names[argument["name"]] = argument
-            else:
-                filter_cls = self.find_filter_driver(filter["type"])
-                if filter_cls is None:
-                    filter_cls = self.find_filter_driver('str')
-                argument = {"name": filter["name"], "type": filter_cls(filter.get("type_args")), "help": "%s" % filter["name"]}
-                if argument["name"] in arguments_names:
-                    self.compile_merge_argument(arguments_names[argument["name"]], argument)
-                    continue
-                arguments.append(argument)
-                arguments_names[argument["name"]] = argument
+                    if exp_name == "eq":
+                        argument = {"name": '%s' % query["name"], "type": filter_cls(query.get("type_args")),
+                                    "help": "query argument '%s'" % query["name"]}
+                    else:
+                        argument = {"name": '%s__%s' % (query["name"], exp_name), "type": filter_cls(query.get("type_args")),
+                                    "help": "query argument '%s__%s'" % (query["name"], exp_name)}
+                    if argument["name"] in arguments_names:
+                        self.compile_merge_argument(arguments_names[argument["name"]], argument)
+                        continue
+                    arguments.append(argument)
+                    arguments_names[argument["name"]] = argument
+            elif isinstance(query["exps"], dict):
+                for exp_name, exp_value in query["exps"].items():
+                    if exp_value[:1] == "?":
+                        query["refs"][exp_name] = exp_value[1:]
+                        continue
+                    filter_cls = self.find_filter_driver(query["type"])
+                    if filter_cls is None:
+                        filter_cls = self.find_filter_driver('str')
+                    if isinstance(exp_value, list) and exp_value and exp_value[0][:1] == "@":
+                        exp_value = self.compile_run_calculater(exp_value)
+
+                    if exp_name == "eq":
+                        argument = {"name": '%s' % query["name"], "type": filter_cls(query.get("type_args")),
+                                    "default": exp_value, "help": "query argument '%s' (default: %s)" % (query["name"], exp_value)}
+                    else:
+                        argument = {"name": '%s__%s' % (query["name"], exp_name), "type": filter_cls(query.get("type_args")),
+                                    "default": exp_value, "help": "query argument '%s__%s' (default: %s)" % (query["name"], exp_name, exp_value)}
+                    if argument["name"] in arguments_names:
+                        self.compile_merge_argument(arguments_names[argument["name"]], argument)
+                        continue
+                    arguments.append(argument)
+                    arguments_names[argument["name"]] = argument
 
     def compile_sources_arguments(self, arguments_names, arguments, config):
         if isinstance(config, dict):
@@ -755,26 +781,19 @@ class CoreTasker(Tasker):
         elif self.schema == ".*":
             self.loader.add_key_matcher(".*", self.create_valuer(self.valuer_compiler.compile_data_valuer("", None)))
 
-        for filter in self.config["querys"]:
-            filter_name = filter["name"]
-            if "exps" in filter:
-                if isinstance(filter["exps"], str):
-                    exps = [filter["exps"]]
+        for query in self.config["querys"]:
+            for exp_name in query["exps"]:
+                if not hasattr(self.loader, "filter_%s" % exp_name):
+                    continue
+                if exp_name in query["refs"]:
+                    argument_name = query["refs"][exp_name]
+                elif exp_name == "eq":
+                    argument_name = query["name"]
                 else:
-                    exps = filter["exps"]
-
-                for exp in exps:
-                    exp_name = get_expression_name(exp)
-                    if exp in filter["refs"]:
-                        argument_name = filter["refs"][exp]
-                    else:
-                        argument_name = "%s__%s" % (filter_name, exp_name)
-                    if hasattr(self.loader, "filter_%s" % exp_name) and argument_name in self.arguments:
-                        getattr(self.loader, "filter_%s" % exp_name)(filter_name, self.arguments[argument_name])
-            else:
-                argument_name = filter["refs"].get("==", filter_name)
-                if hasattr(self.loader, "filter_eq") and argument_name in self.arguments:
-                    getattr(self.loader, "filter_eq")(filter_name, self.arguments[argument_name])
+                    argument_name = "%s__%s" % (query["name"], exp_name)
+                if argument_name not in self.arguments:
+                    continue
+                getattr(self.loader, "filter_%s" % exp_name)(query["name"], self.arguments[argument_name])
 
     def compile_outputer(self):
         if self.config["output"][:2] == ">>":
@@ -812,42 +831,36 @@ class CoreTasker(Tasker):
                     valuer.filter = self.loader.schema[name].get_final_filter()
                 self.outputer.add_valuer(name, valuer)
 
-        for filter in self.config["querys"]:
-            filter_name = filter["name"]
-            if filter_name not in self.outputer.schema:
+        for query in self.config["querys"]:
+            query_name = query["name"]
+            if query_name not in self.outputer.schema:
                 for field_name, valuer in self.schema.items():
-                    if valuer.get("key") != filter_name:
+                    if valuer.get("key") != query_name:
                         continue
                     if valuer.get("name") == "data_valuer" and not valuer.get("return_valuer"):
-                        filter_name = field_name
+                        query_name = field_name
                         break
 
-            if filter_name not in self.outputer.schema:
+            if query_name not in self.outputer.schema:
                 continue
-            valuer = self.outputer.schema[filter_name]
+            valuer = self.outputer.schema[query_name]
             if valuer.filter:
                 value_filter = valuer.filter.filter
             else:
                 value_filter = lambda v: v
 
-            if "exps" in filter:
-                if isinstance(filter["exps"], str):
-                    exps = [filter["exps"]]
+            for exp_name in query["exps"]:
+                if not hasattr(self.outputer, "filter_%s" % exp_name):
+                    continue
+                if exp_name in query["refs"]:
+                    argument_name = query["refs"][exp_name]
+                elif exp_name == "eq":
+                    argument_name = query["name"]
                 else:
-                    exps = filter["exps"]
-
-                for exp in exps:
-                    exp_name = get_expression_name(exp)
-                    if exp in filter["refs"]:
-                        argument_name = filter["refs"][exp]
-                    else:
-                        argument_name = "%s__%s" % (filter["name"], exp_name)
-                    if hasattr(self.outputer, "filter_%s" % exp_name) and argument_name in self.arguments:
-                        getattr(self.outputer, "filter_%s" % exp_name)(filter_name, value_filter(self.arguments[argument_name]))
-            else:
-                argument_name = filter["refs"].get("==", filter["name"])
-                if hasattr(self.outputer, "filter_eq") and argument_name in self.arguments:
-                    getattr(self.outputer, "filter_eq")(filter_name, value_filter(self.arguments[argument_name]))
+                    argument_name = "%s__%s" % (query["name"], exp_name)
+                if argument_name not in self.arguments:
+                    continue
+                getattr(self.outputer, "filter_%s" % exp_name)(query_name, value_filter(self.arguments[argument_name]))
 
     def print_statistics(self, loader_name, loader_statistics, outputer_name, outputer_statistics, join_loader_count, join_loader_statistics):
         statistics = ["loader_%s: %s" % (key, value) for key, value in loader_statistics.items()]
