@@ -38,6 +38,7 @@ def warp_database_logging(tasker):
                             beautify_print(v)
                     else:
                         beautify_print(builder_verbose)
+                    print()
             return result
         return _
 
