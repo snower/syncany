@@ -151,7 +151,7 @@ class TextLineInsertBuilder(InsertBuilder):
 
     def print_write(self, fp):
         if self.db.rich:
-            self.db.rich.print(self.datas, flush=True)
+            self.db.rich.print(self.datas)
         else:
             print_object(self.datas)
 
@@ -166,7 +166,7 @@ class TextLineInsertBuilder(InsertBuilder):
             table.add_column(field)
         for data in self.datas:
             table.add_row(*(str(data[field]) for field in self.fields))
-        self.db.rich.print(table, file=fp, flush=True)
+        self.db.rich.print(table, file=fp)
 
     def text_write(self, fp):
         if len(self.fields) != 1 or self.fields[0] != "line":

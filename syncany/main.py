@@ -16,7 +16,6 @@ from .taskers.core import CoreTasker
 def beautify_print(*args, **kwargs):
     try:
         import rich
-        kwargs["flush"] = True
         rich.print(*args, **kwargs)
     except:
         print_object(*args, **kwargs)
