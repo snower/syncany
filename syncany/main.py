@@ -3,6 +3,7 @@
 # create by: snower
 
 import sys
+import os
 import time
 import argparse
 import traceback
@@ -126,8 +127,9 @@ def main():
         for filename in tasker.get_dependency():
             dependency_taskers.append(load_dependency(filename, ap, register_aps))
 
-        arguments = ap.parse_args()
-        arguments = arguments.__dict__
+        ap_arguments = ap.parse_args()
+        arguments = {key.lower(): value for key, value in os.environ.items()}
+        arguments.update(ap_arguments.__dict__)
 
         for dependency_tasker in dependency_taskers:
             compile_dependency(arguments, *dependency_tasker)
