@@ -3,7 +3,7 @@
 # create by: snower
 
 version = "0.1.0"
-version_info = (0, 1. 0)
+version_info = (0, 1, 0)
 
 from .loaders import Loader
 from .outputers import Outputer
