@@ -36,8 +36,10 @@ def warp_database_logging(tasker):
                     if isinstance(builder_verbose, tuple):
                         for v in builder_verbose:
                             beautify_print(v)
+                    elif isinstance(builder_verbose, str):
+                        print(builder_verbose)
                     else:
-                        beautify_print(builder_verbose)
+                        print_object(builder_verbose)
                     print()
             return result
         return _
