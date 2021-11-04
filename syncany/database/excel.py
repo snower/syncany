@@ -38,7 +38,7 @@ class ExeclQueryBuilder(QueryBuilder):
         self.query[(key, "in")] = (value, lambda a, b: a in b)
 
     def filter_limit(self, count, start=None):
-        if start:
+        if not start:
             self.limit = (0, count)
         else:
             self.limit = (start, start + count)

@@ -36,7 +36,7 @@ class Loader(object):
         self.loader_state = defaultdict(int)
 
     def clone(self):
-        loader = self.__class__(self.primary_keys)
+        loader = self.__class__(self.primary_keys, self.is_yield)
         schema = {}
         for key, valuer in self.schema.items():
             schema[key] = valuer.clone()

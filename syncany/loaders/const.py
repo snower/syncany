@@ -11,7 +11,7 @@ class ConstLoader(Loader):
         self.const_datas = datas
 
     def clone(self):
-        loader = self.__class__(self.const_datas, self.primary_keys)
+        loader = self.__class__(self.const_datas, self.primary_keys, self.is_yield)
         schema = {}
         for key, valuer in self.schema.items():
             schema[key] = valuer.clone()

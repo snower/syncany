@@ -16,7 +16,7 @@ class DBLoader(Loader):
         self.last_data = None
 
     def clone(self):
-        loader = self.__class__(self.db, self.name, self.primary_keys)
+        loader = self.__class__(self.db, self.name, self.primary_keys, self.is_yield)
         schema = {}
         for key, valuer in self.schema.items():
             schema[key] = valuer.clone()

@@ -89,7 +89,7 @@ class InfluxDBQueryBuilder(QueryBuilder):
         self.query_values.append(value)
 
     def filter_limit(self, count, start=None):
-        if start:
+        if not start:
             self.limit = (0, count)
         else:
             self.limit = (start, count)

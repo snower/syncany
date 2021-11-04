@@ -19,6 +19,7 @@ class DBOutputer(Outputer):
             schema[key] = valuer.clone()
         outputer.schema = schema
         outputer.filters = [filter for filter in self.filters]
+        outputer.insert_batch = self.insert_batch
         return outputer
 
     def statistics(self):

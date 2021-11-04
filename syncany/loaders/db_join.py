@@ -42,6 +42,11 @@ class DBJoinLoader(DBLoader):
         self.unload_primary_keys = set([])
         self.matchers = defaultdict(list)
 
+    def clone(self):
+        loader = super(DBJoinLoader, self).clone()
+        loader.join_batch = self.join_batch
+        return loader
+
     def filter_eq(self, key, value):
         if key != self.primary_keys[0]:
             self.primary_keys = [key]

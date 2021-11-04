@@ -388,7 +388,7 @@ class CoreTasker(Tasker):
             if isinstance(self.config["input"], list) and self.config["input"] and self.config["input"][0][0] == "@":
                 self.config["input"] = self.compile_run_calculater(self.config["input"])
             if self.config["input"][:2] == "<<":
-                arguments.append({"name": "@input", "type": str, "default": self.config["input"][2:],
+                arguments.append({"name": "@input", "short": "i", "type": str, "default": self.config["input"][2:],
                                   "help": "data input (default: %s)" % self.config["input"][2:]})
 
         if "loader" in self.config:
@@ -403,7 +403,7 @@ class CoreTasker(Tasker):
             if isinstance(self.config["output"], list) and self.config["output"] and self.config["output"][0][0] == "@":
                 self.config["output"] = self.compile_run_calculater(self.config["output"])
             if self.config["output"][:2] == ">>":
-                arguments.append({"name": "@output", "type": str, "default": self.config["output"][2:],
+                arguments.append({"name": "@output", "short": "o", "type": str, "default": self.config["output"][2:],
                                   "help": "data output (default: %s)" % self.config["output"][2:]})
 
         if "outputer" in self.config:
@@ -414,7 +414,8 @@ class CoreTasker(Tasker):
                                   "choices": tuple(self.outputer_creater.can_uses()),
                                   "help": "data outputer (default: %s)" % self.config["outputer"][2:]})
 
-        arguments.append({"name": "@batch", "type": int, "default": 0, "help": "per sync batch count (default: 0 all)"})
+        arguments.append({"name": "@limit", "short": "l", "type": int, "default": 0, "help": "load limit count (default: 0 all)"})
+        arguments.append({"name": "@batch", "short": "b", "type": int, "default": 0, "help": "per sync batch count (default: 0 all)"})
         arguments.append({"name": "@join_batch", "type": int, "default": 1000, "help": "join batch count (default: 1000)"})
         arguments.append({"name": "@insert_batch", "type": int, "default": 0, "help": "insert batch count (default: 0 all)"})
         arguments.append({"name": "@timeout", "type": int, "default": 0, "help": "loader timeout (default: 0 none timeout)"})
@@ -967,6 +968,8 @@ class CoreTasker(Tasker):
         return self.loader.next()
 
     def run_once(self, loader_timeout):
+        if "@limit" in self.arguments and self.arguments["@limit"] > 0:
+            self.loader.filter_limit(self.arguments["@limit"])
         self.loader.load(loader_timeout)
         for hooker in self.hookers:
             self.loader.datas = hooker.queried(self, self.loader.datas)

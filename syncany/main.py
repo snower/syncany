@@ -68,9 +68,21 @@ def load_dependency(filename, ap, register_aps):
         else:
             kwargs["default"] = kwargs["metavar"] = argument["default"]
         kwargs["help"] = argument.get("help", "")
+        if "action" in argument:
+            kwargs["action"] = argument["action"]
+        if "nargs" in argument:
+            kwargs["nargs"] = argument["nargs"]
+        if "const" in argument:
+            kwargs["const"] = argument["const"]
+        if "choices" in argument and isinstance(argument["choices"], list):
+            kwargs["choices"] = argument["choices"]
         if argument["name"] not in register_aps:
-            register_aps[argument["name"]] = ap.add_argument('--%s' % argument["name"],
-                                                             dest=("%s@%s") % (tasker.name, argument["name"]), **kwargs)
+            if "short" in argument and len(argument["short"]) == 1:
+                register_aps[argument["name"]] = ap.add_argument('-%s' % argument["short"], '--%s' % argument["name"],
+                                                                 dest=("%s@%s") % (tasker.name, argument["name"]), **kwargs)
+            else:
+                register_aps[argument["name"]] = ap.add_argument('--%s' % argument["name"],
+                                                                 dest=("%s@%s") % (tasker.name, argument["name"]), **kwargs)
         else:
             register_aps[argument["name"]] = ap.add_argument('--%s@%s' % (tasker.name, argument["name"]),
                                                              dest=("%s@%s") % (tasker.name, argument["name"]), **kwargs)
@@ -146,9 +158,9 @@ def main():
             description = 'syncany %s' % tasker.name
         ap = argparse.ArgumentParser(description=description)
         ap.add_argument("filename", type=str, help="json|yaml filename")
-        ap.add_argument('--@show', dest='@show', nargs='?', const=True, metavar=False,
+        ap.add_argument("-s", '--@show', dest='@show', nargs='?', const=True, metavar=False,
                         default=False, type=bool, help='show compile config (defualt: False)')
-        ap.add_argument('--@verbose', dest='@verbose', nargs='?', const=True, metavar=False,
+        ap.add_argument("-v", '--@verbose', dest='@verbose', nargs='?', const=True, metavar=False,
                         default=False, type=bool, help='show detail info (defualt: False)')
 
         register_aps = {}
@@ -161,7 +173,19 @@ def main():
             else:
                 kwargs["default"] = kwargs["metavar"] = argument["default"]
             kwargs["help"] = argument.get("help", "")
-            register_aps[argument["name"]] = ap.add_argument('--%s' % argument["name"], dest=argument["name"], **kwargs)
+            if "action" in argument:
+                kwargs["action"] = argument["action"]
+            if "nargs" in argument:
+                kwargs["nargs"] = argument["nargs"]
+            if "const" in argument:
+                kwargs["const"] = argument["const"]
+            if "choices" in argument and isinstance(argument["choices"], list):
+                kwargs["choices"] = argument["choices"]
+            if "short" in argument and len(argument["short"]) == 1:
+                register_aps[argument["name"]] = ap.add_argument('-%s' % argument["short"], '--%s' % argument["name"],
+                                                                 dest=argument["name"], **kwargs)
+            else:
+                register_aps[argument["name"]] = ap.add_argument('--%s' % argument["name"], dest=argument["name"], **kwargs)
 
         dependency_taskers = []
         for filename in tasker.get_dependency():
