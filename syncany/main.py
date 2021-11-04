@@ -5,11 +5,20 @@
 import sys
 import os
 import time
+import datetime
 import argparse
 import traceback
 import signal
+from .utils import print_object
 from .logger import get_logger
 from .taskers.core import CoreTasker
+
+def beautify_print(*args, **kwargs):
+    try:
+        import rich
+        rich.print(*args, **kwargs)
+    except:
+        print_object(*args, **kwargs)
 
 def warp_database_logging(tasker):
     def commit_warper(database, builder, func):
@@ -20,13 +29,15 @@ def warp_database_logging(tasker):
             finally:
                 database_verbose = database.verbose()
                 builder_verbose = builder.verbose()
+                beautify_print("%s %s %s -> %s %.2fms" % (datetime.datetime.now(), database.__class__.__name__,
+                                                          database_verbose, builder.__class__.__name__,
+                                                          (time.time() - start_time) * 1000))
                 if builder_verbose:
-                    get_logger().info("%s %s -> %s %.2fms\n%s\n", database.__class__.__name__, database_verbose,
-                                      builder.__class__.__name__, (time.time() - start_time) * 1000,
-                                      builder_verbose)
-                else:
-                    get_logger().info("%s %s -> %s %.2fms", database.__class__.__name__, database_verbose, builder.__class__.__name__,
-                                      (time.time() - start_time) * 1000)
+                    if isinstance(builder_verbose, tuple):
+                        for v in builder_verbose:
+                            beautify_print(v)
+                    else:
+                        beautify_print(builder_verbose)
             return result
         return _
 
@@ -84,45 +95,26 @@ def run_dependency(tasker, dependency_taskers):
     statistics = tasker.run()
     return statistics, dependency_statistics
 
+def fix_print_outputer(tasker, register_aps, arguments):
+    if "@output" not in register_aps:
+        return
+    if "@output" not in arguments or arguments["@output"] != "-":
+        return
+    for database in tasker.config["databases"]:
+        if database["name"] == "-":
+            return
+    tasker.config["databases"].append({
+        "name": "-",
+        "driver": "textline",
+        "format": "print"
+    })
+    primary_key = "::".join((register_aps["@output"].default or "").split("::")[1:])
+    arguments["@output"] = "&.-.&1::" + primary_key
+
 def show_tasker(tasker):
     config = {key: value for key, value in tasker.config.items()}
     config["schema"] = tasker.schema
-    def show_value(value, indent):
-        if isinstance(value, dict):
-            if not value:
-                return print("{}", end="")
-
-            print("{")
-            keys = sorted(list(value.keys()))
-            for i in range(len(keys)):
-                print(indent, end="")
-                show_value(keys[i], indent + "    ")
-                print(": ", end="")
-                show_value(value[keys[i]], indent + "    ")
-                print("," if i < len(keys) - 1 else "")
-            print(indent[:-4] + "}", end="")
-        elif isinstance(value, (tuple, set, list)):
-            print("[", end="")
-            for i in range(len(value)):
-                if isinstance(value[i], dict):
-                    print("\n" + indent, end="")
-                    show_value(value[i], indent + "    ")
-                    print(("," + indent) if i < len(value) - 1 else ("\n" + indent[:-4]), end="")
-                else:
-                    show_value(value[i], indent)
-                    if i < len(value) - 1:
-                        print(", ", end="")
-            print("]", end="")
-        elif isinstance(value, str):
-            print('"%s"' % value, end="")
-        else:
-            print(value, end="")
-    try:
-        import rich
-        rich.print(config)
-    except ImportError:
-        show_value(config, "    ")
-        print()
+    beautify_print(config)
 
 def show_dependency_tasker(tasker, dependency_taskers):
     for dependency_tasker in dependency_taskers:
@@ -178,6 +170,7 @@ def main():
         arguments = {key.lower(): value for key, value in os.environ.items()}
         arguments.update(ap_arguments.__dict__)
 
+        fix_print_outputer(tasker, register_aps, arguments)
         for dependency_tasker in dependency_taskers:
             compile_dependency(arguments, *dependency_tasker)
         tasker.compile(arguments)

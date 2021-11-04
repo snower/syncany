@@ -5,6 +5,7 @@
 import os
 import csv
 import json
+from ..utils import print_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 class TextLineQueryBuilder(QueryBuilder):
@@ -148,6 +149,12 @@ class TextLineInsertBuilder(InsertBuilder):
         if isinstance(self.datas, dict):
             self.datas = [self.datas]
 
+    def print_write(self, fp):
+        if self.db.rich:
+            self.db.rich.print(self.datas)
+        else:
+            print_object(self.datas)
+
     def rich_write(self, fp):
         from rich.table import Table
 
@@ -205,6 +212,8 @@ class TextLineInsertBuilder(InsertBuilder):
                 self.json_write(fp)
             elif self.db.config.get("format") == "richtable":
                 self.rich_write(fp)
+            elif fileno == 1 and self.db.config.get("format") == "print":
+                self.print_write(fp)
             elif self.db.rich:
                 self.rich_write(fp)
             else:
