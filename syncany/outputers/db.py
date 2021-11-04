@@ -6,6 +6,7 @@ from .outputer import Outputer
 
 class DBOutputer(Outputer):
     def __init__(self, db, name, *args, **kwargs):
+        self.insert_batch = kwargs.pop("insert_batch", 0)
         super(DBOutputer, self).__init__(*args, **kwargs)
 
         self.db = db

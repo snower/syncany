@@ -415,6 +415,8 @@ class CoreTasker(Tasker):
                                   "help": "data outputer (default: %s)" % self.config["outputer"][2:]})
 
         arguments.append({"name": "@batch", "type": int, "default": 0, "help": "per sync batch count (default: 0 all)"})
+        arguments.append({"name": "@join_batch", "type": int, "default": 1000, "help": "join batch count (default: 1000)"})
+        arguments.append({"name": "@insert_batch", "type": int, "default": 0, "help": "insert batch count (default: 0 all)"})
         arguments.append({"name": "@timeout", "type": int, "default": 0, "help": "loader timeout (default: 0 none timeout)"})
         return arguments
 

@@ -2,6 +2,7 @@
 # 18/8/6
 # create by: snower
 
+import math
 from collections import defaultdict
 from .db import DBLoader
 from ..valuers.valuer import LoadAllFieldsException
@@ -34,6 +35,7 @@ class DBJoinMatcher(object):
 
 class DBJoinLoader(DBLoader):
     def __init__(self, *args, **kwargs):
+        self.join_batch = kwargs.pop("join_batch", 10000) or 0xffffffff
         super(DBJoinLoader, self).__init__(*args, **kwargs)
 
         self.data_keys = {}
@@ -72,8 +74,8 @@ class DBJoinLoader(DBLoader):
                     fields = []
 
             unload_primary_keys = list(self.unload_primary_keys)
-            for i in range(int(len(unload_primary_keys) / 1000.0 + 1)):
-                current_unload_primary_keys = unload_primary_keys[i * 1000: (i + 1) * 1000]
+            for i in range(math.ceil(float(len(unload_primary_keys)) / float(self.join_batch))):
+                current_unload_primary_keys = unload_primary_keys[i * self.join_batch: (i + 1) * self.join_batch]
                 if not current_unload_primary_keys:
                     break
 

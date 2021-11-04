@@ -28,25 +28,29 @@ class OutputerCreater(object):
         if not outputer_cls:
             raise OutputerUnknownException(config["name"] + " is unknown")
         db_name = config["database"].split(".")[0]
-        return outputer_cls(self.databases[db_name], config["database"], primary_keys)
+        return outputer_cls(self.databases[db_name], config["database"], primary_keys,
+                            insert_batch=self.tasker.arguments.get("@insert_batch", 0))
 
     def create_db_update_insert_outputer(self, config, primary_keys):
         outputer_cls = self.find_outputer_driver(config["name"])
         if not outputer_cls:
             raise OutputerUnknownException(config["name"] + " is unknown")
         db_name = config["database"].split(".")[0]
-        return outputer_cls(self.databases[db_name], config["database"], primary_keys)
+        return outputer_cls(self.databases[db_name], config["database"], primary_keys,
+                            insert_batch=self.tasker.arguments.get("@insert_batch", 0))
 
     def create_db_delete_insert_outputer(self, config, primary_keys):
         outputer_cls = self.find_outputer_driver(config["name"])
         if not outputer_cls:
             raise OutputerUnknownException(config["name"] + " is unknown")
         db_name = config["database"].split(".")[0]
-        return outputer_cls(self.databases[db_name], config["database"], primary_keys)
+        return outputer_cls(self.databases[db_name], config["database"], primary_keys,
+                            insert_batch=self.tasker.arguments.get("@insert_batch", 0))
 
     def create_db_insert_outputer(self, config, primary_keys):
         outputer_cls = self.find_outputer_driver(config["name"])
         if not outputer_cls:
             raise OutputerUnknownException(config["name"] + " is unknown")
         db_name = config["database"].split(".")[0]
-        return outputer_cls(self.databases[db_name], config["database"], primary_keys)
+        return outputer_cls(self.databases[db_name], config["database"], primary_keys,
+                            insert_batch=self.tasker.arguments.get("@insert_batch", 0))

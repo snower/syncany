@@ -24,7 +24,7 @@ class KeyMatcher(object):
         return self.valuer.clone()
 
 class Loader(object):
-    def __init__(self, primary_keys, is_yield=False):
+    def __init__(self, primary_keys, is_yield=False, **kwargs):
         self.primary_keys = primary_keys
         self.is_yield = is_yield
         self.schema = {}

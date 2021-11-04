@@ -5,7 +5,7 @@
 from collections import defaultdict
 
 class Outputer(object):
-    def __init__(self, primary_keys):
+    def __init__(self, primary_keys, **kwargs):
         self.primary_keys = primary_keys
         self.schema = {}
         self.filters = []

@@ -42,7 +42,8 @@ class LoaderCreater(object):
             raise LoaderUnknownException(config["name"] + " is unknown")
         db_name = config["database"].split(".")[0]
         return loader_cls(self.databases[db_name], config["database"], primary_keys,
-                          is_yield=config.get("is_yield", False))
+                          is_yield=config.get("is_yield", False),
+                          join_batch=self.tasker.arguments.get("@join_batch", 1000))
 
     def create_db_pull_loader(self, config, primary_keys):
         loader_cls = self.find_loader_driver(config["name"])
