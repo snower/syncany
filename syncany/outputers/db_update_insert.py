@@ -8,9 +8,15 @@ from ..valuers.valuer import LoadAllFieldsException
 
 class DBUpdateInsertOutputer(DBOutputer):
     def __init__(self, *args, **kwargs):
+        self.join_batch = kwargs.pop("join_batch", 10000) or 0xffffffff
         super(DBUpdateInsertOutputer, self).__init__(*args, **kwargs)
 
         self.load_data_keys = {}
+
+    def clone(self):
+        outputer = super(DBUpdateInsertOutputer, self).clone()
+        outputer.join_batch = self.join_batch
+        return outputer
 
     def load(self, datas):
         fields = set([])
@@ -23,14 +29,11 @@ class DBUpdateInsertOutputer(DBOutputer):
 
         load_datas = []
         if len(self.primary_keys) == 1:
-            data_count = len(datas)
-            data_load_batch = int(data_count / 1000 + 1) if data_count % 1000 != 0 else int(data_count / 1000)
-            for i in range(data_load_batch):
+            for i in range(math.ceil(float(len(datas)) / float(self.join_batch))):
                 query = self.db.query(self.name, self.primary_keys, list(fields))
                 primary_values = []
-                for data in datas[i * 1000: (i + 1) * 1000]:
+                for data in datas[i * self.join_batch: (i + 1) * self.join_batch]:
                     primary_values.append(data[self.primary_keys[0]])
-
                 query.filter_in(self.primary_keys[0], primary_values)
 
                 load_datas.extend(query.commit())
