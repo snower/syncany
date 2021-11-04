@@ -272,14 +272,14 @@ class CoreTasker(Tasker):
             return querys
         return []
 
-    def compile_merge_argument(self, a, b):
-        for k, v in b.items():
+    def compile_merge_argument(self, argument, child_argument):
+        for k, v in child_argument.items():
             if k == "name":
                 continue
-            if k != "type" and k in a:
+            if k != "type" and k in argument:
                 continue
-            a[k] = v
-        return a
+            argument[k] = v
+        return argument
 
     def compile_filters_arguments(self, arguments_names, arguments):
         self.config["querys"] = self.compile_filters_parse(self.config["querys"])
@@ -865,27 +865,48 @@ class CoreTasker(Tasker):
                     continue
                 getattr(self.outputer, "filter_%s" % exp_name)(query_name, value_filter(self.arguments[argument_name]))
 
-    def print_statistics(self, loader_name, loader_statistics, outputer_name, outputer_statistics, join_loader_count, join_loader_statistics):
+    def merge_statistics(self, statistics, child_statistics):
+        for key, value in child_statistics.items():
+            if key not in statistics:
+                statistics[key] = value
+            elif isinstance(value, (int, float)):
+                statistics[key] += value
+            else:
+                statistics[key] = value
+
+    def print_queryed_statistics(self, loader, loader_statistics=None):
+        statistics = loader.statistics()
+        if loader_statistics:
+            self.merge_statistics(loader_statistics, statistics)
+        statistics = ["loader_%s: %s" % (key, value) for key, value in statistics.items()]
+        get_logger().info("%s loader: %s <- %s %s", self.name, loader.__class__.__name__, self.input, " ".join(statistics))
+
+    def print_loaded_statistics(self, join_loaders, join_loader_statistics=None):
+        statistics = {}
+        for join_loader in join_loaders:
+            self.merge_statistics(statistics, join_loader.statistics())
+        if join_loader_statistics:
+            self.merge_statistics(join_loader_statistics, statistics)
+        get_logger().info("%s join_count: %s %s", self.name, len(join_loaders),
+                          " ".join(["join_%s: %s" % (key, value) for key, value in statistics.items()]))
+
+    def print_stored_statistics(self, outputer, outputer_statistics=None):
+        statistics = outputer.statistics()
+        if outputer_statistics:
+            self.merge_statistics(outputer_statistics, statistics)
+        statistics = ["outputer_%s: %s" % (key, value) for key, value in statistics.items()]
+        get_logger().info("%s outputer: %s -> %s %s", self.name, outputer.__class__.__name__, self.output, " ".join(statistics))
+
+    def print_statistics(self, loader_name, loader_statistics, outputer_name, outputer_statistics,
+                                 join_loader_count, join_loader_statistics):
         statistics = ["loader_%s: %s" % (key, value) for key, value in loader_statistics.items()]
         get_logger().info("%s loader: %s <- %s %s", self.name, loader_name, self.input, " ".join(statistics))
 
-        get_logger().info("%s join_count: %s %s", self.name, join_loader_count, " ".join(["join_%s: %s" % (key, value) for key, value in join_loader_statistics.items()]))
+        get_logger().info("%s join_count: %s %s", self.name, join_loader_count,
+                          " ".join(["join_%s: %s" % (key, value) for key, value in join_loader_statistics.items()]))
 
         statistics = ["outputer_%s: %s" % (key, value) for key, value in outputer_statistics.items()]
         get_logger().info("%s outputer: %s -> %s %s", self.name, outputer_name, self.output, " ".join(statistics))
-
-    def merge_statistics(self, loader_statistics, outputer_statistics, join_loaders_statistics, loader, outputer, join_loaders):
-        for total_statistics, statisticers in ((loader_statistics, [loader]), (outputer_statistics, [outputer]), (join_loaders_statistics, join_loaders)):
-            for statisticer in statisticers:
-                for key, value in statisticer.statistics().items():
-                    if key not in total_statistics:
-                        total_statistics[key] = value
-                    elif isinstance(value, (int, float)):
-                        total_statistics[key] += value
-                    else:
-                        total_statistics[key] = value
-
-        return loader.__class__.__name__, loader_statistics, outputer.__class__.__name__, outputer_statistics, len(join_loaders), join_loaders_statistics
 
     def get_dependency(self):
         if "dependency" not in self.config:
@@ -921,7 +942,7 @@ class CoreTasker(Tasker):
     def run_batch(self, batch_count, loader_timeout):
         loader_statistics, outputer_statistics, join_loaders_statistics = {}, {}, {}
         batch_index, load_count, cursor_data, ocursor_data = 0, 0, None, None
-        get_logger().info("%s start %s -> %s batch cursor: %s", self.name, 1, batch_count, "")
+        get_logger().info("%s batch start %s, %s cursor: %s", self.name, 1, batch_count, "")
 
         while not self.terminated:
             batch_index += 1
@@ -932,7 +953,7 @@ class CoreTasker(Tasker):
                 self.loader.filter_cursor(cursor_data, (batch_index - 1) * batch_count, batch_count)
                 vcursor = ["%s -> %s" % (primary_key, cursor_data.get(primary_key, ''))
                            for primary_key in self.loader.primary_keys]
-                get_logger().info("%s start %s -> %s batch cursor: %s", self.name,
+                get_logger().info("%s batch start %s, %s cursor: %s", self.name,
                                   batch_index, batch_count, " ".join(vcursor))
 
             self.loader.filter_limit(batch_count)
@@ -940,28 +961,28 @@ class CoreTasker(Tasker):
             load_count = len(self.loader.datas)
             for hooker in self.hookers:
                 self.loader.datas = hooker.queried(self, self.loader.datas)
+            self.print_queryed_statistics(self.loader, loader_statistics)
 
             datas = self.loader.get()
             if not datas:
+                self.print_loaded_statistics(self.join_loaders.values(), join_loaders_statistics)
+                self.print_stored_statistics(self.outputer, outputer_statistics)
                 break
             for hooker in self.hookers:
                 datas = hooker.loaded(self, datas)
+            self.print_loaded_statistics(self.join_loaders.values(), join_loaders_statistics)
 
             if ocursor_data:
                 self.outputer.filter_cursor(ocursor_data, (batch_index - 1) * batch_count, batch_count)
             self.outputer.store(datas)
             for hooker in self.hookers:
                 hooker.outputed(self, datas)
-
-            self.print_statistics(*self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders.values()))
-            self.merge_statistics(loader_statistics, outputer_statistics, join_loaders_statistics, self.loader,
-                                  self.outputer, self.join_loaders.values())
-
+            self.print_stored_statistics(self.outputer, outputer_statistics)
             if load_count < batch_count:
                 break
             cursor_data, ocursor_data = self.loader.last_data, datas[-1]
 
-        get_logger().info("%s end %s -> %s batch show statistics", self.name, batch_index - 1, batch_count)
+        get_logger().info("%s batch end %s, %s", self.name, batch_index - 1, batch_count)
         statistics = (self.loader.__class__.__name__, loader_statistics, self.outputer.__class__.__name__, outputer_statistics,
                       len(self.join_loaders), join_loaders_statistics)
         self.print_statistics(*statistics)
@@ -973,25 +994,25 @@ class CoreTasker(Tasker):
         self.loader.load(loader_timeout)
         for hooker in self.hookers:
             self.loader.datas = hooker.queried(self, self.loader.datas)
+        self.print_queryed_statistics(self.loader)
 
         datas = self.loader.get()
         if not datas:
-            statistics = self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders.values())
-            self.print_statistics(*statistics)
+            self.print_loaded_statistics(self.join_loaders.values())
+            self.print_stored_statistics(self.outputer)
             return self.loader.next()
-
         for hooker in self.hookers:
             datas = hooker.loaded(self, datas)
+        self.print_loaded_statistics(self.join_loaders.values())
 
         self.outputer.store(datas)
         for hooker in self.hookers:
             hooker.outputed(self, datas)
-
-        statistics = self.merge_statistics({}, {}, {}, self.loader, self.outputer, self.join_loaders.values())
-        self.print_statistics(*statistics)
+        self.print_stored_statistics(self.outputer)
         return self.loader.next()
 
     def run(self):
+        get_logger().info("%s start %s -> %s", self.name, self.config_filename, self.config.get("name"))
         batch_count = int(self.arguments.get("@batch", 0))
         loader_timeout = int(self.arguments.get("@timeout", None))
 
