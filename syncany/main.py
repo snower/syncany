@@ -84,6 +84,51 @@ def run_dependency(tasker, dependency_taskers):
     statistics = tasker.run()
     return statistics, dependency_statistics
 
+def show_tasker(tasker):
+    config = {key: value for key, value in tasker.config.items()}
+    config["schema"] = tasker.schema
+    def show_value(value, indent):
+        if isinstance(value, dict):
+            if not value:
+                return print("{}", end="")
+
+            print("{")
+            keys = sorted(list(value.keys()))
+            for i in range(len(keys)):
+                print(indent, end="")
+                show_value(keys[i], indent + "    ")
+                print(": ", end="")
+                show_value(value[keys[i]], indent + "    ")
+                print("," if i < len(keys) - 1 else "")
+            print(indent[:-4] + "}", end="")
+        elif isinstance(value, (tuple, set, list)):
+            print("[", end="")
+            for i in range(len(value)):
+                if isinstance(value[i], dict):
+                    print("\n" + indent, end="")
+                    show_value(value[i], indent + "    ")
+                    print(("," + indent) if i < len(value) - 1 else ("\n" + indent[:-4]), end="")
+                else:
+                    show_value(value[i], indent)
+                    if i < len(value) - 1:
+                        print(", ", end="")
+            print("]", end="")
+        elif isinstance(value, str):
+            print('"%s"' % value, end="")
+        else:
+            print(value, end="")
+    try:
+        import rich
+        rich.print(config)
+    except ImportError:
+        show_value(config, "    ")
+        print()
+
+def show_dependency_tasker(tasker, dependency_taskers):
+    for dependency_tasker in dependency_taskers:
+        show_dependency_tasker(*dependency_tasker)
+    show_tasker(tasker)
+
 def main():
     if len(sys.argv) < 2:
         print("usage: syncany [-h] json|yaml")
@@ -108,8 +153,10 @@ def main():
             description = 'syncany %s' % tasker.name
         ap = argparse.ArgumentParser(description=description)
         ap.add_argument("filename", type=str, help="json|yaml filename")
+        ap.add_argument('--@show', dest='@show', nargs='?', const=True, metavar=False,
+                        default=False, type=bool, help='show compile config (defualt: False)')
         ap.add_argument('--@verbose', dest='@verbose', nargs='?', const=True, metavar=False,
-                        default=False, type=bool, help='is show detail info (defualt: False)')
+                        default=False, type=bool, help='show detail info (defualt: False)')
 
         register_aps = {}
         for argument in arguments:
@@ -134,13 +181,18 @@ def main():
         for dependency_tasker in dependency_taskers:
             compile_dependency(arguments, *dependency_tasker)
         tasker.compile(arguments)
+
+        if "@show" in arguments and arguments["@show"]:
+            for dependency_tasker in dependency_taskers:
+                show_dependency_tasker(*dependency_tasker)
+            return show_tasker(tasker)
         if "@verbose" in arguments and arguments["@verbose"]:
             warp_database_logging(tasker)
 
         for dependency_tasker in dependency_taskers:
             run_dependency(*dependency_tasker)
         tasker.run()
-    except SystemExit:
+    except SystemError:
         get_logger().error("signal exited")
         exit(130)
     except KeyboardInterrupt:

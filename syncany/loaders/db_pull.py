@@ -40,7 +40,7 @@ class DBPullLoader(DBLoader):
                 self.wait_event.clear()
                 timeout = timeout - (now - self.last_load_time)
                 if self.wait_event.wait(timeout):
-                    raise SystemExit("db pull loader terminated")
+                    raise SystemError("db pull loader terminated")
 
         self.last_load_time = time.time()
         self.start_loaded = True
