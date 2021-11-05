@@ -76,6 +76,11 @@ class CsvQueryBuilder(QueryBuilder):
             datas = sorted(datas, key=lambda x: x.get(self.orders[0][0]), reverse=True if self.orders[0][1] < 0 else False)
         return datas
 
+    def verbose(self):
+        if self.query:
+            return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+        return ""
+
 
 class CsvInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
@@ -89,6 +94,9 @@ class CsvInsertBuilder(InsertBuilder):
         csv_file.fields = self.fields
         csv_file.datas.extend(self.datas)
         csv_file.changed = True
+
+    def verbose(self):
+        return str(self.datas)
 
 
 class CsvUpdateBuilder(UpdateBuilder):
@@ -139,6 +147,10 @@ class CsvUpdateBuilder(UpdateBuilder):
         csv_file.changed = True
         return datas
 
+    def verbose(self):
+        return "%s\n%s" % ([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()],
+                           self.diff_data)
+
 
 class CsvDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
@@ -184,6 +196,9 @@ class CsvDeleteBuilder(DeleteBuilder):
         csv_file.datas = datas
         csv_file.changed = True
         return datas
+
+    def verbose(self):
+        return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
 
 
 class CsvFile(object):

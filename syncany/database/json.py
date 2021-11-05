@@ -6,8 +6,10 @@ import os
 import json
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
+
 class JsonFileNotFound(Exception):
     pass
+
 
 class JsonQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
@@ -75,6 +77,12 @@ class JsonQueryBuilder(QueryBuilder):
             datas = sorted(datas, key=lambda x: x.get(self.orders[0][0]), reverse=True if self.orders[0][1] < 0 else False)
         return datas
 
+    def verbose(self):
+        if self.query:
+            return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+        return ""
+
+
 class JsonInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
         super(JsonInsertBuilder, self).__init__(*args, **kwargs)
@@ -86,6 +94,10 @@ class JsonInsertBuilder(InsertBuilder):
         json_file = self.db.ensure_open_file(self.name)
         json_file.datas.extend(self.datas)
         json_file.changed = True
+
+    def verbose(self):
+        return str(self.datas)
+
 
 class JsonUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -134,6 +146,11 @@ class JsonUpdateBuilder(UpdateBuilder):
         json_file.changed = True
         return datas
 
+    def verbose(self):
+        return "%s\n%s" % ([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()],
+                           self.diff_data)
+
+
 class JsonDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
         super(JsonDeleteBuilder, self).__init__(*args, **kwargs)
@@ -179,12 +196,17 @@ class JsonDeleteBuilder(DeleteBuilder):
         json_file.changed = True
         return datas
 
+    def verbose(self):
+        return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+
+
 class JsonFile(object):
     def __init__(self, name, filename, datas):
         self.name = name
         self.filename = filename
         self.datas = datas
         self.changed = False
+
 
 class JsonDB(DataBase):
     DEFAULT_CONFIG = {

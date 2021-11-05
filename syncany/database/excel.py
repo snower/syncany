@@ -78,6 +78,11 @@ class ExeclQueryBuilder(QueryBuilder):
             datas = sorted(datas, key=lambda x: x.get(self.orders[0][0]), reverse=True if self.orders[0][1] < 0 else False)
         return datas
 
+    def verbose(self):
+        if self.query:
+            return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+        return ""
+
 
 class ExeclInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
@@ -91,6 +96,9 @@ class ExeclInsertBuilder(InsertBuilder):
         execl_sheet.sheet_descriptions = self.fields
         execl_sheet.sheet_datas.extend(self.datas)
         execl_sheet.changed = True
+
+    def verbose(self):
+        return str(self.datas)
 
 
 class ExeclUpdateBuilder(UpdateBuilder):
@@ -141,6 +149,10 @@ class ExeclUpdateBuilder(UpdateBuilder):
         execl_sheet.changed = True
         return datas
 
+    def verbose(self):
+        return "%s\n%s" % ([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()],
+                           self.diff_data)
+
 
 class ExeclDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
@@ -186,6 +198,9 @@ class ExeclDeleteBuilder(DeleteBuilder):
         execl_sheet.sheet_datas = datas
         execl_sheet.changed = True
         return datas
+
+    def verbose(self):
+        return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
 
 
 class ExeclSheet(object):

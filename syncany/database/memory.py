@@ -73,6 +73,12 @@ class MemoryQueryBuilder(QueryBuilder):
             datas = sorted(datas, key=lambda x: x.get(self.orders[0][0]), reverse=True if self.orders[0][1] < 0 else False)
         return datas
 
+    def verbose(self):
+        if self.query:
+            return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+        return ""
+
+
 class MemoryInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
         super(MemoryInsertBuilder, self).__init__(*args, **kwargs)
@@ -84,6 +90,10 @@ class MemoryInsertBuilder(InsertBuilder):
         datas = MEMORY_DATABASES.get(self.name, [])
         datas.extend(self.datas)
         MEMORY_DATABASES[self.name] = datas
+
+    def verbose(self):
+        return str(self.datas)
+
 
 class MemoryUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -130,6 +140,11 @@ class MemoryUpdateBuilder(UpdateBuilder):
         MEMORY_DATABASES[self.name] = datas
         return datas
 
+    def verbose(self):
+        return "%s\n%s" % ([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()],
+                           self.diff_data)
+
+
 class MemoryDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
         super(MemoryDeleteBuilder, self).__init__(*args, **kwargs)
@@ -172,6 +187,10 @@ class MemoryDeleteBuilder(DeleteBuilder):
 
         MEMORY_DATABASES[self.name] = datas
         return datas
+
+    def verbose(self):
+        return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+
 
 class MemoryDB(DataBase):
     def __init__(self, config):

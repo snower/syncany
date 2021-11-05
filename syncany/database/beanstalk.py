@@ -141,6 +141,11 @@ class BeanstalkQueryBuilder(QueryBuilder):
             datas = sorted(datas, key=lambda x: x.get(self.orders[0][0]), reverse=True if self.orders[0][1] < 0 else False)
         return datas
 
+    def verbose(self):
+        if self.query:
+            return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+        return ""
+
 
 class BeanstalkInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
@@ -158,6 +163,9 @@ class BeanstalkInsertBuilder(InsertBuilder):
             if not data:
                 continue
             connection.put()
+
+    def verbose(self):
+        return str(self.datas)
 
 
 class BeanstalkUpdateBuilder(UpdateBuilder):

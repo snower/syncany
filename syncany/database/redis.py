@@ -7,6 +7,7 @@ import pickle
 import json
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
+
 class StringSerialize(object):
     def loads(self, data):
         return str(data)
@@ -14,12 +15,14 @@ class StringSerialize(object):
     def dumps(self, value):
         return value
 
+
 class JsonSerialize(object):
     def loads(self, data):
         return json.loads(data, encoding="utf-8")
 
     def dumps(self, value):
         return json.dumps(value, ensure_ascii=False).encode("utf-8")
+
 
 class MsgpackSerialize(object):
     def __init__(self):
@@ -35,12 +38,14 @@ class MsgpackSerialize(object):
     def dumps(self, value):
         return self.msgpack.dumps(value)
 
+
 class PickleSerialize(object):
     def loads(self, data):
         return pickle.loads(data)
 
     def dumps(self, value):
         return pickle.dumps(value)
+
 
 class RedisQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
@@ -153,6 +158,12 @@ class RedisQueryBuilder(QueryBuilder):
             datas = sorted(datas, key=lambda x: x.get(self.orders[0][0]), reverse=True if self.orders[0][1] < 0 else False)
         return datas
 
+    def verbose(self):
+        if self.query:
+            return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+        return ""
+
+
 class RedisInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
         super(RedisInsertBuilder, self).__init__(*args, **kwargs)
@@ -194,6 +205,10 @@ class RedisInsertBuilder(InsertBuilder):
             connection = self.db.ensure_connection()
             connection.expire(self.prefix_key, self.db.expire_seconds)
         return self.datas
+
+    def verbose(self):
+        return str(self.datas)
+
 
 class RedisUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -251,6 +266,11 @@ class RedisUpdateBuilder(UpdateBuilder):
             return None
         self.save(key, data)
         return self.update
+
+    def verbose(self):
+        return "%s\n%s" % ([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()],
+                           self.diff_data)
+
 
 class RedisDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
@@ -357,6 +377,10 @@ class RedisDeleteBuilder(DeleteBuilder):
                 if succed:
                     self.delete(data["_key"])
         return load_datas
+
+    def verbose(self):
+        return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+
 
 class RedisDB(DataBase):
     DEFAULT_CONFIG = {

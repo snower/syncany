@@ -8,6 +8,7 @@ import json
 from ..utils import print_object, get_rich
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
+
 class TextLineQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
         super(TextLineQueryBuilder, self).__init__(*args, **kwargs)
@@ -142,6 +143,12 @@ class TextLineQueryBuilder(QueryBuilder):
             datas = sorted(datas, key=lambda x: x.get(self.orders[0][0]), reverse=True if self.orders[0][1] < 0 else False)
         return datas
 
+    def verbose(self):
+        if self.query:
+            return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+        return ""
+
+
 class TextLineInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
         super(TextLineInsertBuilder, self).__init__(*args, **kwargs)
@@ -233,6 +240,10 @@ class TextLineInsertBuilder(InsertBuilder):
             else:
                 self.text_write(fp)
 
+    def verbose(self):
+        return str(self.datas)
+
+
 class TextLineUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
         super(TextLineUpdateBuilder, self).__init__(*args, **kwargs)
@@ -261,6 +272,7 @@ class TextLineUpdateBuilder(UpdateBuilder):
     def commit(self):
         return []
 
+
 class TextLineDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
         super(TextLineDeleteBuilder, self).__init__(*args, **kwargs)
@@ -288,6 +300,7 @@ class TextLineDeleteBuilder(DeleteBuilder):
 
     def commit(self):
         return []
+
 
 class TextLineDB(DataBase):
     rich = None
