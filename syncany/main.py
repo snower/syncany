@@ -29,8 +29,8 @@ def warp_database_logging(tasker):
             finally:
                 database_verbose = database.verbose()
                 builder_verbose = builder.verbose()
-                beautify_print("%s %s %s -> %s %.2fms" % (datetime.datetime.now(), database.__class__.__name__,
-                                                          database_verbose, builder.__class__.__name__,
+                beautify_print("%s %s %s -> %s<%s> %.2fms" % (datetime.datetime.now(), database.__class__.__name__,
+                                                          database_verbose, builder.__class__.__name__, builder.name,
                                                           (time.time() - start_time) * 1000))
                 if builder_verbose:
                     if isinstance(builder_verbose, tuple):
