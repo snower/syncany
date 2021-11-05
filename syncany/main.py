@@ -9,15 +9,15 @@ import datetime
 import argparse
 import traceback
 import signal
-from .utils import print_object
+from .utils import print_object, get_rich
 from .logger import get_logger
 from .taskers.core import CoreTasker
 
 def beautify_print(*args, **kwargs):
-    try:
-        import rich
-        rich.print(*args, **kwargs)
-    except:
+    rich = get_rich()
+    if rich:
+        rich.get_console().print(markup=False, *args, **kwargs)
+    else:
         print_object(*args, **kwargs)
 
 def warp_database_logging(tasker):
@@ -36,10 +36,8 @@ def warp_database_logging(tasker):
                     if isinstance(builder_verbose, tuple):
                         for v in builder_verbose:
                             beautify_print(v)
-                    elif isinstance(builder_verbose, str):
-                        print(builder_verbose)
                     else:
-                        print_object(builder_verbose)
+                        beautify_print(builder_verbose)
                     print()
             return result
         return _

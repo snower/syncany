@@ -5,7 +5,7 @@
 import os
 import csv
 import json
-from ..utils import print_object
+from ..utils import print_object, get_rich
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 class TextLineQueryBuilder(QueryBuilder):
@@ -151,7 +151,7 @@ class TextLineInsertBuilder(InsertBuilder):
 
     def print_write(self, fp):
         if self.db.rich:
-            self.db.rich.print(self.datas)
+            self.db.rich.get_console().print(self.datas, markup=False)
         else:
             print_object(self.datas)
 
@@ -295,11 +295,7 @@ class TextLineDB(DataBase):
     def __init__(self, config):
         super(TextLineDB, self).__init__(dict(**config))
 
-        try:
-            import rich
-            self.rich = rich
-        except ImportError:
-            pass
+        self.rich = get_rich()
 
     def query(self, name, primary_keys=None, fields=()):
         return TextLineQueryBuilder(self, name, primary_keys, fields)
