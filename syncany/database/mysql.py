@@ -3,6 +3,7 @@
 # create by: snower
 
 import re
+from ..utils import human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 class MysqlQueryBuilder(QueryBuilder):
@@ -145,7 +146,7 @@ class MysqlQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % self.sql
+            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
         return ''
 
 class MysqlInsertBuilder(InsertBuilder):
@@ -186,7 +187,7 @@ class MysqlInsertBuilder(InsertBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % self.sql
+            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
         return ''
 
 class MysqlUpdateBuilder(UpdateBuilder):
@@ -249,7 +250,7 @@ class MysqlUpdateBuilder(UpdateBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % self.sql
+            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
         return ''
 
 class MysqlDeleteBuilder(DeleteBuilder):
@@ -304,7 +305,7 @@ class MysqlDeleteBuilder(DeleteBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % self.sql
+            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
         return ''
 
 class MysqlDB(DataBase):

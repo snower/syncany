@@ -3,6 +3,7 @@
 # create by: snower
 
 import re
+from ..utils import human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 
@@ -141,12 +142,12 @@ class ClickhouseQueryBuilder(QueryBuilder):
             datas = [dict(zip(names, data)) for data in datas]
         finally:
             cursor.close()
-            self.sql = (sql, datas)
+            self.sql = (sql, query_values)
         return datas
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % self.sql
+            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
         return ''
 
 
@@ -187,7 +188,7 @@ class ClickhouseInsertBuilder(InsertBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % self.sql
+            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
         return ''
 
 
@@ -250,7 +251,7 @@ class ClickhouseUpdateBuilder(UpdateBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % self.sql
+            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
         return ''
 
 
@@ -305,7 +306,7 @@ class ClickhouseDeleteBuilder(DeleteBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % self.sql
+            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
         return ''
 
 

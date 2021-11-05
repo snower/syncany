@@ -2,6 +2,7 @@
 # 2020/7/6
 # create by: snower
 
+from ..utils import human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 MEMORY_DATABASES = {
@@ -75,7 +76,7 @@ class MemoryQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if self.query:
-            return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+            return human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
         return ""
 
 
@@ -92,7 +93,7 @@ class MemoryInsertBuilder(InsertBuilder):
         MEMORY_DATABASES[self.name] = datas
 
     def verbose(self):
-        return str(self.datas)
+        return human_repr_object(self.datas)
 
 
 class MemoryUpdateBuilder(UpdateBuilder):
@@ -141,8 +142,8 @@ class MemoryUpdateBuilder(UpdateBuilder):
         return datas
 
     def verbose(self):
-        return "%s\n%s" % ([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()],
-                           self.diff_data)
+        return "%s\n%s" % (human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
+                           human_repr_object(self.diff_data))
 
 
 class MemoryDeleteBuilder(DeleteBuilder):

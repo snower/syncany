@@ -4,6 +4,7 @@
 
 import datetime
 import json
+from ..utils import human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 
@@ -191,7 +192,7 @@ class ElasticsearchQueryBuilder(QueryBuilder):
         return []
 
     def verbose(self):
-        return "%s\n%s" % (self.index_name, self.query)
+        return "%s\n%s" % (self.index_name, human_repr_object(self.query))
 
 
 class ElasticsearchInsertBuilder(InsertBuilder):
@@ -231,6 +232,9 @@ class ElasticsearchInsertBuilder(InsertBuilder):
         connection = self.db.ensure_connection()
         return self.db.helpers().bulk(connection, datas, raise_on_exception=False, raise_on_error=False)
 
+    def verbose(self):
+        return human_repr_object(self.datas)
+
 
 class ElasticsearchUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -268,6 +272,9 @@ class ElasticsearchUpdateBuilder(UpdateBuilder):
 
         connection = self.db.ensure_connection()
         return self.db.helpers().bulk(connection, datas, raise_on_exception=False, raise_on_error=False)
+
+    def verbose(self):
+        return human_repr_object(self.datas)
 
 
 class ElasticsearchDeleteBuilder(DeleteBuilder):

@@ -5,7 +5,7 @@
 import os
 import csv
 import json
-from ..utils import print_object, get_rich
+from ..utils import print_object, get_rich, human_repr_object, human_format_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 
@@ -145,7 +145,7 @@ class TextLineQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if self.query:
-            return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+            return human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
         return ""
 
 
@@ -158,9 +158,9 @@ class TextLineInsertBuilder(InsertBuilder):
 
     def print_write(self, fp):
         if self.db.rich:
-            self.db.rich.get_console().print(self.datas, markup=False)
+            self.db.rich.get_console().print(human_format_object(self.datas), markup=False)
         else:
-            print_object(self.datas)
+            print_object(human_format_object(self.datas))
 
     def rich_write(self, fp):
         from rich.table import Table
@@ -241,7 +241,7 @@ class TextLineInsertBuilder(InsertBuilder):
                 self.text_write(fp)
 
     def verbose(self):
-        return str(self.datas)
+        return human_repr_object(self.datas)
 
 
 class TextLineUpdateBuilder(UpdateBuilder):

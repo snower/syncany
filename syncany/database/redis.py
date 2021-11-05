@@ -2,9 +2,9 @@
 # 2020/11/19
 # create by: snower
 
-
 import pickle
 import json
+from ..utils import human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 
@@ -160,7 +160,7 @@ class RedisQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if self.query:
-            return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+            return human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
         return ""
 
 
@@ -207,7 +207,7 @@ class RedisInsertBuilder(InsertBuilder):
         return self.datas
 
     def verbose(self):
-        return str(self.datas)
+        return human_repr_object(self.datas)
 
 
 class RedisUpdateBuilder(UpdateBuilder):
@@ -268,8 +268,8 @@ class RedisUpdateBuilder(UpdateBuilder):
         return self.update
 
     def verbose(self):
-        return "%s\n%s" % ([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()],
-                           self.diff_data)
+        return "%s\n%s" % (human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
+                           human_repr_object(self.diff_data))
 
 
 class RedisDeleteBuilder(DeleteBuilder):

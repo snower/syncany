@@ -5,6 +5,7 @@
 import os
 import datetime
 from tzlocal import get_localzone
+from ..utils import human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 
@@ -80,7 +81,7 @@ class ExeclQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if self.query:
-            return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+            return human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
         return ""
 
 
@@ -98,7 +99,7 @@ class ExeclInsertBuilder(InsertBuilder):
         execl_sheet.changed = True
 
     def verbose(self):
-        return str(self.datas)
+        return human_repr_object(self.datas)
 
 
 class ExeclUpdateBuilder(UpdateBuilder):
@@ -150,8 +151,8 @@ class ExeclUpdateBuilder(UpdateBuilder):
         return datas
 
     def verbose(self):
-        return "%s\n%s" % ([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()],
-                           self.diff_data)
+        return "%s\n%s" % (human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
+                           human_repr_object(self.diff_data))
 
 
 class ExeclDeleteBuilder(DeleteBuilder):
@@ -200,7 +201,7 @@ class ExeclDeleteBuilder(DeleteBuilder):
         return datas
 
     def verbose(self):
-        return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+        return human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
 
 
 class ExeclSheet(object):

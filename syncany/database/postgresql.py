@@ -3,6 +3,7 @@
 # create by: snower
 
 import re
+from ..utils import human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 class PostgresqlQueryBuilder(QueryBuilder):
@@ -144,7 +145,7 @@ class PostgresqlQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % self.sql
+            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
         return ''
 
 class PostgresqlInsertBuilder(InsertBuilder):
@@ -185,7 +186,7 @@ class PostgresqlInsertBuilder(InsertBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % self.sql
+            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
         return ''
 
 class PostgresqlUpdateBuilder(UpdateBuilder):
@@ -248,7 +249,7 @@ class PostgresqlUpdateBuilder(UpdateBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % self.sql
+            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
         return ''
 
 class PostgresqlDeleteBuilder(DeleteBuilder):
@@ -303,7 +304,7 @@ class PostgresqlDeleteBuilder(DeleteBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % self.sql
+            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
         return ''
 
 class PostgresqlDB(DataBase):

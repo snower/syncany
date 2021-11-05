@@ -3,6 +3,7 @@
 # create by: snower
 
 import os
+from ..utils import human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 
@@ -78,7 +79,7 @@ class CsvQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if self.query:
-            return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+            return human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
         return ""
 
 
@@ -96,7 +97,7 @@ class CsvInsertBuilder(InsertBuilder):
         csv_file.changed = True
 
     def verbose(self):
-        return str(self.datas)
+        return human_repr_object(self.datas)
 
 
 class CsvUpdateBuilder(UpdateBuilder):
@@ -148,8 +149,8 @@ class CsvUpdateBuilder(UpdateBuilder):
         return datas
 
     def verbose(self):
-        return "%s\n%s" % ([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()],
-                           self.diff_data)
+        return "%s\n%s" % (human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
+                           human_repr_object(self.diff_data))
 
 
 class CsvDeleteBuilder(DeleteBuilder):
@@ -198,7 +199,7 @@ class CsvDeleteBuilder(DeleteBuilder):
         return datas
 
     def verbose(self):
-        return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+        return human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
 
 
 class CsvFile(object):

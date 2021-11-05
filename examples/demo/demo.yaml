@@ -59,3 +59,4 @@ schema:
             "<<": "$$$.vip_type"
             "/2/": "$$.vip_timeout_at"
             ">>": "$$$.rules.:0.timeout_time"
+  created_at: "@now"

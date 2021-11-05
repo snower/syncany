@@ -3,6 +3,7 @@
 # create by: snower
 
 import os
+import datetime
 
 def get_rich():
     if os.environ.get("USE_RICH", 'true').lower() != "true":
@@ -78,3 +79,53 @@ def print_object(value, indent="    ", deep=1):
 
     if deep == 1:
         print()
+
+class HumanRepr(object):
+    def __init__(self, repr_value):
+        self.repr_value = repr_value
+
+    def __str__(self):
+        return self.repr_value
+
+    def __repr__(self):
+        return self.repr_value
+
+def human_format_object(value):
+    if isinstance(value, dict):
+        fvalues = {}
+        for k, v in value.items():
+            fvalues[k] = human_format_object(v)
+        return fvalues
+    if isinstance(value, (tuple, set, list)):
+        fvalues = []
+        for v in value:
+            fvalues.append(human_format_object(v))
+        return fvalues
+
+    if isinstance(value, datetime.datetime):
+        return HumanRepr('datetime.datetime("%s")' % value.isoformat())
+    if isinstance(value, datetime.date):
+        return HumanRepr('datetime.date("%s")' % value.isoformat())
+    if isinstance(value, datetime.time):
+        return HumanRepr('datetime.time("%s")' % value.isoformat())
+    return value
+
+def human_repr_object(value):
+    if isinstance(value, dict):
+        fvalues = []
+        for k, v in value.items():
+            fvalues.append("%s: %s" % (repr(k), human_repr_object(v)))
+        return "{" + ", ".join(fvalues) + "}"
+    if isinstance(value, (tuple, set, list)):
+        fvalues = []
+        for v in value:
+            fvalues.append(human_repr_object(v))
+        return "[" + ", ".join(fvalues) + "]"
+
+    if isinstance(value, datetime.datetime):
+        return 'datetime.datetime("%s")' % value.isoformat()
+    if isinstance(value, datetime.date):
+        return 'datetime.date("%s")' % value.isoformat()
+    if isinstance(value, datetime.time):
+        return 'datetime.time("%s")' % value.isoformat()
+    return repr(value)

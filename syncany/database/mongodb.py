@@ -9,6 +9,7 @@ try:
         Int64, MaxKey, MinKey, Regex, Timestamp
 except ImportError:
     pass
+from ..utils import human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 class MongoQueryBuilder(QueryBuilder):
@@ -172,8 +173,8 @@ class MongoQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if isinstance(self.bquery, tuple):
-            return "%s\n%s %s" % (self.collection_name, self.bquery[0], self.bquery[1])
-        return "%s\n%s" % (self.collection_name, self.bquery)
+            return "%s\n%s %s" % (self.collection_name, self.bquery[0], human_repr_object(self.bquery[1]))
+        return "%s\n%s" % (self.collection_name, human_repr_object(self.bquery))
 
 class MongoInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
@@ -245,7 +246,7 @@ class MongoUpdateBuilder(UpdateBuilder):
             if self.diff_data and key not in self.diff_data:
                 continue
             update[key] = value
-        return "%s\n%s\n%s" % (self.collection_name, self.query, update)
+        return "%s\n%s\n%s" % (self.collection_name, human_repr_object(self.query), human_repr_object(update))
 
 class MongoDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
@@ -293,7 +294,7 @@ class MongoDeleteBuilder(DeleteBuilder):
         return connection[self.db_name][self.collection_name].remove(self.query, multi=True)
 
     def verbose(self):
-        return "%s\n%s" % (self.collection_name, self.query)
+        return "%s\n%s" % (self.collection_name, human_repr_object(self.query))
 
 class MongoDB(DataBase):
     DEFAULT_CONFIG = {

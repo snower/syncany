@@ -6,6 +6,7 @@
 import time
 import pickle
 import json
+from ..utils import human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 
@@ -143,7 +144,7 @@ class BeanstalkQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if self.query:
-            return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+            return human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
         return ""
 
 
@@ -165,7 +166,7 @@ class BeanstalkInsertBuilder(InsertBuilder):
             connection.put()
 
     def verbose(self):
-        return str(self.datas)
+        return human_repr_object(self.datas)
 
 
 class BeanstalkUpdateBuilder(UpdateBuilder):

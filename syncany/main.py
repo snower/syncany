@@ -9,7 +9,7 @@ import datetime
 import argparse
 import traceback
 import signal
-from .utils import print_object, get_rich
+from .utils import print_object, get_rich, human_format_object
 from .logger import get_logger
 from .taskers.core import CoreTasker
 
@@ -127,7 +127,7 @@ def fix_print_outputer(tasker, register_aps, arguments):
 def show_tasker(tasker):
     config = {key: value for key, value in tasker.config.items()}
     config["schema"] = tasker.schema
-    beautify_print(config)
+    beautify_print(human_format_object(config))
 
 def show_dependency_tasker(tasker, dependency_taskers):
     for dependency_tasker in dependency_taskers:

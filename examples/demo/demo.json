@@ -39,6 +39,7 @@
         "/2/": "$$.vip_timeout_at",
         "#end": "$$$.rules.:0.timeout_time"
       }
-    ]]
+    ]],
+    "created_at": "@now"
   }
 }

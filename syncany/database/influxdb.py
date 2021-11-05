@@ -5,6 +5,7 @@
 import re
 import datetime
 import pytz
+from ..utils import human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 escape_chars_map = {
@@ -199,7 +200,7 @@ class InfluxDBQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % self.sql
+            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
         return ''
 
 
@@ -379,7 +380,7 @@ class InfluxDBDeleteBuilder(DeleteBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % self.sql
+            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
         return ''
 
 
