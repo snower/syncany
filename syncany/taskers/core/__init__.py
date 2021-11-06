@@ -8,6 +8,7 @@ import logging.config
 from ...logger import get_logger
 from ..tasker import Tasker
 from ..config import load_config
+from .option import DataValuerOutputerOption
 from ...calculaters.import_calculater import create_import_calculater
 from ...utils import get_expression_name
 from .valuer_compiler import ValuerCompiler
@@ -33,6 +34,7 @@ class CoreTasker(Tasker):
         "variables": {},
         "schema": {},
         "pipelines": [],
+        "options": {}
     }
 
     def __init__(self, config_filename):
@@ -71,7 +73,7 @@ class CoreTasker(Tasker):
             self.load_json(extends)
 
         for k, v in config.items():
-            if k in ("arguments", "imports", "defines", "variables", "sources", "logger"):
+            if k in ("arguments", "imports", "defines", "variables", "sources", "logger", "options"):
                 if not isinstance(v, dict) or not isinstance(self.config.get(k, {}), dict):
                     continue
 
@@ -167,6 +169,18 @@ class CoreTasker(Tasker):
                         config[i] = value[1:]
                 elif isinstance(value, (dict, list)):
                     self.compile_sources(value)
+
+    def compile_options(self):
+        if "schema" not in self.config["options"]:
+            self.config["options"]["schema"] = {}
+
+        if isinstance(self.config["schema"], dict):
+            for key, valuer in tuple(self.config["schema"].items()):
+                if key[-1:] != "?":
+                    continue
+                self.config["options"]["schema"][key[:-1]] = {"chaned_require_update": True}
+                self.config["schema"][key[:-1]] = valuer
+                self.config["schema"].pop(key)
 
     def compile_run_calculater(self, calculater):
         if not calculater or not isinstance(calculater, (tuple, set, list, str)):
@@ -835,6 +849,9 @@ class CoreTasker(Tasker):
                     continue
                 if name in self.loader.schema:
                     valuer.filter = self.loader.schema[name].get_final_filter()
+                if name in self.config["options"]["schema"] and \
+                        self.config["options"]["schema"][name].get("chaned_require_update"):
+                    valuer.option = DataValuerOutputerOption(True)
                 self.outputer.add_valuer(name, valuer)
 
         for query in self.config["querys"]:
@@ -932,6 +949,7 @@ class CoreTasker(Tasker):
         super(CoreTasker, self).compile(arguments)
 
         self.compile_sources(self.config)
+        self.compile_options()
         self.load_databases()
         self.compile_schema()
         self.compile_pipelines()

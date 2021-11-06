@@ -72,15 +72,19 @@ class DBUpdateInsertOutputer(DBOutputer):
             self.outputer_state["insert_count"] += 1
 
     def update(self, data, load_data):
-        diff_data = {}
+        diff_data, require_update = {}, False
         for key, value in data.items():
             load_valuer = load_data[key]
             ovalue = load_valuer.get()
             if value != ovalue or getattr(load_valuer, "value_type_class") != value.__class__:
                 diff_data[key] = ovalue
-        if not diff_data:
-            return
+                option = self.schema[key].option
+                if option and option.changed_require_update:
+                    continue
+                require_update = True
 
+        if not require_update:
+            return
         update = self.db.update(self.name, self.primary_keys, list(self.schema.keys()), data, diff_data)
         for primary_key in self.primary_keys:
             update.filter_eq(primary_key, data[primary_key])

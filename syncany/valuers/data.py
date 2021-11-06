@@ -11,13 +11,17 @@ class DataValuer(Valuer):
         self.inherit_valuers = inherit_valuers
         super(DataValuer, self).__init__(*args, **kwargs)
 
+        self.option = None
+
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self):
         return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
-        return self.__class__(return_valuer, inherit_valuers, self.key, self.filter)
+        valuer = self.__class__(return_valuer, inherit_valuers, self.key, self.filter)
+        valuer.option = self.option
+        return valuer
 
     def fill(self, data):
         if self.inherit_valuers:
