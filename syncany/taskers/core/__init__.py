@@ -131,6 +131,9 @@ class CoreTasker(Tasker):
     def config_logging(self):
         if "logger" in self.config and isinstance(self.config["logger"], dict):
             logging.config.dictConfig(self.config["logger"])
+        else:
+            logging.basicConfig(level=logging.INFO, format='%(asctime)s %(process)d %(levelname)s %(message)s',
+                                datefmt='%Y-%m-%d %H:%M:%S', filemode='a+')
 
     def compile_sources(self, config=None):
         if isinstance(config, dict):
