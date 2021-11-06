@@ -3,8 +3,8 @@
 # create by: snower
 
 class Parser(object):
-    def __init__(self, filename):
-        self.filename = filename
+    def __init__(self, content):
+        self.content = content
 
-    def load(self):
+    def parse(self):
         raise NotImplementedError

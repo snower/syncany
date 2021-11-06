@@ -140,7 +140,8 @@ def main():
         print("syncany error: too few arguments")
         exit(2)
 
-    if not sys.argv[1].endswith("json") and not sys.argv[1].endswith("yaml"):
+    if not sys.argv[1].endswith("json") and not sys.argv[1].endswith("yaml") \
+            and not sys.argv[1].startswith("http"):
         print("usage: syncany [-h] json|yaml")
         print("syncany error: require json or yaml file")
         exit(2)

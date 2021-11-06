@@ -7,7 +7,7 @@ import copy
 import logging.config
 from ...logger import get_logger
 from ..tasker import Tasker
-from ..parsers import load_file
+from ..parsers import load_config
 from ...calculaters.import_calculater import create_import_calculater
 from ...utils import get_expression_name
 from .valuer_compiler import ValuerCompiler
@@ -61,7 +61,7 @@ class CoreTasker(Tasker):
                 if k in config and not config[k]:
                     config.pop(k)
         else:
-            config = load_file(filename)
+            config = load_config(filename)
 
         extends = config.pop("extends") if "extends" in config else []
         if isinstance(extends, list):
@@ -124,7 +124,7 @@ class CoreTasker(Tasker):
     def load_sources(self):
         for name, filename in list(self.config["sources"].items()):
             try:
-                self.config["sources"][name] = load_file(filename)
+                self.config["sources"][name] = load_config(filename)
             except Exception as e:
                 raise SourceUnknownException("%s(%s)" % (filename, str(e)))
 

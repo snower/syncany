@@ -2,6 +2,7 @@
 # 2021/10/29
 # create by: snower
 
+from io import StringIO
 from .parser import Parser
 
 
@@ -12,7 +13,7 @@ class ReturnValue(Exception):
 
 class YamlParser(Parser):
     def parse_return(self, config):
-        config = self.parse(config)
+        config = self.parse_config(config)
         if isinstance(config, str):
             config = ":" + config
         elif isinstance(config, list):
@@ -28,9 +29,9 @@ class YamlParser(Parser):
 
     def parse_keyword(self, key, config):
         if isinstance(config, dict):
-            config = self.parse(config)
+            config = self.parse_config(config)
         elif isinstance(config, list):
-            config = self.parse(config)
+            config = self.parse_config(config)
         if isinstance(config, list):
             return [key] + list(config)
         return [key, config]
@@ -44,19 +45,19 @@ class YamlParser(Parser):
                 return config
             config = list(config.values())[0]
         if isinstance(config, list):
-            case_config = {"#case": self.parse(config[0])} if config else {}
+            case_config = {"#case": self.parse_config(config[0])} if config else {}
             for value in config[1:-1]:
                 if isinstance(value, dict):
                     for kk, kv in value.items():
-                        case_config[kk] = self.parse(kv)
+                        case_config[kk] = self.parse_config(kv)
                 elif isinstance(value, list):
                     if len(value) >= 2:
-                        case_config[value[0]] = self.parse(value[1])
+                        case_config[value[0]] = self.parse_config(value[1])
             if isinstance(config[-1], dict):
                 for kk, kv in config[-1].items():
-                    case_config[kk] = self.parse(kv)
+                    case_config[kk] = self.parse_config(kv)
             else:
-                case_config["#end"] = self.parse(config[-1])
+                case_config["#end"] = self.parse_config(config[-1])
             return case_config
         return config
 
@@ -69,23 +70,23 @@ class YamlParser(Parser):
                 return config
             config = list(config.values())[0]
         if isinstance(config, list):
-            case_config = {"#match": self.parse(config[0])} if config else {}
+            case_config = {"#match": self.parse_config(config[0])} if config else {}
             for value in config[1:-1]:
                 if isinstance(value, dict):
                     for kk, kv in value.items():
-                        case_config[kk] = self.parse(kv)
+                        case_config[kk] = self.parse_config(kv)
                 elif isinstance(value, list):
                     if len(value) >= 2:
-                        case_config[value[0]] = self.parse(value[1])
+                        case_config[value[0]] = self.parse_config(value[1])
             if isinstance(config[-1], dict):
                 for kk, kv in config[-1].items():
-                    case_config[kk] = self.parse(kv)
+                    case_config[kk] = self.parse_config(kv)
             else:
-                case_config["#end"] = self.parse(config[-1])
+                case_config["#end"] = self.parse_config(config[-1])
             return case_config
         return config
 
-    def parse(self, config):
+    def parse_config(self, config):
         if isinstance(config, dict):
             if "#case" in config:
                 return self.parse_case(config)
@@ -102,14 +103,14 @@ class YamlParser(Parser):
                     return self.parse_keyword(key, value)
 
             for key, value in config.items():
-                config[key] = self.parse(value)
+                config[key] = self.parse_config(value)
             return config
 
         if isinstance(config, list):
             configs = []
             for value in config:
                 try:
-                    configs.append(self.parse(value))
+                    configs.append(self.parse_config(value))
                 except ReturnValue as e:
                     if configs:
                         if isinstance(configs[-1], list):
@@ -123,9 +124,8 @@ class YamlParser(Parser):
             return configs
         return config
 
-    def load(self):
+    def parse(self):
         import yaml
-        with open(self.filename, "r") as fp:
-            config = yaml.load(fp, yaml.Loader)
-        config = self.parse(config)
+        config = yaml.load(StringIO(self.content), yaml.Loader)
+        config = self.parse_config(config)
         return config
