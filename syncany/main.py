@@ -55,8 +55,8 @@ def warp_database_logging(tasker):
         database.update = builder_warper(database, database.update)
         database.delete = builder_warper(database, database.delete)
 
-def load_dependency(filename, ap, register_aps):
-    tasker = CoreTasker(filename)
+def load_dependency(parent, filename, ap, register_aps):
+    tasker = CoreTasker(filename, parent)
     arguments = tasker.load()
 
     for argument in arguments:
@@ -89,7 +89,7 @@ def load_dependency(filename, ap, register_aps):
 
     dependency_taskers = []
     for filename in tasker.get_dependency():
-        dependency_taskers.append(load_dependency(filename, ap, register_aps))
+        dependency_taskers.append(load_dependency(tasker, filename, ap, register_aps))
     return (tasker, dependency_taskers)
 
 def compile_dependency(arguments, tasker, dependency_taskers):
@@ -105,7 +105,10 @@ def run_dependency(tasker, dependency_taskers):
     dependency_statistics = []
     for dependency_tasker in dependency_taskers:
         dependency_statistics.append(run_dependency(*dependency_tasker))
-    statistics = tasker.run()
+    try:
+        statistics = tasker.run()
+    finally:
+        tasker.close()
     return statistics, dependency_statistics
 
 def fix_print_outputer(tasker, register_aps, arguments):
@@ -190,7 +193,7 @@ def main():
 
         dependency_taskers = []
         for filename in tasker.get_dependency():
-            dependency_taskers.append(load_dependency(filename, ap, register_aps))
+            dependency_taskers.append(load_dependency(tasker, filename, ap, register_aps))
 
         ap_arguments = ap.parse_args()
         arguments = {key.lower(): value for key, value in os.environ.items()}
@@ -220,6 +223,8 @@ def main():
     except Exception as e:
         get_logger().error("%s\n%s", e, traceback.format_exc())
         exit(1)
+    finally:
+        tasker.close()
     exit(0)
 
 if __name__ == "__main__":

@@ -37,7 +37,7 @@ class CoreTasker(Tasker):
         "options": {}
     }
 
-    def __init__(self, config_filename):
+    def __init__(self, config_filename, *args, **kwargs):
         self.start_time = time.time()
         self.closed = False
         self.terminated = False
@@ -53,7 +53,7 @@ class CoreTasker(Tasker):
             self.config_filename = "__inline__::" + config_filename.get("name", str(int(time.time())))
         else:
             self.config_filename = config_filename
-        super(CoreTasker, self).__init__()
+        super(CoreTasker, self).__init__(*args, **kwargs)
         self.join_loaders = {}
 
     def load_json(self, filename):
@@ -1034,23 +1034,21 @@ class CoreTasker(Tasker):
 
     def run(self):
         get_logger().info("%s start %s -> %s", self.name, self.config_filename, self.config.get("name"))
+        super(CoreTasker, self).run()
         batch_count = int(self.arguments.get("@batch", 0))
         loader_timeout = int(self.arguments.get("@timeout", None))
 
-        try:
-            while not self.terminated:
-                if batch_count > 0:
-                    if not self.run_batch(batch_count, loader_timeout):
-                        break
-                    continue
-
-                if not self.run_once(loader_timeout):
+        while not self.terminated:
+            if batch_count > 0:
+                if not self.run_batch(batch_count, loader_timeout):
                     break
-                self.loader = self.loader.clone()
-                self.outputer = self.outputer.clone()
-                self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
-        finally:
-            self.close()
+                continue
+
+            if not self.run_once(loader_timeout):
+                break
+            self.loader = self.loader.clone()
+            self.outputer = self.outputer.clone()
+            self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
         get_logger().info("%s finish %s %s %.2fms", self.name, self.config_filename, self.config.get("name"), (time.time() - self.start_time) * 1000)
 
     def terminate(self):

@@ -2,7 +2,6 @@
 # 2020/7/2
 # create by: snower
 
-from collections import defaultdict
 from .valuer import Valuer
 
 class AggregateManager(object):

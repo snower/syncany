@@ -3,10 +3,8 @@
 # create by: snower
 
 from ..utils import human_repr_object
+from ..taskers.tasker import current_tasker
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
-
-MEMORY_DATABASES = {
-}
 
 
 class MemoryQueryBuilder(QueryBuilder):
@@ -48,12 +46,12 @@ class MemoryQueryBuilder(QueryBuilder):
 
     def commit(self):
         if not self.query:
-            datas = MEMORY_DATABASES.get(self.name, [])
+            datas = self.db.memory_databases.get(self.name, [])
             if self.limit:
                 datas = datas[self.limit[0]: self.limit[1]]
         else:
             index, datas = 0, []
-            for data in MEMORY_DATABASES.get(self.name, []):
+            for data in self.db.memory_databases.get(self.name, []):
                 if self.limit and (index < self.limit[0] or index > self.limit[1]):
                     continue
     
@@ -89,9 +87,9 @@ class MemoryInsertBuilder(InsertBuilder):
             self.datas = [self.datas]
 
     def commit(self):
-        datas = MEMORY_DATABASES.get(self.name, [])
+        datas = self.db.memory_databases.get(self.name, [])
         datas.extend(self.datas)
-        MEMORY_DATABASES[self.name] = datas
+        self.db.memory_databases[self.name] = datas
 
     def verbose(self):
         datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
@@ -125,7 +123,7 @@ class MemoryUpdateBuilder(UpdateBuilder):
 
     def commit(self):
         datas = []
-        for data in MEMORY_DATABASES.get(self.name, []):
+        for data in self.db.memory_databases.get(self.name, []):
             succed = True
             for (key, exp), (value, cmp) in self.query.items():
                 if key not in data:
@@ -140,7 +138,7 @@ class MemoryUpdateBuilder(UpdateBuilder):
             else:
                 datas.append(data)
 
-        MEMORY_DATABASES[self.name] = datas
+        self.db.memory_databases[self.name] = datas
         return datas
 
     def verbose(self):
@@ -176,7 +174,7 @@ class MemoryDeleteBuilder(DeleteBuilder):
 
     def commit(self):
         datas = []
-        for data in MEMORY_DATABASES.get(self.name, []):
+        for data in self.db.memory_databases.get(self.name, []):
             succed = True
             for (key, exp), (value, cmp) in self.query.items():
                 if key not in data:
@@ -189,7 +187,7 @@ class MemoryDeleteBuilder(DeleteBuilder):
             if not succed:
                 datas.append(data)
 
-        MEMORY_DATABASES[self.name] = datas
+        self.db.memory_databases[self.name] = datas
         return datas
 
     def verbose(self):
@@ -199,6 +197,13 @@ class MemoryDeleteBuilder(DeleteBuilder):
 class MemoryDB(DataBase):
     def __init__(self, config):
         super(MemoryDB, self).__init__(dict(**config))
+
+        tasker = current_tasker()
+        while tasker.parent:
+            tasker = tasker.parent
+        if not hasattr(tasker, "_memory_databases"):
+            setattr(tasker, "_memory_databases", {})
+        self.memory_databases = tasker._memory_databases
 
     def query(self, name, primary_keys=None, fields=()):
         return MemoryQueryBuilder(self, name, primary_keys, fields)

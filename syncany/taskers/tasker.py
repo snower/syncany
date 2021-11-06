@@ -16,8 +16,8 @@ _thread_local = threading.local()
 class Tasker(object):
     name = ""
 
-    def __init__(self):
-        _thread_local.current_tasker = self
+    def __init__(self, parent=None):
+        self.parent = parent
         self.extensions = {
             "loaders": {},
             "outputers": {},
@@ -111,13 +111,14 @@ class Tasker(object):
         pass
 
     def load(self):
-        pass
+        _thread_local.current_tasker = self
 
     def compile(self, arguments):
+        _thread_local.current_tasker = self
         self.arguments = arguments
 
     def run(self):
-        pass
+        _thread_local.current_tasker = self
 
     def decorator_compiled(self, func):
         hooker = Hooker()
