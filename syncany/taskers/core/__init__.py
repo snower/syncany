@@ -7,7 +7,7 @@ import copy
 import logging.config
 from ...logger import get_logger
 from ..tasker import Tasker
-from ..parsers import load_config
+from ..config import load_config
 from ...calculaters.import_calculater import create_import_calculater
 from ...utils import get_expression_name
 from .valuer_compiler import ValuerCompiler

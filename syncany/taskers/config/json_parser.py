@@ -5,6 +5,7 @@
 import json
 from .parser import Parser
 
+
 class JsonParser(Parser):
     def parse(self):
         return json.loads(self.content)
