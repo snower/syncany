@@ -149,8 +149,8 @@ def main():
         print("syncany error: require json or yaml file")
         exit(2)
 
+    tasker = CoreTasker(sys.argv[1])
     try:
-        tasker = CoreTasker(sys.argv[1])
         signal.signal(signal.SIGHUP, lambda signum, frame: tasker.terminate())
         signal.signal(signal.SIGTERM, lambda signum, frame: tasker.terminate())
 
