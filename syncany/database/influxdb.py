@@ -200,8 +200,10 @@ class InfluxDBQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
-        return ''
+            if "\n" in self.sql[0]:
+                return "sql: \n%s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+            return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+        return "sql: %s" % self.sql
 
 
 class InfluxDBInsertBuilder(InsertBuilder):
@@ -252,6 +254,10 @@ class InfluxDBInsertBuilder(InsertBuilder):
 
         connection = self.db.ensure_connection()
         return connection.write_points(datas)
+
+    def verbose(self):
+        datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
+        return "datas(%d): \n[\n    %s\n]" % (len(self.datas), datas)
 
 
 class InfluxDBUpdateBuilder(UpdateBuilder):
@@ -319,6 +325,11 @@ class InfluxDBUpdateBuilder(UpdateBuilder):
         connection = self.db.ensure_connection()
         return connection.write_points([json_body])
 
+    def verbose(self):
+        return "filters: %s\nupdateDatas: %s" % (
+            human_repr_object([(self.query[i], self.query_values[i]) for i in range(len(self.query))]),
+            human_repr_object(self.diff_data))
+
 
 class InfluxDBDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
@@ -380,8 +391,8 @@ class InfluxDBDeleteBuilder(DeleteBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
-        return ''
+            return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+        return "sql: %s" % self.sql
 
 
 class InfluxDB(DataBase):

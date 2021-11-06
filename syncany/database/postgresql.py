@@ -6,6 +6,7 @@ import re
 from ..utils import human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
+
 class PostgresqlQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
         super(PostgresqlQueryBuilder, self).__init__(*args, **kwargs)
@@ -145,8 +146,11 @@ class PostgresqlQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
-        return ''
+            if "\n" in self.sql[0]:
+                return "sql: \n%s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+            return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+        return "sql: %s" % self.sql
+
 
 class PostgresqlInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
@@ -186,8 +190,10 @@ class PostgresqlInsertBuilder(InsertBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
-        return ''
+            args = ",\n    ".join([human_repr_object(value) for value in self.sql[1]])
+            return "sql: %s\nargs(%d): \n[\n    %s\n]" % (self.sql[0], len(self.sql[1]), args)
+        return "sql: %s" % self.sql
+
 
 class PostgresqlUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -249,8 +255,9 @@ class PostgresqlUpdateBuilder(UpdateBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
-        return ''
+            return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+        return "sql: %s" % self.sql
+
 
 class PostgresqlDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
@@ -304,8 +311,9 @@ class PostgresqlDeleteBuilder(DeleteBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
-        return ''
+            return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+        return "sql: %s" % self.sql
+
 
 class PostgresqlDB(DataBase):
     DictCursor = None

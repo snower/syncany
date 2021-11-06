@@ -144,9 +144,10 @@ class TextLineQueryBuilder(QueryBuilder):
         return datas
 
     def verbose(self):
-        if self.query:
-            return human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
-        return ""
+        return "filters: %s\nlimit: %s\norderBy: %s" % (
+            human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
+            self.limit,
+            self.orders)
 
 
 class TextLineInsertBuilder(InsertBuilder):
@@ -241,7 +242,8 @@ class TextLineInsertBuilder(InsertBuilder):
                 self.text_write(fp)
 
     def verbose(self):
-        return human_repr_object(self.datas)
+        datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
+        return "datas(%d): \n[\n    %s\n]" % (len(self.datas), datas)
 
 
 class TextLineUpdateBuilder(UpdateBuilder):

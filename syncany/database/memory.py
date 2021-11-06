@@ -75,9 +75,10 @@ class MemoryQueryBuilder(QueryBuilder):
         return datas
 
     def verbose(self):
-        if self.query:
-            return human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
-        return ""
+        return "filters: %s\nlimit: %s\norderBy: %s" % (
+            human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
+            self.limit,
+            self.orders)
 
 
 class MemoryInsertBuilder(InsertBuilder):
@@ -93,7 +94,8 @@ class MemoryInsertBuilder(InsertBuilder):
         MEMORY_DATABASES[self.name] = datas
 
     def verbose(self):
-        return human_repr_object(self.datas)
+        datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
+        return "datas(%d): \n[\n    %s\n]" % (len(self.datas), datas)
 
 
 class MemoryUpdateBuilder(UpdateBuilder):
@@ -142,8 +144,9 @@ class MemoryUpdateBuilder(UpdateBuilder):
         return datas
 
     def verbose(self):
-        return "%s\n%s" % (human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
-                           human_repr_object(self.diff_data))
+        return "filters: %s\nupdateDatas: %s" % (
+            human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
+            human_repr_object(self.diff_data))
 
 
 class MemoryDeleteBuilder(DeleteBuilder):
@@ -190,7 +193,7 @@ class MemoryDeleteBuilder(DeleteBuilder):
         return datas
 
     def verbose(self):
-        return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+        return "filters: %s" % human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
 
 
 class MemoryDB(DataBase):

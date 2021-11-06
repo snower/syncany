@@ -6,6 +6,7 @@ import re
 from ..utils import human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
+
 class MysqlQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
         super(MysqlQueryBuilder, self).__init__(*args, **kwargs)
@@ -146,8 +147,11 @@ class MysqlQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
-        return ''
+            if "\n" in self.sql[0]:
+                return "sql: \n%s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+            return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+        return "sql: %s" % self.sql
+
 
 class MysqlInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
@@ -187,8 +191,10 @@ class MysqlInsertBuilder(InsertBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
-        return ''
+            args = ",\n    ".join([human_repr_object(value) for value in self.sql[1]])
+            return "sql: %s\nargs(%d): \n[\n    %s\n]" % (self.sql[0], len(self.sql[1]), args)
+        return "sql: %s" % self.sql
+
 
 class MysqlUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -250,8 +256,9 @@ class MysqlUpdateBuilder(UpdateBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
-        return ''
+            return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+        return "sql: %s" % self.sql
+
 
 class MysqlDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
@@ -305,8 +312,9 @@ class MysqlDeleteBuilder(DeleteBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
-        return ''
+            return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+        return "sql: %s" % self.sql
+
 
 class MysqlDB(DataBase):
     DictCursor = None

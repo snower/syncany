@@ -159,9 +159,10 @@ class RedisQueryBuilder(QueryBuilder):
         return datas
 
     def verbose(self):
-        if self.query:
-            return human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
-        return ""
+        return "filters: %s\nlimit: %s\norderBy: %s" % (
+            human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
+            self.limit,
+            self.orders)
 
 
 class RedisInsertBuilder(InsertBuilder):
@@ -207,7 +208,8 @@ class RedisInsertBuilder(InsertBuilder):
         return self.datas
 
     def verbose(self):
-        return human_repr_object(self.datas)
+        datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
+        return "datas(%d): \n[\n    %s\n]" % (len(self.datas), datas)
 
 
 class RedisUpdateBuilder(UpdateBuilder):
@@ -268,8 +270,9 @@ class RedisUpdateBuilder(UpdateBuilder):
         return self.update
 
     def verbose(self):
-        return "%s\n%s" % (human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
-                           human_repr_object(self.diff_data))
+        return "filters: %s\nupdateDatas: %s" % (
+            human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
+            human_repr_object(self.diff_data))
 
 
 class RedisDeleteBuilder(DeleteBuilder):
@@ -379,7 +382,7 @@ class RedisDeleteBuilder(DeleteBuilder):
         return load_datas
 
     def verbose(self):
-        return str([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+        return "filters: %s" % human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
 
 
 class RedisDB(DataBase):

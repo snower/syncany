@@ -79,9 +79,10 @@ class JsonQueryBuilder(QueryBuilder):
         return datas
 
     def verbose(self):
-        if self.query:
-            return human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
-        return ""
+        return "filters: %s\nlimit: %s\norderBy: %s" % (
+            human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
+            self.limit,
+            self.orders)
 
 
 class JsonInsertBuilder(InsertBuilder):
@@ -97,7 +98,8 @@ class JsonInsertBuilder(InsertBuilder):
         json_file.changed = True
 
     def verbose(self):
-        return human_repr_object(self.datas)
+        datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
+        return "datas(%d): \n[\n    %s\n]" % (len(self.datas), datas)
 
 
 class JsonUpdateBuilder(UpdateBuilder):
@@ -148,8 +150,9 @@ class JsonUpdateBuilder(UpdateBuilder):
         return datas
 
     def verbose(self):
-        return "%s\n%s" % (human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
-                           human_repr_object(self.diff_data))
+        return "filters: %s\nupdateDatas: %s" % (
+            human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
+            human_repr_object(self.diff_data))
 
 
 class JsonDeleteBuilder(DeleteBuilder):
@@ -198,7 +201,7 @@ class JsonDeleteBuilder(DeleteBuilder):
         return datas
 
     def verbose(self):
-        return human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
+        return "filters: %s" % human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
 
 
 class JsonFile(object):

@@ -12,6 +12,7 @@ except ImportError:
 from ..utils import human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
+
 class MongoQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
         super(MongoQueryBuilder, self).__init__(*args, **kwargs)
@@ -173,8 +174,11 @@ class MongoQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if isinstance(self.bquery, tuple):
-            return "%s\n%s %s" % (self.collection_name, self.bquery[0], human_repr_object(self.bquery[1]))
-        return "%s\n%s" % (self.collection_name, human_repr_object(self.bquery))
+            return "collection: %s\nquery: %svalues: %s\nlimit: %s\norderBy: %s" % (
+                self.collection_name, self.bquery[0], human_repr_object(self.bquery[1]), self.limit, self.orders)
+        return "collection: %s\nquery: %s\nlimit: %s\norderBy: %s" % (
+            self.collection_name, human_repr_object(self.bquery), self.limit, self.orders)
+
 
 class MongoInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
@@ -189,6 +193,10 @@ class MongoInsertBuilder(InsertBuilder):
         if isinstance(self.datas, list):
             return connection[self.db_name][self.collection_name].insert_many(self.datas)
         return connection[self.db_name][self.collection_name].insert_one(self.datas)
+
+    def verbose(self):
+        datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
+        return "datas(%d): \n[\n    %s\n]" % (len(self.datas), datas)
 
 class MongoUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
@@ -246,7 +254,9 @@ class MongoUpdateBuilder(UpdateBuilder):
             if self.diff_data and key not in self.diff_data:
                 continue
             update[key] = value
-        return "%s\n%s\n%s" % (self.collection_name, human_repr_object(self.query), human_repr_object(update))
+        return "collection: %s\nquery: %s\nupdateDatas: %s" % (
+            self.collection_name, human_repr_object(self.query), human_repr_object(update))
+
 
 class MongoDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
@@ -294,7 +304,8 @@ class MongoDeleteBuilder(DeleteBuilder):
         return connection[self.db_name][self.collection_name].remove(self.query, multi=True)
 
     def verbose(self):
-        return "%s\n%s" % (self.collection_name, human_repr_object(self.query))
+        return "collection: %s\nquery: %s" % (self.collection_name, human_repr_object(self.query))
+
 
 class MongoDB(DataBase):
     DEFAULT_CONFIG = {

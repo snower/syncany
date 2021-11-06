@@ -147,8 +147,10 @@ class ClickhouseQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
-        return ''
+            if "\n" in self.sql[0]:
+                return "sql: \n%s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+            return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+        return "sql: %s" % self.sql
 
 
 class ClickhouseInsertBuilder(InsertBuilder):
@@ -188,8 +190,9 @@ class ClickhouseInsertBuilder(InsertBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
-        return ''
+            args = ",\n    ".join([human_repr_object(value) for value in self.sql[1]])
+            return "sql: %s\nargs(%d): \n[\n    %s\n]" % (self.sql[0], len(self.sql[1]), args)
+        return "sql: %s" % self.sql
 
 
 class ClickhouseUpdateBuilder(UpdateBuilder):
@@ -251,8 +254,8 @@ class ClickhouseUpdateBuilder(UpdateBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
-        return ''
+            return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+        return "sql: %s" % self.sql
 
 
 class ClickhouseDeleteBuilder(DeleteBuilder):
@@ -306,8 +309,8 @@ class ClickhouseDeleteBuilder(DeleteBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            return "%s\n%s" % (self.sql[0], human_repr_object(self.sql[1]))
-        return ''
+            return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
+        return "sql: %s" % self.sql
 
 
 class ClickhouseDB(DataBase):

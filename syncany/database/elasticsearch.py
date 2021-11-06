@@ -192,7 +192,7 @@ class ElasticsearchQueryBuilder(QueryBuilder):
         return []
 
     def verbose(self):
-        return "%s\n%s" % (self.index_name, human_repr_object(self.query))
+        return "indexNmae: %s\nquery: %s" % (self.index_name, human_repr_object(self.equery))
 
 
 class ElasticsearchInsertBuilder(InsertBuilder):
@@ -233,7 +233,8 @@ class ElasticsearchInsertBuilder(InsertBuilder):
         return self.db.helpers().bulk(connection, datas, raise_on_exception=False, raise_on_error=False)
 
     def verbose(self):
-        return human_repr_object(self.datas)
+        datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
+        return "datas(%d): \n[\n    %s\n]" % (len(self.datas), datas)
 
 
 class ElasticsearchUpdateBuilder(UpdateBuilder):
@@ -274,7 +275,8 @@ class ElasticsearchUpdateBuilder(UpdateBuilder):
         return self.db.helpers().bulk(connection, datas, raise_on_exception=False, raise_on_error=False)
 
     def verbose(self):
-        return human_repr_object(self.datas)
+        datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
+        return "datas(%d): \n[\n    %s\n]" % (len(self.datas), datas)
 
 
 class ElasticsearchDeleteBuilder(DeleteBuilder):
