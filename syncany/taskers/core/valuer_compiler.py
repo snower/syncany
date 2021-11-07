@@ -350,3 +350,20 @@ class ValuerCompiler(object):
             "default_valuer": default_valuer,
             "return_valuer": return_valuer,
         }
+
+    def compile_state_valuer(self, key="", filter=None, calculate_arg=None, return_arg=None):
+        calculated_return_arg, calculate_arg = self.parse_return_valuer(calculate_arg)
+        if return_arg:
+            return_arg, _ = self.parse_return_valuer(return_arg)
+        return_arg = return_arg or calculated_return_arg
+
+        calculate_valuer = self.compile_valuer(calculate_arg) if calculate_arg else None
+        return_valuer = self.compile_valuer(return_arg) if return_arg else None
+
+        return {
+            "name": "state_valuer",
+            "key": key,
+            "filter": filter,
+            "calculate_valuer": calculate_valuer,
+            "return_valuer": return_valuer,
+        }

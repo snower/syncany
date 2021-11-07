@@ -2,6 +2,7 @@
 # 18/8/6
 # create by: snower
 
+import time
 import threading
 from ..loaders import find_loader, Loader
 from ..outputers import find_outputer, Outputer
@@ -17,6 +18,7 @@ class Tasker(object):
     name = ""
 
     def __init__(self, parent=None):
+        self.start_time = time.time()
         self.parent = parent
         self.extensions = {
             "loaders": {},
@@ -27,6 +29,7 @@ class Tasker(object):
             "calculaters": {},
         }
         self.arguments = {}
+        self.states = {}
         self.input = ""
         self.output = ""
         self.databases = {}
@@ -34,6 +37,11 @@ class Tasker(object):
         self.loader = None
         self.outputer = None
         self.hookers = set([])
+        self.statistics = {
+            "loader": {},
+            "join_loaders": {},
+            "outputer": {}
+        }
 
     def find_loader_driver(self, name):
         if name in self.extensions["loaders"]:

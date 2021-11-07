@@ -22,6 +22,7 @@ class DBLoader(Loader):
             schema[key] = valuer.clone()
         loader.schema = schema
         loader.filters = [filter for filter in self.filters]
+        loader.orders = [order for order in self.orders]
         loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
         return loader
 
@@ -65,8 +66,12 @@ class DBLoader(Loader):
         if self.current_cursor:
             query.filter_cursor(*self.current_cursor)
 
-        for primary_key in self.primary_keys:
-            query.order_by(primary_key)
+        if self.orders:
+            for order in self.orders:
+                query.order_by(*order)
+        else:
+            for primary_key in self.primary_keys:
+                query.order_by(primary_key)
 
         self.datas = query.commit()
         self.loader_state["query_count"] += 1

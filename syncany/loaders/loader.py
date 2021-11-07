@@ -29,6 +29,7 @@ class Loader(object):
         self.is_yield = is_yield
         self.schema = {}
         self.filters = []
+        self.orders = []
         self.current_cursor = None
         self.key_matchers = []
         self.datas = []
@@ -42,6 +43,7 @@ class Loader(object):
             schema[key] = valuer.clone()
         loader.schema = schema
         loader.filters = [filter for filter in self.filters]
+        loader.orders = [order for order in self.orders]
         loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
         return loader
 
@@ -167,6 +169,9 @@ class Loader(object):
 
     def filter_cursor(self, last_data, offset, count):
         self.current_cursor = (last_data, offset, count)
+
+    def order_by(self, key, direct=1):
+        self.orders.append((key, direct))
 
     def statistics(self):
         return {

@@ -3,14 +3,18 @@
 # create by: snower
 
 import time
+import datetime
+import pytz
 import copy
+import types
 import logging.config
 from ...logger import get_logger
 from ..tasker import Tasker
 from ..config import load_config
+from .states import States
 from .option import DataValuerOutputerOption
 from ...calculaters.import_calculater import create_import_calculater
-from ...utils import get_expression_name
+from ...utils import get_expression_name, gen_runner_id
 from .valuer_compiler import ValuerCompiler
 from .valuer_creater import ValuerCreater
 from .loader_creater import LoaderCreater
@@ -34,13 +38,16 @@ class CoreTasker(Tasker):
         "variables": {},
         "schema": {},
         "pipelines": [],
-        "options": {}
+        "options": {},
+        "dependencys": [],
+        "states": [],
     }
 
     def __init__(self, config_filename, *args, **kwargs):
-        self.start_time = time.time()
+        super(CoreTasker, self).__init__(*args, **kwargs)
         self.closed = False
         self.terminated = False
+        self.states = States()
         self.valuer_compiler = ValuerCompiler(self)
         self.valuer_creater = ValuerCreater(self)
         self.loader_creater = LoaderCreater(self)
@@ -53,10 +60,11 @@ class CoreTasker(Tasker):
             self.config_filename = "__inline__::" + config_filename.get("name", str(int(time.time())))
         else:
             self.config_filename = config_filename
-        super(CoreTasker, self).__init__(*args, **kwargs)
         self.join_loaders = {}
+        self.global_variables = {}
+        self.batch_cursor = None
 
-    def load_json(self, filename):
+    def load_config(self, filename):
         if filename[:12] == "__inline__::":
             config, self.config = self.config, copy.deepcopy(self.DEFAULT_CONFIG)
             for k, v in self.DEFAULT_CONFIG.items():
@@ -68,9 +76,9 @@ class CoreTasker(Tasker):
         extends = config.pop("extends") if "extends" in config else []
         if isinstance(extends, list):
             for config_filename in extends:
-                self.load_json(config_filename)
+                self.load_config(config_filename)
         else:
-            self.load_json(extends)
+            self.load_config(extends)
 
         for k, v in config.items():
             if k in ("arguments", "imports", "defines", "variables", "sources", "logger", "options"):
@@ -104,11 +112,17 @@ class CoreTasker(Tasker):
                     for pipeline in (v if isinstance(v, list) and not isinstance(v[0], str) else [v]):
                         pipelines.append(pipeline)
                 self.config[k] = pipelines
+            elif k == "states":
+                if self.config[k]:
+                    self.config[k].extend(v if isinstance(v, list) else [v])
+                else:
+                    self.config[k] = v if isinstance(v, list) else [v]
             else:
                 self.config[k] = v
 
     def load_databases(self):
         for config in self.config["databases"]:
+            config = dict(**config)
             database_cls = self.find_database_driver(config.pop("driver"))
             if not database_cls:
                 raise DatabaseUnknownException(config["name"] + " is unknown")
@@ -130,12 +144,39 @@ class CoreTasker(Tasker):
             except Exception as e:
                 raise SourceUnknownException("%s(%s)" % (filename, str(e)))
 
+    def load_states(self):
+        for state in self.config["states"]:
+            self.states.add_tasker(CoreTasker(state, self))
+        self.states.compile(self)
+        self.states.load(self)
+
+    def load_cursor(self):
+        if "@recovery" in self.arguments and self.arguments["@recovery"]:
+            return
+        if "cursor" not in self.config or self.config["cursor"]:
+            if "@cursor" in self.states:
+                if isinstance(self.states["@cursor"], dict):
+                    self.batch_cursor = self.states["@cursor"]
+                else:
+                    self.batch_cursor = {[self.loader.primary_keys[0]]: self.states["@cursor"]}
+            return
+        self.batch_cursor = {}
+        if isinstance(self.config["cursor"], dict):
+            for key, value in self.config["cursor"].items():
+                self.batch_cursor[key] = self.run_valuer(value, {})
+        else:
+            self.batch_cursor[self.loader.primary_keys[0]] = self.run_valuer(self.config["cursor"], {})
+
     def config_logging(self):
         if "logger" in self.config and isinstance(self.config["logger"], dict):
             logging.config.dictConfig(self.config["logger"])
         else:
             logging.basicConfig(level=logging.INFO, format='%(asctime)s %(process)d %(levelname)s %(message)s',
                                 datefmt='%Y-%m-%d %H:%M:%S', filemode='a+')
+
+    def compile_variables(self):
+        for key, value in self.config["variables"].items():
+            self.global_variables[key] = self.run_valuer(value, {})
 
     def compile_sources(self, config=None):
         if isinstance(config, dict):
@@ -181,38 +222,6 @@ class CoreTasker(Tasker):
                 self.config["options"]["schema"][key[:-1]] = {"chaned_require_update": True}
                 self.config["schema"][key[:-1]] = valuer
                 self.config["schema"].pop(key)
-
-    def compile_run_calculater(self, calculater):
-        if not calculater or not isinstance(calculater, (tuple, set, list, str)):
-            return calculater
-
-        if isinstance(calculater, str):
-            if calculater[0] != "@":
-                return calculater
-            keys = calculater[1:].split("|")
-        else:
-            if not calculater[0] or calculater[0][0] != "@":
-                return calculater
-            keys = calculater[0][1:].split("|")
-        calculater_cls = self.find_calculater_driver(keys[0])
-        if not calculater_cls:
-            return calculater
-
-        calculater_args = []
-        if not isinstance(calculater, str):
-            for value in calculater[1:]:
-                if isinstance(value, list) and value and value[0][0] == "@":
-                    calculater_args.append(self.compile_run_calculater(value))
-                else:
-                    calculater_args.append(value)
-        value = calculater_cls(keys[0], *tuple(calculater_args)).calculate()
-
-        filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
-        filters_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
-        filter_cls = self.find_filter_driver(filters[0])
-        if filter_cls:
-            return filter_cls(filters_args).filter(value)
-        return value
 
     def compile_filters_parse_exps(self, exps):
         if isinstance(exps, dict):
@@ -327,8 +336,7 @@ class CoreTasker(Tasker):
                     filter_cls = self.find_filter_driver(query["type"])
                     if filter_cls is None:
                         filter_cls = self.find_filter_driver('str')
-                    if isinstance(exp_value, list) and exp_value and exp_value[0][:1] == "@":
-                        exp_value = self.compile_run_calculater(exp_value)
+                    exp_value = self.run_valuer(exp_value, {})
 
                     if exp_name == "eq":
                         argument = {"name": '%s' % query["name"], "type": filter_cls(query.get("type_args")),
@@ -375,7 +383,7 @@ class CoreTasker(Tasker):
             if isinstance(argument, dict):
                 argument["name"] = keys[0]
                 if "default" in argument:
-                    argument["default"] = self.compile_run_calculater(argument["default"])
+                    argument["default"] = self.run_valuer(argument["default"], {})
                 if "type" not in argument:
                     if filter_cls:
                         argument["type"] = filter_cls(filter_args)
@@ -384,7 +392,7 @@ class CoreTasker(Tasker):
                 if "help" not in argument:
                     argument["help"] = "%s (default: %s)" % (name, argument.get("default", ""))
             else:
-                argument = self.compile_run_calculater(argument)
+                argument = self.run_valuer(argument, {})
                 if filter_cls:
                     argument_type = filter_cls(filter_args)
                 else:
@@ -403,14 +411,14 @@ class CoreTasker(Tasker):
 
         if "input" in self.config:
             if isinstance(self.config["input"], list) and self.config["input"] and self.config["input"][0][0] == "@":
-                self.config["input"] = self.compile_run_calculater(self.config["input"])
+                self.config["input"] = self.run_valuer(self.config["input"], {})
             if self.config["input"][:2] == "<<":
                 arguments.append({"name": "@input", "short": "i", "type": str, "default": self.config["input"][2:],
                                   "help": "data input (default: %s)" % self.config["input"][2:]})
 
         if "loader" in self.config:
             if isinstance(self.config["loader"], list) and self.config["loader"] and self.config["loader"][0][0] == "@":
-                self.config["loader"] = self.compile_run_calculater(self.config["loader"])
+                self.config["loader"] = self.run_valuer(self.config["loader"], {})
             if self.config["loader"][:2] == "<<":
                 arguments.append({"name": "@loader", "type": str, "default": self.config["loader"][2:],
                                   "choices": ("db_loader",),
@@ -418,14 +426,14 @@ class CoreTasker(Tasker):
 
         if "output" in self.config:
             if isinstance(self.config["output"], list) and self.config["output"] and self.config["output"][0][0] == "@":
-                self.config["output"] = self.compile_run_calculater(self.config["output"])
+                self.config["output"] = self.run_valuer(self.config["output"], {})
             if self.config["output"][:2] == ">>":
                 arguments.append({"name": "@output", "short": "o", "type": str, "default": self.config["output"][2:],
                                   "help": "data output (default: %s)" % self.config["output"][2:]})
 
         if "outputer" in self.config:
             if isinstance(self.config["outputer"], list) and self.config["outputer"] and self.config["outputer"][0][0] == "@":
-                self.config["outputer"] = self.compile_run_calculater(self.config["outputer"])
+                self.config["outputer"] = self.run_valuer(self.config["outputer"], {})
             if self.config["outputer"][:2] == ">>":
                 arguments.append({"name": "@outputer", "type": str, "default": self.config["outputer"][2:],
                                   "choices": tuple(self.outputer_creater.can_uses()),
@@ -433,6 +441,7 @@ class CoreTasker(Tasker):
 
         arguments.append({"name": "@limit", "short": "l", "type": int, "default": 0, "help": "load limit count (default: 0 all)"})
         arguments.append({"name": "@batch", "short": "b", "type": int, "default": 0, "help": "per sync batch count (default: 0 all)"})
+        arguments.append({"name": "@recovery", "short": "r", "type": bool, "default": False, "help": "recovery mode (default: False)"})
         arguments.append({"name": "@join_batch", "type": int, "default": 1000, "help": "join batch count (default: 1000)"})
         arguments.append({"name": "@insert_batch", "type": int, "default": 0, "help": "insert batch count (default: 0 all)"})
         arguments.append({"name": "@timeout", "type": int, "default": 0, "help": "loader timeout (default: 0 none timeout)"})
@@ -504,14 +513,14 @@ class CoreTasker(Tasker):
                     for exp, value in exps.items():
                         try:
                             exp = get_expression_name(exp)
-                            value = self.compile_run_calculater(value)
+                            value = self.run_valuer(value, {})
                             if filter_cls:
                                 value = filter_cls(filter_args).filter(value)
                             foreign_filters.append((keys[0], exp, value))
                         except KeyError:
                             pass
                 else:
-                    value = self.compile_run_calculater(exps)
+                    value = self.run_valuer(exps, {})
                     if filter_cls:
                         value = filter_cls(filter_args).filter(value)
                     foreign_filters.append((keys[0], 'eq', value))
@@ -650,6 +659,10 @@ class CoreTasker(Tasker):
                     return self.valuer_compiler.compile_break_valuer(key["key"], key["filter"], valuer[1])
                 if key["key"] == "continue" and len(valuer) == 2:
                     return self.valuer_compiler.compile_continue_valuer(key["key"], key["filter"], valuer[1])
+                if key["key"] == "state" and len(valuer) in (2, 3):
+                    return self.valuer_compiler.compile_state_valuer(key["key"], key["filter"],
+                                                                      valuer[1] if len(valuer) >= 2 else None,
+                                                                      valuer[2] if len(valuer) >= 3 else None)
             return self.valuer_compiler.compile_const_valuer(valuer)
 
         key = self.compile_key(valuer)
@@ -710,11 +723,31 @@ class CoreTasker(Tasker):
                     continue
 
             valuer = self.create_valuer(self.compile_valuer(pipeline), define_valuers={},
-                                        global_variables=dict(**self.config["variables"]))
+                                        global_variables=self.global_variables, global_states=self.states)
             valuers[current_type].append(valuer)
 
         pipelines_hooker = PipelinesHooker(**valuers)
         self.add_hooker(pipelines_hooker)
+
+    def run_valuer(self, config, data):
+        config_valuer = self.compile_valuer(config)
+        inherit_valuers, yield_valuers, aggregate_valuers = [], [], []
+        valuer = self.create_valuer(config_valuer, schema_field_name="", inherit_valuers=inherit_valuers,
+                                    join_loaders=self.join_loaders, yield_valuers=yield_valuers,
+                                    aggregate_valuers=aggregate_valuers, define_valuers={},
+                                    global_variables=dict(**self.config["variables"]), global_states=self.states)
+        if not valuer:
+            return config
+        valuer.fill(data)
+        value = valuer.get()
+        if isinstance(value, types.GeneratorType):
+            oyield = value
+            while True:
+                try:
+                    value = oyield.send({"value": value, "data": data})
+                except StopIteration:
+                    return value
+        return value
 
     def create_valuer(self, config, **kwargs):
         if "name" not in config or not config["name"]:
@@ -790,7 +823,7 @@ class CoreTasker(Tasker):
                 valuer = self.create_valuer(valuer, schema_field_name=name, inherit_valuers=inherit_valuers,
                                             join_loaders=self.join_loaders, yield_valuers=yield_valuers,
                                             aggregate_valuers=aggregate_valuers, define_valuers={},
-                                            global_variables=dict(**self.config["variables"]))
+                                            global_variables=self.global_variables, global_states=self.states)
                 if valuer:
                     self.loader.add_valuer(name, valuer)
                 if inherit_valuers:
@@ -896,8 +929,10 @@ class CoreTasker(Tasker):
 
     def print_queryed_statistics(self, loader, loader_statistics=None):
         statistics = loader.statistics()
-        if loader_statistics:
+        if isinstance(loader_statistics, dict):
             self.merge_statistics(loader_statistics, statistics)
+            if "execute_time" not in loader_statistics:
+                loader_statistics["execute_time"] = (time.time() - self.start_time) * 1000
         statistics = ["loader_%s: %s" % (key, value) for key, value in statistics.items()]
         get_logger().info("%s loader: %s <- %s %s", self.name, loader.__class__.__name__, self.input, " ".join(statistics))
 
@@ -905,15 +940,19 @@ class CoreTasker(Tasker):
         statistics = {}
         for join_loader in join_loaders:
             self.merge_statistics(statistics, join_loader.statistics())
-        if join_loader_statistics:
+        if isinstance(join_loader_statistics, dict):
             self.merge_statistics(join_loader_statistics, statistics)
+            if "execute_time" not in join_loader_statistics:
+                join_loader_statistics["execute_time"] = (time.time() - self.start_time) * 1000
         get_logger().info("%s join_count: %s %s", self.name, len(join_loaders),
                           " ".join(["join_%s: %s" % (key, value) for key, value in statistics.items()]))
 
     def print_stored_statistics(self, outputer, outputer_statistics=None):
         statistics = outputer.statistics()
-        if outputer_statistics:
+        if isinstance(outputer_statistics, dict):
             self.merge_statistics(outputer_statistics, statistics)
+            if "execute_time" not in outputer_statistics:
+                outputer_statistics["execute_time"] = (time.time() - self.start_time) * 1000
         statistics = ["outputer_%s: %s" % (key, value) for key, value in statistics.items()]
         get_logger().info("%s outputer: %s -> %s %s", self.name, outputer.__class__.__name__, self.output, " ".join(statistics))
 
@@ -928,21 +967,21 @@ class CoreTasker(Tasker):
         statistics = ["outputer_%s: %s" % (key, value) for key, value in outputer_statistics.items()]
         get_logger().info("%s outputer: %s -> %s %s", self.name, outputer_name, self.output, " ".join(statistics))
 
-    def get_dependency(self):
-        if "dependency" not in self.config:
+    def get_dependencys(self):
+        if "dependencys" not in self.config:
             return []
 
-        if isinstance(self.config["dependency"], list):
-            return self.config["dependency"]
-        return [self.config["dependency"]]
+        if isinstance(self.config["dependencys"], list):
+            return self.config["dependencys"]
+        return [self.config["dependencys"]]
 
     def load(self):
         super(CoreTasker, self).load()
-        self.load_json(self.config_filename)
+        self.load_config(self.config_filename)
         self.name = self.config["name"]
-        self.config_logging()
         self.load_imports()
         self.load_sources()
+        self.load_states()
         return self.compile_arguments()
 
     def compile(self, arguments):
@@ -951,6 +990,7 @@ class CoreTasker(Tasker):
         self.compile_sources(self.config)
         self.compile_options()
         self.load_databases()
+        self.compile_variables()
         self.compile_schema()
         self.compile_pipelines()
         self.compile_loader()
@@ -961,8 +1001,8 @@ class CoreTasker(Tasker):
             hooker.compiled(self)
 
     def run_batch(self, batch_count, loader_timeout):
-        loader_statistics, outputer_statistics, join_loaders_statistics = {}, {}, {}
-        batch_index, load_count, cursor_data, ocursor_data = 0, 0, None, None
+        self.load_cursor()
+        batch_index, load_count, last_cursor_data = 0, 0, self.batch_cursor
         get_logger().info("%s batch start %s, %s cursor: %s", self.name, 1, batch_count, "")
 
         while not self.terminated:
@@ -970,9 +1010,9 @@ class CoreTasker(Tasker):
             self.loader, self.outputer = self.loader.clone(), self.outputer.clone()
             self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
 
-            if cursor_data:
-                self.loader.filter_cursor(cursor_data, (batch_index - 1) * batch_count, batch_count)
-                vcursor = ["%s -> %s" % (primary_key, cursor_data.get(primary_key, ''))
+            if self.batch_cursor:
+                self.loader.filter_cursor(self.batch_cursor, (batch_index - 1) * batch_count, batch_count)
+                vcursor = ["%s -> %s" % (primary_key, self.batch_cursor.get(primary_key, ''))
                            for primary_key in self.loader.primary_keys]
                 get_logger().info("%s batch start %s, %s cursor: %s", self.name,
                                   batch_index, batch_count, " ".join(vcursor))
@@ -982,30 +1022,33 @@ class CoreTasker(Tasker):
             load_count = len(self.loader.datas)
             for hooker in self.hookers:
                 self.loader.datas = hooker.queried(self, self.loader.datas)
-            self.print_queryed_statistics(self.loader, loader_statistics)
+            self.print_queryed_statistics(self.loader, self.statistics["loader"])
 
             datas = self.loader.get()
             if not datas:
-                self.print_loaded_statistics(self.join_loaders.values(), join_loaders_statistics)
-                self.print_stored_statistics(self.outputer, outputer_statistics)
+                self.print_loaded_statistics(self.join_loaders.values(), self.statistics["join_loaders"])
+                self.print_stored_statistics(self.outputer, self.statistics["outputer"])
                 break
             for hooker in self.hookers:
                 datas = hooker.loaded(self, datas)
-            self.print_loaded_statistics(self.join_loaders.values(), join_loaders_statistics)
+            self.print_loaded_statistics(self.join_loaders.values(), self.statistics["join_loaders"])
 
-            if ocursor_data:
-                self.outputer.filter_cursor(ocursor_data, (batch_index - 1) * batch_count, batch_count)
+            if last_cursor_data:
+                self.outputer.filter_cursor(last_cursor_data, (batch_index - 1) * batch_count, batch_count)
             self.outputer.store(datas)
             for hooker in self.hookers:
                 hooker.outputed(self, datas)
-            self.print_stored_statistics(self.outputer, outputer_statistics)
+            self.print_stored_statistics(self.outputer, self.statistics["outputer"])
+            self.batch_cursor, last_cursor_data = self.loader.last_data, datas[-1]
+            self.statistics["first_data"] = datas[0]
+            self.statistics["last_data"] = datas[-1]
             if load_count < batch_count:
                 break
-            cursor_data, ocursor_data = self.loader.last_data, datas[-1]
+            self.states.save()
 
         get_logger().info("%s batch end %s, %s", self.name, batch_index - 1, batch_count)
-        statistics = (self.loader.__class__.__name__, loader_statistics, self.outputer.__class__.__name__, outputer_statistics,
-                      len(self.join_loaders), join_loaders_statistics)
+        statistics = (self.loader.__class__.__name__, self.statistics["loader"], self.outputer.__class__.__name__,
+                      self.statistics["outputer"], len(self.join_loaders), self.statistics["join_loaders"])
         self.print_statistics(*statistics)
         return self.loader.next()
 
@@ -1015,21 +1058,23 @@ class CoreTasker(Tasker):
         self.loader.load(loader_timeout)
         for hooker in self.hookers:
             self.loader.datas = hooker.queried(self, self.loader.datas)
-        self.print_queryed_statistics(self.loader)
+        self.print_queryed_statistics(self.loader, self.statistics["loader"])
 
         datas = self.loader.get()
         if not datas:
-            self.print_loaded_statistics(self.join_loaders.values())
-            self.print_stored_statistics(self.outputer)
+            self.print_loaded_statistics(self.join_loaders.values(), self.statistics["join_loaders"])
+            self.print_stored_statistics(self.outputer, self.statistics["outputer"])
             return self.loader.next()
         for hooker in self.hookers:
             datas = hooker.loaded(self, datas)
-        self.print_loaded_statistics(self.join_loaders.values())
+        self.print_loaded_statistics(self.join_loaders.values(), self.statistics["join_loaders"])
 
         self.outputer.store(datas)
         for hooker in self.hookers:
             hooker.outputed(self, datas)
-        self.print_stored_statistics(self.outputer)
+        self.print_stored_statistics(self.outputer, self.statistics["outputer"])
+        self.statistics["first_data"] = datas[0]
+        self.statistics["last_data"] = datas[-1]
         return self.loader.next()
 
     def run(self):
@@ -1049,7 +1094,8 @@ class CoreTasker(Tasker):
             self.loader = self.loader.clone()
             self.outputer = self.outputer.clone()
             self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
-        get_logger().info("%s finish %s %s %.2fms", self.name, self.config_filename, self.config.get("name"), (time.time() - self.start_time) * 1000)
+        get_logger().info("%s finish %s %s %.2fms", self.name, self.config_filename, self.config.get("name"),
+                          (time.time() - self.start_time) * 1000)
 
     def terminate(self):
         if self.terminated:
@@ -1060,10 +1106,29 @@ class CoreTasker(Tasker):
         if hasattr(self.outputer, "terminate") and callable(self.outputer.terminate):
             self.outputer.terminate()
 
-    def close(self):
+    def close(self, succed=True, message="", traceback=""):
         if self.closed:
             return
         self.closed = True
+        self.statistics["status"] = "succed" if succed else "fail"
+        self.statistics["message"] = message
+        self.statistics["trackback"] = traceback
+        self.states.save(self)
         for name, database in self.databases.items():
             database.close()
         self.valuer_compiler, self.valuer_creater, self.loader_creater, self.outputer_creater = None, None, None, None
+        self.states.close()
+
+    def get_statistics(self):
+        if "runner_id" not in self.statistics:
+            self.statistics["runner_id"] = gen_runner_id()
+        statistics = {key: value for key, value in self.statistics.items()}
+        statistics["name"] = self.name
+        statistics["start_time"] = datetime.datetime.fromtimestamp(self.start_time, pytz.UTC)
+        if "status" not in statistics:
+            statistics["status"] = "running"
+        statistics["arguments"] = dict(**self.arguments)
+        statistics["variables"] = dict(**self.global_variables)
+        statistics["states"] = dict(**self.states)
+        statistics["cursor"] = self.batch_cursor
+        return statistics

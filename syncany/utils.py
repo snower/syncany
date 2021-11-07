@@ -4,6 +4,18 @@
 
 import os
 import datetime
+import random
+import string
+
+__runner_index = 0
+
+def gen_runner_id():
+    global __runner_index
+    __runner_index += 1
+    if __runner_index >= 100:
+        __runner_index = 0
+    return datetime.datetime.now().strftime("%Y%m%d%H%M%S") + \
+           "".join([random.choice(string.digits) for i in range(8)]) + ("%02d" % __runner_index)
 
 def get_rich():
     if os.environ.get("USE_RICH", 'true').lower() != "true":

@@ -20,6 +20,7 @@ from .function import LambdaValuer
 from .loop import ForeachValuer, BreakValuer, ContinueValuer
 from .condition import IfValuer
 from .match import MatchValuer
+from .state import StateValuer
 from ..errors import ValuerUnknownException
 
 VALUERS = {
@@ -42,6 +43,7 @@ VALUERS = {
     "continue_valuer": ContinueValuer,
     "if_valuer": IfValuer,
     "match_valuer": MatchValuer,
+    "state_valuer": StateValuer
 }
 
 def find_valuer(name):

@@ -88,7 +88,7 @@ def load_dependency(parent, filename, ap, register_aps):
                                                              dest=("%s@%s") % (tasker.name, argument["name"]), **kwargs)
 
     dependency_taskers = []
-    for filename in tasker.get_dependency():
+    for filename in tasker.get_dependencys():
         dependency_taskers.append(load_dependency(tasker, filename, ap, register_aps))
     return (tasker, dependency_taskers)
 
@@ -107,7 +107,16 @@ def run_dependency(tasker, dependency_taskers):
         dependency_statistics.append(run_dependency(*dependency_tasker))
     try:
         statistics = tasker.run()
-    finally:
+    except SystemError as e:
+        tasker.close(False, "signal terminaled")
+        raise e
+    except KeyboardInterrupt as e:
+        tasker.close(False, "user terminaled")
+        raise e
+    except Exception as e:
+        tasker.close(False, "Error: " + repr(e), traceback.format_exc())
+        raise e
+    else:
         tasker.close()
     return statistics, dependency_statistics
 
@@ -155,6 +164,7 @@ def main():
         signal.signal(signal.SIGTERM, lambda signum, frame: tasker.terminate())
 
         arguments = tasker.load()
+        tasker.config_logging()
 
         if "description" in tasker.config and tasker.config["description"]:
             description = "syncany %s\r\n%s" % (tasker.name, tasker.config["description"])
@@ -192,7 +202,7 @@ def main():
                 register_aps[argument["name"]] = ap.add_argument('--%s' % argument["name"], dest=argument["name"], **kwargs)
 
         dependency_taskers = []
-        for filename in tasker.get_dependency():
+        for filename in tasker.get_dependencys():
             dependency_taskers.append(load_dependency(tasker, filename, ap, register_aps))
 
         ap_arguments = ap.parse_args()
@@ -215,15 +225,18 @@ def main():
             run_dependency(*dependency_tasker)
         tasker.run()
     except SystemError:
+        tasker.close(False, "signal terminaled")
         get_logger().error("signal exited")
         exit(130)
     except KeyboardInterrupt:
+        tasker.close(False, "user terminaled")
         get_logger().error("Crtl+C exited")
         exit(130)
     except Exception as e:
+        tasker.close(False, "Error: " + repr(e), traceback.format_exc())
         get_logger().error("%s\n%s", e, traceback.format_exc())
         exit(1)
-    finally:
+    else:
         tasker.close()
     exit(0)
 
