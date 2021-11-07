@@ -155,6 +155,9 @@ class DataBase(object):
     def delete(self, name, primary_keys=None):
         return DeleteBuilder(self, name, primary_keys)
 
+    def flush(self):
+        pass
+
     def close(self):
         pass
 

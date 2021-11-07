@@ -731,6 +731,8 @@ class CoreTasker(Tasker):
 
     def run_valuer(self, config, data):
         config_valuer = self.compile_valuer(config)
+        if not config_valuer or config_valuer.get("name") == "const_valuer":
+            return config
         inherit_valuers, yield_valuers, aggregate_valuers = [], [], []
         valuer = self.create_valuer(config_valuer, schema_field_name="", inherit_valuers=inherit_valuers,
                                     join_loaders=self.join_loaders, yield_valuers=yield_valuers,
@@ -1044,7 +1046,9 @@ class CoreTasker(Tasker):
             self.statistics["last_data"] = datas[-1]
             if load_count < batch_count:
                 break
-            self.states.save()
+            for name, database in self.databases.items():
+                database.flush()
+            self.states.save(self)
 
         get_logger().info("%s batch end %s, %s", self.name, batch_index - 1, batch_count)
         statistics = (self.loader.__class__.__name__, self.statistics["loader"], self.outputer.__class__.__name__,

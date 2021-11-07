@@ -306,21 +306,25 @@ class CsvDB(DataBase):
     def delete(self, name, primary_keys=None):
         return CsvDeleteBuilder(self, name, primary_keys)
 
-    def close(self):
-        if self.csvs:
-            for name, csv_file in self.csvs.items():
-                if not csv_file.changed:
-                    continue
+    def flush(self):
+        if not self.csvs:
+            return
+        for name, csv_file in self.csvs.items():
+            if not csv_file.changed:
+                continue
 
-                if isinstance(csv_file.filename, str):
-                    with open(csv_file.filename, "w", newline='', encoding="utf-8") as fp:
-                        self.write_file(fp, csv_file)
-                else:
-                    if csv_file.filename == 0:
-                        continue
-                    fp = open(csv_file.filename, "w", newline='', encoding="utf-8", closefd=False)
+            if isinstance(csv_file.filename, str):
+                with open(csv_file.filename, "w", newline='', encoding="utf-8") as fp:
                     self.write_file(fp, csv_file)
+            else:
+                if csv_file.filename == 0:
+                    continue
+                fp = open(csv_file.filename, "w", newline='', encoding="utf-8", closefd=False)
+                self.write_file(fp, csv_file)
+            csv_file.changed = False
 
+    def close(self):
+        self.flush()
         self.csvs = {}
 
     def verbose(self):

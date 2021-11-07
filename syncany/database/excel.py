@@ -361,7 +361,7 @@ class ExeclDB(DataBase):
     def delete(self, name, primary_keys=None):
         return ExeclDeleteBuilder(self, name, primary_keys)
 
-    def close(self):
+    def flush(self):
         if self.execls:
             for name, execl_sheet in self.execls.items():
                 execl_sheet.close()
@@ -372,6 +372,9 @@ class ExeclDB(DataBase):
 
         self.execls = {}
         self.execl_fps = {}
+
+    def close(self):
+        self.flush()
 
     def verbose(self):
         return "%s<%s>" % (self.name, self.config["path"])

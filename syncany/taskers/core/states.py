@@ -26,12 +26,16 @@ class States(dict):
             state_tasker.config["databases"] = [database for database in tasker.config["databases"]]
         if "sources" not in state_tasker.config or not state_tasker.config["sources"]:
             state_tasker.config["sources"] = dict(**tasker.config["sources"])
+        state_tasker.arguments["name"] = tasker.name
         state_tasker.compile_sources(state_tasker.config)
         state_tasker.compile_options()
         state_tasker.load_databases()
         state_tasker.compile_schema()
         if "input" in state_tasker.config and state_tasker.config["input"]:
             state_tasker.compile_loader()
+            for primary_key in state_tasker.loader.primary_keys:
+                state_tasker.loader.order_by(primary_key, -1)
+            state_tasker.loader.filter_limit(1)
             state_tasker.input = state_tasker.config["input"]
         else:
             state_tasker.config["input"] = state_tasker.config["output"]
@@ -48,9 +52,6 @@ class States(dict):
             self.compile_state(tasker, state_tasker)
 
     def load_state(self, tasker, state_tasker):
-        for primary_key in state_tasker.loader.primary_keys:
-            state_tasker.loader.order_by(primary_key, -1)
-        state_tasker.loader.filter_limit(1)
         state_tasker.loader.load()
         state_tasker.print_queryed_statistics(state_tasker.loader)
         datas = state_tasker.loader.get()
@@ -85,6 +86,8 @@ class States(dict):
             return
         state_tasker.outputer.store(datas)
         state_tasker.print_stored_statistics(state_tasker.outputer)
+        for name, database in state_tasker.databases.items():
+            database.flush()
 
     def save(self, tasker):
         datas = [tasker.get_statistics()]

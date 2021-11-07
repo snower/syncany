@@ -277,21 +277,26 @@ class JsonDB(DataBase):
     def delete(self, name, primary_keys=None):
         return JsonDeleteBuilder(self, name, primary_keys)
 
-    def close(self):
-        if self.jsons:
-            for name, json_file in self.jsons.items():
-                if not json_file.changed:
-                    continue
+    def flush(self):
+        if not self.jsons:
+            return
 
-                if isinstance(json_file.filename, str):
-                    with open(json_file.filename, "w") as fp:
-                        self.write_file(fp, json_file)
-                else:
-                    if json_file.filename == 0:
-                        continue
-                    fp = open(json_file.filename, "w", closefd=False)
+        for name, json_file in self.jsons.items():
+            if not json_file.changed:
+                continue
+
+            if isinstance(json_file.filename, str):
+                with open(json_file.filename, "w") as fp:
                     self.write_file(fp, json_file)
+            else:
+                if json_file.filename == 0:
+                    continue
+                fp = open(json_file.filename, "w", closefd=False)
+                self.write_file(fp, json_file)
+            json_file.changed = False
 
+    def close(self):
+        self.flush()
         self.jsons = {}
 
     def verbose(self):
