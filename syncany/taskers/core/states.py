@@ -41,6 +41,8 @@ class States(dict):
             state_tasker.config["input"] = state_tasker.config["output"]
             state_tasker.compile_loader()
         if "output" in state_tasker.config and state_tasker.config["output"]:
+            if "use" not in state_tasker.config["output"]:
+                state_tasker.config["output"] = state_tasker.config["output"] + " use UI"
             state_tasker.compile_outputer()
             state_tasker.output = state_tasker.config["output"]
         else:

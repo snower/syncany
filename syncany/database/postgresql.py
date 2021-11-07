@@ -4,7 +4,7 @@
 
 import re
 from ..utils import human_repr_object
-from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
+from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
 
 
 class PostgresqlQueryBuilder(QueryBuilder):
@@ -141,6 +141,7 @@ class PostgresqlQueryBuilder(QueryBuilder):
         finally:
             cursor.close()
             connection.commit()
+            self.db.release_connection()
             self.sql = (sql, query_values)
         return datas
 
@@ -185,6 +186,7 @@ class PostgresqlInsertBuilder(InsertBuilder):
         finally:
             cursor.close()
             connection.commit()
+            self.db.release_connection()
             self.sql = (sql, datas)
         return cursor
 
@@ -250,6 +252,7 @@ class PostgresqlUpdateBuilder(UpdateBuilder):
         finally:
             cursor.close()
             connection.commit()
+            self.db.release_connection()
             self.sql = (sql, values)
         return cursor
 
@@ -306,6 +309,7 @@ class PostgresqlDeleteBuilder(DeleteBuilder):
         finally:
             cursor.close()
             connection.commit()
+            self.db.release_connection()
             self.sql = (sql, self.query_values)
         return cursor
 
@@ -313,6 +317,20 @@ class PostgresqlDeleteBuilder(DeleteBuilder):
         if isinstance(self.sql, tuple):
             return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
         return "sql: %s" % self.sql
+
+class PostgresqlDBFactory(DatabaseFactory):
+    def create(self):
+        try:
+            import psycopg2
+        except ImportError:
+            raise ImportError("psycopg2>=2.8.6 is required")
+        return psycopg2.connect(**self.config)
+
+    def ping(self, driver):
+        pass
+
+    def close(self, driver):
+        driver.close()
 
 
 class PostgresqlDB(DataBase):
@@ -333,7 +351,7 @@ class PostgresqlDB(DataBase):
         ],
     }
 
-    def __init__(self, config):
+    def __init__(self, manager, config):
         if "db" in config:
             config["dbname"] = config.pop("db")
 
@@ -347,21 +365,30 @@ class PostgresqlDB(DataBase):
         self.db_name = all_config["dbname"] if "dbname" in all_config else all_config["name"]
         self.virtual_tables = all_config.pop("virtual_views") if "virtual_views" in all_config else []
 
-        super(PostgresqlDB, self).__init__(all_config)
+        super(PostgresqlDB, self).__init__(manager, all_config)
 
+        self.connection_key = None
         self.connection = None
 
     def ensure_connection(self):
-        if not self.connection:
-            try:
-                import psycopg2
-                from psycopg2.extras import DictCursor
-            except ImportError:
-                raise ImportError("psycopg2>=2.8.6 is required")
-
-            self.connection = psycopg2.connect(**self.config)
-            self.DictCursor = DictCursor
+        if self.connection:
+            return self.connection
+        self.connection_key = self.get_key(self.config)
+        if not self.manager.has(self.connection_key):
+            self.manager.register(self.connection_key, PostgresqlDBFactory(self.connection_key, self.config))
+        try:
+            from psycopg2.extras import DictCursor
+        except ImportError:
+            raise ImportError("PyMySQL>=0.8.1 is required")
+        self.DictCursor = DictCursor
+        self.connection = self.manager.acquire(self.connection_key)
         return self.connection
+
+    def release_connection(self):
+        if not self.connection:
+            return
+        self.manager.release(self.connection_key, self.connection)
+        self.connection = None
 
     def query(self, name, primary_keys=None, fields=()):
         return PostgresqlQueryBuilder(self, name, primary_keys, fields)
@@ -376,9 +403,7 @@ class PostgresqlDB(DataBase):
         return PostgresqlDeleteBuilder(self, name, primary_keys)
 
     def close(self):
-        if self.connection:
-            self.connection.close()
-        self.connection = None
+        self.release_connection()
 
     def verbose(self):
         return "%s<%s>" % (self.name, self.db_name)

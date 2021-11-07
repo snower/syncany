@@ -307,8 +307,8 @@ class TextLineDeleteBuilder(DeleteBuilder):
 class TextLineDB(DataBase):
     rich = None
 
-    def __init__(self, config):
-        super(TextLineDB, self).__init__(dict(**config))
+    def __init__(self, manager, config):
+        super(TextLineDB, self).__init__(manager, dict(**config))
 
         self.rich = get_rich()
 

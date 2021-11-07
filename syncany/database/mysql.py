@@ -4,7 +4,7 @@
 
 import re
 from ..utils import human_repr_object
-from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
+from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
 
 
 class MysqlQueryBuilder(QueryBuilder):
@@ -142,6 +142,7 @@ class MysqlQueryBuilder(QueryBuilder):
             cursor.close()
             if connection.autocommit_mode == False:
                 connection.commit()
+            self.db.release_connection()
             self.sql = (sql, query_values)
         return datas
 
@@ -186,6 +187,7 @@ class MysqlInsertBuilder(InsertBuilder):
         finally:
             cursor.close()
             connection.commit()
+            self.db.release_connection()
             self.sql = (sql, datas)
         return cursor
 
@@ -251,6 +253,7 @@ class MysqlUpdateBuilder(UpdateBuilder):
         finally:
             cursor.close()
             connection.commit()
+            self.db.release_connection()
             self.sql = (sql, values)
         return cursor
 
@@ -307,6 +310,7 @@ class MysqlDeleteBuilder(DeleteBuilder):
         finally:
             cursor.close()
             connection.commit()
+            self.db.release_connection()
             self.sql = (sql, self.query_values)
         return cursor
 
@@ -314,6 +318,21 @@ class MysqlDeleteBuilder(DeleteBuilder):
         if isinstance(self.sql, tuple):
             return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
         return "sql: %s" % self.sql
+
+
+class MysqlDBFactory(DatabaseFactory):
+    def create(self):
+        try:
+            import pymysql
+        except ImportError:
+            raise ImportError("PyMySQL>=0.8.1 is required")
+        return pymysql.Connection(**self.config)
+
+    def ping(self, driver):
+        pass
+
+    def close(self, driver):
+        driver.close()
 
 
 class MysqlDB(DataBase):
@@ -335,7 +354,7 @@ class MysqlDB(DataBase):
         ],
     }
 
-    def __init__(self, config):
+    def __init__(self, manager, config):
         all_config = {}
         all_config.update(self.DEFAULT_CONFIG)
         all_config.update(config)
@@ -343,21 +362,30 @@ class MysqlDB(DataBase):
         self.db_name = all_config["db"] if "db" in all_config else all_config["name"]
         self.virtual_tables = all_config.pop("virtual_views") if "virtual_views" in all_config else []
 
-        super(MysqlDB, self).__init__(all_config)
+        super(MysqlDB, self).__init__(manager, all_config)
 
+        self.connection_key = None
         self.connection = None
 
     def ensure_connection(self):
-        if not self.connection:
-            try:
-                import pymysql
-                from pymysql.cursors import DictCursor
-            except ImportError:
-                raise ImportError("PyMySQL>=0.8.1 is required")
-
-            self.connection = pymysql.Connection(**self.config)
-            self.DictCursor = DictCursor
+        if self.connection:
+            return self.connection
+        self.connection_key = self.get_key(self.config)
+        if not self.manager.has(self.connection_key):
+            self.manager.register(self.connection_key, MysqlDBFactory(self.connection_key, self.config))
+        try:
+            from pymysql.cursors import DictCursor
+        except ImportError:
+            raise ImportError("PyMySQL>=0.8.1 is required")
+        self.DictCursor = DictCursor
+        self.connection = self.manager.acquire(self.connection_key)
         return self.connection
+
+    def release_connection(self):
+        if not self.connection:
+            return
+        self.manager.release(self.connection_key, self.connection)
+        self.connection = None
 
     def query(self, name, primary_keys=None, fields=()):
         return MysqlQueryBuilder(self, name, primary_keys, fields)
@@ -372,9 +400,7 @@ class MysqlDB(DataBase):
         return MysqlDeleteBuilder(self, name, primary_keys)
 
     def close(self):
-        if self.connection:
-            self.connection.close()
-        self.connection = None
+        self.release_connection()
 
     def verbose(self):
         return "%s<%s>" % (self.name, self.db_name)

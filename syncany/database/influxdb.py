@@ -6,7 +6,7 @@ import re
 import datetime
 import pytz
 from ..utils import human_repr_object
-from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
+from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
 
 escape_chars_map = {
     "\b": "\\b",
@@ -195,6 +195,7 @@ class InfluxDBQueryBuilder(QueryBuilder):
         try:
             result = connection.query(sql % escape_args(query_values))
         finally:
+            self.db.release_connection()
             self.sql = (sql, query_values)
         return list(result.get_points())
 
@@ -253,7 +254,10 @@ class InfluxDBInsertBuilder(InsertBuilder):
             datas.append(json_body)
 
         connection = self.db.ensure_connection()
-        return connection.write_points(datas)
+        try:
+            return connection.write_points(datas)
+        finally:
+            self.db.release_connection()
 
     def verbose(self):
         datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
@@ -323,7 +327,10 @@ class InfluxDBUpdateBuilder(UpdateBuilder):
             json_body["time"] = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
 
         connection = self.db.ensure_connection()
-        return connection.write_points([json_body])
+        try:
+            return connection.write_points([json_body])
+        finally:
+            self.db.release_connection()
 
     def verbose(self):
         return "filters: %s\nupdateDatas: %s" % (
@@ -387,12 +394,28 @@ class InfluxDBDeleteBuilder(DeleteBuilder):
         try:
             return connection.query(sql % escape_args(query_values))
         finally:
+            self.db.release_connection()
             self.sql = (sql, query_values)
 
     def verbose(self):
         if isinstance(self.sql, tuple):
             return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
         return "sql: %s" % self.sql
+
+
+class InfluxDBFactory(DatabaseFactory):
+    def create(self):
+        try:
+            from influxdb import InfluxDBClient
+        except ImportError:
+            raise ImportError("influxdb>=5.3.1 is required")
+        return InfluxDBClient(**self.config)
+
+    def ping(self, driver):
+        pass
+
+    def close(self, driver):
+        driver.close()
 
 
 class InfluxDB(DataBase):
@@ -412,7 +435,7 @@ class InfluxDB(DataBase):
         ],
     }
 
-    def __init__(self, config):
+    def __init__(self, manager, config):
         all_config = {}
         all_config.update(self.DEFAULT_CONFIG)
         all_config.update(config)
@@ -420,19 +443,25 @@ class InfluxDB(DataBase):
         self.db_name = all_config["db"] if "db" in all_config else all_config["name"]
         self.virtual_tables = all_config.pop("virtual_views") if "virtual_views" in all_config else []
 
-        super(InfluxDB, self).__init__(all_config)
+        super(InfluxDB, self).__init__(manager, all_config)
 
+        self.connection_key = None
         self.connection = None
 
     def ensure_connection(self):
-        if not self.connection:
-            try:
-                from influxdb import InfluxDBClient
-            except ImportError:
-                raise ImportError("influxdb>=5.3.1 is required")
-
-            self.connection = InfluxDBClient(**self.config)
+        if self.connection:
+            return self.connection
+        self.connection_key = self.get_key(self.config)
+        if not self.manager.has(self.connection_key):
+            self.manager.register(self.connection_key, InfluxDBFactory(self.connection_key, self.config))
+        self.connection = self.manager.acquire(self.connection_key)
         return self.connection
+
+    def release_connection(self):
+        if not self.connection:
+            return
+        self.manager.release(self.connection_key, self.connection)
+        self.connection = None
 
     def query(self, name, primary_keys=None, fields=()):
         return InfluxDBQueryBuilder(self, name, primary_keys, fields)
@@ -447,9 +476,7 @@ class InfluxDB(DataBase):
         return InfluxDBDeleteBuilder(self, name, primary_keys)
 
     def close(self):
-        if self.connection:
-            self.connection.close()
-        self.connection = None
+        self.release_connection()
 
     def verbose(self):
         return "%s<%s>" % (self.name, self.db_name)

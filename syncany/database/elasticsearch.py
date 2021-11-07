@@ -289,7 +289,7 @@ class ElasticsearchDB(DataBase):
         "hosts": "127.0.0.1",
     }
 
-    def __init__(self, config):
+    def __init__(self, manager, config):
         if "host" in config:
             config["hosts"] = config.pop("host")
 
@@ -299,7 +299,7 @@ class ElasticsearchDB(DataBase):
 
         self.virtual_views = all_config.pop("virtual_views") if "virtual_views" in all_config else []
 
-        super(ElasticsearchDB, self).__init__(all_config)
+        super(ElasticsearchDB, self).__init__(manager, all_config)
 
         self.connection = None
 

@@ -10,7 +10,7 @@ try:
 except ImportError:
     pass
 from ..utils import human_repr_object
-from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
+from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
 
 
 class MongoQueryBuilder(QueryBuilder):
@@ -149,28 +149,30 @@ class MongoQueryBuilder(QueryBuilder):
     def commit(self):
         virtual_collection, virtual_args = self.format_table()
         connection = self.db.ensure_connection()
-
-        if virtual_collection:
-            virtual_collection = self.format_query(virtual_collection, virtual_args)
-            if self.limit:
-                if self.limit[0]:
-                    virtual_collection.append({"$skip": self.limit[0]})
-                virtual_collection.append({"$limit": self.limit[1]})
-            if self.orders:
-                virtual_collection.append({"$sort": SON(list(self.orders))})
-            cursor = connection[self.db_name][self.collection_name].aggregate(virtual_collection, allowDiskUse=True)
-            self.bquery = virtual_collection
-        else:
-            fields = {field: 1 for field in self.fields} if self.fields else None
-            cursor = connection[self.db_name][self.collection_name].find(self.query, fields)
-            if self.limit:
-                if self.limit[0]:
-                    cursor.skip(self.limit[0])
-                cursor.limit(self.limit[1])
-            if self.orders:
-                cursor.sort(self.orders)
-            self.bquery = (self.query, fields) if fields else self.query
-        return list(cursor)
+        try:
+            if virtual_collection:
+                virtual_collection = self.format_query(virtual_collection, virtual_args)
+                if self.limit:
+                    if self.limit[0]:
+                        virtual_collection.append({"$skip": self.limit[0]})
+                    virtual_collection.append({"$limit": self.limit[1]})
+                if self.orders:
+                    virtual_collection.append({"$sort": SON(list(self.orders))})
+                cursor = connection[self.db_name][self.collection_name].aggregate(virtual_collection, allowDiskUse=True)
+                self.bquery = virtual_collection
+            else:
+                fields = {field: 1 for field in self.fields} if self.fields else None
+                cursor = connection[self.db_name][self.collection_name].find(self.query, fields)
+                if self.limit:
+                    if self.limit[0]:
+                        cursor.skip(self.limit[0])
+                    cursor.limit(self.limit[1])
+                if self.orders:
+                    cursor.sort(self.orders)
+                self.bquery = (self.query, fields) if fields else self.query
+            return list(cursor)
+        finally:
+            self.db.release_connection()
 
     def verbose(self):
         if isinstance(self.bquery, tuple):
@@ -190,9 +192,12 @@ class MongoInsertBuilder(InsertBuilder):
 
     def commit(self):
         connection = self.db.ensure_connection()
-        if isinstance(self.datas, list):
-            return connection[self.db_name][self.collection_name].insert_many(self.datas)
-        return connection[self.db_name][self.collection_name].insert_one(self.datas)
+        try:
+            if isinstance(self.datas, list):
+                return connection[self.db_name][self.collection_name].insert_many(self.datas)
+            return connection[self.db_name][self.collection_name].insert_one(self.datas)
+        finally:
+            self.db.release_connection()
 
     def verbose(self):
         datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
@@ -246,7 +251,10 @@ class MongoUpdateBuilder(UpdateBuilder):
             if self.diff_data and key not in self.diff_data:
                 continue
             update[key] = value
-        return connection[self.db_name][self.collection_name].update_one(self.query, {"$set": update})
+        try:
+            return connection[self.db_name][self.collection_name].update_one(self.query, {"$set": update})
+        finally:
+            self.db.release_connection()
 
     def verbose(self):
         update = {}
@@ -301,10 +309,28 @@ class MongoDeleteBuilder(DeleteBuilder):
 
     def commit(self):
         connection = self.db.ensure_connection()
-        return connection[self.db_name][self.collection_name].remove(self.query, multi=True)
+        try:
+            return connection[self.db_name][self.collection_name].remove(self.query, multi=True)
+        finally:
+            self.db.release_connection()
 
     def verbose(self):
         return "collection: %s\nquery: %s" % (self.collection_name, human_repr_object(self.query))
+
+
+class MongoDBFactory(DatabaseFactory):
+    def create(self):
+        try:
+            import pymongo
+        except ImportError:
+            raise ImportError("pymongo>=3.6.1 is required")
+        return pymongo.MongoClient(**self.config)
+
+    def ping(self, driver):
+        pass
+
+    def close(self, driver):
+        driver.close()
 
 
 class MongoDB(DataBase):
@@ -317,7 +343,7 @@ class MongoDB(DataBase):
         "readPreference": "secondaryPreferred",
     }
 
-    def __init__(self, config):
+    def __init__(self, manager, config):
         all_config = {}
         all_config.update(self.DEFAULT_CONFIG)
         all_config.update(config)
@@ -325,19 +351,25 @@ class MongoDB(DataBase):
         self.db_name = all_config.pop("db") if "db" in all_config else all_config["name"]
         self.virtual_collections = all_config.pop("virtual_views") if "virtual_views" in all_config else []
 
-        super(MongoDB, self).__init__(all_config)
+        super(MongoDB, self).__init__(manager, all_config)
 
+        self.connection_key = None
         self.connection = None
 
     def ensure_connection(self):
-        if not self.connection:
-            try:
-                import pymongo
-            except ImportError:
-                raise ImportError("pymongo>=3.6.1 is required")
-
-            self.connection = pymongo.MongoClient(**self.config)
+        if self.connection:
+            return self.connection
+        self.connection_key = self.get_key(self.config)
+        if not self.manager.has(self.connection_key):
+            self.manager.register(self.connection_key, MongoDBFactory(self.connection_key, self.config))
+        self.connection = self.manager.acquire(self.connection_key)
         return self.connection
+
+    def release_connection(self):
+        if not self.connection:
+            return
+        self.manager.release(self.connection_key, self.connection)
+        self.connection = None
 
     def query(self, name, primary_keys=None, fields=()):
         return MongoQueryBuilder(self, name, primary_keys, fields)
@@ -352,9 +384,7 @@ class MongoDB(DataBase):
         return MongoDeleteBuilder(self, name, primary_keys)
 
     def close(self):
-        if self.connection:
-            self.connection.close()
-        self.connection = None
+        self.release_connection()
 
     def verbose(self):
         return "%s<%s>" % (self.name, self.db_name)

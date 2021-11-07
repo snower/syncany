@@ -2,6 +2,10 @@
 # 18/8/6
 # create by: snower
 
+import hashlib
+from collections import deque
+import threading
+
 
 class QueryBuilder(object):
     def __init__(self, db, name, primary_keys, fields):
@@ -139,9 +143,16 @@ class DeleteBuilder(object):
 
 
 class DataBase(object):
-    def __init__(self, config):
+    def __init__(self, manager, config):
+        self.manager = manager
         self.name = config.pop("name")
         self.config = config
+
+    def get_key(self, config):
+        cs = []
+        for key in sorted(config.keys()):
+            cs.append("%s=%s" % (key, config[key]))
+        return hashlib.md5("&".join(cs).encode("utf-8")).hexdigest()
 
     def query(self, name, primary_keys=None, fields=()):
         return QueryBuilder(self, name, primary_keys, fields)
@@ -169,3 +180,57 @@ class DataBase(object):
 
     def verbose(self):
         return self.name
+
+
+class DatabaseFactory(object):
+    def __init__(self, key, config):
+        self.key = key
+        self.config = config
+        self.drivers = deque()
+        self.lock = threading.Lock()
+
+    def create(self):
+        raise NotImplementedError
+
+    def ping(self, driver):
+        raise NotImplementedError
+
+    def close(self, driver):
+        raise NotImplementedError
+
+
+class DatabaseManager(object):
+    def __init__(self):
+        self.factorys = {}
+
+    def has(self, key):
+        return key in self.factorys
+
+    def register(self, key, factory):
+        if key in self.factorys:
+            return
+        self.factorys[key] = factory
+
+    def acquire(self, key):
+        factory = self.factorys[key]
+        with factory.lock:
+            while factory.drivers:
+                driver = factory.pop()
+                try:
+                    if factory.ping(driver):
+                        return factory
+                except:
+                    continue
+            return factory.create()
+
+    def release(self, key, driver):
+        factory = self.factorys[key]
+        with factory.lock:
+            factory.drivers.append(driver)
+
+    def close(self):
+        for factory in self.factorys:
+            with factory.lock:
+                while factory.drivers:
+                    factory.close(factory.drivers.pop())
+        self.factorys = []

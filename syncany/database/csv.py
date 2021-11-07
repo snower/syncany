@@ -231,14 +231,14 @@ class CsvDB(DataBase):
         "path": "./",
     }
 
-    def __init__(self, config):
+    def __init__(self, manager, config):
         all_config = {}
         all_config.update(self.DEFAULT_CONFIG)
         all_config.update(config)
 
         all_config["path"] = os.path.abspath(all_config["path"])
 
-        super(CsvDB, self).__init__(all_config)
+        super(CsvDB, self).__init__(manager, all_config)
 
         self.csvs = {}
 

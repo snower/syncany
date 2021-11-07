@@ -11,7 +11,9 @@ import traceback
 import signal
 from .utils import print_object, get_rich, human_format_object
 from .logger import get_logger
+from .taskers.manager import TaskerManager
 from .taskers.core import CoreTasker
+from .database.database import DatabaseManager
 
 def beautify_print(*args, **kwargs):
     rich = get_rich()
@@ -56,7 +58,7 @@ def warp_database_logging(tasker):
         database.delete = builder_warper(database, database.delete)
 
 def load_dependency(parent, filename, ap, register_aps):
-    tasker = CoreTasker(filename, parent)
+    tasker = CoreTasker(filename, parent.manager, parent)
     arguments = tasker.load()
 
     for argument in arguments:
@@ -158,7 +160,8 @@ def main():
         print("syncany error: require json or yaml file")
         exit(2)
 
-    tasker = CoreTasker(sys.argv[1])
+    manager = TaskerManager(DatabaseManager())
+    tasker = CoreTasker(sys.argv[1], manager)
     try:
         signal.signal(signal.SIGHUP, lambda signum, frame: tasker.terminate())
         signal.signal(signal.SIGTERM, lambda signum, frame: tasker.terminate())
@@ -238,6 +241,8 @@ def main():
         exit(1)
     else:
         tasker.close()
+    finally:
+        manager.close()
     exit(0)
 
 if __name__ == "__main__":

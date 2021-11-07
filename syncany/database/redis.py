@@ -5,7 +5,7 @@
 import pickle
 import json
 from ..utils import human_repr_object
-from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
+from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
 
 
 class StringSerialize(object):
@@ -96,35 +96,41 @@ class RedisQueryBuilder(QueryBuilder):
 
     def command_keys(self):
         connection = self.db.ensure_connection()
-        keys = connection.keys(self.prefix_key + "*")
-        datas = []
-        for key in keys:
-            data = connection.get(key)
-            if data is None:
-                continue
-            data = self.db.serialize.loads(data)
-            if not data:
-                continue
-            if isinstance(data, dict):
-                data["_key"] = key
-            else:
-                data = {"_key": key, "_value": data}
-            datas.append(data)
-        return datas
+        try:
+            keys = connection.keys(self.prefix_key + "*")
+            datas = []
+            for key in keys:
+                data = connection.get(key)
+                if data is None:
+                    continue
+                data = self.db.serialize.loads(data)
+                if not data:
+                    continue
+                if isinstance(data, dict):
+                    data["_key"] = key
+                else:
+                    data = {"_key": key, "_value": data}
+                datas.append(data)
+            return datas
+        finally:
+            self.db.release_connection()
 
     def command_hgetall(self):
         connection = self.db.ensure_connection()
-        datas = []
-        for key, value in connection.hgetall().items():
-            data = self.db.serialize.loads(value)
-            if not data:
-                continue
-            if isinstance(data, dict):
-                data["_key"] = key
-            else:
-                data = {"_key": key, "_value": data}
-            datas.append(data)
-        return datas
+        try:
+            datas = []
+            for key, value in connection.hgetall().items():
+                data = self.db.serialize.loads(value)
+                if not data:
+                    continue
+                if isinstance(data, dict):
+                    data["_key"] = key
+                else:
+                    data = {"_key": key, "_value": data}
+                datas.append(data)
+            return datas
+        finally:
+            self.db.release_connection()
 
     def load(self):
         if self.data_type == "hash":
@@ -183,11 +189,17 @@ class RedisInsertBuilder(InsertBuilder):
 
     def command_set(self, key, data):
         connection = self.db.ensure_connection()
-        connection.set(self.prefix_key + ":" + key, data, self.db.expire_seconds)
+        try:
+            connection.set(self.prefix_key + ":" + key, data, self.db.expire_seconds)
+        finally:
+            self.db.release_connection()
 
     def command_hset(self, key, data):
         connection = self.db.ensure_connection()
-        connection.hset(self.prefix_key, key, data)
+        try:
+            connection.hset(self.prefix_key, key, data)
+        finally:
+            self.db.release_connection()
 
     def save(self, key, data):
         if self.data_type == "hash":
@@ -204,7 +216,10 @@ class RedisInsertBuilder(InsertBuilder):
 
         if self.data_type == "hash":
             connection = self.db.ensure_connection()
-            connection.expire(self.prefix_key, self.db.expire_seconds)
+            try:
+                connection.expire(self.prefix_key, self.db.expire_seconds)
+            finally:
+                self.db.release_connection()
         return self.datas
 
     def verbose(self):
@@ -249,12 +264,18 @@ class RedisUpdateBuilder(UpdateBuilder):
 
     def command_set(self, key, data):
         connection = self.db.ensure_connection()
-        connection.set(self.prefix_key + ":" + key, data, self.db.expire_seconds)
+        try:
+            connection.set(self.prefix_key + ":" + key, data, self.db.expire_seconds)
+        finally:
+            self.db.release_connection()
 
     def command_hset(self, key, data):
         connection = self.db.ensure_connection()
-        connection.hset(self.prefix_key, key, data)
-        connection.expire(self.prefix_key, self.db.expire_seconds)
+        try:
+            connection.hset(self.prefix_key, key, data)
+            connection.expire(self.prefix_key, self.db.expire_seconds)
+        finally:
+            self.db.release_connection()
 
     def save(self, key, data):
         if self.data_type == "hash":
@@ -312,35 +333,41 @@ class RedisDeleteBuilder(DeleteBuilder):
 
     def command_keys(self):
         connection = self.db.ensure_connection()
-        keys = connection.keys(self.prefix_key + "*")
-        datas = []
-        for key in keys:
-            data = connection.get(key)
-            if data is None:
-                continue
-            data = self.db.serialize.loads(data)
-            if not data:
-                continue
-            if isinstance(data, dict):
-                data["_key"] = key
-            else:
-                data = {"_key": key, "_value": data}
-            datas.append(data)
-        return datas
+        try:
+            keys = connection.keys(self.prefix_key + "*")
+            datas = []
+            for key in keys:
+                data = connection.get(key)
+                if data is None:
+                    continue
+                data = self.db.serialize.loads(data)
+                if not data:
+                    continue
+                if isinstance(data, dict):
+                    data["_key"] = key
+                else:
+                    data = {"_key": key, "_value": data}
+                datas.append(data)
+            return datas
+        finally:
+            self.db.release_connection()
 
     def command_hgetall(self):
         connection = self.db.ensure_connection()
-        datas = []
-        for key, value in connection.hgetall().items():
-            data = self.db.serialize.loads(value)
-            if not data:
-                continue
-            if isinstance(data, dict):
-                data["_key"] = key
-            else:
-                data = {"_key": key, "_value": data}
-            datas.append(data)
-        return datas
+        try:
+            datas = []
+            for key, value in connection.hgetall().items():
+                data = self.db.serialize.loads(value)
+                if not data:
+                    continue
+                if isinstance(data, dict):
+                    data["_key"] = key
+                else:
+                    data = {"_key": key, "_value": data}
+                datas.append(data)
+            return datas
+        finally:
+            self.db.release_connection()
 
     def load(self):
         if self.data_type == "hash":
@@ -349,11 +376,17 @@ class RedisDeleteBuilder(DeleteBuilder):
 
     def command_del(self, key):
         connection = self.db.ensure_connection()
-        connection.delete(self.prefix_key + ":" + key)
+        try:
+            connection.delete(self.prefix_key + ":" + key)
+        finally:
+            self.db.release_connection()
 
     def command_hdel(self, key):
         connection = self.db.ensure_connection()
-        connection.hdel(self.prefix_key, key)
+        try:
+            connection.hdel(self.prefix_key, key)
+        finally:
+            self.db.release_connection()
 
     def delete(self, key):
         if self.data_type == "hash":
@@ -385,6 +418,21 @@ class RedisDeleteBuilder(DeleteBuilder):
         return "filters: %s" % human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
 
 
+class RedisDBFactory(DatabaseFactory):
+    def create(self):
+        try:
+            import redis
+        except ImportError:
+            raise ImportError("redis>=3.5.3 is required")
+        return redis.Redis(**self.config)
+
+    def ping(self, driver):
+        pass
+
+    def close(self, driver):
+        driver.close()
+
+
 class RedisDB(DataBase):
     DEFAULT_CONFIG = {
         "host": "127.0.0.1",
@@ -400,7 +448,7 @@ class RedisDB(DataBase):
         "msgpack": MsgpackSerialize,
     }
 
-    def __init__(self, config):
+    def __init__(self, manager, config):
         all_config = {}
         all_config.update(self.DEFAULT_CONFIG)
         all_config.update(config)
@@ -409,8 +457,9 @@ class RedisDB(DataBase):
         self.ignore_serialize_error = all_config.pop("ignore_serialize_error") if "ignore_serialize_error" in all_config else False
         self.expire_seconds = all_config.pop("expire_seconds") if "expire_seconds" in all_config else 24 * 60 * 60
 
-        super(RedisDB, self).__init__(all_config)
+        super(RedisDB, self).__init__(manager, all_config)
 
+        self.connection_key = None
         self.connection = None
         if self.ignore_serialize_error:
             def catch_serialize_error(func):
@@ -424,14 +473,19 @@ class RedisDB(DataBase):
             self.serialize.loads = catch_serialize_error(self.serialize.loads)
 
     def ensure_connection(self):
-        if not self.connection:
-            try:
-                import redis
-            except ImportError:
-                raise ImportError("redis>=3.5.3 is required")
-
-            self.connection = redis.Redis(**self.config)
+        if self.connection:
+            return self.connection
+        self.connection_key = self.get_key(self.config)
+        if not self.manager.has(self.connection_key):
+            self.manager.register(self.connection_key, RedisDBFactory(self.connection_key, self.config))
+        self.connection = self.manager.acquire(self.connection_key)
         return self.connection
+
+    def release_connection(self):
+        if not self.connection:
+            return
+        self.manager.release(self.connection_key, self.connection)
+        self.connection = None
 
     def query(self, name, primary_keys=None, fields=()):
         return RedisQueryBuilder(self, name, primary_keys, fields)
@@ -446,6 +500,4 @@ class RedisDB(DataBase):
         return RedisDeleteBuilder(self, name, primary_keys)
 
     def close(self):
-        if self.connection:
-            self.connection.close()
-        self.connection = None
+        self.release_connection()

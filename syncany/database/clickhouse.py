@@ -4,7 +4,7 @@
 
 import re
 from ..utils import human_repr_object
-from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
+from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
 
 
 class ClickhouseQueryBuilder(QueryBuilder):
@@ -142,6 +142,7 @@ class ClickhouseQueryBuilder(QueryBuilder):
             datas = [dict(zip(names, data)) for data in datas]
         finally:
             cursor.close()
+            self.db.release_connection()
             self.sql = (sql, query_values)
         return datas
 
@@ -185,6 +186,7 @@ class ClickhouseInsertBuilder(InsertBuilder):
             cursor.executemany(sql, datas)
         finally:
             cursor.close()
+            self.db.release_connection()
             self.sql = (sql, datas)
         return cursor
 
@@ -249,6 +251,7 @@ class ClickhouseUpdateBuilder(UpdateBuilder):
             cursor.execute(sql % self.db.escape_args(values))
         finally:
             cursor.close()
+            self.db.release_connection()
             self.sql = (sql, values)
         return cursor
 
@@ -304,6 +307,7 @@ class ClickhouseDeleteBuilder(DeleteBuilder):
             cursor.execute(sql % self.db.escape_args(self.query_values))
         finally:
             cursor.close()
+            self.db.release_connection()
             self.sql = (sql, self.query_values)
         return cursor
 
@@ -311,6 +315,23 @@ class ClickhouseDeleteBuilder(DeleteBuilder):
         if isinstance(self.sql, tuple):
             return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
         return "sql: %s" % self.sql
+
+
+class ClickhouseDBFactory(DatabaseFactory):
+    def create(self):
+        try:
+            import clickhouse_driver
+            from clickhouse_driver.util.escape import escape_param
+        except ImportError:
+            raise ImportError("clickhouse_driver>=0.1.5 is required")
+
+        return clickhouse_driver.connect(**self.config)
+
+    def ping(self, driver):
+        pass
+
+    def close(self, driver):
+        driver.close()
 
 
 class ClickhouseDB(DataBase):
@@ -330,7 +351,7 @@ class ClickhouseDB(DataBase):
         ],
     }
 
-    def __init__(self, config):
+    def __init__(self, manager, config):
         all_config = {}
         all_config.update(self.DEFAULT_CONFIG)
         all_config.update(config)
@@ -338,21 +359,30 @@ class ClickhouseDB(DataBase):
         self.db_name = all_config["database"] if "database" in all_config else all_config["name"]
         self.virtual_tables = all_config.pop("virtual_views") if "virtual_views" in all_config else []
 
-        super(ClickhouseDB, self).__init__(all_config)
+        super(ClickhouseDB, self).__init__(manager, all_config)
 
+        self.connection_key = None
         self.connection = None
 
     def ensure_connection(self):
-        if not self.connection:
-            try:
-                import clickhouse_driver
-                from clickhouse_driver.util.escape import escape_param
-            except ImportError:
-                raise ImportError("clickhouse_driver>=0.1.5 is required")
-
-            self.connection = clickhouse_driver.connect(**self.config)
-            self.escape_param = escape_param
+        if self.connection:
+            return self.connection
+        self.connection_key = self.get_key(self.config)
+        if not self.manager.has(self.connection_key):
+            self.manager.register(self.connection_key, ClickhouseDBFactory(self.connection_key, self.config))
+        try:
+            from clickhouse_driver.util.escape import escape_param
+        except ImportError:
+            raise ImportError("clickhouse_driver>=0.1.5 is required")
+        self.escape_param = escape_param
+        self.connection = self.manager.acquire(self.connection_key)
         return self.connection
+
+    def release_connection(self):
+        if not self.connection:
+            return
+        self.manager.release(self.connection_key, self.connection)
+        self.connection = None
 
     def query(self, name, primary_keys=None, fields=()):
         return ClickhouseQueryBuilder(self, name, primary_keys, fields)
@@ -367,9 +397,7 @@ class ClickhouseDB(DataBase):
         return ClickhouseDeleteBuilder(self, name, primary_keys)
 
     def close(self):
-        if self.connection:
-            self.connection.close()
-        self.connection = None
+        self.release_connection()
 
     def verbose(self):
         return "%s<%s>" % (self.name, self.db_name)

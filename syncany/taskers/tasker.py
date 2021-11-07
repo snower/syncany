@@ -17,8 +17,9 @@ _thread_local = threading.local()
 class Tasker(object):
     name = ""
 
-    def __init__(self, parent=None):
+    def __init__(self, manager, parent=None):
         self.start_time = time.time()
+        self.manager = manager
         self.parent = parent
         self.extensions = {
             "loaders": {},

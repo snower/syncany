@@ -3,8 +3,7 @@
 # create by: snower
 
 from ..utils import human_repr_object
-from ..taskers.tasker import current_tasker
-from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
+from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
 
 
 class MemoryQueryBuilder(QueryBuilder):
@@ -194,16 +193,29 @@ class MemoryDeleteBuilder(DeleteBuilder):
         return "filters: %s" % human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
 
 
-class MemoryDB(DataBase):
-    def __init__(self, config):
-        super(MemoryDB, self).__init__(dict(**config))
+class MemoryDBDriver(dict):
+    pass
 
-        tasker = current_tasker()
-        while tasker.parent:
-            tasker = tasker.parent
-        if not hasattr(tasker, "_memory_databases"):
-            setattr(tasker, "_memory_databases", {})
-        self.memory_databases = tasker._memory_databases
+
+class MemoryDBFactory(DatabaseFactory):
+    def create(self):
+        return MemoryDBDriver()
+
+    def ping(self, driver):
+        pass
+
+    def close(self, driver):
+        pass
+
+
+class MemoryDB(DataBase):
+    def __init__(self, manager, config):
+        super(MemoryDB, self).__init__(manager, dict(**config))
+
+        key = self.get_key(self.config)
+        if not self.manager.has(key):
+            self.manager.register(key, MemoryDB(key, self.config))
+        self.manager.memory_databases = self.manager.acquire(key)
 
     def query(self, name, primary_keys=None, fields=()):
         return MemoryQueryBuilder(self, name, primary_keys, fields)

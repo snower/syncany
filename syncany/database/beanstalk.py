@@ -193,7 +193,7 @@ class BeanstalkDB(DataBase):
         "msgpack": MsgpackSerialize,
     }
 
-    def __init__(self, config):
+    def __init__(self, manager, config):
         all_config = {}
         all_config.update(self.DEFAULT_CONFIG)
         all_config.update(config)
@@ -202,7 +202,7 @@ class BeanstalkDB(DataBase):
         self.ignore_serialize_error = all_config.pop("ignore_serialize_error") if "ignore_serialize_error" in all_config else False
         self.wait_timeout = int(all_config.pop("wait_timeout") if "wait_timeout" in all_config else 30)
         self.bulk_size = int(all_config.pop("bulk_size") if "bulk_size" in all_config else 500)
-        super(BeanstalkDB, self).__init__(all_config)
+        super(BeanstalkDB, self).__init__(manager, all_config)
 
         self.connection = None
         if self.ignore_serialize_error:

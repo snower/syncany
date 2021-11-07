@@ -126,7 +126,7 @@ class CoreTasker(Tasker):
             database_cls = self.find_database_driver(config.pop("driver"))
             if not database_cls:
                 raise DatabaseUnknownException(config["name"] + " is unknown")
-            self.databases[config["name"]] = database_cls(config)
+            self.databases[config["name"]] = database_cls(self.manager.database_manager, config)
 
     def load_imports(self):
         for name, package in self.config["imports"].items():
@@ -146,7 +146,7 @@ class CoreTasker(Tasker):
 
     def load_states(self):
         for state in self.config["states"]:
-            self.states.add_tasker(CoreTasker(state, self))
+            self.states.add_tasker(CoreTasker(state, self.manager, self))
         self.states.compile(self)
         self.states.load(self)
 
