@@ -188,6 +188,7 @@ class DatabaseDriver(object):
         self.factory = factory
         self.driver = driver
         self.idle_time = time.time()
+        self.closed = False
 
     def __getitem__(self, item):
         return self.driver.__getitem__(item)
@@ -199,6 +200,7 @@ class DatabaseDriver(object):
         self.factory.ping(self.driver)
 
     def close(self):
+        self.closed = True
         self.factory.close(self.driver)
 
     def raw(self):
@@ -221,6 +223,12 @@ class DatabaseFactory(object):
     def close(self, driver):
         raise NotImplementedError
 
+    def pop(self):
+        return self.drivers.pop()
+
+    def append(self, driver):
+        self.drivers.append(driver)
+
 
 class DatabaseManager(object):
     def __init__(self, idle_timeout=7200, ping_idle_timeout=300):
@@ -239,14 +247,14 @@ class DatabaseManager(object):
             if key in self.factorys:
                 return
             driver = DatabaseDriver(factory, factory.create())
-            factory.drivers.append(driver)
+            factory.append(driver)
             self.factorys[key] = factory
 
     def acquire(self, key):
         factory = self.factorys[key]
         with factory.lock:
             while factory.drivers:
-                driver = factory.drivers.pop()
+                driver = factory.pop()
                 if time.time() - driver.idle_time < self.ping_idle_timeout:
                     return driver
                 try:
@@ -268,7 +276,7 @@ class DatabaseManager(object):
 
         factory = self.factorys[key]
         with factory.lock:
-            factory.drivers.append(driver)
+            factory.append(driver)
             driver.idle_time = time.time()
 
     def close(self):
@@ -278,7 +286,7 @@ class DatabaseManager(object):
                 factory = self.factorys[key]
                 with factory.lock:
                     while factory.drivers:
-                        driver = factory.drivers.pop()
+                        driver = factory.pop()
                         driver.close()
                 self.factorys.pop(key)
 

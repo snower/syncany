@@ -416,7 +416,7 @@ class InfluxDBFactory(DatabaseFactory):
         return True
 
     def close(self, driver):
-        driver.close()
+        driver.raw().close()
 
 
 class InfluxDB(DataBase):

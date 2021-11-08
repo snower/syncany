@@ -319,18 +319,38 @@ class MongoDeleteBuilder(DeleteBuilder):
 
 
 class MongoDBFactory(DatabaseFactory):
+    def __init__(self, *args, **kwargs):
+        super(MongoDBFactory, self).__init__(*args, **kwargs)
+
+        self.client = None
+
     def create(self):
+        if self.client:
+            return self.client
+
         try:
             import pymongo
         except ImportError:
             raise ImportError("pymongo>=3.6.1 is required")
-        return pymongo.MongoClient(**self.config)
+        self.client = pymongo.MongoClient(**self.config)
+        self.drivers.append(self.client)
+        return self.client
 
     def ping(self, driver):
         return True
 
     def close(self, driver):
-        driver.close()
+        if self.client == driver:
+            self.drivers.pop()
+            self.client = None
+        driver.raw().close()
+
+    def pop(self):
+        return self.client
+
+    def append(self, driver):
+        if self.client != driver:
+            driver.raw().close()
 
 
 class MongoDB(DataBase):

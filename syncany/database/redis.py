@@ -408,7 +408,7 @@ class RedisDBFactory(DatabaseFactory):
         return driver.raw().ping()
 
     def close(self, driver):
-        driver.close()
+        driver.raw().close()
 
 
 class RedisDB(DataBase):
