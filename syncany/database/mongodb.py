@@ -343,14 +343,15 @@ class MongoDBFactory(DatabaseFactory):
         if self.client == driver:
             self.drivers.pop()
             self.client = None
-        driver.raw().close()
+        driver.close()
 
     def pop(self):
         return self.client
 
     def append(self, driver):
-        if self.client != driver:
-            driver.raw().close()
+        if self.client == driver:
+            return
+        driver.close()
 
 
 class MongoDB(DataBase):

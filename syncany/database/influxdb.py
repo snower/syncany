@@ -412,11 +412,11 @@ class InfluxDBFactory(DatabaseFactory):
         return InfluxDBClient(**self.config)
 
     def ping(self, driver):
-        driver.raw().ping()
+        driver.ping()
         return True
 
     def close(self, driver):
-        driver.raw().close()
+        driver.close()
 
 
 class InfluxDB(DataBase):

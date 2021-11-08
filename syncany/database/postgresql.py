@@ -328,13 +328,13 @@ class PostgresqlDBFactory(DatabaseFactory):
         return psycopg2.connect(**self.config)
 
     def ping(self, driver):
-        cursor = driver.raw().cursor()
+        cursor = driver.cursor()
         cursor.execute('SELECT 1')
         cursor.close()
         return True
 
     def close(self, driver):
-        driver.raw().close()
+        driver.close()
 
 
 class PostgresqlDB(DataBase):

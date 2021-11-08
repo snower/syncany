@@ -405,10 +405,10 @@ class RedisDBFactory(DatabaseFactory):
         return redis.Redis(**self.config)
 
     def ping(self, driver):
-        return driver.raw().ping()
+        return driver.ping()
 
     def close(self, driver):
-        driver.raw().close()
+        driver.close()
 
 
 class RedisDB(DataBase):
