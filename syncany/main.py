@@ -51,11 +51,37 @@ def warp_database_logging(tasker):
             return builder
         return _
 
+    def cache_do_warper(database, builder, func, name):
+        def _(*args, **kwargs):
+            start_time, result = time.time(), None
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                database_verbose = database.verbose()
+                beautify_print("%s %s %s -> %s::%s<%s> %.2fms" % (datetime.datetime.now(), database.__class__.__name__,
+                                                          database_verbose, builder.__class__.__name__, name, builder.name,
+                                                          (time.time() - start_time) * 1000))
+                beautify_print("args: " + str(args + tuple(kwargs.items())))
+                beautify_print("result: " + str(result))
+                print()
+            return result
+        return _
+
+    def cache_builder_warper(database, func):
+        def _(*args, **kwargs):
+            builder = func(*args, **kwargs)
+            builder.get = cache_do_warper(database, builder, builder.get, "get")
+            builder.set = cache_do_warper(database, builder, builder.set, "set")
+            builder.delete = cache_do_warper(database, builder, builder.delete, "delete")
+            return builder
+        return _
+
     for name, database in list(tasker.databases.items()):
         database.query = builder_warper(database, database.query)
         database.insert = builder_warper(database, database.insert)
         database.update = builder_warper(database, database.update)
         database.delete = builder_warper(database, database.delete)
+        database.cache = cache_builder_warper(database, database.cache)
 
 def load_dependency(parent, filename, ap, register_aps):
     tasker = CoreTasker(filename, parent.manager, parent)
