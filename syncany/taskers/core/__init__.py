@@ -151,19 +151,25 @@ class CoreTasker(Tasker):
         self.states.load(self)
 
     def load_cursor(self):
-        if "@recovery" in self.arguments and self.arguments["@recovery"]:
+        if "@recovery" not in self.arguments or not self.arguments["@recovery"]:
             return
         if "cursor" not in self.config or self.config["cursor"]:
             if "@cursor" in self.states:
-                if isinstance(self.states["@cursor"], dict):
-                    self.batch_cursor = self.states["@cursor"]
+                if len(self.loader.primary_keys) > 1:
+                    if isinstance(self.states["@cursor"], dict):
+                        self.batch_cursor = self.states["@cursor"]
+                    else:
+                        self.batch_cursor = {[self.loader.primary_keys[0]]: self.states["@cursor"]}
                 else:
                     self.batch_cursor = {[self.loader.primary_keys[0]]: self.states["@cursor"]}
             return
         self.batch_cursor = {}
-        if isinstance(self.config["cursor"], dict):
-            for key, value in self.config["cursor"].items():
-                self.batch_cursor[key] = self.run_valuer(value, {})
+        if len(self.loader.primary_keys) > 1:
+            if isinstance(self.config["cursor"], dict):
+                for key, value in self.config["cursor"].items():
+                    self.batch_cursor[key] = self.run_valuer(value, {})
+            else:
+                self.batch_cursor = {[self.loader.primary_keys[0]]: self.config["cursor"]}
         else:
             self.batch_cursor[self.loader.primary_keys[0]] = self.run_valuer(self.config["cursor"], {})
 
@@ -409,14 +415,14 @@ class CoreTasker(Tasker):
         self.compile_sources_arguments(arguments_names, arguments, self.config)
         self.compile_filters_arguments(arguments_names, arguments)
 
-        if "input" in self.config:
+        if "input" in self.config and "@input" not in arguments_names:
             if isinstance(self.config["input"], list) and self.config["input"] and self.config["input"][0][0] == "@":
                 self.config["input"] = self.run_valuer(self.config["input"], {})
             if self.config["input"][:2] == "<<":
                 arguments.append({"name": "@input", "short": "i", "type": str, "default": self.config["input"][2:],
                                   "help": "data input (default: %s)" % self.config["input"][2:]})
 
-        if "loader" in self.config:
+        if "loader" in self.config and "@loader" not in arguments_names:
             if isinstance(self.config["loader"], list) and self.config["loader"] and self.config["loader"][0][0] == "@":
                 self.config["loader"] = self.run_valuer(self.config["loader"], {})
             if self.config["loader"][:2] == "<<":
@@ -424,14 +430,14 @@ class CoreTasker(Tasker):
                                   "choices": ("db_loader",),
                                   "help": "data loader (default: %s)" % self.config["loader"][2:]})
 
-        if "output" in self.config:
+        if "output" in self.config and "@output" not in arguments_names:
             if isinstance(self.config["output"], list) and self.config["output"] and self.config["output"][0][0] == "@":
                 self.config["output"] = self.run_valuer(self.config["output"], {})
             if self.config["output"][:2] == ">>":
                 arguments.append({"name": "@output", "short": "o", "type": str, "default": self.config["output"][2:],
                                   "help": "data output (default: %s)" % self.config["output"][2:]})
 
-        if "outputer" in self.config:
+        if "outputer" in self.config and "@outputer" not in arguments_names:
             if isinstance(self.config["outputer"], list) and self.config["outputer"] and self.config["outputer"][0][0] == "@":
                 self.config["outputer"] = self.run_valuer(self.config["outputer"], {})
             if self.config["outputer"][:2] == ">>":
@@ -439,12 +445,24 @@ class CoreTasker(Tasker):
                                   "choices": tuple(self.outputer_creater.can_uses()),
                                   "help": "data outputer (default: %s)" % self.config["outputer"][2:]})
 
-        arguments.append({"name": "@limit", "short": "l", "type": int, "default": 0, "help": "load limit count (default: 0 all)"})
-        arguments.append({"name": "@batch", "short": "b", "type": int, "default": 0, "help": "per sync batch count (default: 0 all)"})
-        arguments.append({"name": "@recovery", "short": "r", "type": bool, "default": False, "help": "recovery mode (default: False)"})
-        arguments.append({"name": "@join_batch", "type": int, "default": 1000, "help": "join batch count (default: 1000)"})
-        arguments.append({"name": "@insert_batch", "type": int, "default": 0, "help": "insert batch count (default: 0 all)"})
-        arguments.append({"name": "@timeout", "type": int, "default": 0, "help": "loader timeout (default: 0 none timeout)"})
+        if "@limit" not in arguments_names:
+            arguments.append({"name": "@limit", "short": "l", "type": int, "default": 0,
+                              "help": "load limit count (default: 0 all)"})
+        if "@batch" not in arguments_names:
+            arguments.append({"name": "@batch", "short": "b", "type": int, "default": 0,
+                              "help": "per sync batch count (default: 0 all)"})
+        if "@recovery" not in arguments_names:
+            arguments.append({"name": "@recovery", "short": "r", "type": bool, "default": False,
+                              "help": "recovery mode (default: False)"})
+        if "@join_batch" not in arguments_names:
+            arguments.append({"name": "@join_batch", "type": int, "default": 1000,
+                              "help": "join batch count (default: 1000)"})
+        if "@insert_batch" not in arguments_names:
+            arguments.append({"name": "@insert_batch", "type": int, "default": 0,
+                              "help": "insert batch count (default: 0 all)"})
+        if "@timeout" not in arguments_names:
+            arguments.append({"name": "@timeout", "type": int, "default": 0,
+                              "help": "loader timeout (default: 0 none timeout)"})
         return arguments
 
     def compile_key(self, key):
@@ -1134,5 +1152,11 @@ class CoreTasker(Tasker):
         statistics["arguments"] = dict(**self.arguments)
         statistics["variables"] = dict(**self.global_variables)
         statistics["states"] = dict(**self.states)
-        statistics["cursor"] = self.batch_cursor
+        if self.loader and isinstance(self.batch_cursor, dict):
+            if len(self.loader.primary_keys) > 1:
+                statistics["cursor"] = self.batch_cursor
+            else:
+                statistics["cursor"] = self.batch_cursor.get(self.loader.primary_keys[0])
+        else:
+            statistics["cursor"] = self.batch_cursor
         return statistics
