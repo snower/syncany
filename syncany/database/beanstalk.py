@@ -240,6 +240,7 @@ class BeanstalkDB(DataBase):
         return BeanstalkDeleteBuilder(self, name, primary_keys)
 
     def close(self):
-        if self.connection:
-            self.connection.close()
+        if not self.connection:
+            return
+        self.connection.close()
         self.connection = None

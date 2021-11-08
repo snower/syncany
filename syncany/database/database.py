@@ -2,6 +2,7 @@
 # 18/8/6
 # create by: snower
 
+import time
 import hashlib
 from collections import deque
 import threading
@@ -182,6 +183,28 @@ class DataBase(object):
         return self.name
 
 
+class DatabaseDriver(object):
+    def __init__(self, factory, driver):
+        self.factory = factory
+        self.driver = driver
+        self.idle_time = time.time()
+
+    def __getitem__(self, item):
+        return self.driver.__getitem__(item)
+
+    def __getattr__(self, item):
+        return getattr(self.driver, item)
+
+    def ping(self):
+        self.factory.fing(self.driver)
+
+    def close(self):
+        self.factory.close(self.driver)
+
+    def raw(self):
+        return self.driver
+
+
 class DatabaseFactory(object):
     def __init__(self, key, config):
         self.key = key
@@ -200,37 +223,77 @@ class DatabaseFactory(object):
 
 
 class DatabaseManager(object):
-    def __init__(self):
+    def __init__(self, idle_timeout=7200, ping_idle_timeout=300):
         self.factorys = {}
+        self.lock = threading.Lock()
+        self.idle_timeout = idle_timeout
+        self.ping_idle_timeout = ping_idle_timeout
+        self.closed = False
 
     def has(self, key):
-        return key in self.factorys
+        with self.lock:
+            return key in self.factorys
 
     def register(self, key, factory):
-        if key in self.factorys:
-            return
-        self.factorys[key] = factory
+        with self.lock:
+            if key in self.factorys:
+                return
+            driver = DatabaseDriver(self, factory.create())
+            factory.drivers.append(driver)
+            self.factorys[key] = factory
 
     def acquire(self, key):
         factory = self.factorys[key]
         with factory.lock:
             while factory.drivers:
                 driver = factory.pop()
+                if time.time() - driver.idle_time < self.ping_idle_timeout:
+                    return driver
                 try:
-                    if factory.ping(driver):
-                        return factory
+                    if driver.ping():
+                        return driver
                 except:
+                    driver.close()
                     continue
-            return factory.create()
+            return DatabaseDriver(self, factory.create())
 
     def release(self, key, driver):
+        if self.closed:
+            return driver.close()
+
+        if key not in self.factorys:
+            with self.lock:
+                if key not in self.factorys:
+                    self.factorys[key] = driver.factory
+
         factory = self.factorys[key]
         with factory.lock:
             factory.drivers.append(driver)
+            driver.idle_time = time.time()
 
     def close(self):
-        for factory in self.factorys:
+        self.closed = True
+        with self.lock:
+            for key in list(self.factorys.keys()):
+                factory = self.factorys[key]
+                with factory.lock:
+                    while factory.drivers:
+                        driver = factory.drivers.pop()
+                        driver.close()
+                self.factorys.pop(key)
+
+    def check_timeout(self):
+        now = time.time()
+        for key in list(self.factorys.keys()):
+            factory = self.factorys[key]
             with factory.lock:
-                while factory.drivers:
-                    factory.close(factory.drivers.pop())
-        self.factorys = []
+                for _ in range(len(factory.drivers)):
+                    driver = factory.drivers.popleft()
+                    if now - driver.idle_time > self.idle_timeout:
+                        driver.close()
+                    else:
+                        factory.drivers.append(driver)
+
+            with self.lock:
+                if not factory.drivers:
+                    self.factorys.pop(key)

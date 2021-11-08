@@ -324,11 +324,10 @@ class ClickhouseDBFactory(DatabaseFactory):
             from clickhouse_driver.util.escape import escape_param
         except ImportError:
             raise ImportError("clickhouse_driver>=0.1.5 is required")
-
         return clickhouse_driver.connect(**self.config)
 
     def ping(self, driver):
-        pass
+        return driver.raw().ping()
 
     def close(self, driver):
         driver.close()
@@ -363,20 +362,23 @@ class ClickhouseDB(DataBase):
 
         self.connection_key = None
         self.connection = None
+        self.escape_param = lambda arg: arg
 
     def ensure_connection(self):
         if self.connection:
-            return self.connection
-        self.connection_key = self.get_key(self.config)
-        if not self.manager.has(self.connection_key):
-            self.manager.register(self.connection_key, ClickhouseDBFactory(self.connection_key, self.config))
-        try:
-            from clickhouse_driver.util.escape import escape_param
-        except ImportError:
-            raise ImportError("clickhouse_driver>=0.1.5 is required")
-        self.escape_param = escape_param
+            return self.connection.raw()
+        if not self.connection_key:
+            self.connection_key = self.get_key(self.config)
+            if not self.manager.has(self.connection_key):
+                self.manager.register(self.connection_key, ClickhouseDBFactory(self.connection_key, self.config))
+
+            try:
+                from clickhouse_driver.util.escape import escape_param
+            except ImportError:
+                raise ImportError("clickhouse_driver>=0.1.5 is required")
+            self.escape_param = escape_param
         self.connection = self.manager.acquire(self.connection_key)
-        return self.connection
+        return self.connection.raw()
 
     def release_connection(self):
         if not self.connection:
@@ -397,13 +399,13 @@ class ClickhouseDB(DataBase):
         return ClickhouseDeleteBuilder(self, name, primary_keys)
 
     def close(self):
-        self.release_connection()
+        if not self.connection:
+            return
+        self.connection.raw().close()
+        self.connection = None
 
     def verbose(self):
         return "%s<%s>" % (self.name, self.db_name)
-
-    def escape_param(self, arg):
-        return arg
 
     def escape_args(self, args):
         if isinstance(args, set):

@@ -194,10 +194,10 @@ class InfluxDBQueryBuilder(QueryBuilder):
         connection = self.db.ensure_connection()
         try:
             result = connection.query(sql % escape_args(query_values))
+            return list(result.get_points())
         finally:
             self.db.release_connection()
             self.sql = (sql, query_values)
-        return list(result.get_points())
 
     def verbose(self):
         if isinstance(self.sql, tuple):
@@ -412,7 +412,8 @@ class InfluxDBFactory(DatabaseFactory):
         return InfluxDBClient(**self.config)
 
     def ping(self, driver):
-        pass
+        driver.raw().ping()
+        return True
 
     def close(self, driver):
         driver.close()
@@ -450,12 +451,13 @@ class InfluxDB(DataBase):
 
     def ensure_connection(self):
         if self.connection:
-            return self.connection
-        self.connection_key = self.get_key(self.config)
-        if not self.manager.has(self.connection_key):
-            self.manager.register(self.connection_key, InfluxDBFactory(self.connection_key, self.config))
+            return self.connection.raw()
+        if not self.connection_key:
+            self.connection_key = self.get_key(self.config)
+            if not self.manager.has(self.connection_key):
+                self.manager.register(self.connection_key, InfluxDBFactory(self.connection_key, self.config))
         self.connection = self.manager.acquire(self.connection_key)
-        return self.connection
+        return self.connection.raw()
 
     def release_connection(self):
         if not self.connection:
@@ -476,7 +478,10 @@ class InfluxDB(DataBase):
         return InfluxDBDeleteBuilder(self, name, primary_keys)
 
     def close(self):
-        self.release_connection()
+        if not self.connection:
+            return
+        self.connection.raw().close()
+        self.connection = None
 
     def verbose(self):
         return "%s<%s>" % (self.name, self.db_name)

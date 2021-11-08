@@ -318,6 +318,7 @@ class PostgresqlDeleteBuilder(DeleteBuilder):
             return "sql: %s\nargs: %s" % (self.sql[0], human_repr_object(self.sql[1]))
         return "sql: %s" % self.sql
 
+
 class PostgresqlDBFactory(DatabaseFactory):
     def create(self):
         try:
@@ -327,7 +328,10 @@ class PostgresqlDBFactory(DatabaseFactory):
         return psycopg2.connect(**self.config)
 
     def ping(self, driver):
-        pass
+        cursor = driver.raw().cursor()
+        cursor.execute('SELECT 1')
+        cursor.close()
+        return True
 
     def close(self, driver):
         driver.close()
@@ -372,17 +376,19 @@ class PostgresqlDB(DataBase):
 
     def ensure_connection(self):
         if self.connection:
-            return self.connection
-        self.connection_key = self.get_key(self.config)
-        if not self.manager.has(self.connection_key):
-            self.manager.register(self.connection_key, PostgresqlDBFactory(self.connection_key, self.config))
-        try:
-            from psycopg2.extras import DictCursor
-        except ImportError:
-            raise ImportError("PyMySQL>=0.8.1 is required")
-        self.DictCursor = DictCursor
+            return self.connection.raw()
+        if not self.connection_key:
+            self.connection_key = self.get_key(self.config)
+            if not self.manager.has(self.connection_key):
+                self.manager.register(self.connection_key, PostgresqlDBFactory(self.connection_key, self.config))
+
+            try:
+                from psycopg2.extras import DictCursor
+            except ImportError:
+                raise ImportError("PyMySQL>=0.8.1 is required")
+            self.DictCursor = DictCursor
         self.connection = self.manager.acquire(self.connection_key)
-        return self.connection
+        return self.connection.raw()
 
     def release_connection(self):
         if not self.connection:
@@ -403,7 +409,10 @@ class PostgresqlDB(DataBase):
         return PostgresqlDeleteBuilder(self, name, primary_keys)
 
     def close(self):
-        self.release_connection()
+        if not self.connection:
+            return
+        self.connection.raw().close()
+        self.connection = None
 
     def verbose(self):
         return "%s<%s>" % (self.name, self.db_name)

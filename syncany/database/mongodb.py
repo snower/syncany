@@ -327,7 +327,7 @@ class MongoDBFactory(DatabaseFactory):
         return pymongo.MongoClient(**self.config)
 
     def ping(self, driver):
-        pass
+        return True
 
     def close(self, driver):
         driver.close()
@@ -358,12 +358,13 @@ class MongoDB(DataBase):
 
     def ensure_connection(self):
         if self.connection:
-            return self.connection
-        self.connection_key = self.get_key(self.config)
-        if not self.manager.has(self.connection_key):
-            self.manager.register(self.connection_key, MongoDBFactory(self.connection_key, self.config))
+            return self.connection.raw()
+        if not self.connection_key:
+            self.connection_key = self.get_key(self.config)
+            if not self.manager.has(self.connection_key):
+                self.manager.register(self.connection_key, MongoDBFactory(self.connection_key, self.config))
         self.connection = self.manager.acquire(self.connection_key)
-        return self.connection
+        return self.connection.raw()
 
     def release_connection(self):
         if not self.connection:
@@ -384,7 +385,10 @@ class MongoDB(DataBase):
         return MongoDeleteBuilder(self, name, primary_keys)
 
     def close(self):
-        self.release_connection()
+        if not self.connection:
+            return
+        self.connection.raw().close()
+        self.connection = None
 
     def verbose(self):
         return "%s<%s>" % (self.name, self.db_name)

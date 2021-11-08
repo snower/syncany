@@ -202,7 +202,7 @@ class MemoryDBFactory(DatabaseFactory):
         return MemoryDBDriver()
 
     def ping(self, driver):
-        pass
+        return True
 
     def close(self, driver):
         pass
@@ -215,7 +215,7 @@ class MemoryDB(DataBase):
         key = self.get_key(self.config)
         if not self.manager.has(key):
             self.manager.register(key, MemoryDB(key, self.config))
-        self.manager.memory_databases = self.manager.acquire(key)
+        self.manager.memory_databases = self.manager.acquire(key).raw()
 
     def query(self, name, primary_keys=None, fields=()):
         return MemoryQueryBuilder(self, name, primary_keys, fields)

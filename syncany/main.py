@@ -111,13 +111,13 @@ def run_dependency(tasker, dependency_taskers):
         statistics = tasker.run()
     except SystemError as e:
         tasker.close(False, "signal terminaled")
-        raise e
+        raise
     except KeyboardInterrupt as e:
         tasker.close(False, "user terminaled")
-        raise e
+        raise
     except Exception as e:
         tasker.close(False, "Error: " + repr(e), traceback.format_exc())
-        raise e
+        raise
     else:
         tasker.close()
     return statistics, dependency_statistics
