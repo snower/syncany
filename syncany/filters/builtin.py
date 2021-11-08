@@ -4,12 +4,12 @@
 
 import datetime
 import pytz
-from tzlocal import get_localzone
 import binascii
 try:
     from bson.objectid import ObjectId
 except ImportError:
     ObjectId = None
+from ..utils import get_timezone
 from .filter import Filter
 
 class IntFilter(Filter):
@@ -327,7 +327,7 @@ class ObjectIdFilter(Filter):
             return ObjectId(value)
         except:
             try:
-                return datetime.datetime.strptime(value, self.args or "%Y-%m-%d %H:%M:%S").astimezone(tz=get_localzone())
+                return datetime.datetime.strptime(value, self.args or "%Y-%m-%d %H:%M:%S").astimezone(tz=get_timezone())
             except:
                 return ObjectId("000000000000000000000000")
 
@@ -348,7 +348,7 @@ class DateTimeFilter(Filter):
             self.tzname = None
 
     def filter(self, value):
-        localzone = get_localzone()
+        localzone = get_timezone()
         if isinstance(value, datetime.datetime):
             if localzone != value.tzinfo:
                 value = value.astimezone(tz=localzone)
@@ -412,19 +412,19 @@ class DateFilter(Filter):
     def filter(self, value):
         if isinstance(value, datetime.date):
             if isinstance(value, datetime.datetime):
-                localzone = get_localzone()
+                localzone = get_timezone()
                 if localzone != value.tzinfo:
                     value = value.astimezone(tz=localzone)
                 return datetime.date(value.year, value.month, value.day)
             return value
 
         if isinstance(value, datetime.timedelta):
-            localzone = get_localzone()
+            localzone = get_timezone()
             dt = datetime.datetime.now(tz=localzone)
             return datetime.date(dt.year, dt.month, dt.day) + value
 
         if isinstance(value, (int, float)):
-            dt = datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC).astimezone(tz=get_localzone())
+            dt = datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC).astimezone(tz=get_timezone())
             return datetime.date(dt.year, dt.month, dt.day)
 
         if isinstance(value, (list, tuple, set)):
@@ -440,7 +440,7 @@ class DateFilter(Filter):
             return value
 
         try:
-            dt = datetime.datetime.strptime(value, self.args or "%Y-%m-%d").astimezone(tz=get_localzone())
+            dt = datetime.datetime.strptime(value, self.args or "%Y-%m-%d").astimezone(tz=get_timezone())
             return datetime.date(dt.year, dt.month, dt.day)
         except:
             return None
@@ -462,19 +462,19 @@ class TimeFilter(Filter):
 
         if isinstance(value, datetime.date):
             if isinstance(value, datetime.datetime):
-                localzone = get_localzone()
+                localzone = get_timezone()
                 if localzone != value.tzinfo:
                     value = value.astimezone(tz=localzone)
                 return datetime.time(value.hour, value.minute, value.second)
             return datetime.time(0, 0, 0)
 
         if isinstance(value, datetime.timedelta):
-            localzone = get_localzone()
+            localzone = get_timezone()
             dt = datetime.datetime.now(tz=localzone) + value
             return datetime.time(dt.hour, dt.minute, dt.second)
 
         if isinstance(value, (int, float)):
-            dt = datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC).astimezone(tz=get_localzone())
+            dt = datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC).astimezone(tz=get_timezone())
             return datetime.time(dt.hour, dt.minute, dt.second)
 
         if isinstance(value, (list, tuple, set)):
@@ -490,7 +490,7 @@ class TimeFilter(Filter):
             return value
 
         try:
-            dt = datetime.datetime.strptime("2000-01-01 " + value, "%Y-%m-%d " + (self.args or "%H:%M:%S")).astimezone(tz=get_localzone())
+            dt = datetime.datetime.strptime("2000-01-01 " + value, "%Y-%m-%d " + (self.args or "%H:%M:%S")).astimezone(tz=get_timezone())
             return datetime.time(dt.hour, dt.minute, dt.second)
         except:
             return None

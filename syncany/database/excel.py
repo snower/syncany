@@ -4,8 +4,7 @@
 
 import os
 import datetime
-from tzlocal import get_localzone
-from ..utils import human_repr_object
+from ..utils import get_timezone, human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 
@@ -228,7 +227,7 @@ class ExeclSheet(object):
                 data, index = {}, 0
                 for cel in row:
                     if isinstance(cel.value, datetime.datetime) and not cel.value.tzinfo:
-                        data[self.sheet_descriptions[index]] = cel.value.replace(tzinfo=get_localzone())
+                        data[self.sheet_descriptions[index]] = cel.value.replace(tzinfo=get_timezone())
                     else:
                         data[self.sheet_descriptions[index]] = cel.value
                     index += 1

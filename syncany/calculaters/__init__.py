@@ -44,6 +44,7 @@ CALCULATERS = {
     "math": MathCalculater,
     "hash": HashCalculater,
     "json": JsonCalculater,
+    "struct": StructCalculater,
     "conv": ConvCalculater,
 }
 

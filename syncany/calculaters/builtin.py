@@ -2,12 +2,13 @@
 # 18/8/15
 # create by: snower
 
+import struct
 import math
 import hashlib
 import datetime
 import pytz
 import json
-from tzlocal import get_localzone
+from ..utils import get_timezone
 from .calculater import Calculater
 try:
     from bson.objectid import ObjectId
@@ -311,18 +312,18 @@ class NowCalculater(Calculater):
 
     def calculate(self):
         if not self.args:
-            return datetime.datetime.now(tz=get_localzone())
+            return datetime.datetime.now(tz=get_timezone())
 
         if self.args[0] and self.args[0][0] in ("-", "+") and self.args[0][-1] in ("Y", "m", "d", "H", "M", "S"):
             try:
                 seconds = int(self.args[0][1:-1]) * self.TIMEDELTAS[self.args[0][-1]]
             except:
-                return datetime.datetime.now(tz=get_localzone())
+                return datetime.datetime.now(tz=get_timezone())
 
             if len(self.args) >= 2:
                 now = datetime.datetime.now(tz=pytz.timezone(self.args[1]))
             else:
-                now = datetime.datetime.now(tz=get_localzone())
+                now = datetime.datetime.now(tz=get_timezone())
 
             if self.args[0][0] == "-":
                 return now - datetime.timedelta(seconds=seconds)
@@ -733,10 +734,7 @@ class HashCalculater(Calculater):
 
         b = b''
         for arg in self.args:
-            if isinstance(arg, bytes):
-                b += str(arg).encode("utf-8")
-            else:
-                b += arg
+            b += (arg if isinstance(arg, bytes) else str(arg).encode("utf-8"))
 
         if self.name == "hash::md5":
             return hashlib.md5(b).hexdigest()
@@ -761,7 +759,6 @@ class JsonCalculater(Calculater):
     def encode(self):
         if not self.args:
             return None
-
         try:
             return json.dumps(self.args[0], default=str, ensure_ascii=False)
         except:
@@ -770,8 +767,31 @@ class JsonCalculater(Calculater):
     def decode(self):
         if not self.args:
             return None
-
         try:
             return json.loads(self.args[0])
+        except:
+            return None
+
+class StructCalculater(Calculater):
+    def calculate(self):
+        if self.name == "struct::pack":
+            return self.pack()
+        if self.name == "json::unpack":
+            return self.unpack()
+        return None
+
+    def pack(self):
+        if len(self.args) < 2:
+            return None
+        try:
+            return struct.pack(self.args[0], self.args[1])
+        except:
+            return None
+
+    def unpack(self):
+        if len(self.args) < 2:
+            return None
+        try:
+            return list(struct.unpack(self.args[0], self.args[1]))
         except:
             return None

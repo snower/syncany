@@ -6,16 +6,32 @@ import os
 import datetime
 import random
 import string
+import pytz
+from tzlocal import get_localzone
 
-__runner_index = 0
-
+_runner_index = 0
 def gen_runner_id():
-    global __runner_index
-    __runner_index += 1
-    if __runner_index >= 100:
-        __runner_index = 0
+    global _runner_index
+    _runner_index += 1
+    if _runner_index >= 100:
+        _runner_index = 0
     return datetime.datetime.now().strftime("%Y%m%d%H%M%S") + \
-           "".join([random.choice(string.digits) for i in range(8)]) + ("%02d" % __runner_index)
+           "".join([random.choice(string.digits) for i in range(8)]) + ("%02d" % _runner_index)
+
+_timezone = None
+def get_timezone():
+    global _timezone
+    if _timezone is None:
+        from .taskers.tasker import current_tasker
+        tasker = current_tasker()
+        if "options" in tasker.config and tasker.config["options"]:
+            if "timezone" in tasker.config["options"]:
+                _timezone = pytz.timezone(tasker.config["options"]["timezone"])
+            else:
+                _timezone = get_localzone()
+        else:
+            _timezone = get_localzone()
+    return _timezone
 
 def get_rich():
     if os.environ.get("USE_RICH", 'true').lower() != "true":
