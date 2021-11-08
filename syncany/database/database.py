@@ -246,7 +246,7 @@ class DatabaseManager(object):
         factory = self.factorys[key]
         with factory.lock:
             while factory.drivers:
-                driver = factory.pop()
+                driver = factory.drivers.pop()
                 if time.time() - driver.idle_time < self.ping_idle_timeout:
                     return driver
                 try:
