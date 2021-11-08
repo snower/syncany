@@ -3,6 +3,12 @@
   "name": "demo",
   "input": "<<&.data.demo.json::_id",
   "output": ">>&.stdio.&1::site_id use I",
+  "caches": [{
+    "name": "site_amount",
+    "database": "memory",
+    "prefix_key": "site:amount",
+    "exprie_seconds": 300
+  }],
   "querys": {
     "start_date": {">=": "2021-01-01"}
   },
@@ -17,11 +23,13 @@
     ]],
     "site_amount": ["#yield", "$.sites", [
       ":#aggregate", "$.*|int", [
-        "$$.*|int", "&.data.orders.json::site_id", [
-          ":#foreach|int", "$.*|array", [
-            "#if", ["@lte", "$.status", 0], ["#make", {"value": "$.amount"}], "#continue"
-          ], [
-            ":@sum", "$.*|array", "value"
+        "#cache", "site_amount", "$$.*|int", [
+          "$$.*|int", "&.data.orders.json::site_id", [
+            ":#foreach|int", "$.*|array", [
+              "#if", ["@lte", "$.status", 0], ["#make", {"value": "$.amount"}], "#continue"
+            ], [
+              ":@sum", "$.*|array", "value"
+            ]
           ]
         ]
       ]

@@ -5,7 +5,7 @@
 import pickle
 import json
 from ..utils import human_repr_object
-from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
+from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, CacheBuilder, DataBase, DatabaseFactory
 
 
 class StringSerialize(object):
@@ -396,6 +396,35 @@ class RedisDeleteBuilder(DeleteBuilder):
         return "filters: %s" % human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
 
 
+class RedisCacheBuilder(CacheBuilder):
+    def __init__(self, *args, **kwargs):
+        super(RedisCacheBuilder, self).__init__(*args, **kwargs)
+
+    def get(self, key):
+        connection = self.db.ensure_connection()
+        try:
+            return self.db.serialize.loads(connection.get(self.prefix_key + ":" + key))
+        except Exception:
+            return None
+        finally:
+            self.db.release_connection()
+
+    def set(self, key, value, exprie_seconds=86400):
+        connection = self.db.ensure_connection()
+        try:
+            data = self.db.serialize.dumps(value)
+            connection.set(self.prefix_key + ":" + key, data, exprie_seconds)
+        finally:
+            self.db.release_connection()
+
+    def delete(self, key):
+        connection = self.db.ensure_connection()
+        try:
+            connection.delete(self.prefix_key + ":" + key)
+        finally:
+            self.db.release_connection()
+
+
 class RedisDBFactory(DatabaseFactory):
     def create(self):
         try:
@@ -477,6 +506,9 @@ class RedisDB(DataBase):
 
     def delete(self, name, primary_keys=None):
         return RedisDeleteBuilder(self, name, primary_keys)
+
+    def cache(self, name, prefix_key, config=None):
+        return RedisCacheBuilder(name, prefix_key, config)
 
     def close(self):
         if not self.connection:

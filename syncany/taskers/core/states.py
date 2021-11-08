@@ -30,6 +30,7 @@ class States(dict):
         state_tasker.compile_sources(state_tasker.config)
         state_tasker.compile_options()
         state_tasker.load_databases()
+        state_tasker.load_caches()
         state_tasker.compile_schema()
         if "input" in state_tasker.config and state_tasker.config["input"]:
             state_tasker.compile_loader()

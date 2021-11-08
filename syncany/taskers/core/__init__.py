@@ -19,10 +19,11 @@ from .valuer_compiler import ValuerCompiler
 from .valuer_creater import ValuerCreater
 from .loader_creater import LoaderCreater
 from .outputer_creater import OutputerCreater
+from ...loaders.cache import CacheLoader
 from ...hook import PipelinesHooker
 from ...errors import LoaderUnknownException, OutputerUnknownException, \
     ValuerUnknownException, DatabaseUnknownException, CalculaterUnknownException, \
-    SourceUnknownException
+    CacheUnknownException, SourceUnknownException
 
 class CoreTasker(Tasker):
     DEFAULT_CONFIG = {
@@ -32,6 +33,7 @@ class CoreTasker(Tasker):
         "arguments": {},
         "querys": [],
         "databases": [],
+        "caches": [],
         "imports": {},
         "sources": {},
         "defines": {},
@@ -89,19 +91,19 @@ class CoreTasker(Tasker):
                     self.config[k] = v
                 else:
                     self.config[k].update(v)
-            elif k == "databases":
+            elif k in ("databases", "caches"):
                 if not isinstance(v, list) or not isinstance(self.config.get(k, []), list):
                     continue
 
                 if k not in self.config:
                     self.config[k] = v
                 else:
-                    databases = {database["name"]: database for database in self.config[k]}
-                    for database in v:
-                        if database["name"] in databases:
-                            databases[database["name"]].update(database)
+                    vs = {c["name"]: c for c in self.config[k]}
+                    for d in v:
+                        if d["name"] in vs:
+                            vs[d["name"]].update(d)
                         else:
-                            self.config[k].append(database)
+                            self.config[k].append(d)
             elif k == "pipelines":
                 if self.config[k]:
                     pipelines = copy.copy(self.config[k] if isinstance(self.config[k], list)
@@ -127,6 +129,17 @@ class CoreTasker(Tasker):
             if not database_cls:
                 raise DatabaseUnknownException(config["name"] + " is unknown")
             self.databases[config["name"]] = database_cls(self.manager.database_manager, config)
+
+    def load_caches(self):
+        for config in self.config["caches"]:
+            config = dict(**config)
+            if config["database"] not in self.databases:
+                continue
+            name = config.pop("name")
+            try:
+                self.caches[name] = CacheLoader(name, self.databases[config.pop("database")], config)
+            except NotImplementedError:
+                raise CacheUnknownException(name + " is unknown")
 
     def load_imports(self):
         for name, package in self.config["imports"].items():
@@ -679,8 +692,12 @@ class CoreTasker(Tasker):
                     return self.valuer_compiler.compile_continue_valuer(key["key"], key["filter"], valuer[1])
                 if key["key"] == "state" and len(valuer) in (2, 3):
                     return self.valuer_compiler.compile_state_valuer(key["key"], key["filter"],
-                                                                      valuer[1] if len(valuer) >= 2 else None,
-                                                                      valuer[2] if len(valuer) >= 3 else None)
+                                                                     valuer[1] if len(valuer) >= 2 else None,
+                                                                     valuer[2] if len(valuer) >= 3 else None)
+                if key["key"] == "cache" and len(valuer) in (4, 5):
+                    return self.valuer_compiler.compile_cache_valuer(valuer[1], key["filter"],
+                                                                     valuer[2], valuer[3],
+                                                                     valuer[4] if len(valuer) >= 5 else None)
             return self.valuer_compiler.compile_const_valuer(valuer)
 
         key = self.compile_key(valuer)
@@ -1010,6 +1027,7 @@ class CoreTasker(Tasker):
         self.compile_sources(self.config)
         self.compile_options()
         self.load_databases()
+        self.load_caches()
         self.compile_variables()
         self.compile_schema()
         self.compile_pipelines()

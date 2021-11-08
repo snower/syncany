@@ -3,7 +3,8 @@
 # create by: snower
 
 from ...valuers.valuer import LoadAllFieldsException
-from ...errors import ValuerUnknownException
+from ...errors import CacheUnknownException, ValuerUnknownException
+
 
 class LoaderJoinWarp(object):
     __loader = None
@@ -610,3 +611,34 @@ class ValuerCreater(object):
                 inherit_valuers.append(inherit_valuer)
 
         return valuer_cls(global_states, calculate_valuer, return_valuer, current_inherit_valuers, config['key'], filter)
+
+    def create_cache_valuer(self, config, inherit_valuers=None, **kwargs):
+        valuer_cls = self.find_valuer_driver(config["name"])
+        if not valuer_cls:
+            raise ValuerUnknownException(config["name"] + " is unknown")
+        if config["key"] not in self.tasker.caches:
+            raise CacheUnknownException(config["key"] + " is unknown")
+
+        key_valuer = self.create_valuer(config["key_valuer"], inherit_valuers=inherit_valuers, **kwargs) \
+            if "key_valuer" in config and config["key_valuer"] else None
+
+        calculate_valuer = self.create_valuer(config["calculate_valuer"], inherit_valuers=inherit_valuers, **kwargs) \
+            if "calculate_valuer" in config and config["calculate_valuer"] else None
+
+        return_inherit_valuers = []
+        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, **kwargs) \
+            if "return_valuer" in config and config["return_valuer"] else None
+
+        filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
+        filter = filter_cls(config["filter"]["args"]) if filter_cls else None
+
+        current_inherit_valuers = []
+        for inherit_valuer in return_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
+        return valuer_cls(self.tasker.caches[config["key"]], key_valuer, calculate_valuer, return_valuer,
+                                             current_inherit_valuers, config['key'], filter)

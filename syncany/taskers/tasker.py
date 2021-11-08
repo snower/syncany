@@ -26,7 +26,8 @@ class Tasker(object):
             "outputers": {},
             "valuers": {},
             "filters": {},
-            "databases": {},
+            "databases": [],
+            "caches": [],
             "calculaters": {},
         }
         self.arguments = {}
@@ -34,6 +35,7 @@ class Tasker(object):
         self.input = ""
         self.output = ""
         self.databases = {}
+        self.caches = {}
         self.schema = {}
         self.loader = None
         self.outputer = None

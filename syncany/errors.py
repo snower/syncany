@@ -29,5 +29,10 @@ class CalculaterUnknownException(SyncanyException):
 class DatabaseUnknownException(SyncanyException):
     pass
 
+
+class CacheUnknownException(SyncanyException):
+    pass
+
+
 class SourceUnknownException(SyncanyException):
     pass

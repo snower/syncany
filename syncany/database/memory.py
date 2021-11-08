@@ -2,8 +2,9 @@
 # 2020/7/6
 # create by: snower
 
+import time
 from ..utils import human_repr_object
-from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
+from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, CacheBuilder, DataBase, DatabaseFactory
 
 
 class MemoryQueryBuilder(QueryBuilder):
@@ -193,6 +194,34 @@ class MemoryDeleteBuilder(DeleteBuilder):
         return "filters: %s" % human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
 
 
+class MemoryCacheBuilder(CacheBuilder):
+    def __init__(self, *args, **kwargs):
+        super(MemoryCacheBuilder, self).__init__(*args, **kwargs)
+
+        self.caches = self.db.memory_databases.get("@caches::" + self.prefix_key, {})
+
+    def get(self, key):
+        if key not in self.caches:
+            return None
+        value = self.caches[key]
+        if time.time() > value["expried_time"]:
+            self.caches.pop(key, None)
+            return None
+        return value["value"]
+
+    def set(self, key, value, exprie_seconds=86400):
+        self.caches[key] = {
+            "value": value,
+            "expried_time": time.time() + exprie_seconds
+        }
+
+    def delete(self, key):
+        if key not in self.caches:
+            return False
+        self.caches.pop(key, None)
+        return True
+
+
 class MemoryDBDriver(dict):
     pass
 
@@ -214,8 +243,8 @@ class MemoryDB(DataBase):
 
         key = self.get_key(self.config)
         if not self.manager.has(key):
-            self.manager.register(key, MemoryDB(key, self.config))
-        self.manager.memory_databases = self.manager.acquire(key).raw()
+            self.manager.register(key, MemoryDBFactory(key, self.config))
+        self.memory_databases = self.manager.acquire(key).raw()
 
     def query(self, name, primary_keys=None, fields=()):
         return MemoryQueryBuilder(self, name, primary_keys, fields)
@@ -228,3 +257,6 @@ class MemoryDB(DataBase):
 
     def delete(self, name, primary_keys=None):
         return MemoryDeleteBuilder(self, name, primary_keys)
+
+    def cache(self, name, prefix_key, config=None):
+        return MemoryCacheBuilder(self, name, prefix_key, config)

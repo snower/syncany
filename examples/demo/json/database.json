@@ -8,6 +8,10 @@
       "name": "data",
       "driver": "json",
       "path": "./examples/demo/data"
+    },
+    {
+      "name": "memory",
+      "driver": "memory"
     }
   ]
 }

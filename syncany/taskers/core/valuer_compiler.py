@@ -367,3 +367,19 @@ class ValuerCompiler(object):
             "calculate_valuer": calculate_valuer,
             "return_valuer": return_valuer,
         }
+
+    def compile_cache_valuer(self, key="", filter=None, key_arg=None, calculate_arg=None, return_arg=None):
+        return_arg, _ = self.parse_return_valuer(return_arg)
+
+        key_valuer = self.compile_valuer(key_arg) if key_arg else None
+        calculate_valuer = self.compile_valuer(calculate_arg) if calculate_arg else None
+        return_valuer = self.compile_valuer(return_arg) if return_arg else None
+
+        return {
+            "name": "cache_valuer",
+            "key": key,
+            "filter": filter,
+            "key_valuer": key_valuer,
+            "calculate_valuer": calculate_valuer,
+            "return_valuer": return_valuer,
+        }

@@ -143,6 +143,23 @@ class DeleteBuilder(object):
         return ""
 
 
+class CacheBuilder(object):
+    def __init__(self, db, name, prefix_key, config):
+        self.db = db
+        self.name = name
+        self.prefix_key = prefix_key
+        self.config = config or {}
+
+    def get(self, key):
+        raise NotImplementedError()
+
+    def set(self, key, value, exprie_seconds=86400):
+        raise NotImplementedError()
+
+    def delete(self, key):
+        raise NotImplementedError()
+
+
 class DataBase(object):
     def __init__(self, manager, config):
         self.manager = manager
@@ -166,6 +183,9 @@ class DataBase(object):
 
     def delete(self, name, primary_keys=None):
         return DeleteBuilder(self, name, primary_keys)
+
+    def cache(self, name, prefix_key, config=None):
+        raise NotImplementedError()
 
     def flush(self):
         pass

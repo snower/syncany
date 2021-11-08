@@ -148,6 +148,52 @@ def show_dependency_tasker(tasker, dependency_taskers):
         show_dependency_tasker(*dependency_tasker)
     show_tasker(tasker)
 
+def run(register_aps, ap_arguments, arguments, manager, tasker, dependency_taskers):
+    try:
+        arguments = {key.lower(): value for key, value in os.environ.items()}
+        arguments.update(ap_arguments.__dict__)
+
+        fix_print_outputer(tasker, register_aps, arguments)
+        for dependency_tasker in dependency_taskers:
+            compile_dependency(arguments, *dependency_tasker)
+        tasker.compile(arguments)
+
+        if "@show" in arguments and arguments["@show"]:
+            for dependency_tasker in dependency_taskers:
+                show_dependency_tasker(*dependency_tasker)
+            show_tasker(tasker)
+            return 0
+        if "@verbose" in arguments and arguments["@verbose"]:
+            warp_database_logging(tasker)
+
+        for dependency_tasker in dependency_taskers:
+            run_dependency(*dependency_tasker)
+        tasker.run()
+    except SystemError:
+        tasker.close(False, "signal terminaled")
+        get_logger().error("signal exited")
+        return 130
+    except KeyboardInterrupt:
+        tasker.close(False, "user terminaled")
+        get_logger().error("Crtl+C exited")
+        return 130
+    except Exception as e:
+        if "@show" in arguments and arguments["@show"]:
+            for dependency_tasker in dependency_taskers:
+                show_dependency_tasker(*dependency_tasker)
+            show_tasker(tasker)
+        else:
+            tasker.close(False, "Error: " + repr(e), traceback.format_exc())
+        get_logger().error("%s\n%s", e, traceback.format_exc())
+        return 1
+    else:
+        if "@show" in arguments and arguments["@show"]:
+            return 0
+        tasker.close()
+    finally:
+        manager.close()
+    return 0
+
 def main():
     if len(sys.argv) < 2:
         print("usage: syncany [-h] json|yaml")
@@ -160,12 +206,12 @@ def main():
         print("syncany error: require json or yaml file")
         exit(2)
 
-    manager = TaskerManager(DatabaseManager())
-    tasker = CoreTasker(sys.argv[1], manager)
     try:
         signal.signal(signal.SIGHUP, lambda signum, frame: tasker.terminate())
         signal.signal(signal.SIGTERM, lambda signum, frame: tasker.terminate())
 
+        manager = TaskerManager(DatabaseManager())
+        tasker = CoreTasker(sys.argv[1], manager)
         arguments = tasker.load()
         tasker.config_logging()
 
@@ -207,43 +253,17 @@ def main():
         dependency_taskers = []
         for filename in tasker.get_dependencys():
             dependency_taskers.append(load_dependency(tasker, filename, ap, register_aps))
-
         ap_arguments = ap.parse_args()
-        arguments = {key.lower(): value for key, value in os.environ.items()}
-        arguments.update(ap_arguments.__dict__)
-
-        fix_print_outputer(tasker, register_aps, arguments)
-        for dependency_tasker in dependency_taskers:
-            compile_dependency(arguments, *dependency_tasker)
-        tasker.compile(arguments)
-
-        if "@show" in arguments and arguments["@show"]:
-            for dependency_tasker in dependency_taskers:
-                show_dependency_tasker(*dependency_tasker)
-            return show_tasker(tasker)
-        if "@verbose" in arguments and arguments["@verbose"]:
-            warp_database_logging(tasker)
-
-        for dependency_tasker in dependency_taskers:
-            run_dependency(*dependency_tasker)
-        tasker.run()
+        exit(run(register_aps, ap_arguments, arguments, manager, tasker, dependency_taskers))
     except SystemError:
-        tasker.close(False, "signal terminaled")
         get_logger().error("signal exited")
         exit(130)
     except KeyboardInterrupt:
-        tasker.close(False, "user terminaled")
         get_logger().error("Crtl+C exited")
         exit(130)
     except Exception as e:
-        tasker.close(False, "Error: " + repr(e), traceback.format_exc())
         get_logger().error("%s\n%s", e, traceback.format_exc())
         exit(1)
-    else:
-        tasker.close()
-    finally:
-        manager.close()
-    exit(0)
 
 if __name__ == "__main__":
     main()

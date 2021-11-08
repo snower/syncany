@@ -21,6 +21,7 @@ from .loop import ForeachValuer, BreakValuer, ContinueValuer
 from .condition import IfValuer
 from .match import MatchValuer
 from .state import StateValuer
+from .cache import CacheValuer
 from ..errors import ValuerUnknownException
 
 VALUERS = {
@@ -43,7 +44,8 @@ VALUERS = {
     "continue_valuer": ContinueValuer,
     "if_valuer": IfValuer,
     "match_valuer": MatchValuer,
-    "state_valuer": StateValuer
+    "state_valuer": StateValuer,
+    "cache_valuer": CacheValuer,
 }
 
 def find_valuer(name):
