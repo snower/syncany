@@ -196,7 +196,7 @@ class DatabaseDriver(object):
         return getattr(self.driver, item)
 
     def ping(self):
-        self.factory.fing(self.driver)
+        self.factory.ping(self.driver)
 
     def close(self):
         self.factory.close(self.driver)
@@ -238,7 +238,7 @@ class DatabaseManager(object):
         with self.lock:
             if key in self.factorys:
                 return
-            driver = DatabaseDriver(self, factory.create())
+            driver = DatabaseDriver(factory, factory.create())
             factory.drivers.append(driver)
             self.factorys[key] = factory
 
@@ -255,7 +255,7 @@ class DatabaseManager(object):
                 except:
                     driver.close()
                     continue
-            return DatabaseDriver(self, factory.create())
+            return DatabaseDriver(factory, factory.create())
 
     def release(self, key, driver):
         if self.closed:
