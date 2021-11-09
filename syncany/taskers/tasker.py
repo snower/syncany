@@ -4,6 +4,7 @@
 
 import time
 import threading
+from ..utils import gen_runner_id
 from ..loaders import find_loader, Loader
 from ..outputers import find_outputer, Outputer
 from ..valuers import find_valuer, Valuer
@@ -14,13 +15,45 @@ from ..hook import Hooker
 
 _thread_local = threading.local()
 
+
+class TaskerStatus(dict):
+    def __init__(self):
+        super(TaskerStatus, self).__init__(
+            runner_id=None,
+            start_time=time.time(),
+            status="running",
+            message="",
+            trackback=None,
+            data={
+                "first": None,
+                "last": None
+            },
+            statistics={
+                "loader": {},
+                "join_loaders": {},
+                "outputer": {}
+            }
+        )
+
+    @property
+    def runner_id(self):
+        if "runner_id" in self and self["runner_id"]:
+            return self["runner_id"]
+        self["runner_id"] = gen_runner_id()
+        return self["runner_id"]
+
+    @property
+    def start_time(self):
+        return self["start_time"]
+
+
 class Tasker(object):
     name = ""
 
     def __init__(self, manager, parent=None):
-        self.start_time = time.time()
         self.manager = manager
         self.parent = parent
+        self.status = TaskerStatus()
         self.extensions = {
             "loaders": {},
             "outputers": {},
@@ -40,11 +73,6 @@ class Tasker(object):
         self.loader = None
         self.outputer = None
         self.hookers = set([])
-        self.statistics = {
-            "loader": {},
-            "join_loaders": {},
-            "outputer": {}
-        }
 
     def find_loader_driver(self, name):
         if name in self.extensions["loaders"]:

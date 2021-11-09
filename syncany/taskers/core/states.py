@@ -93,7 +93,7 @@ class States(dict):
             database.flush()
 
     def save(self, tasker):
-        datas = [tasker.get_statistics()]
+        datas = [tasker.get_status()]
         for state_tasker in self.taskers:
             if not state_tasker.output:
                 continue

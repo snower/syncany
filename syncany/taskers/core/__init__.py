@@ -969,7 +969,7 @@ class CoreTasker(Tasker):
         if isinstance(loader_statistics, dict):
             self.merge_statistics(loader_statistics, statistics)
             if "execute_time" not in loader_statistics:
-                loader_statistics["execute_time"] = (time.time() - self.start_time) * 1000
+                loader_statistics["execute_time"] = (time.time() - self.status.start_time) * 1000
         statistics = ["loader_%s: %s" % (key, value) for key, value in statistics.items()]
         get_logger().info("%s loader: %s <- %s %s", self.name, loader.__class__.__name__, self.input, " ".join(statistics))
 
@@ -980,7 +980,7 @@ class CoreTasker(Tasker):
         if isinstance(join_loader_statistics, dict):
             self.merge_statistics(join_loader_statistics, statistics)
             if "execute_time" not in join_loader_statistics:
-                join_loader_statistics["execute_time"] = (time.time() - self.start_time) * 1000
+                join_loader_statistics["execute_time"] = (time.time() - self.status.start_time) * 1000
         get_logger().info("%s join_count: %s %s", self.name, len(join_loaders),
                           " ".join(["join_%s: %s" % (key, value) for key, value in statistics.items()]))
 
@@ -989,7 +989,7 @@ class CoreTasker(Tasker):
         if isinstance(outputer_statistics, dict):
             self.merge_statistics(outputer_statistics, statistics)
             if "execute_time" not in outputer_statistics:
-                outputer_statistics["execute_time"] = (time.time() - self.start_time) * 1000
+                outputer_statistics["execute_time"] = (time.time() - self.status.start_time) * 1000
         statistics = ["outputer_%s: %s" % (key, value) for key, value in statistics.items()]
         get_logger().info("%s outputer: %s -> %s %s", self.name, outputer.__class__.__name__, self.output, " ".join(statistics))
 
@@ -1060,26 +1060,26 @@ class CoreTasker(Tasker):
             load_count = len(self.loader.datas)
             for hooker in self.hookers:
                 self.loader.datas = hooker.queried(self, self.loader.datas)
-            self.print_queryed_statistics(self.loader, self.statistics["loader"])
+            self.print_queryed_statistics(self.loader, self.status["statistics"]["loader"])
 
             datas = self.loader.get()
             if not datas:
-                self.print_loaded_statistics(self.join_loaders.values(), self.statistics["join_loaders"])
-                self.print_stored_statistics(self.outputer, self.statistics["outputer"])
+                self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
+                self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
                 break
             for hooker in self.hookers:
                 datas = hooker.loaded(self, datas)
-            self.print_loaded_statistics(self.join_loaders.values(), self.statistics["join_loaders"])
+            self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
 
             if last_cursor_data:
                 self.outputer.filter_cursor(last_cursor_data, (batch_index - 1) * batch_count, batch_count)
             self.outputer.store(datas)
             for hooker in self.hookers:
                 hooker.outputed(self, datas)
-            self.print_stored_statistics(self.outputer, self.statistics["outputer"])
+            self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
             self.batch_cursor, last_cursor_data = self.loader.last_data, datas[-1]
-            self.statistics["first_data"] = datas[0]
-            self.statistics["last_data"] = datas[-1]
+            self.status["data"]["first"] = datas[0]
+            self.status["data"]["last"] = datas[-1]
             if load_count < batch_count:
                 break
             for name, database in self.databases.items():
@@ -1087,8 +1087,8 @@ class CoreTasker(Tasker):
             self.states.save(self)
 
         get_logger().info("%s batch end %s, %s", self.name, batch_index - 1, batch_count)
-        statistics = (self.loader.__class__.__name__, self.statistics["loader"], self.outputer.__class__.__name__,
-                      self.statistics["outputer"], len(self.join_loaders), self.statistics["join_loaders"])
+        statistics = (self.loader.__class__.__name__, self.status["statistics"]["loader"], self.outputer.__class__.__name__,
+                      self.status["statistics"]["outputer"], len(self.join_loaders), self.status["statistics"]["join_loaders"])
         self.print_statistics(*statistics)
         return self.loader.next()
 
@@ -1098,23 +1098,23 @@ class CoreTasker(Tasker):
         self.loader.load(loader_timeout)
         for hooker in self.hookers:
             self.loader.datas = hooker.queried(self, self.loader.datas)
-        self.print_queryed_statistics(self.loader, self.statistics["loader"])
+        self.print_queryed_statistics(self.loader, self.status["statistics"]["loader"])
 
         datas = self.loader.get()
         if not datas:
-            self.print_loaded_statistics(self.join_loaders.values(), self.statistics["join_loaders"])
-            self.print_stored_statistics(self.outputer, self.statistics["outputer"])
+            self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
+            self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
             return self.loader.next()
         for hooker in self.hookers:
             datas = hooker.loaded(self, datas)
-        self.print_loaded_statistics(self.join_loaders.values(), self.statistics["join_loaders"])
+        self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
 
         self.outputer.store(datas)
         for hooker in self.hookers:
             hooker.outputed(self, datas)
-        self.print_stored_statistics(self.outputer, self.statistics["outputer"])
-        self.statistics["first_data"] = datas[0]
-        self.statistics["last_data"] = datas[-1]
+        self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
+        self.status["data"]["first"] = datas[0]
+        self.status["data"]["last"] = datas[-1]
         return self.loader.next()
 
     def run(self):
@@ -1134,8 +1134,10 @@ class CoreTasker(Tasker):
             self.loader = self.loader.clone()
             self.outputer = self.outputer.clone()
             self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
+
+        self.status["execute_time"] = (time.time() - self.status.start_time) * 1000
         get_logger().info("%s finish %s %s %.2fms", self.name, self.config_filename, self.config.get("name"),
-                          (time.time() - self.start_time) * 1000)
+                          self.status["execute_time"])
 
     def terminate(self):
         if self.terminated:
@@ -1150,31 +1152,29 @@ class CoreTasker(Tasker):
         if self.closed:
             return
         self.closed = True
-        self.statistics["status"] = "succed" if succed else "fail"
-        self.statistics["message"] = message
-        self.statistics["trackback"] = traceback
+        self.status["status"] = "succed" if succed else "fail"
+        self.status["message"] = message
+        self.status["trackback"] = traceback
         self.states.save(self)
         for name, database in self.databases.items():
             database.close()
-        self.valuer_compiler, self.valuer_creater, self.loader_creater, self.outputer_creater = None, None, None, None
         self.states.close()
+        self.valuer_compiler, self.valuer_creater, self.loader_creater, self.outputer_creater = None, None, None, None
 
-    def get_statistics(self):
-        if "runner_id" not in self.statistics:
-            self.statistics["runner_id"] = gen_runner_id()
-        statistics = {key: value for key, value in self.statistics.items()}
-        statistics["name"] = self.name
-        statistics["start_time"] = datetime.datetime.fromtimestamp(self.start_time, pytz.UTC)
-        if "status" not in statistics:
-            statistics["status"] = "running"
-        statistics["arguments"] = dict(**self.arguments)
-        statistics["variables"] = dict(**self.global_variables)
-        statistics["states"] = dict(**self.states)
+    def get_status(self):
+        if "runner_id" not in self.status or not self.status["runner_id"]:
+            self.status["runner_id"] = gen_runner_id()
+        status = {key: value for key, value in self.status.items()}
+        status["name"] = self.name
+        status["start_time"] = datetime.datetime.fromtimestamp(self.status.start_time, pytz.UTC)
+        status["arguments"] = dict(**self.arguments)
+        status["variables"] = dict(**self.global_variables)
+        status["states"] = dict(**self.states)
         if self.loader and isinstance(self.batch_cursor, dict):
             if len(self.loader.primary_keys) > 1:
-                statistics["cursor"] = self.batch_cursor
+                status["cursor"] = self.batch_cursor
             else:
-                statistics["cursor"] = self.batch_cursor.get(self.loader.primary_keys[0])
+                status["cursor"] = self.batch_cursor.get(self.loader.primary_keys[0])
         else:
-            statistics["cursor"] = self.batch_cursor
-        return statistics
+            status["cursor"] = self.batch_cursor
+        return status

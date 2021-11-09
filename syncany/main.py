@@ -9,7 +9,7 @@ import datetime
 import argparse
 import traceback
 import signal
-from .utils import print_object, get_rich, human_format_object
+from .utils import print_object, get_rich, human_format_object, human_repr_object
 from .logger import get_logger
 from .taskers.manager import TaskerManager
 from .taskers.core import CoreTasker
@@ -61,8 +61,8 @@ def warp_database_logging(tasker):
                 beautify_print("%s %s %s -> %s::%s<%s> %.2fms" % (datetime.datetime.now(), database.__class__.__name__,
                                                           database_verbose, builder.__class__.__name__, name, builder.name,
                                                           (time.time() - start_time) * 1000))
-                beautify_print("args: " + str(args + tuple(kwargs.items())))
-                beautify_print("result: " + str(result))
+                beautify_print("args: " + human_repr_object(args + tuple(kwargs.items())))
+                beautify_print("result: " + human_repr_object(result))
                 print()
             return result
         return _
