@@ -690,10 +690,11 @@ class CoreTasker(Tasker):
                     return self.valuer_compiler.compile_break_valuer(key["key"], key["filter"], valuer[1])
                 if key["key"] == "continue" and len(valuer) == 2:
                     return self.valuer_compiler.compile_continue_valuer(key["key"], key["filter"], valuer[1])
-                if key["key"] == "state" and len(valuer) in (2, 3):
+                if key["key"] == "state" and len(valuer) in (2, 3, 4):
                     return self.valuer_compiler.compile_state_valuer(key["key"], key["filter"],
                                                                      valuer[1] if len(valuer) >= 2 else None,
-                                                                     valuer[2] if len(valuer) >= 3 else None)
+                                                                     valuer[2] if len(valuer) >= 3 else None,
+                                                                     valuer[3] if len(valuer) >= 4 else None)
                 if key["key"] == "cache" and len(valuer) in (4, 5):
                     return self.valuer_compiler.compile_cache_valuer(valuer[1], key["filter"],
                                                                      valuer[2], valuer[3],

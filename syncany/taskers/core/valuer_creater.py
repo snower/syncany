@@ -587,6 +587,11 @@ class ValuerCreater(object):
                                               global_states=global_states, **kwargs) \
             if "calculate_valuer" in config and config["calculate_valuer"] else None
 
+        default_inherit_valuers = []
+        default_valuer = self.create_valuer(config["default_valuer"], inherit_valuers=default_inherit_valuers,
+                                              global_states=global_states, **kwargs) \
+            if "default_valuer" in config and config["default_valuer"] else None
+
         return_inherit_valuers = []
         return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers,
                                            global_states=global_states, **kwargs) \
@@ -603,6 +608,13 @@ class ValuerCreater(object):
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
 
+        for inherit_valuer in default_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
         for inherit_valuer in return_inherit_valuers:
             inherit_valuer["reflen"] -= 1
             if inherit_valuer["reflen"] == 0:
@@ -610,7 +622,7 @@ class ValuerCreater(object):
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
 
-        return valuer_cls(global_states, calculate_valuer, return_valuer, current_inherit_valuers, config['key'], filter)
+        return valuer_cls(global_states, calculate_valuer, default_valuer, return_valuer, current_inherit_valuers, config['key'], filter)
 
     def create_cache_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])
