@@ -20,7 +20,10 @@ def load_file(filename):
         return content
 
 def load_http(url):
-    import requests
+    try:
+        import requests
+    except:
+        raise ImportError("requests>=2.22.0 is required")
     res = requests.get(url)
     url_infos = url.split(".")
     content_type = res.headers.get("Content-Type") or (url_infos[-1] if url_infos else "")

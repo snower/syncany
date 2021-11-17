@@ -36,7 +36,8 @@ setup(
         "influxdb": ["influxdb>=5.3.1"],
         "clickhouse": ["clickhouse_driver>=0.1.5"],
         "rich": ["rich>=9.11.1"],
-        "redis": ["redis>=3.5.3"]
+        "redis": ["redis>=3.5.3"],
+        "requests": ["requests>=2.22.0"]
     },
     package_data={
         '': ['README.md'],

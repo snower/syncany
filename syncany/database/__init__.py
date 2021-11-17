@@ -19,6 +19,7 @@ DATABASES = {
     "json": ".json.JsonDB",
     "beanstalk": ".beanstalk.BeanstalkDB",
     "redis": ".redis.RedisDB",
+    "http": ".http.HttpDataBase",
 }
 
 
