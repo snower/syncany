@@ -198,6 +198,10 @@ querys: {
 
 ## variables
 
+## states
+
+## caches
+
 ## schema
 
 输出数据格式定义。

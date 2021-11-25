@@ -221,3 +221,23 @@ if判断分支指令，返回指令可选。
 }
 A'
 ```
+
+## state 引用当前状态值
+
+引用状态管理器当前状态的值。
+
+```
+格式1：
+["#state", "<calcucate_directive>", "<default_directive>", ":<return_directive>"]
+A'         G'                       G'                     C'
+```
+
+## cache 缓存操作
+
+缓存操作，有缓存则加载缓存，没有则从执行加载语句，支持本地缓存和redis缓存。
+
+```
+格式1：
+["#cache", "<cache_name>", "<key_directive>", "<calcucate_directive>", ":<return_directive>"]
+A'                         A'                 A'                       C'
+```
