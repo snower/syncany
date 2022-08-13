@@ -183,6 +183,45 @@ class ConvH2VCalculater(Calculater):
         return result
 
 
+class ConvUniqKVCalculater(Calculater):
+    def update_outputer_schema(self, xkeys):
+        from ..taskers.tasker import current_tasker
+        tasker = current_tasker()
+        tasker.outputer.schema = {}
+        for key in xkeys:
+            valuer = tasker.create_valuer(tasker.valuer_compiler.compile_data_valuer(key, None))
+            if not valuer:
+                continue
+            tasker.outputer.add_valuer(key, valuer)
+
+    def calculate(self):
+        if len(self.args) < 4:
+            return None
+
+        datas = self.args[0] if isinstance(self.args[0], list) else \
+            ([self.args[0]] if isinstance(self.args[0], dict) else [])
+        ukey, kkey, vkey = self.args[1], self.args[2], self.args[3]
+        keys = set([])
+        result, uniq_datas = [], {}
+        for data in datas:
+            if ukey not in data:
+                continue
+
+            uvalue = data[ukey]
+            if uvalue not in uniq_datas:
+                for k in data:
+                    keys.add(k)
+                uniq_datas[uvalue] = data
+                result.append(data)
+
+            uniq_data = uniq_datas[uvalue]
+            if kkey in data and vkey in data:
+                uniq_data[data[kkey]] = data[vkey]
+                keys.add(data[kkey])
+        self.update_outputer_schema(list(keys))
+        return result
+
+
 class ConvCalculater(Calculater):
     def __init__(self, *args, **kwargs):
         super(ConvCalculater, self).__init__(*args, **kwargs)
@@ -195,6 +234,8 @@ class ConvCalculater(Calculater):
             self.conv = ConvV2HCalculater(*args, **kwargs)
         elif self.name == "conv::h2v":
             self.conv = ConvH2VCalculater(*args, **kwargs)
+        elif self.name == "conv::uniqkv":
+            self.conv = ConvUniqKVCalculater(*args, **kwargs)
         else:
             self.conv = None
 

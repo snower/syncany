@@ -233,8 +233,9 @@ def main():
         exit(2)
 
     try:
-        signal.signal(signal.SIGHUP, lambda signum, frame: tasker.terminate())
-        signal.signal(signal.SIGTERM, lambda signum, frame: tasker.terminate())
+        if sys.platform != "win32":
+            signal.signal(signal.SIGHUP, lambda signum, frame: tasker.terminate())
+            signal.signal(signal.SIGTERM, lambda signum, frame: tasker.terminate())
 
         manager = TaskerManager(DatabaseManager())
         tasker = CoreTasker(sys.argv[1], manager)
