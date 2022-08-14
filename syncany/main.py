@@ -83,11 +83,15 @@ def warp_database_logging(tasker):
         database.delete = builder_warper(database, database.delete)
         database.cache = cache_builder_warper(database, database.cache)
 
-def load_dependency(parent, filename, ap, register_aps):
+def load_dependency(parent, filename, parent_arguments, ap, register_aps):
     tasker = CoreTasker(filename, parent.manager, parent)
     arguments = tasker.load()
+    setattr(tasker, "parent_arguments", parent_arguments)
 
     for argument in arguments:
+        if argument["name"] in parent_arguments:
+            continue
+
         kwargs = {}
         if "type" in argument:
             kwargs["type"] = argument["type"]
@@ -117,17 +121,24 @@ def load_dependency(parent, filename, ap, register_aps):
 
     dependency_taskers = []
     for filename in tasker.get_dependencys():
-        dependency_taskers.append(load_dependency(tasker, filename, ap, register_aps))
+        if isinstance(filename, list) and len(filename) == 2:
+            filename, dependency_arguments = filename[0], (filename[1] if isinstance(filename[1], dict) else {})
+        else:
+            dependency_arguments = {}
+        dependency_taskers.append(load_dependency(tasker, filename, dependency_arguments, ap, register_aps))
     return (tasker, dependency_taskers)
 
 def compile_dependency(arguments, tasker, dependency_taskers):
-    for dependency_tasker in dependency_taskers:
-        compile_dependency(arguments, *dependency_tasker)
     kn, knl = (tasker.name + "@"), len(tasker.name + "@")
-    arguments = {key[knl:]: value for key, value in arguments.items() if key[:knl] == kn}
-    tasker.compile(arguments)
+    tasker_arguments = {}
+    if hasattr(tasker, "parent_arguments"):
+        tasker_arguments.update(tasker.parent_arguments)
+    tasker_arguments.update({key[knl:]: value for key, value in arguments.items() if key[:knl] == kn})
+    tasker.compile(tasker_arguments)
     if "@verbose" in arguments and arguments["@verbose"]:
         warp_database_logging(tasker)
+    for dependency_tasker in dependency_taskers:
+        compile_dependency(arguments, *dependency_tasker)
 
 def run_dependency(tasker, dependency_taskers):
     dependency_statistics = []
@@ -180,9 +191,9 @@ def run(register_aps, ap_arguments, arguments, manager, tasker, dependency_taske
         arguments.update(ap_arguments.__dict__)
 
         fix_print_outputer(tasker, register_aps, arguments)
+        tasker.compile(arguments)
         for dependency_tasker in dependency_taskers:
             compile_dependency(arguments, *dependency_tasker)
-        tasker.compile(arguments)
 
         if "@show" in arguments and arguments["@show"]:
             for dependency_tasker in dependency_taskers:
@@ -279,7 +290,11 @@ def main():
 
         dependency_taskers = []
         for filename in tasker.get_dependencys():
-            dependency_taskers.append(load_dependency(tasker, filename, ap, register_aps))
+            if isinstance(filename, list) and len(filename) == 2:
+                filename, dependency_arguments = filename[0], (filename[1] if isinstance(filename[1], dict) else {})
+            else:
+                dependency_arguments = {}
+            dependency_taskers.append(load_dependency(tasker, filename, dependency_arguments, ap, register_aps))
         ap_arguments = ap.parse_args()
         exit(run(register_aps, ap_arguments, arguments, manager, tasker, dependency_taskers))
     except SystemError:

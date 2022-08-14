@@ -241,22 +241,34 @@ class MemoryDB(DataBase):
     def __init__(self, manager, config):
         super(MemoryDB, self).__init__(manager, dict(**config))
 
+        self.memory_databases = None
+
+    def ensure_memory_databases(self):
+        if self.memory_databases is not None:
+            return
         key = self.get_key(self.config)
         if not self.manager.has(key):
             self.manager.register(key, MemoryDBFactory(key, self.config))
-        self.memory_databases = self.manager.acquire(key).raw()
+        db = self.manager.acquire(key)
+        self.memory_databases = db.raw()
+        self.manager.release(key, db)
 
     def query(self, name, primary_keys=None, fields=()):
+        self.ensure_memory_databases()
         return MemoryQueryBuilder(self, name, primary_keys, fields)
 
     def insert(self, name, primary_keys=None, fields=(), datas=None):
+        self.ensure_memory_databases()
         return MemoryInsertBuilder(self, name, primary_keys, fields, datas)
 
     def update(self, name, primary_keys=None, fields=(), update=None, diff_data=None):
+        self.ensure_memory_databases()
         return MemoryUpdateBuilder(self, name, primary_keys, fields, update, diff_data)
 
     def delete(self, name, primary_keys=None):
+        self.ensure_memory_databases()
         return MemoryDeleteBuilder(self, name, primary_keys)
 
     def cache(self, name, prefix_key, config=None):
+        self.ensure_memory_databases()
         return MemoryCacheBuilder(self, name, prefix_key, config)

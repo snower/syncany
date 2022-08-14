@@ -184,16 +184,6 @@ class ConvH2VCalculater(Calculater):
 
 
 class ConvUniqKVCalculater(Calculater):
-    def update_outputer_schema(self, xkeys):
-        from ..taskers.tasker import current_tasker
-        tasker = current_tasker()
-        tasker.outputer.schema = {}
-        for key in xkeys:
-            valuer = tasker.create_valuer(tasker.valuer_compiler.compile_data_valuer(key, None))
-            if not valuer:
-                continue
-            tasker.outputer.add_valuer(key, valuer)
-
     def calculate(self):
         if len(self.args) < 4:
             return None
@@ -218,7 +208,23 @@ class ConvUniqKVCalculater(Calculater):
             if kkey in data and vkey in data:
                 uniq_data[data[kkey]] = data[vkey]
                 keys.add(data[kkey])
-        self.update_outputer_schema(list(keys))
+
+        from ..taskers.tasker import current_tasker
+        tasker = current_tasker()
+        valuer = tasker.outputer.schema[vkey]
+        for data in result:
+            for key in keys:
+                if key in data:
+                    continue
+                data[key] = valuer.clone().fill(None).get()
+
+        for key in keys:
+            if key in tasker.outputer.schema:
+                continue
+            valuer = tasker.create_valuer(tasker.valuer_compiler.compile_data_valuer(key, None))
+            if not valuer:
+                continue
+            tasker.outputer.add_valuer(key, valuer)
         return result
 
 
