@@ -2,8 +2,8 @@
 # 18/8/6
 # create by: snower
 
-version = "0.1.3"
-version_info = (0, 1, 3)
+version = "0.1.4"
+version_info = (0, 1, 4)
 
 from .loaders import Loader
 from .outputers import Outputer
