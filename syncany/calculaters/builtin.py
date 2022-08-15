@@ -681,12 +681,29 @@ class StringCalculater(Calculater):
         return ''
 
 class ArrayCalculater(Calculater):
+    def check_all(self, values, check_func):
+        for value in values:
+            if not check_func(value):
+                return False
+        return True
+
+    def to_map(self):
+        if self.check_all(self.args[0], lambda v: isinstance(v, dict)):
+            if len(self.args) >= 2:
+                return {v[self.args[1]]: v for v in self.args[0] if self.args[1] in v}
+            if len(self.args[0]) == 1:
+                return self.args[0]
+        return {str(i): self.args[0][i] for i in range(len(self.args[0]))}
+
     def calculate(self):
         if not self.args:
             return None
 
         func_name = self.name[7:]
         if isinstance(self.args[0], list):
+            if func_name == "map":
+                return self.to_map()
+
             value = list(self.args[0])
             if hasattr(value, func_name):
                 try:

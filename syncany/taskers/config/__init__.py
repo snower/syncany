@@ -2,11 +2,12 @@
 # 2021/10/29
 # create by: snower
 
+import os
 from .json_parser import JsonParser
 from .yaml_parser import YamlParser
 
 def load_file(filename):
-    with open(filename, "r") as fp:
+    with open(filename, "r", encoding=os.environ.get("SYNCANYENCODING", "utf-8")) as fp:
         content = fp.read()
         filename_infos = filename.split(".")
         if not filename_infos:
