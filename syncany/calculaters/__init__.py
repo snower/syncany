@@ -21,6 +21,7 @@ CALCULATERS = {
     "split": SplitCalculater,
     "join": JoinCalculater,
     "now": NowCalculater,
+    "empty": EmptyCalculater,
     "gt": GtCalculater,
     "gte": GteCalculater,
     "lt": LtCalculater,
