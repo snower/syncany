@@ -748,19 +748,34 @@ class StringCalculater(Calculater):
 
 
 class ArrayCalculater(Calculater):
-    def check_all(self, values, check_func):
-        for value in values:
-            if not check_func(value):
-                return False
-        return True
-
     def to_map(self):
-        if self.check_all(self.args[0], lambda v: isinstance(v, dict)):
-            if len(self.args) >= 2:
-                return {v[self.args[1]]: v for v in self.args[0] if self.args[1] in v}
-            if len(self.args[0]) == 1:
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            result = {}
+            for v in self.args[0]:
+                if not isinstance(v, dict) or self.args[1] not in v:
+                    continue
+                vk = v[self.args[1]]
+                if vk in result:
+                    if not isinstance(result[vk], list):
+                        result[vk] = [result[vk], v]
+                    else:
+                        result[vk].append(v)
+                else:
+                    result[vk] = v
+            return result
+        
+        if len(self.args) == 1 and isinstance(self.args[0], list):
+            if len(self.args[0]) == 1 and isinstance(self.args[0][0], dict):
                 return self.args[0]
-        return {str(i): self.args[0][i] for i in range(len(self.args[0]))}
+            return {str(i): self.args[0][i] for i in range(len(self.args[0]))}
+        
+        if isinstance(self.args[0], dict):
+            if len(self.args) == 2 and isinstance(self.args[1], str):
+                if self.args[1] in self.args[0]:
+                    return {self.args[0][self.args[1]]: self.args[0]}
+                return {}
+            return self.args[0]
+        return {}
 
     def calculate(self):
         if not self.args:

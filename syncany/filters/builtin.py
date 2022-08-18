@@ -260,14 +260,34 @@ class ArrayFilter(Filter):
 class MapFilter(Filter):
     def filter(self, value):
         if isinstance(value, dict):
+            if self.args:
+                return {value[self.args]: value} if self.args in value else {}
             return value
 
         if isinstance(value, (set, list, tuple)):
             if not value:
                 return {}
 
+            if self.args:
+                result = {}
+                for v in value:
+                    if not isinstance(v, dict) or self.args not in v:
+                        continue
+                    vk = v[self.args]
+                    if vk in result:
+                        if not isinstance(result[vk], list):
+                            result[vk] = [result[vk], v]
+                        else:
+                            result[vk].append(v)
+                    else:
+                        result[vk] = v
+                return result
+
             if len(value) == 1 and isinstance(value[0], dict):
                 return value[0]
+
+            if all([isinstance(v, dict) for v in value]):
+                return {str(i): value[i] for i in range(len(value))}
 
             value = list(value)
             value_len = len(value)
