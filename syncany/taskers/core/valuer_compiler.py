@@ -34,6 +34,12 @@ class ValuerCompiler(object):
                 return arg, None
 
         if isinstance(arg, dict):
+            if ":#case" in arg:
+                arg["#case"] = arg.pop(":#case")
+                return arg, None
+            if ":#match" in arg:
+                arg["#match"] = arg.pop(":#match")
+                return arg, None
             if "name" not in arg or not arg["name"].endswith("_valuer"):
                 return None, arg
             return arg, None
