@@ -19,7 +19,9 @@ class DBJoinMatcher(object):
         return matcher
 
     def fill(self, values):
-        if isinstance(values, list):
+        if values is None:
+            self.data = None
+        elif isinstance(values, list):
             self.data = [{key: valuer.get() for key, valuer in value.items()} for value in values]
         else:
             self.data = {key: valuer.get() for key, valuer in values.items()}
@@ -64,6 +66,7 @@ class DBJoinLoader(DBLoader):
         if self.loaded:
             return
 
+        unload_primary_keys = None
         if self.unload_primary_keys:
             fields = set([])
             if not self.key_matchers:
@@ -133,5 +136,13 @@ class DBJoinLoader(DBLoader):
                         for matcher in self.matchers[primary_key]:
                             matcher.fill(values)
                     self.matchers.pop(primary_key)
+                if unload_primary_keys and primary_key in unload_primary_keys:
+                    unload_primary_keys.remove(primary_key)
+            if unload_primary_keys:
+                for primary_key in unload_primary_keys:
+                    if primary_key in self.matchers:
+                        for matcher in self.matchers[primary_key]:
+                            matcher.fill(None)
+                        self.matchers.pop(primary_key)
 
         self.loaded = True

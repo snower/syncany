@@ -9,25 +9,40 @@ class LoadAllFieldsException(SyncanyException):
 
 def dict_key(key):
     def _(data):
-        if isinstance(data, list) and len(data) == 1:
-            data = data[0]
-        return data[key]
+        if isinstance(data, list):
+            if len(data) > 1:
+                return [d[key] for d in data if isinstance(d, dict) and key in d]
+            if len(data) == 1:
+                data = data[0]
+        if isinstance(data, dict) and key in data:
+            return data[key]
+        return None
     return _
 
 def list_key(key):
     def _(data):
-        if isinstance(data, dict) and key[0] == 0:
-            return data
-        return data[key]
+        if isinstance(data, dict):
+            if key == 0:
+                return data
+            return None
+        if isinstance(data, list) and key < len(data):
+            return data[key]
+        return None
     return _
 
 def slice_key(key):
     def _(data):
-        if len(key) == 1:
-            return data[key[0]:]
-        if len(key) == 2:
-            return data[key[0]: key[1]]
-        return data[key[0]: key[1]: key[2]]
+        if isinstance(data, dict):
+            if key and key[0] == 0:
+                return data
+            return None
+        if isinstance(data, list):
+            if len(key) == 1:
+                return data[key[0]:]
+            if len(key) == 2:
+                return data[key[0]: key[1]]
+            return data[key[0]: key[1]: key[2]]
+        return None
     return _
 
 class Valuer(object):

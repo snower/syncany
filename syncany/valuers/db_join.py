@@ -4,6 +4,42 @@
 
 from .data import Valuer
 
+class GroupDBJoinMatcher(object):
+    def __init__(self, return_valuer):
+        self.return_valuer = return_valuer
+        self.valuers = []
+        self.datas = None
+
+    def add_valuer(self, valuer):
+        self.valuers.append(valuer)
+
+    def fill(self, valuer, data):
+        if self.datas is not None:
+            return self
+        for valuer in self.valuers:
+            if valuer.loaded is False:
+                return self
+
+        self.datas = []
+        for valuer in self.valuers:
+            if valuer.loaded is not True:
+                continue
+            self.datas.append(valuer.get())
+        self.return_valuer.fill(self.datas)
+
+    def get(self):
+        if self.datas is not None:
+            return self.datas
+
+        self.datas = []
+        for valuer in self.valuers:
+            if valuer.loaded is not True:
+                continue
+            self.datas.append(valuer.get())
+        self.return_valuer.fill(self.datas)
+        return self.datas
+
+
 class DBJoinValuer(Valuer):
     def __init__(self, loader, foreign_key, foreign_filters, args_valuer, return_valuer, inherit_valuers, *args, **kwargs):
         self.loader = loader
@@ -33,16 +69,30 @@ class DBJoinValuer(Valuer):
 
         if self.args_valuer:
             self.args_valuer.fill(data)
-            self.matcher = self.loader.filter_eq(self.foreign_key, self.args_valuer.get())
-        elif self.key:
-            super(DBJoinValuer, self).fill(data)
-            self.matcher = self.loader.filter_eq(self.foreign_key, self.value)
+            join_value = self.args_valuer.get()
+        else:
+            if self.key:
+                super(DBJoinValuer, self).fill(data)
+            join_value = self.value
 
-        self.matcher.add_valuer(self.return_valuer)
+        if isinstance(join_value, list):
+            self.matcher = GroupDBJoinMatcher(self.return_valuer)
+            for d in join_value:
+                if d is None:
+                    continue
+                matcher = self.loader.filter_eq(self.foreign_key, d)
+                return_valuer = DBJoinReturnValuer(self.matcher, "*")
+                matcher.add_valuer(return_valuer)
+                self.matcher.add_valuer(return_valuer)
+        elif join_value is not None:
+            self.matcher = self.loader.filter_eq(self.foreign_key, join_value)
+            self.matcher.add_valuer(self.return_valuer)
         return self
 
     def get(self):
         self.loader.load()
+        if isinstance(self.matcher, GroupDBJoinMatcher):
+            self.matcher.get()
         return self.return_valuer.get()
 
     def childs(self):
@@ -76,3 +126,19 @@ class DBJoinValuer(Valuer):
 
     def require_loaded(self):
         return True
+
+
+class DBJoinReturnValuer(Valuer):
+    def __init__(self, matcher, *args, **kwargs):
+        self.matcher = matcher
+        self.loaded = False
+        super(DBJoinReturnValuer, self).__init__(*args, **kwargs)
+
+    def clone(self):
+        return self.__class__(self.matcher, self.key, self.filter)
+
+    def fill(self, data):
+        super(DBJoinReturnValuer, self).fill(data)
+        self.loaded = None if data is None else True
+        self.matcher.fill(self, data)
+        return self
