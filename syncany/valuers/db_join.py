@@ -24,7 +24,11 @@ class GroupDBJoinMatcher(object):
         for valuer in self.valuers:
             if valuer.loaded is not True:
                 continue
-            self.datas.append(valuer.get())
+            value = valuer.get()
+            if isinstance(value, list):
+                self.datas.extend(value)
+            else:
+                self.datas.append(value)
         self.return_valuer.fill(self.datas)
 
     def get(self):
@@ -35,7 +39,11 @@ class GroupDBJoinMatcher(object):
         for valuer in self.valuers:
             if valuer.loaded is not True:
                 continue
-            self.datas.append(valuer.get())
+            value = valuer.get()
+            if isinstance(value, list):
+                self.datas.extend(value)
+            else:
+                self.datas.append(value)
         self.return_valuer.fill(self.datas)
         return self.datas
 
