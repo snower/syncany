@@ -777,6 +777,26 @@ class ArrayCalculater(Calculater):
             return self.args[0]
         return {}
 
+    def flat(self):
+        if len(self.args) == 1:
+            if isinstance(self.args[0], list):
+                result = []
+                for d in self.args[0]:
+                    if isinstance(d, list):
+                        result.extend(d)
+                    else:
+                        result.append(d)
+                return result
+            return [self.args[0]]
+
+        result = []
+        for d in self.args:
+            if isinstance(d, list):
+                result.extend(d)
+            else:
+                result.append(d)
+        return result
+
     def calculate(self):
         if not self.args:
             return None
@@ -785,6 +805,8 @@ class ArrayCalculater(Calculater):
         if isinstance(self.args[0], list):
             if func_name == "map":
                 return self.to_map()
+            if func_name == "flat":
+                return self.flat()
 
             value = list(self.args[0])
             if hasattr(value, func_name):
