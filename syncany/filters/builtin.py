@@ -287,7 +287,7 @@ class MapFilter(Filter):
                 return value[0]
 
             if all([isinstance(v, dict) for v in value]):
-                return {str(i): value[i] for i in range(len(value))}
+                return {"index" + str(i): value[i] for i in range(len(value))}
 
             value = list(value)
             value_len = len(value)

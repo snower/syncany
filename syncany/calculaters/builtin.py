@@ -767,7 +767,7 @@ class ArrayCalculater(Calculater):
         if len(self.args) == 1 and isinstance(self.args[0], list):
             if len(self.args[0]) == 1 and isinstance(self.args[0][0], dict):
                 return self.args[0]
-            return {str(i): self.args[0][i] for i in range(len(self.args[0]))}
+            return {"index" + str(i): self.args[0][i] for i in range(len(self.args[0]))}
         
         if isinstance(self.args[0], dict):
             if len(self.args) == 2 and isinstance(self.args[1], str):
