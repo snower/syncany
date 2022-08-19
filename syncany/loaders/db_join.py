@@ -35,6 +35,49 @@ class DBJoinMatcher(object):
     def get(self):
         return self.data
 
+class GroupDBJoinMatcher(object):
+    def __init__(self, return_valuer):
+        self.return_valuer = return_valuer
+        self.valuers = []
+        self.datas = None
+
+    def add_valuer(self, valuer):
+        self.valuers.append(valuer)
+
+    def fill(self, valuer, data):
+        if self.datas is not None:
+            return self
+        for valuer in self.valuers:
+            if valuer.loaded is False:
+                return self
+
+        self.datas = []
+        for valuer in self.valuers:
+            if valuer.loaded is not True:
+                continue
+            value = valuer.get()
+            if isinstance(value, list):
+                self.datas.extend(value)
+            else:
+                self.datas.append(value)
+        self.return_valuer.fill(self.datas)
+
+    def get(self):
+        if self.datas is not None:
+            return self.datas
+
+        self.datas = []
+        for valuer in self.valuers:
+            if valuer.loaded is not True:
+                continue
+            value = valuer.get()
+            if isinstance(value, list):
+                self.datas.extend(value)
+            else:
+                self.datas.append(value)
+        self.return_valuer.fill(self.datas)
+        return self.datas
+
 class DBJoinLoader(DBLoader):
     def __init__(self, *args, **kwargs):
         self.join_batch = kwargs.pop("join_batch", 10000) or 0xffffffff
@@ -48,6 +91,9 @@ class DBJoinLoader(DBLoader):
         loader = super(DBJoinLoader, self).clone()
         loader.join_batch = self.join_batch
         return loader
+
+    def create_group_macther(self, return_valuer):
+        return GroupDBJoinMatcher(return_valuer)
 
     def filter_eq(self, key, value):
         if key != self.primary_keys[0]:

@@ -4,49 +4,6 @@
 
 from .data import Valuer
 
-class GroupDBJoinMatcher(object):
-    def __init__(self, return_valuer):
-        self.return_valuer = return_valuer
-        self.valuers = []
-        self.datas = None
-
-    def add_valuer(self, valuer):
-        self.valuers.append(valuer)
-
-    def fill(self, valuer, data):
-        if self.datas is not None:
-            return self
-        for valuer in self.valuers:
-            if valuer.loaded is False:
-                return self
-
-        self.datas = []
-        for valuer in self.valuers:
-            if valuer.loaded is not True:
-                continue
-            value = valuer.get()
-            if isinstance(value, list):
-                self.datas.extend(value)
-            else:
-                self.datas.append(value)
-        self.return_valuer.fill(self.datas)
-
-    def get(self):
-        if self.datas is not None:
-            return self.datas
-
-        self.datas = []
-        for valuer in self.valuers:
-            if valuer.loaded is not True:
-                continue
-            value = valuer.get()
-            if isinstance(value, list):
-                self.datas.extend(value)
-            else:
-                self.datas.append(value)
-        self.return_valuer.fill(self.datas)
-        return self.datas
-
 
 class DBJoinValuer(Valuer):
     def __init__(self, loader, foreign_key, foreign_filters, args_valuer, return_valuer, inherit_valuers, *args, **kwargs):
@@ -59,6 +16,7 @@ class DBJoinValuer(Valuer):
         super(DBJoinValuer, self).__init__(*args, **kwargs)
 
         self.matcher = None
+        self.is_group_matcher = False
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
@@ -84,12 +42,13 @@ class DBJoinValuer(Valuer):
             join_value = self.value
 
         if isinstance(join_value, list):
-            self.matcher = GroupDBJoinMatcher(self.return_valuer)
+            self.matcher = self.loader.create_group_macther(self.return_valuer)
+            self.is_group_matcher = True
             for d in join_value:
                 if d is None:
                     continue
                 matcher = self.loader.filter_eq(self.foreign_key, d)
-                return_valuer = DBJoinReturnValuer(self.matcher, "*")
+                return_valuer = DBJoinGroupMatchValuer(self.matcher, "*")
                 matcher.add_valuer(return_valuer)
                 self.matcher.add_valuer(return_valuer)
         elif join_value is not None:
@@ -99,7 +58,7 @@ class DBJoinValuer(Valuer):
 
     def get(self):
         self.loader.load()
-        if isinstance(self.matcher, GroupDBJoinMatcher):
+        if self.is_group_matcher:
             self.matcher.get()
         return self.return_valuer.get()
 
@@ -136,17 +95,17 @@ class DBJoinValuer(Valuer):
         return True
 
 
-class DBJoinReturnValuer(Valuer):
+class DBJoinGroupMatchValuer(Valuer):
     def __init__(self, matcher, *args, **kwargs):
         self.matcher = matcher
         self.loaded = False
-        super(DBJoinReturnValuer, self).__init__(*args, **kwargs)
+        super(DBJoinGroupMatchValuer, self).__init__(*args, **kwargs)
 
     def clone(self):
         return self.__class__(self.matcher, self.key, self.filter)
 
     def fill(self, data):
-        super(DBJoinReturnValuer, self).fill(data)
+        super(DBJoinGroupMatchValuer, self).fill(data)
         self.loaded = None if data is None else True
         self.matcher.fill(self, data)
         return self
