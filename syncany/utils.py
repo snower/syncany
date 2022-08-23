@@ -50,7 +50,8 @@ def get_expression_name(expression):
         ">": "gt",
         ">=": "gte",
         "<": "lt",
-        "<=": "lte"
+        "<=": "lte",
+        "in": "in"
     }[expression]
 
 def check_simple_object(value):

@@ -339,6 +339,10 @@ class CoreTasker(Tasker):
                     if exp_name == "eq":
                         argument = {"name": '%s' % query["name"], "type": filter_cls(query.get("type_args")),
                                     "help": "query argument '%s'" % query["name"]}
+                    elif exp_name == "in":
+                        argument = {"name": '%s' % query["name"], "type": filter_cls(query.get("type_args")),
+                                    "nargs": "+", "action": "extend",
+                                    "help": "query arguments '%s'" % query["name"]}
                     else:
                         argument = {"name": '%s__%s' % (query["name"], exp_name), "type": filter_cls(query.get("type_args")),
                                     "help": "query argument '%s__%s'" % (query["name"], exp_name)}
@@ -360,6 +364,10 @@ class CoreTasker(Tasker):
                     if exp_name == "eq":
                         argument = {"name": '%s' % query["name"], "type": filter_cls(query.get("type_args")),
                                     "default": exp_value, "help": "query argument '%s' (default: %s)" % (query["name"], exp_value)}
+                    elif exp_name == "in":
+                        argument = {"name": '%s' % query["name"], "type": filter_cls(query.get("type_args")),
+                                    "nargs": "+", "action": "extend", "default": exp_value,
+                                    "help": "query arguments '%s' (default: %s)" % (query["name"], " ".join([str(ev) for ev in exp_value]))}
                     else:
                         argument = {"name": '%s__%s' % (query["name"], exp_name), "type": filter_cls(query.get("type_args")),
                                     "default": exp_value, "help": "query argument '%s__%s' (default: %s)" % (query["name"], exp_name, exp_value)}
@@ -878,7 +886,7 @@ class CoreTasker(Tasker):
                     continue
                 if exp_name in query["refs"]:
                     argument_name = query["refs"][exp_name]
-                elif exp_name == "eq":
+                elif exp_name in ("eq", "in"):
                     argument_name = query["name"]
                 else:
                     argument_name = "%s__%s" % (query["name"], exp_name)
