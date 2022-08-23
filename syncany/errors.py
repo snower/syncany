@@ -6,6 +6,10 @@ class SyncanyException(Exception):
     pass
 
 
+class ConfigReaderUnknownException(SyncanyException):
+    pass
+
+
 class LoaderUnknownException(SyncanyException):
     pass
 

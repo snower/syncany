@@ -2,41 +2,45 @@
 # 2021/10/29
 # create by: snower
 
-import os
+from .reader import ConfigReader
+from .file_reader import FileConfigReader
+from .http_reader import HttpConfigReader
+from .parser import Parser
 from .json_parser import JsonParser
 from .yaml_parser import YamlParser
+from ...errors import ConfigReaderUnknownException
 
-def load_file(filename):
-    with open(filename, "r", encoding=os.environ.get("SYNCANYENCODING", "utf-8")) as fp:
-        content = fp.read()
-        filename_infos = filename.split(".")
-        if not filename_infos:
-            return content
-        if filename_infos[-1] == "json":
-            parser = JsonParser(content)
-            return parser.parse()
-        if filename_infos[-1] == "yaml":
-            parser = YamlParser(content)
-            return parser.parse()
-        return content
+READERS = {
+    "http": HttpConfigReader,
+    "https": HttpConfigReader,
+    "file": FileConfigReader
+}
 
-def load_http(url):
-    try:
-        import requests
-    except:
-        raise ImportError("requests>=2.22.0 is required")
-    res = requests.get(url)
-    url_infos = url.split(".")
-    content_type = res.headers.get("Content-Type") or (url_infos[-1] if url_infos else "")
-    if "json" in content_type:
-        parser = JsonParser(res.text)
-        return parser.parse()
-    if "yaml" in content_type:
-        parser = YamlParser(res.text)
-        return parser.parse()
-    return res.text
+PARSERS = {
+    "json": JsonParser,
+    "yaml": YamlParser
+}
+
 
 def load_config(filename):
-    if filename[:5].lower() == "http:" or filename[:6].lower() == "https:":
-        return load_http(filename)
-    return load_file(filename)
+    reader_type = filename.split("://")[0].lower() if "://" in filename else "file"
+    if reader_type not in READERS:
+        raise ConfigReaderUnknownException("%s reader is unknown" % reader_type)
+    reader = READERS[reader_type](filename)
+    content_type, content = reader.read()
+    if content_type not in PARSERS:
+        return content
+    parser = PARSERS[content_type](content)
+    return parser.parse()
+
+def register_reader(name, reader):
+    if not issubclass(reader, ConfigReader):
+        raise TypeError("is not ConfigReader")
+    READERS[name] = reader
+    return reader
+
+def register_parser(name, parser):
+    if not issubclass(parser, Parser):
+        raise TypeError("is not Parser")
+    PARSERS[name] = parser
+    return parser
