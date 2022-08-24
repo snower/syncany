@@ -97,7 +97,7 @@ class TextLineQueryBuilder(QueryBuilder):
             if fileno < 0 or fileno in (1, 2):
                 return []
 
-            fp = open(fileno, "r", newline='', encoding="utf-8", closefd=False)
+            fp = open(fileno, "r", newline='', encoding=self.db.config.get("encoding", "utf-8"), closefd=False)
             if self.db.config.get("format") == "csv":
                 rdatas = self.csv_read(fp)
             elif self.db.config.get("format") == "json":
@@ -108,7 +108,7 @@ class TextLineQueryBuilder(QueryBuilder):
             filename = os.path.join(self.db.config.get("path", "/"), ".".join(fileinfo[1:]))
             if not os.path.exists(filename):
                 return []
-            with open(filename, "r", newline='', encoding="utf-8") as fp:
+            with open(filename, "r", newline='', encoding=self.db.config.get("encoding", "utf-8")) as fp:
                 if self.db.config.get("format") == "csv":
                     rdatas = self.csv_read(fp)
                 elif self.db.config.get("format") == "json":
@@ -164,9 +164,11 @@ class TextLineInsertBuilder(InsertBuilder):
             print_object(human_format_object(self.datas))
 
     def rich_write(self, fp):
-        from rich.table import Table
-
         if self.db.rich is None:
+            raise ImportError("rich>=9.11.1 is required")
+        try:
+            from rich.table import Table
+        except ImportError:
             raise ImportError("rich>=9.11.1 is required")
 
         table = Table(show_header=True, collapse_padding=True, expand=True, highlight=True)
@@ -213,7 +215,7 @@ class TextLineInsertBuilder(InsertBuilder):
             fileno = int(fileinfo[1][1:])
             if fileno <= 0:
                 return
-            fp = open(fileno, "w", newline='', encoding="utf-8", closefd=False)
+            fp = open(fileno, "w", newline='', encoding=self.db.config.get("encoding", "utf-8"), closefd=False)
             if self.db.config.get("format") == "csv":
                 self.csv_write(fp)
             elif self.db.config.get("format") == "json":
@@ -231,7 +233,7 @@ class TextLineInsertBuilder(InsertBuilder):
         filename = os.path.join(self.db.config.get("path", "/"), ".".join(fileinfo[1:]))
         if not os.path.exists(filename):
             return []
-        with open(filename, "w", newline='', encoding="utf-8") as fp:
+        with open(filename, "w", newline='', encoding=self.db.config.get("encoding", "utf-8")) as fp:
             if self.db.config.get("format") == "csv":
                 self.csv_write(fp)
             elif self.db.config.get("format") == "json":
@@ -305,10 +307,17 @@ class TextLineDeleteBuilder(DeleteBuilder):
 
 
 class TextLineDB(DataBase):
+    DEFAULT_CONFIG = {
+        "encoding": os.environ.get("SYNCANYENCODING", "utf-8")
+    }
     rich = None
 
     def __init__(self, manager, config):
-        super(TextLineDB, self).__init__(manager, dict(**config))
+        all_config = {}
+        all_config.update(self.DEFAULT_CONFIG)
+        all_config.update(config)
+
+        super(TextLineDB, self).__init__(manager, all_config)
 
         self.rich = get_rich()
 

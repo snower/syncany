@@ -215,6 +215,7 @@ class JsonFile(object):
 class JsonDB(DataBase):
     DEFAULT_CONFIG = {
         "path": "./",
+        "encoding": os.environ.get("SYNCANYENCODING", "utf-8")
     }
 
     def __init__(self, manager, config):
@@ -253,13 +254,13 @@ class JsonDB(DataBase):
                     self.jsons[name] = JsonFile(name, fileno, [])
                     return self.jsons[name]
 
-                fp = open(fileno, "r", closefd=False)
+                fp = open(fileno, "r", encoding=self.config.get("encoding", "utf-8"), closefd=False)
                 self.jsons[name] = self.read_file(fp, name, fileno)
                 return self.jsons[name]
 
             filename = os.path.join(self.config["path"], ".".join(names[1:]))
             if os.path.exists(filename):
-                with open(filename, "r") as fp:
+                with open(filename, "r", encoding=self.config.get("encoding", "utf-8")) as fp:
                     self.jsons[name] = self.read_file(fp, name, filename)
             else:
                 self.jsons[name] = JsonFile(name, filename, [])
@@ -286,12 +287,12 @@ class JsonDB(DataBase):
                 continue
 
             if isinstance(json_file.filename, str):
-                with open(json_file.filename, "w") as fp:
+                with open(json_file.filename, "w", encoding=self.config.get("encoding", "utf-8")) as fp:
                     self.write_file(fp, json_file)
             else:
                 if json_file.filename == 0:
                     continue
-                fp = open(json_file.filename, "w", closefd=False)
+                fp = open(json_file.filename, "w", encoding=self.config.get("encoding", "utf-8"), closefd=False)
                 self.write_file(fp, json_file)
             json_file.changed = False
 

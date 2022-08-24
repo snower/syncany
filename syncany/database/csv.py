@@ -229,6 +229,7 @@ class CsvFile(object):
 class CsvDB(DataBase):
     DEFAULT_CONFIG = {
         "path": "./",
+        "encoding": os.environ.get("SYNCANYENCODING", "utf-8")
     }
 
     def __init__(self, manager, config):
@@ -282,13 +283,13 @@ class CsvDB(DataBase):
                     self.csvs[name] = CsvFile(name, fileno, [])
                     return self.csvs[name]
 
-                fp = open(fileno, "r", newline='', encoding="utf-8", closefd=False)
+                fp = open(fileno, "r", newline='', encoding=self.config.get("encoding", "utf-8"), closefd=False)
                 self.csvs[name] = self.read_file(name, fileno, fp)
                 return self.csvs[name]
 
             filename = os.path.join(self.config["path"], ".".join(names[1:]))
             if os.path.exists(filename):
-                with open(filename, "r", newline='', encoding="utf-8") as fp:
+                with open(filename, "r", newline='', encoding=self.config.get("encoding", "utf-8")) as fp:
                     self.csvs[name] = self.read_file(name, filename, fp)
             else:
                 self.csvs[name] = CsvFile(name, filename, [])
@@ -314,12 +315,12 @@ class CsvDB(DataBase):
                 continue
 
             if isinstance(csv_file.filename, str):
-                with open(csv_file.filename, "w", newline='', encoding="utf-8") as fp:
+                with open(csv_file.filename, "w", newline='', encoding=self.config.get("encoding", "utf-8")) as fp:
                     self.write_file(fp, csv_file)
             else:
                 if csv_file.filename == 0:
                     continue
-                fp = open(csv_file.filename, "w", newline='', encoding="utf-8", closefd=False)
+                fp = open(csv_file.filename, "w", newline='', encoding=self.config.get("encoding", "utf-8"), closefd=False)
                 self.write_file(fp, csv_file)
             csv_file.changed = False
 
