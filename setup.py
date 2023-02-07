@@ -8,17 +8,17 @@ from setuptools import find_packages, setup
 
 version = "0.1.10"
 
-if os.path.exists("README.rst"):
+if os.path.exists("README.md"):
     if sys.version_info[0] >= 3:
         try:
-            with open("README.rst", encoding="utf-8") as fp:
+            with open("README.md", encoding="utf-8") as fp:
                 long_description = fp.read()
         except Exception as e:
             print("Waring: " + str(e))
             long_description = 'https://github.com/snower/syncany'
     else:
         try:
-            with open("README.rst") as fp:
+            with open("README.md") as fp:
                 long_description = fp.read()
         except Exception as e:
             print("Waring: " + str(e))
