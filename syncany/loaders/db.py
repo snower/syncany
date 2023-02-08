@@ -71,6 +71,8 @@ class DBLoader(Loader):
                 query.order_by(*order)
         else:
             for primary_key in self.primary_keys:
+                if primary_key not in self.schema:
+                    continue
                 query.order_by(primary_key)
 
         self.datas = query.commit()
