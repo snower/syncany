@@ -13,15 +13,28 @@ class KeyMatcher(object):
         else:
             self.matcher = matcher
         self.valuer = valuer
+        self.key_events = []
 
     def clone(self):
-        return self.__class__(self.matcher, self.clone_valuer())
+        key_matcher = self.__class__(self.matcher, self.clone_valuer())
+        key_matcher.key_events = self.key_events
+        return key_matcher
 
     def match(self, key):
         return self.matcher.match(key)
 
     def clone_valuer(self):
         return self.valuer.clone()
+
+    def create_key(self, key):
+        valuer = self.clone_valuer()
+        valuer.key = key
+        for key_event in self.key_events:
+            key_event(key, valuer)
+        return valuer
+
+    def add_key_event(self, event):
+        self.key_events.append(event)
 
 class Loader(object):
     def __init__(self, primary_keys, is_yield=False, **kwargs):

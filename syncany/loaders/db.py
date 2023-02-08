@@ -97,8 +97,7 @@ class DBLoader(Loader):
                         else:
                             for key_matcher in self.key_matchers:
                                 if key_matcher.match(key):
-                                    valuer = key_matcher.clone_valuer()
-                                    valuer.key = key
+                                    valuer = key_matcher.create_key(key)
                                     self.schema[key] = valuer
                                     values[key] = valuer.clone().fill(data)
                 self.datas.append(values)

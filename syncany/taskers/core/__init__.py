@@ -932,6 +932,15 @@ class CoreTasker(Tasker):
                         self.config["options"]["schema"][name].get("chaned_require_update"):
                     valuer.option = DataValuerOutputerOption(True)
                 self.outputer.add_valuer(name, valuer)
+        elif self.schema == ".*":
+            def on_key_event(name, valuer):
+                valuer = valuer.clone()
+                if name in self.config["options"]["schema"] and \
+                        self.config["options"]["schema"][name].get("chaned_require_update"):
+                    valuer.option = DataValuerOutputerOption(True)
+                self.outputer.add_valuer(name, valuer)
+            for key_matcher in self.loader.key_matchers:
+                key_matcher.add_key_event(on_key_event)
 
         for query in self.config["querys"]:
             query_name = query["name"]
