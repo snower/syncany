@@ -566,7 +566,7 @@ class CoreTasker(Tasker):
 
         return {
             "database": foreign_key[0],
-            "foreign_key": foreign_key[1],
+            "foreign_key": foreign_key[1].split("+"),
             "foreign_filters": foreign_filters,
         }
 
@@ -629,6 +629,18 @@ class CoreTasker(Tasker):
                 return self.valuer_compiler.compile_const_valuer(valuer)
 
             key = self.compile_key(valuer[0])
+            if (key["instance"] is None or key["instance"] == "$") and len(valuer) == 3:
+                foreign_key = self.compile_foreign_key(valuer[1])
+                if foreign_key is not None:
+                    if isinstance(valuer[0], list) and len(foreign_key["foreign_key"]) >= 2 and len(valuer[0]) == len(foreign_key["foreign_key"]):
+                        join_args = valuer[0]
+                    else:
+                        join_args = [valuer[0]]
+                    loader = {"name": "db_join_loader", "database": foreign_key["database"]}
+                    return self.valuer_compiler.compile_db_join_valuer(key["key"] if key["instance"] == "$" else "",
+                                                                       loader, foreign_key["foreign_key"], foreign_key["foreign_filters"],
+                                                                       None, join_args, valuer[2] if len(valuer) >= 3 else None)
+
             if key["instance"] is None:
                 return self.valuer_compiler.compile_const_valuer(valuer)
 
@@ -643,14 +655,7 @@ class CoreTasker(Tasker):
                         return self.valuer_compiler.compile_data_valuer(key["key"], key["filter"], valuer[1])
                     if isinstance(valuer[1], list) and valuer[1][0][:1] == ":":
                         return self.valuer_compiler.compile_data_valuer(key["key"], key["filter"], valuer[1])
-
-                foreign_key = self.compile_foreign_key(valuer[1])
-                if foreign_key is None:
-                    return self.valuer_compiler.compile_const_valuer(valuer)
-
-                loader = {"name": "db_join_loader", "database": foreign_key["database"]}
-                return self.valuer_compiler.compile_db_join_valuer(key["key"], loader, foreign_key["foreign_key"], foreign_key["foreign_filters"],
-                                                   None, valuer[0], valuer[2] if len(valuer) >= 3 else None)
+                return self.valuer_compiler.compile_const_valuer(valuer)
 
             if key["instance"] == "@":
                 return self.valuer_compiler.compile_calculate_valuer(key["key"], key["filter"], valuer[1:])
@@ -860,7 +865,7 @@ class CoreTasker(Tasker):
             "database": input_loader["database"],
             "is_yield": False,
         }
-        self.loader = self.create_loader(loader_config, [input_loader["foreign_key"]])
+        self.loader = self.create_loader(loader_config, input_loader["foreign_key"])
 
         if isinstance(self.schema, dict):
             aggregate_valuers = []
@@ -919,10 +924,12 @@ class CoreTasker(Tasker):
             "name": outputer,
             "database": output_outputer["database"],
         }
-        self.outputer = self.create_outputer(outputer_config, [output_outputer["foreign_key"]])
+        self.outputer = self.create_outputer(outputer_config, output_outputer["foreign_key"])
 
         if isinstance(self.schema, dict):
             for name, valuer in self.schema.items():
+                if not name or (name.startswith("__") and name.endswith("__")):
+                    continue
                 valuer = self.create_valuer(self.valuer_compiler.compile_data_valuer(name, None))
                 if not valuer:
                     continue

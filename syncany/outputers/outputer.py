@@ -29,7 +29,7 @@ class Outputer(object):
     def get_data_primary_key(self, data):
         if len(self.primary_keys) == 1:
             return data.get(self.primary_keys[0], '')
-        return ".".join([data.get(pk, '') for pk in self.primary_keys])
+        return "--".join([str(data.get(pk, '')) for pk in self.primary_keys])
 
     def store(self, datas):
         self.datas = datas

@@ -117,11 +117,11 @@ class ValuerCreater(object):
                 loader_cache_foreign_filters = "&".join(sorted(["%s %s %s" % (name, exp, str(value)) for name, exp, value in config["foreign_filters"]]))
             else:
                 loader_cache_foreign_filters = ""
-            loader_cache_key = config["loader"]["database"] + "::" + config["foreign_key"] + "::" + loader_cache_foreign_filters
+            loader_cache_key = config["loader"]["database"] + "::" + "+".join(config["foreign_keys"]) + "::" + loader_cache_foreign_filters
             if loader_cache_key in join_loaders:
                 loader = join_loaders[loader_cache_key]
             else:
-                loader = self.create_loader(config["loader"], [config["foreign_key"]])
+                loader = self.create_loader(config["loader"], config["foreign_keys"])
                 if config["foreign_filters"]:
                     for name, exp, value in config["foreign_filters"]:
                         if exp == "eq":
@@ -131,17 +131,19 @@ class ValuerCreater(object):
                 loader = LoaderJoinWarp(loader)
                 join_loaders[loader_cache_key] = loader
         else:
-            loader = self.create_loader(config["loader"], [config["foreign_key"]])
+            loader = self.create_loader(config["loader"], config["foreign_keys"])
 
-        args_valuer = self.create_valuer(config["args_valuer"], inherit_valuers=inherit_valuers,
-                                         join_loaders=join_loaders, **kwargs) if config["args_valuer"] else None
+        args_valuers = [self.create_valuer(args_valuer, inherit_valuers=inherit_valuers,
+                                           join_loaders=join_loaders, **kwargs) for args_valuer in config["args_valuers"]] \
+            if config["args_valuers"] else None
         return_inherit_valuers = []
         return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, join_loaders=join_loaders, **kwargs)
         filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
 
-        if config["foreign_key"] not in loader.schema:
-            loader.add_valuer(config["foreign_key"], self.create_valuer(self.compile_data_valuer(config["foreign_key"], None)))
+        for foreign_key in config["foreign_keys"]:
+            if foreign_key not in loader.schema:
+                loader.add_valuer(foreign_key, self.create_valuer(self.compile_data_valuer(foreign_key, None)))
 
         try:
             for key in return_valuer.get_fields():
@@ -159,7 +161,7 @@ class ValuerCreater(object):
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
 
-        return valuer_cls(loader, config["foreign_key"], config["foreign_filters"], args_valuer, return_valuer,
+        return valuer_cls(loader, config["foreign_keys"], config["foreign_filters"], args_valuers, return_valuer,
                           current_inherit_valuers, config["key"], filter)
 
     def create_case_valuer(self, config, inherit_valuers=None, **kwargs):

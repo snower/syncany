@@ -88,14 +88,14 @@ class ValuerCompiler(object):
             "value_valuer": self.compile_data_valuer(key, filter)
         }
 
-    def compile_db_join_valuer(self, key="", loader=None, foreign_key="", foreign_filters=None, filter=None, args_arg=None, return_arg=None):
+    def compile_db_join_valuer(self, key="", loader=None, foreign_keys=None, foreign_filters=None, filter=None, args_args=None, return_arg=None):
         join_return_arg, _ = self.parse_return_valuer(return_arg)
         if join_return_arg is not None:
             return_arg = join_return_arg
         else:
             return_arg = "$.*" if return_arg is None else return_arg
 
-        args_valuer = self.compile_valuer(args_arg) if args_arg else None
+        args_valuers = [self.compile_valuer(args_arg) for args_arg in args_args] if args_args else None
         return_valuer = self.compile_valuer(return_arg)
 
         return {
@@ -103,9 +103,9 @@ class ValuerCompiler(object):
             "key": key,
             "filter": filter,
             "loader": loader,
-            "foreign_key": foreign_key,
+            "foreign_keys": foreign_keys,
             'foreign_filters': foreign_filters or [],
-            "args_valuer": args_valuer,
+            "args_valuers": args_valuers,
             "return_valuer": return_valuer,
         }
 

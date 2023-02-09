@@ -8,14 +8,14 @@ from .db import DBLoader
 from ..valuers.valuer import LoadAllFieldsException
 
 class DBJoinMatcher(object):
-    def __init__(self, key, value):
-        self.key = key
-        self.value = value
+    def __init__(self, keys, values):
+        self.keys = keys
+        self.values = values
         self.data = None
         self.valuers = []
 
     def clone(self):
-        matcher = self.__class__(self.key, self.value)
+        matcher = self.__class__(self.keys, self.values)
         return matcher
 
     def fill(self, values):
@@ -84,7 +84,7 @@ class DBJoinLoader(DBLoader):
         super(DBJoinLoader, self).__init__(*args, **kwargs)
 
         self.data_keys = {}
-        self.unload_primary_keys = set([])
+        self.unload_primary_keys = {}
         self.matchers = defaultdict(list)
 
     def clone(self):
@@ -95,15 +95,20 @@ class DBJoinLoader(DBLoader):
     def create_group_macther(self, return_valuer):
         return GroupDBJoinMatcher(return_valuer)
 
-    def filter_eq(self, key, value):
-        if key != self.primary_keys[0]:
-            self.primary_keys = [key]
+    def create_macther(self, keys, values):
+        if keys != self.primary_keys:
+            self.primary_keys = keys
 
-        matcher = DBJoinMatcher(key, value)
-        self.matchers[value].append(matcher)
-
-        if value not in self.data_keys:
-            self.unload_primary_keys.add(value)
+        matcher = DBJoinMatcher(keys, values)
+        if len(self.primary_keys) == 1:
+            self.matchers[values[0]].append(matcher)
+            if values[0] not in self.data_keys:
+                self.unload_primary_keys[values[0]] = None
+        else:
+            data_key = "--".join(str(value) for value in values)
+            self.matchers[data_key].append(matcher)
+            if data_key not in self.data_keys:
+                self.unload_primary_keys[data_key] = values
 
         self.loaded = False
         return matcher
@@ -113,13 +118,13 @@ class DBJoinLoader(DBLoader):
             return
 
         unload_primary_keys = None
+        load_primary_keys = set([]) if self.matchers else None
         if self.unload_primary_keys:
             fields = set([])
             if not self.key_matchers:
                 for key, exp, value in self.filters:
                     if key:
                         fields.add(key)
-
                 try:
                     for name, valuer in self.schema.items():
                         for field in valuer.get_fields():
@@ -127,7 +132,7 @@ class DBJoinLoader(DBLoader):
                 except LoadAllFieldsException:
                     fields = []
 
-            unload_primary_keys = list(self.unload_primary_keys)
+            unload_primary_keys = list(self.unload_primary_keys.keys())
             for i in range(math.ceil(float(len(unload_primary_keys)) / float(self.join_batch))):
                 current_unload_primary_keys = unload_primary_keys[i * self.join_batch: (i + 1) * self.join_batch]
                 if not current_unload_primary_keys:
@@ -140,8 +145,13 @@ class DBJoinLoader(DBLoader):
                     else:
                         getattr(query, "filter_%s" % exp)(key, value)
 
-                query.filter_in(self.primary_keys[0], current_unload_primary_keys)
+                if len(self.primary_keys) == 1:
+                    query.filter_in(self.primary_keys[0], current_unload_primary_keys)
+                else:
+                    for j in range(len(self.primary_keys)):
+                        query.filter_in(self.primary_keys[j], [self.unload_primary_keys[key][j] for key in current_unload_primary_keys])
                 datas = query.commit()
+
                 for data in datas:
                     primary_key = self.get_data_primary_key(data)
 
@@ -165,6 +175,8 @@ class DBJoinLoader(DBLoader):
                     else:
                         self.data_keys[primary_key].append(values)
                     self.datas.append(values)
+                    if self.matchers:
+                        load_primary_keys.add(primary_key)
 
                 self.loader_state["query_count"] += 1
                 self.loader_state["load_count"] += len(datas)
@@ -172,7 +184,8 @@ class DBJoinLoader(DBLoader):
             self.unload_primary_keys = set([])
 
         if self.matchers:
-            for primary_key, values in self.data_keys.items():
+            for primary_key in load_primary_keys:
+                values = self.data_keys.get(primary_key)
                 if primary_key in self.matchers:
                     if len(values) == 1:
                         for matcher in self.matchers[primary_key]:
