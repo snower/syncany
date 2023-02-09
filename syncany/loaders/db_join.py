@@ -85,6 +85,7 @@ class DBJoinLoader(DBLoader):
 
         self.data_keys = {}
         self.unload_primary_keys = {}
+        self.load_primary_keys = set([])
         self.matchers = defaultdict(list)
 
     def clone(self):
@@ -104,11 +105,15 @@ class DBJoinLoader(DBLoader):
             self.matchers[values[0]].append(matcher)
             if values[0] not in self.data_keys:
                 self.unload_primary_keys[values[0]] = None
+            else:
+                self.load_primary_keys.add(values[0])
         else:
             data_key = "--".join(str(value) for value in values)
             self.matchers[data_key].append(matcher)
             if data_key not in self.data_keys:
                 self.unload_primary_keys[data_key] = values
+            else:
+                self.load_primary_keys.add(data_key)
 
         self.loaded = False
         return matcher
@@ -118,7 +123,6 @@ class DBJoinLoader(DBLoader):
             return
 
         unload_primary_keys = None
-        load_primary_keys = set([]) if self.matchers else None
         if self.unload_primary_keys:
             fields = set([])
             if not self.key_matchers:
@@ -176,15 +180,14 @@ class DBJoinLoader(DBLoader):
                         self.data_keys[primary_key].append(values)
                     self.datas.append(values)
                     if self.matchers:
-                        load_primary_keys.add(primary_key)
+                        self.load_primary_keys.add(primary_key)
 
                 self.loader_state["query_count"] += 1
                 self.loader_state["load_count"] += len(datas)
-
             self.unload_primary_keys = set([])
 
         if self.matchers:
-            for primary_key in load_primary_keys:
+            for primary_key in self.load_primary_keys:
                 values = self.data_keys.get(primary_key)
                 if primary_key in self.matchers:
                     if len(values) == 1:
@@ -203,4 +206,5 @@ class DBJoinLoader(DBLoader):
                             matcher.fill(None)
                         self.matchers.pop(primary_key)
 
+        self.load_primary_keys = set([])
         self.loaded = True

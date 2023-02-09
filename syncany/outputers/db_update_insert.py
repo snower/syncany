@@ -42,6 +42,8 @@ class DBUpdateInsertOutputer(DBOutputer):
             for data in datas:
                 query = self.db.query(self.name, self.primary_keys, list(fields))
                 for primary_key in self.primary_keys:
+                    if primary_key not in data:
+                        continue
                     query.filter_eq(primary_key, data[primary_key])
 
                 load_datas.extend(query.commit())
