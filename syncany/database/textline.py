@@ -162,6 +162,7 @@ class TextLineInsertBuilder(InsertBuilder):
             self.db.rich.get_console().print(human_format_object(self.datas), markup=False)
         else:
             print_object(human_format_object(self.datas))
+        fp.flush()
 
     def rich_write(self, fp):
         if self.db.rich is None:
@@ -177,6 +178,7 @@ class TextLineInsertBuilder(InsertBuilder):
         for data in self.datas:
             table.add_row(*(str(data[field]) for field in self.fields))
         self.db.rich.print(table, file=fp)
+        fp.flush()
 
     def text_write(self, fp):
         if len(self.fields) != 1 or self.fields[0] != "line":

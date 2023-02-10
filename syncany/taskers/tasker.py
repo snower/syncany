@@ -9,7 +9,7 @@ from ..loaders import find_loader, Loader
 from ..outputers import find_outputer, Outputer
 from ..valuers import find_valuer, Valuer
 from ..filters import find_filter, Filter
-from ..database import find_database, DataBase
+from ..database import find_database, DataBase, DatabaseInstanceManager
 from ..calculaters import find_calculater, Calculater
 from ..hook import Hooker
 
@@ -67,7 +67,7 @@ class Tasker(object):
         self.states = {}
         self.input = ""
         self.output = ""
-        self.databases = {}
+        self.databases = DatabaseInstanceManager()
         self.caches = {}
         self.intercepts = []
         self.schema = {}

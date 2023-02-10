@@ -873,7 +873,7 @@ class CoreTasker(Tasker):
         if "loader" in self.config and self.config["loader"][:2] == "<<" and "@loader" in self.arguments:
             self.config["loader"] = self.arguments["@loader"]
         try:
-            loader = self.config.get("loader", self.databases[db_name].get_default_loader())
+            loader = self.config.get("loader", self.databases.instance(db_name).get_default_loader())
         except KeyError:
             raise DatabaseUnknownException(db_name + " is unknown")
         loader_config = {
@@ -937,7 +937,7 @@ class CoreTasker(Tasker):
         if "outputer" in self.config and self.config["outputer"][:2] == ">>" and "@outputer" in self.arguments:
             self.config["outputer"] = self.arguments["@outputer"]
         try:
-            outputer = self.config.get("outputer", self.databases[db_name].get_default_outputer())
+            outputer = self.config.get("outputer", self.databases.instance(db_name).get_default_outputer())
         except KeyError:
             raise DatabaseUnknownException(db_name + " is unknown")
         outputer_config = {
@@ -1061,8 +1061,10 @@ class CoreTasker(Tasker):
         super(CoreTasker, self).load()
         self.load_config(self.config_filename)
         self.name = self.config["name"]
-        self.load_imports()
         self.load_sources()
+        self.load_imports()
+        self.load_databases()
+        self.load_caches()
         self.load_states()
         return self.compile_arguments()
 
@@ -1071,8 +1073,6 @@ class CoreTasker(Tasker):
 
         self.compile_sources(self.config)
         self.compile_options()
-        self.load_databases()
-        self.load_caches()
         self.compile_variables()
         self.compile_schema()
         self.compile_intercepts()

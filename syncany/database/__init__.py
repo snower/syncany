@@ -23,19 +23,78 @@ DATABASES = {
 }
 
 
+class DatabaseInstanceBuilder(object):
+    driver_name = None
+    driver_instance = None
+    manager = None
+    name = None
+    config = None
+    update_attrs = None
+
+    def __init__(self, driver_name):
+        self.driver_name = driver_name
+        self.update_attrs = []
+
+    def __call__(self, manager, config):
+        self.manager = manager
+        self.name = config.get("name")
+        self.config = config
+        return self
+
+    def __getattr__(self, item):
+        if self.driver_instance is None:
+            if item == "get_default_loader":
+                return lambda: "db_loader"
+            if item == "db_update_delete_insert_outputer":
+                return lambda: "db_loader"
+            if item == "verbose":
+                return lambda: self.name
+            if item in ("get_key", "query", "insert", "update", "delete", "cache",
+                        "flush", "close"):
+                return lambda *args, **kwargs: None
+            raise AttributeError(item)
+        return getattr(self.driver_instance, item)
+
+    def __setattr__(self, key, value):
+        if self.driver_instance is None:
+            if key in ("get_key", "query", "insert", "update", "delete", "cache",
+                       "flush", "close", "get_default_loader", "get_default_outputer", "verbose"):
+                self.update_attrs.append((key, value))
+            else:
+                return super(DatabaseInstanceBuilder, self).__setattr__(key, value)
+        else:
+            setattr(self.driver_instance, key, value)
+
+    def build(self):
+        if isinstance(DATABASES[self.driver_name], str):
+            module_name, _, cls_name = DATABASES[self.driver_name].rpartition(".")
+            if module_name[0] == ".":
+                module_name = module_name[1:]
+                module = __import__(module_name, globals(), globals(), [module_name], 1)
+            else:
+                module = __import__(module_name)
+            DATABASES[self.driver_name] = getattr(module, cls_name)
+
+        if self.driver_instance is None:
+            self.driver_instance = DATABASES[self.driver_name](self.manager, self.config)
+            for key, value in self.update_attrs:
+                setattr(self.driver_instance, key, value)
+        return self.driver_instance
+
+
+class DatabaseInstanceManager(dict):
+    def instance(self, name):
+        instance = super(DatabaseInstanceManager, self).__getitem__(name)
+        if isinstance(instance, DatabaseInstanceBuilder):
+            instance = instance.build()
+            super(DatabaseInstanceManager, self).__setitem__(name, instance)
+        return instance
+
+
 def find_database(name):
     if name not in DATABASES:
         raise DatabaseUnknownException("%s is unknown database driver" % name)
-
-    if isinstance(DATABASES[name], str):
-        module_name, _, cls_name = DATABASES[name].rpartition(".")
-        if module_name[0] == ".":
-            module_name = module_name[1:]
-            module = __import__(module_name, globals(), globals(), [module_name], 1)
-        else:
-            module = __import__(module_name)
-        DATABASES[name] = getattr(module, cls_name)
-    return DATABASES[name]
+    return DatabaseInstanceBuilder(name)
 
 
 def register_database(name, database):
