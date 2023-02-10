@@ -43,6 +43,7 @@ class Loader(object):
         self.schema = {}
         self.filters = []
         self.orders = []
+        self.intercepts = []
         self.current_cursor = None
         self.key_matchers = []
         self.datas = []
@@ -62,6 +63,9 @@ class Loader(object):
 
     def add_valuer(self, name, valuer):
         self.schema[name] = valuer
+
+    def add_intercept(self, intercept):
+        self.intercepts.append(intercept)
 
     def add_key_matcher(self, matcher, valuer):
         matcher = KeyMatcher(matcher, valuer)
@@ -114,6 +118,18 @@ class Loader(object):
                         odata[name] = None
                     continue
                 odata[name] = value
+
+            if self.intercepts:
+                intercept_stoped = False
+                for intercept in self.intercepts:
+                    intercept = intercept.clone()
+                    intercept.fill(odata)
+                    intercept_result = intercept.get()
+                    if intercept_result is not None and not intercept_result:
+                        intercept_stoped = True
+                        break
+                if intercept_stoped:
+                    continue
 
             if oyields:
                 while oyields:

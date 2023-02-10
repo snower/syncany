@@ -38,6 +38,7 @@ class CoreTasker(Tasker):
         "sources": {},
         "defines": {},
         "variables": {},
+        "intercepts": [],
         "schema": {},
         "pipelines": [],
         "options": {},
@@ -737,6 +738,18 @@ class CoreTasker(Tasker):
                 return self.valuer_compiler.compile_continue_valuer(key["key"], key["filter"], None)
         return self.valuer_compiler.compile_const_valuer(valuer)
 
+    def compile_intercepts(self):
+        if not self.config["intercepts"]:
+            return
+
+        for intercept in self.config["intercepts"]:
+            inherit_valuers, yield_valuers, aggregate_valuers = [], [], []
+            valuer = self.create_valuer(self.compile_valuer(intercept), schema_field_name="", inherit_valuers=inherit_valuers,
+                                    join_loaders=self.join_loaders, yield_valuers=yield_valuers,
+                                    aggregate_valuers=aggregate_valuers, define_valuers={},
+                                    global_variables=dict(**self.config["variables"]), global_states=self.states)
+            self.intercepts.append(valuer)
+
     def compile_pipelines(self):
         if not self.config["pipelines"]:
             return
@@ -771,8 +784,11 @@ class CoreTasker(Tasker):
                 if not pipeline:
                     continue
 
-            valuer = self.create_valuer(self.compile_valuer(pipeline), define_valuers={},
-                                        global_variables=self.global_variables, global_states=self.states)
+            inherit_valuers, yield_valuers, aggregate_valuers = [], [], []
+            valuer = self.create_valuer(self.compile_valuer(pipeline), schema_field_name="", inherit_valuers=inherit_valuers,
+                                    join_loaders=self.join_loaders, yield_valuers=yield_valuers,
+                                    aggregate_valuers=aggregate_valuers, define_valuers={},
+                                    global_variables=dict(**self.config["variables"]), global_states=self.states)
             valuers[current_type].append(valuer)
 
         pipelines_hooker = PipelinesHooker(**valuers)
@@ -898,6 +914,10 @@ class CoreTasker(Tasker):
                 if argument_name not in self.arguments:
                     continue
                 getattr(self.loader, "filter_%s" % exp_name)(query["name"], self.arguments[argument_name])
+
+        if self.intercepts:
+            for intercept in self.intercepts:
+                self.loader.add_intercept(intercept.clone())
 
     def compile_outputer(self):
         if self.config["output"][:2] == ">>":
@@ -1055,6 +1075,7 @@ class CoreTasker(Tasker):
         self.load_caches()
         self.compile_variables()
         self.compile_schema()
+        self.compile_intercepts()
         self.compile_pipelines()
         self.compile_loader()
         self.compile_outputer()
