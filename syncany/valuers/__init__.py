@@ -6,6 +6,7 @@ from .valuer import Valuer
 from .const import ConstValuer
 from .data import DataValuer
 from .inherit import InheritValuer
+from .db_load import DBLoadValuer
 from .db_join import DBJoinValuer
 from .case import CaseValuer
 from .calculate import CalculateValuer
@@ -28,6 +29,7 @@ VALUERS = {
     "const_valuer": ConstValuer,
     "data_valuer": DataValuer,
     "inherit_valuer": InheritValuer,
+    "db_load_valuer": DBLoadValuer,
     "db_join_valuer": DBJoinValuer,
     "case_valuer": CaseValuer,
     "calculate_valuer": CalculateValuer,

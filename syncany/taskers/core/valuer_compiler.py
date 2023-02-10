@@ -88,6 +88,24 @@ class ValuerCompiler(object):
             "value_valuer": self.compile_data_valuer(key, filter)
         }
 
+    def compile_db_load_valuer(self, key="", loader=None, foreign_keys=None, foreign_filters=None, filter=None, return_arg=None):
+        load_return_arg, _ = self.parse_return_valuer(return_arg)
+        if load_return_arg is not None:
+            return_arg = load_return_arg
+        else:
+            return_arg = "$.*" if return_arg is None else return_arg
+        return_valuer = self.compile_valuer(return_arg)
+
+        return {
+            "name": "db_load_valuer",
+            "key": key,
+            "filter": filter,
+            "loader": loader,
+            "foreign_keys": foreign_keys,
+            'foreign_filters': foreign_filters or [],
+            "return_valuer": return_valuer,
+        }
+
     def compile_db_join_valuer(self, key="", loader=None, foreign_keys=None, foreign_filters=None, filter=None, args_args=None, return_arg=None):
         join_return_arg, _ = self.parse_return_valuer(return_arg)
         if join_return_arg is not None:

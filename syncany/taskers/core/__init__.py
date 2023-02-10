@@ -629,6 +629,13 @@ class CoreTasker(Tasker):
             if not valuer:
                 return self.valuer_compiler.compile_const_valuer(valuer)
 
+            if len(valuer) == 2 and ((isinstance(valuer[0], str) and valuer[0][:1] == "&") or (isinstance(valuer[0], list) and valuer[0][0][:1] == "&")):
+                foreign_key = self.compile_foreign_key(valuer[0])
+                if foreign_key is not None:
+                    loader = {"name": "db_loader", "database": foreign_key["database"]}
+                    return self.valuer_compiler.compile_db_load_valuer("", loader, foreign_key["foreign_key"], foreign_key["foreign_filters"],
+                                                                       None, valuer[1] if len(valuer) >= 2 else None)
+
             key = self.compile_key(valuer[0])
             if (key["instance"] is None or key["instance"] == "$") and len(valuer) == 3:
                 foreign_key = self.compile_foreign_key(valuer[1])

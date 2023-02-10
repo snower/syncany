@@ -108,6 +108,61 @@ class ValuerCreater(object):
             })
         return inherit_valuer.get_inherit_child_valuer()
 
+    def create_db_load_valuer(self, config, inherit_valuers=None, join_loaders=None, **kwargs):
+        valuer_cls = self.find_valuer_driver(config["name"])
+        if not valuer_cls:
+            raise ValuerUnknownException(config["name"] + " is unknown")
+        if join_loaders is not None:
+            if config["foreign_filters"]:
+                loader_cache_foreign_filters = "&".join(sorted(["%s %s %s" % (name, exp, str(value)) for name, exp, value in config["foreign_filters"]]))
+            else:
+                loader_cache_foreign_filters = ""
+            loader_cache_key = "load::" + config["loader"]["database"] + "::" + "+".join(config["foreign_keys"]) + "::" + loader_cache_foreign_filters
+            if loader_cache_key in join_loaders:
+                loader = join_loaders[loader_cache_key]
+            else:
+                loader = self.create_loader(config["loader"], config["foreign_keys"])
+                if config["foreign_filters"]:
+                    for name, exp, value in config["foreign_filters"]:
+                        if exp == "eq":
+                            loader.add_filter(name, exp, value)
+                        else:
+                            getattr(loader, "filter_" + exp)(name, value)
+                loader = LoaderJoinWarp(loader)
+                join_loaders[loader_cache_key] = loader
+        else:
+            loader = self.create_loader(config["loader"], config["foreign_keys"])
+
+        return_inherit_valuers = []
+        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers,
+                                           join_loaders=join_loaders, **kwargs)
+        filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config[
+            "filter"] else None
+        filter = filter_cls(config["filter"]["args"]) if filter_cls else None
+
+        for foreign_key in config["foreign_keys"]:
+            if foreign_key not in loader.schema:
+                loader.add_valuer(foreign_key, self.create_valuer(self.compile_data_valuer(foreign_key, None)))
+
+        try:
+            for key in return_valuer.get_fields():
+                if key not in loader.schema:
+                    loader.add_valuer(key, self.create_valuer(self.compile_data_valuer(key, None)))
+        except LoadAllFieldsException:
+            loader.schema.clear()
+            loader.add_key_matcher(".*", self.create_valuer(self.compile_data_valuer("", None)))
+
+        current_inherit_valuers = []
+        for inherit_valuer in return_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
+        return valuer_cls(loader, config["foreign_keys"], config["foreign_filters"], return_valuer,
+                          current_inherit_valuers, config["key"], filter)
+
     def create_db_join_valuer(self, config, inherit_valuers=None, join_loaders=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
@@ -117,7 +172,7 @@ class ValuerCreater(object):
                 loader_cache_foreign_filters = "&".join(sorted(["%s %s %s" % (name, exp, str(value)) for name, exp, value in config["foreign_filters"]]))
             else:
                 loader_cache_foreign_filters = ""
-            loader_cache_key = config["loader"]["database"] + "::" + "+".join(config["foreign_keys"]) + "::" + loader_cache_foreign_filters
+            loader_cache_key = "join::" + config["loader"]["database"] + "::" + "+".join(config["foreign_keys"]) + "::" + loader_cache_foreign_filters
             if loader_cache_key in join_loaders:
                 loader = join_loaders[loader_cache_key]
             else:
