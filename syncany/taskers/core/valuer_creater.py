@@ -60,6 +60,30 @@ class ValuerCreater(object):
     def create_loader(self, *args, **kwargs):
         return self.tasker.create_loader(*args, **kwargs)
 
+    def create_join_loader(self, config, join_loaders, renew=False):
+        loader_cache_key, loader_cache_foreign_filters = None, ""
+        if join_loaders is not None:
+            if config["foreign_filters"]:
+                loader_cache_foreign_filters = "&".join(sorted(["%s%s%s" % (name, exp, str(value)) for name, exp, value in config["foreign_filters"]]))
+            loader_cache_key = "::".join([config["loader"]["name"], config["loader"]["database"], "+".join(sorted(config["foreign_keys"])),
+                                          loader_cache_foreign_filters])
+            if not renew and loader_cache_key in join_loaders:
+                return join_loaders[loader_cache_key]
+
+        loader = self.create_loader(config["loader"], config["foreign_keys"])
+        if config["foreign_filters"]:
+            for name, exp, value in config["foreign_filters"]:
+                if exp == "eq":
+                    loader.add_filter(name, exp, value)
+                else:
+                    getattr(loader, "filter_" + exp)(name, value)
+        loader = LoaderJoinWarp(loader)
+        if loader_cache_key is not None:
+            if loader_cache_key in join_loaders:
+                join_loaders[loader_cache_key + "#" + str(id(join_loaders[loader_cache_key]))] = join_loaders[loader_cache_key]
+            join_loaders[loader_cache_key] = loader
+        return loader
+
     def compile_data_valuer(self, *args, **kwargs):
         return self.tasker.valuer_compiler.compile_data_valuer(*args, **kwargs)
 
@@ -112,43 +136,28 @@ class ValuerCreater(object):
         valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
-        if join_loaders is not None:
-            if config["foreign_filters"]:
-                loader_cache_foreign_filters = "&".join(sorted(["%s %s %s" % (name, exp, str(value)) for name, exp, value in config["foreign_filters"]]))
-            else:
-                loader_cache_foreign_filters = ""
-            loader_cache_key = "load::" + config["loader"]["database"] + "::" + "+".join(config["foreign_keys"]) + "::" + loader_cache_foreign_filters
-            if loader_cache_key in join_loaders:
-                loader = join_loaders[loader_cache_key]
-            else:
-                loader = self.create_loader(config["loader"], config["foreign_keys"])
-                if config["foreign_filters"]:
-                    for name, exp, value in config["foreign_filters"]:
-                        if exp == "eq":
-                            loader.add_filter(name, exp, value)
-                        else:
-                            getattr(loader, "filter_" + exp)(name, value)
-                loader = LoaderJoinWarp(loader)
-                join_loaders[loader_cache_key] = loader
-        else:
-            loader = self.create_loader(config["loader"], config["foreign_keys"])
 
+        loader = self.create_join_loader(config, join_loaders)
         return_inherit_valuers = []
-        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers,
-                                           join_loaders=join_loaders, **kwargs)
-        filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config[
-            "filter"] else None
+        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, join_loaders=join_loaders, **kwargs)
+        filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
 
         for foreign_key in config["foreign_keys"]:
             if foreign_key not in loader.schema:
+                if loader.loaded:
+                    loader = self.create_join_loader(config, join_loaders, True)
                 loader.add_valuer(foreign_key, self.create_valuer(self.compile_data_valuer(foreign_key, None)))
 
         try:
             for key in return_valuer.get_fields():
                 if key not in loader.schema:
+                    if loader.loaded:
+                        loader = self.create_join_loader(config, join_loaders, True)
                     loader.add_valuer(key, self.create_valuer(self.compile_data_valuer(key, None)))
         except LoadAllFieldsException:
+            if loader.loaded:
+                loader = self.create_join_loader(config, join_loaders, True)
             loader.schema.clear()
             loader.add_key_matcher(".*", self.create_valuer(self.compile_data_valuer("", None)))
 
@@ -167,27 +176,8 @@ class ValuerCreater(object):
         valuer_cls = self.find_valuer_driver(config["name"])
         if not valuer_cls:
             raise ValuerUnknownException(config["name"] + " is unknown")
-        if join_loaders is not None:
-            if config["foreign_filters"]:
-                loader_cache_foreign_filters = "&".join(sorted(["%s %s %s" % (name, exp, str(value)) for name, exp, value in config["foreign_filters"]]))
-            else:
-                loader_cache_foreign_filters = ""
-            loader_cache_key = "join::" + config["loader"]["database"] + "::" + "+".join(config["foreign_keys"]) + "::" + loader_cache_foreign_filters
-            if loader_cache_key in join_loaders:
-                loader = join_loaders[loader_cache_key]
-            else:
-                loader = self.create_loader(config["loader"], config["foreign_keys"])
-                if config["foreign_filters"]:
-                    for name, exp, value in config["foreign_filters"]:
-                        if exp == "eq":
-                            loader.add_filter(name, exp, value)
-                        else:
-                            getattr(loader, "filter_" + exp)(name, value)
-                loader = LoaderJoinWarp(loader)
-                join_loaders[loader_cache_key] = loader
-        else:
-            loader = self.create_loader(config["loader"], config["foreign_keys"])
 
+        loader = self.create_join_loader(config, join_loaders)
         args_valuers = [self.create_valuer(args_valuer, inherit_valuers=inherit_valuers,
                                            join_loaders=join_loaders, **kwargs) for args_valuer in config["args_valuers"]] \
             if config["args_valuers"] else None
@@ -198,13 +188,19 @@ class ValuerCreater(object):
 
         for foreign_key in config["foreign_keys"]:
             if foreign_key not in loader.schema:
+                if loader.loaded:
+                    loader = self.create_join_loader(config, join_loaders, True)
                 loader.add_valuer(foreign_key, self.create_valuer(self.compile_data_valuer(foreign_key, None)))
 
         try:
             for key in return_valuer.get_fields():
                 if key not in loader.schema:
+                    if loader.loaded:
+                        loader = self.create_join_loader(config, join_loaders, True)
                     loader.add_valuer(key, self.create_valuer(self.compile_data_valuer(key, None)))
         except LoadAllFieldsException:
+            if loader.loaded:
+                loader = self.create_join_loader(config, join_loaders, True)
             loader.schema.clear()
             loader.add_key_matcher(".*", self.create_valuer(self.compile_data_valuer("", None)))
 
