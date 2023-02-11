@@ -978,7 +978,7 @@ class CoreTasker(Tasker):
 
         for query in self.config["querys"]:
             query_name = query["name"]
-            if query_name not in self.outputer.schema:
+            if query_name not in self.outputer.schema and isinstance(self.schema, dict):
                 for field_name, valuer in self.schema.items():
                     if valuer.get("key") != query_name:
                         continue
@@ -1174,7 +1174,7 @@ class CoreTasker(Tasker):
         get_logger().info("%s start %s -> %s", self.name, self.config_filename, self.config.get("name"))
         super(CoreTasker, self).run()
         batch_count = int(self.arguments.get("@batch", 0))
-        loader_timeout = int(self.arguments.get("@timeout", None))
+        loader_timeout = int(self.arguments.get("@timeout", 0))
 
         while not self.terminated:
             if batch_count > 0:
