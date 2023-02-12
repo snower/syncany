@@ -354,7 +354,7 @@ class CoreTasker(Tasker):
                     arguments_names[argument["name"]] = argument
             elif isinstance(query["exps"], dict):
                 for exp_name, exp_value in query["exps"].items():
-                    if exp_value[:1] == "?":
+                    if isinstance(exp_value, str) and exp_value[:1] == "?":
                         query["refs"][exp_name] = exp_value[1:]
                         continue
                     filter_cls = self.find_filter_driver(query["type"])
