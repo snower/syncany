@@ -5,7 +5,7 @@
 import os
 import csv
 import json
-from ..utils import print_object, get_rich, human_repr_object, human_format_object
+from ..utils import print_object, get_rich, human_repr_object, human_format_object, sorted_by_keys
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 
@@ -140,7 +140,8 @@ class TextLineQueryBuilder(QueryBuilder):
                     index += 1
 
         if self.orders:
-            datas = sorted(datas, key=lambda x: x.get(self.orders[0][0]), reverse=True if self.orders[0][1] < 0 else False)
+            datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
+                                                for key, direct in self.orders] if self.orders else None)
         return datas
 
     def verbose(self):

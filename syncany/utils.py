@@ -9,6 +9,63 @@ import string
 import pytz
 from tzlocal import get_localzone
 
+class CmpValue(object):
+    def __init__(self, value, reverse=False):
+        self.value = value
+        self.reverse = reverse
+
+    def __eq__(self, other):
+        return self.value == other.value
+
+    def __gt__(self, other):
+        if self.reverse:
+            return self.value < other.value
+        return self.value > other.value
+
+    def __lt__(self, other):
+        if self.reverse:
+            return self.value > other.value
+        return self.value < other.value
+
+    def __ne__(self, other):
+        return self.value != other.value
+
+def sorted_by_keys(iterable, keys=None, reverse=None):
+    if not keys:
+        return sorted(iterable, reverse=True if reverse else False)
+    if not isinstance(keys, (list, tuple, set)):
+        keys = [keys]
+    reverse_keys = [key for key in keys if isinstance(key, (tuple, list, set)) and len(key) == 2
+                    and isinstance(key[0], str) and key[1]]
+    if reverse is None:
+        reverse = True if len(reverse_keys) >= len(keys) / 2 else False
+    else:
+        reverse = True if reverse else False
+    sort_keys = []
+    for key in keys:
+        if isinstance(key, str):
+            sort_key = (key.split("."), True if reverse else False)
+        elif isinstance(key, (tuple, list, set)) and len(key) == 2 and isinstance(key[0], str):
+            sort_key = (key[0].split("."), (False if key[1] else True) if reverse else (True if key[1] else False))
+        else:
+            raise TypeError("unknown keys type: " + str(keys))
+        sort_keys.append(sort_key)
+    if len(sort_keys) == 1 and len(sort_keys[0][0]) == 1:
+        sort_key = sort_keys[0][0][0]
+        return sorted(iterable, key=lambda x: x[sort_key], reverse=sort_keys[0][1])
+    def get_key(x):
+        key_values = []
+        for ks, kr in sort_keys:
+            key_value = None
+            for k in ks:
+                key_value = x[k]
+            if kr == reverse:
+                key_values.append(key_value)
+            else:
+                key_values.append(-key_value if isinstance(key_value, (int, float)) else CmpValue(key_value, True))
+        return tuple(key_values)
+    return sorted(iterable, key=get_key, reverse=reverse)
+
 _runner_index = 0
 def gen_runner_id():
     global _runner_index

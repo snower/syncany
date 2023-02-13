@@ -66,14 +66,17 @@ class DBLoader(Loader):
         if self.current_cursor:
             query.filter_cursor(*self.current_cursor)
 
+        order_keys = set([])
         if self.orders:
             for order in self.orders:
                 query.order_by(*order)
-        else:
-            for primary_key in self.primary_keys:
-                if primary_key not in self.schema:
-                    continue
-                query.order_by(primary_key)
+                order_keys.add(order[0])
+        for primary_key in self.primary_keys:
+            if primary_key not in self.schema:
+                continue
+            if primary_key in order_keys:
+                continue
+            query.order_by(primary_key)
 
         self.datas = query.commit()
         self.loader_state["query_count"] += 1

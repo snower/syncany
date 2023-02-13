@@ -40,6 +40,7 @@ class CoreTasker(Tasker):
         "variables": {},
         "intercepts": [],
         "schema": {},
+        "orders": [],
         "pipelines": [],
         "options": {},
         "dependencys": [],
@@ -921,6 +922,14 @@ class CoreTasker(Tasker):
                 if argument_name not in self.arguments:
                     continue
                 getattr(self.loader, "filter_%s" % exp_name)(query["name"], self.arguments[argument_name])
+
+        for order in self.config["orders"]:
+            if isinstance(order, str):
+                self.loader.order_by(order, 1)
+            elif isinstance(order, list) and len(order) >= 2 and isinstance(order[0], str):
+                self.loader.order_by(order[0], -1 if order[1] else 1)
+            elif isinstance(order, dict) and "key" in order:
+                self.loader.order_by(order["key"], -1 if order.get("reverse") else 1)
 
         if self.intercepts:
             for intercept in self.intercepts:

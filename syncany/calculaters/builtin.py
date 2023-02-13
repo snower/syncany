@@ -8,7 +8,7 @@ import hashlib
 import datetime
 import pytz
 import json
-from ..utils import get_timezone
+from ..utils import get_timezone, sorted_by_keys
 from .calculater import Calculater
 try:
     from bson.objectid import ObjectId
@@ -719,18 +719,9 @@ class SortCalculater(Calculater):
         if not isinstance(self.args[0], list):
             return self.args[0]
 
-        keys = str(self.args[2]).split(".") if len(self.args) >= 3 else []
-        def sort_key(x):
-            for k in keys:
-                if isinstance(x, dict) and k in x:
-                    x = x[k]
-
-            if isinstance(x, (list, dict)):
-                return id(x)
-            return x
-        return sorted(self.args[0], key=sort_key,
-                      reverse=True if len(self.args) >= 2 and self.args[1] else False)
-
+        keys = self.args[2] if len(self.args) >= 3 else None
+        return sorted_by_keys(self.args[0], keys=keys,
+                              reverse=True if len(self.args) >= 2 and self.args[1] else False)
 
 
 class StringCalculater(Calculater):
