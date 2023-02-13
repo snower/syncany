@@ -803,6 +803,10 @@ class CoreTasker(Tasker):
         self.add_hooker(pipelines_hooker)
 
     def run_valuer(self, config, data):
+        if isinstance(config, list) and len(config) >= 2 and config[0] == "#const":
+            return config[1:] if len(config) > 2 else (config[1] if len(config) > 1 else None)
+        if isinstance(config, dict) and config.get("name") == "const_valuer":
+            return config.get("value")
         config_valuer = self.compile_valuer(config)
         if not config_valuer or config_valuer.get("name") == "const_valuer":
             return config
