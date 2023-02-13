@@ -70,7 +70,7 @@ class MongoQueryBuilder(QueryBuilder):
             self.limit = (offset, count)
 
     def order_by(self, key, direct=1):
-        self.orders.append((key, 1 if direct else -1))
+        self.orders.append((key, 1 if direct > 0 else -1))
 
     def format_table(self):
         for virtual_collection in self.db.virtual_collections:

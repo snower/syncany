@@ -63,7 +63,7 @@ class MysqlQueryBuilder(QueryBuilder):
             self.limit = (offset, count)
 
     def order_by(self, key, direct=1):
-        self.orders.append(('`' + key + ("` ASC" if direct else "` DESC")))
+        self.orders.append(('`' + key + ("` ASC" if direct > 0 else "` DESC")))
 
     def format_table(self):
         for virtual_table in self.db.virtual_tables:

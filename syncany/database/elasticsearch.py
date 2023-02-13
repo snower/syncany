@@ -63,7 +63,7 @@ class ElasticsearchQueryBuilder(QueryBuilder):
     def order_by(self, key, direct=1):
         if key in {"_index", "_type", "_id", "_score", "_source"}:
             return
-        self.orders[key] = {"order": "asc"} if direct == 1 else {"order": "desc"}
+        self.orders[key] = {"order": "asc"} if direct > 0 else {"order": "desc"}
 
     def format_table(self):
         for virtual_view in self.db.virtual_views:
