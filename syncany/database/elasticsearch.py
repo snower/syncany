@@ -192,7 +192,7 @@ class ElasticsearchQueryBuilder(QueryBuilder):
         return []
 
     def verbose(self):
-        return "indexNmae: %s\nquery: %s" % (self.index_name, human_repr_object(self.equery))
+        return "indexName: %s\nquery: %s" % (self.index_name, human_repr_object(self.equery))
 
 
 class ElasticsearchInsertBuilder(InsertBuilder):

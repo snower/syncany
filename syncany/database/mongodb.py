@@ -176,7 +176,7 @@ class MongoQueryBuilder(QueryBuilder):
 
     def verbose(self):
         if isinstance(self.bquery, tuple):
-            return "collection: %s\nquery: %svalues: %s\nlimit: %s\norderBy: %s" % (
+            return "collection: %s\nquery: %s\nvalues: %s\nlimit: %s\norderBy: %s" % (
                 self.collection_name, self.bquery[0], human_repr_object(self.bquery[1]), self.limit, self.orders)
         return "collection: %s\nquery: %s\nlimit: %s\norderBy: %s" % (
             self.collection_name, human_repr_object(self.bquery), self.limit, self.orders)

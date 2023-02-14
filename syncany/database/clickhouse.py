@@ -92,7 +92,9 @@ class ClickhouseQueryBuilder(QueryBuilder):
             if isinstance(arg, str):
                 virtual_q = "`" + arg[0] + "`=%s"
             else:
-                if arg[1] == "in":
+                if arg[1] == "==":
+                    virtual_q = "`" + arg[0] + "`=%s"
+                elif arg[1] == "in":
                     virtual_q = "`" + arg[0] + "` " + arg[1] + " %s"
                 else:
                     virtual_q = "`" + arg[0] + "`" + arg[1] + "%s"

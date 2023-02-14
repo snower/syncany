@@ -98,6 +98,8 @@ class Loader(object):
                         odata[name] = valuer.get()
                         continue
                     odata[name] = data[name].get()
+                if self.intercepts and self.check_intercepts(odata):
+                    continue
                 datas.append(odata)
             return datas
 
@@ -119,17 +121,8 @@ class Loader(object):
                     continue
                 odata[name] = value
 
-            if self.intercepts:
-                intercept_stoped = False
-                for intercept in self.intercepts:
-                    intercept = intercept.clone()
-                    intercept.fill(odata)
-                    intercept_result = intercept.get()
-                    if intercept_result is not None and not intercept_result:
-                        intercept_stoped = True
-                        break
-                if intercept_stoped:
-                    continue
+            if self.intercepts and self.check_intercepts(odata):
+                continue
 
             if oyields:
                 while oyields:
@@ -148,6 +141,17 @@ class Loader(object):
             else:
                 datas.append(odata)
         return datas
+
+    def check_intercepts(self, data):
+        intercept_stoped = False
+        for intercept in self.intercepts:
+            intercept = intercept.clone()
+            intercept.fill(data)
+            intercept_result = intercept.get()
+            if intercept_result is not None and not intercept_result:
+                intercept_stoped = True
+                break
+        return intercept_stoped
 
     def add_filter(self, key, exp, value):
         self.filters.append([key, exp, value])
