@@ -991,19 +991,22 @@ class CoreTasker(Tasker):
 
         for query in self.config["querys"]:
             query_name = query["name"]
-            if query_name not in self.outputer.schema and isinstance(self.schema, dict):
-                for field_name, valuer in self.schema.items():
-                    if valuer.get("key") != query_name:
-                        continue
-                    if valuer.get("name") == "data_valuer" and not valuer.get("return_valuer"):
-                        query_name = field_name
-                        break
+            if isinstance(self.schema, dict):
+                if query_name not in self.outputer.schema:
+                    for field_name, valuer in self.schema.items():
+                        if valuer.get("key") != query_name:
+                            continue
+                        if valuer.get("name") == "data_valuer" and not valuer.get("return_valuer"):
+                            query_name = field_name
+                            break
+                if query_name not in self.outputer.schema:
+                    continue
 
-            if query_name not in self.outputer.schema:
-                continue
-            valuer = self.outputer.schema[query_name]
-            if valuer.filter:
-                value_filter = valuer.filter.filter
+                valuer = self.outputer.schema[query_name]
+                if valuer.filter:
+                    value_filter = valuer.filter.filter
+                else:
+                    value_filter = lambda v: v
             else:
                 value_filter = lambda v: v
 

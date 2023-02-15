@@ -174,6 +174,10 @@ class MemoryDeleteBuilder(DeleteBuilder):
         self.query[(key, "in")] = (value, lambda a, b: a in b)
 
     def commit(self):
+        if not self.query:
+            self.db.memory_databases[self.name] = []
+            return []
+
         datas = []
         for data in self.db.memory_databases.get(self.name, []):
             succed = True
