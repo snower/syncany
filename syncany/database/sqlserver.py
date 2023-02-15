@@ -143,7 +143,7 @@ class SqlServerQueryBuilder(QueryBuilder):
         connection = self.db.ensure_connection()
         cursor = connection.cursor(as_dict=True)
         try:
-            cursor.execute(sql, query_values)
+            cursor.execute(sql, tuple(query_values))
             datas = cursor.fetchall()
         finally:
             cursor.close()
@@ -189,14 +189,14 @@ class SqlServerInsertBuilder(InsertBuilder):
         fields = self.get_fields() if not self.fields else self.fields
         datas = []
         for data in self.datas:
-            datas.append([data[field] for field in fields])
+            datas.append(tuple([data[field] for field in fields]))
 
         db_name = ("[%s].[%s].[%s]" % (self.db.db_name, self.dbo_name, self.table_name))
         sql = "INSERT INTO %s (%s) VALUES (%s)" % (db_name, ",".join(['[' + field + ']' for field in fields]), ",".join(["%s" for _ in fields]))
         connection = self.db.ensure_connection()
         cursor = connection.cursor(as_dict=True)
         try:
-            cursor.executemany(sql, datas)
+            cursor.executemany(sql, tuple(datas))
         finally:
             cursor.close()
             connection.commit()
@@ -269,7 +269,7 @@ class SqlServerUpdateBuilder(UpdateBuilder):
         connection = self.db.ensure_connection()
         cursor = connection.cursor(as_dict=True)
         try:
-            cursor.execute(sql, values)
+            cursor.execute(sql, tuple(values))
         finally:
             cursor.close()
             connection.commit()
@@ -333,7 +333,7 @@ class SqlServerDeleteBuilder(DeleteBuilder):
         connection = self.db.ensure_connection()
         cursor = connection.cursor(as_dict=True)
         try:
-            cursor.execute(sql, self.query_values)
+            cursor.execute(sql, tuple(self.query_values))
         finally:
             cursor.close()
             connection.commit()

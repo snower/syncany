@@ -3,8 +3,11 @@
 # create by: snower
 
 import datetime
+import time
+
 import pytz
 import binascii
+import uuid
 try:
     from bson.objectid import ObjectId
 except ImportError:
@@ -350,6 +353,45 @@ class ObjectIdFilter(Filter):
                 return datetime.datetime.strptime(value, self.args or "%Y-%m-%d %H:%M:%S").astimezone(tz=get_timezone())
             except:
                 return ObjectId("000000000000000000000000")
+
+class UUIDFilter(Filter):
+    def filter(self, value):
+        if isinstance(value, uuid.UUID):
+            return value
+
+        if value is None:
+            return uuid.UUID("00000000-0000-0000-0000-000000000000")
+
+        if value is True:
+            return uuid.UUID("ffffffff-ffff-ffff-ffff-ffffffffffff")
+
+        if value is False:
+            return uuid.UUID("00000000-0000-0000-0000-000000000000")
+
+        if isinstance(value, (list, tuple, set)):
+            results = []
+            for cv in value:
+                results.append(self.filter(cv))
+            return results
+
+        if isinstance(value, dict):
+            results = {}
+            for ck, cv in value.items():
+                results[ck] = self.filter(cv)
+            return value
+
+        if isinstance(value, datetime.datetime):
+            value = value.timestamp()
+        if isinstance(value, (int, float)):
+            if value <= 0xffffffff:
+                timestamp = int(time.time())
+                return uuid.UUID(fields=(timestamp & 0xffffffff, (timestamp >> 32) & 0xffff,
+                                         (timestamp >> 48) & 0x0fff, 0, 0, 0), version=1)
+            return uuid.UUID(int=int(value))
+        try:
+            return uuid.UUID(value)
+        except:
+            return uuid.UUID("00000000-0000-0000-0000-000000000000")
 
 class DateTimeFilter(Filter):
     def __init__(self, *args, **kwargs):

@@ -15,6 +15,7 @@ FILTERS = {
     'array': ArrayFilter,
     'map': MapFilter,
     "ObjectId": ObjectIdFilter,
+    "uuid": UUIDFilter,
     "datetime": DateTimeFilter,
     "date": DateFilter,
     "time": TimeFilter,
