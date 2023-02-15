@@ -11,6 +11,7 @@ DATABASES = {
     "mongo": ".mongodb.MongoDB",
     "mysql": ".mysql.MysqlDB",
     "postgresql": ".postgresql.PostgresqlDB",
+    "sqlserver": ".sqlserver.SqlServerDB",
     "clickhouse": ".clickhouse.ClickhouseDB",
     "influxdb": ".influxdb.InfluxDB",
     "elasticsearch": ".elasticsearch.ElasticsearchDB",

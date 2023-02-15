@@ -50,7 +50,8 @@ setup(
         "clickhouse": ["clickhouse_driver>=0.1.5"],
         "rich": ["rich>=9.11.1"],
         "redis": ["redis>=3.5.3"],
-        "requests": ["requests>=2.22.0"]
+        "requests": ["requests>=2.22.0"],
+        "pymssql": ['pymssql>=2.2.7'],
     },
     package_data={
         '': ['README.md'],
