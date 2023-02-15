@@ -301,5 +301,8 @@ class JsonDB(DataBase):
         self.flush()
         self.jsons = {}
 
+    def dynamic_schema(self):
+        return True
+
     def verbose(self):
         return "%s<%s>" % (self.name, self.config["path"])

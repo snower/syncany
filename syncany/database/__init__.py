@@ -51,7 +51,7 @@ class DatabaseInstanceBuilder(object):
             if item == "verbose":
                 return lambda: self.name
             if item in ("get_key", "query", "insert", "update", "delete", "cache",
-                        "flush", "close"):
+                        "flush", "close", "dynamic_schema"):
                 return lambda *args, **kwargs: None
             raise AttributeError(item)
         return getattr(self.driver_instance, item)
@@ -59,7 +59,8 @@ class DatabaseInstanceBuilder(object):
     def __setattr__(self, key, value):
         if self.driver_instance is None:
             if key in ("get_key", "query", "insert", "update", "delete", "cache",
-                       "flush", "close", "get_default_loader", "get_default_outputer", "verbose"):
+                       "flush", "close", "dynamic_schema", "get_default_loader",
+                       "get_default_outputer", "verbose"):
                 self.update_attrs.append((key, value))
             else:
                 return super(DatabaseInstanceBuilder, self).__setattr__(key, value)

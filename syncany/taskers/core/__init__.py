@@ -1131,7 +1131,10 @@ class CoreTasker(Tasker):
                 self.loader.datas = hooker.queried(self, self.loader.datas)
             self.print_queryed_statistics(self.loader, self.status["statistics"]["loader"])
 
-            datas = self.loader.get()
+            if self.outputer.db.dynamic_schema() and self.schema == ".*" and not self.config["querys"] and not self.intercepts:
+                datas = self.loader.datas
+            else:
+                datas = self.loader.get()
             if not datas:
                 self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
                 self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
@@ -1169,7 +1172,10 @@ class CoreTasker(Tasker):
             self.loader.datas = hooker.queried(self, self.loader.datas)
         self.print_queryed_statistics(self.loader, self.status["statistics"]["loader"])
 
-        datas = self.loader.get()
+        if self.outputer.db.dynamic_schema() and self.schema == ".*" and not self.config["querys"] and not self.intercepts:
+            datas = self.loader.datas
+        else:
+            datas = self.loader.get()
         if not datas:
             self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
             self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])

@@ -193,6 +193,9 @@ class DataBase(object):
     def close(self):
         pass
 
+    def dynamic_schema(self):
+        return False
+
     def get_default_loader(self):
         return "db_loader"
 

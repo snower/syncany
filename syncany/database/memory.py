@@ -277,3 +277,6 @@ class MemoryDB(DataBase):
     def cache(self, name, prefix_key, config=None):
         self.ensure_memory_databases()
         return MemoryCacheBuilder(self, name, prefix_key, config)
+
+    def dynamic_schema(self):
+        return True

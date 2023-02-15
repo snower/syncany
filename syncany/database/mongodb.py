@@ -411,5 +411,8 @@ class MongoDB(DataBase):
         self.connection.raw().close()
         self.connection = None
 
+    def dynamic_schema(self):
+        return True
+
     def verbose(self):
         return "%s<%s>" % (self.name, self.db_name)

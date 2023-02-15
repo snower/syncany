@@ -245,3 +245,6 @@ class BeanstalkDB(DataBase):
             return
         self.connection.close()
         self.connection = None
+
+    def dynamic_schema(self):
+        return False
