@@ -247,4 +247,4 @@ class BeanstalkDB(DataBase):
         self.connection = None
 
     def dynamic_schema(self):
-        return False
+        return True
