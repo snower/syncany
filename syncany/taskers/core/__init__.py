@@ -763,13 +763,15 @@ class CoreTasker(Tasker):
             return
 
         current_type = "compiled_valuers"
-        valuers = {"compiled_valuers": [], "queried_valuers": [], "loaded_valuers": [], "outputed_valuers": []}
+        valuers = {"compiled_valuers": [], "queried_valuers": [], "loaded_valuers": [], "outputed_valuers": [], "finaled_valuers": []}
         for pipeline in self.config["pipelines"]:
             if isinstance(pipeline, list):
                 if pipeline[0][:1] not in (">", "@"):
                     continue
 
-                if pipeline[0][:3] == ">>>":
+                if pipeline[0][:4] == ">>>>":
+                    current_type, pipeline[0] = "finaled_valuers", pipeline[0][4:]
+                elif pipeline[0][:3] == ">>>":
                     current_type, pipeline[0] = "outputed_valuers", pipeline[0][3:]
                 elif pipeline[0][:2] == ">>":
                     current_type, pipeline[0] = "loaded_valuers", pipeline[0][2:]
@@ -782,7 +784,9 @@ class CoreTasker(Tasker):
                 if pipeline[:1] not in (">", "@"):
                     continue
 
-                if pipeline[:3] == ">>>":
+                if pipeline[0][:4] == ">>>>":
+                    current_type, pipeline[0] = "finaled_valuers", pipeline[0][4:]
+                elif pipeline[:3] == ">>>":
                     current_type, pipeline = "outputed_valuers", pipeline[3:]
                 elif pipeline[:2] == ">>":
                     current_type, pipeline = "loaded_valuers", pipeline[2:]
@@ -1104,17 +1108,21 @@ class CoreTasker(Tasker):
         self.compile_outputer()
         self.input = self.config["input"]
         self.output = self.config["output"]
-        for hooker in self.hookers:
-            hooker.compiled(self)
+        self.run_compiled_hooks()
 
     def run_batch(self, batch_count, loader_timeout):
         self.load_cursor()
-        batch_index, load_count, last_cursor_data = 0, 0, self.batch_cursor
+        limit = self.arguments["@limit"] if "@limit" in self.arguments and self.arguments["@limit"] > 0 else 0
+        batch_count = min(batch_count, limit) if limit > 0 else batch_count
+        batch_index, load_count, total_load_count, last_cursor_data = 0, 0, 0, self.batch_cursor
         get_logger().info("%s batch start %s, %s cursor: %s", self.name, 1, batch_count, "")
 
-        while not self.terminated:
+        while not self.terminated and total_load_count < limit:
             batch_index += 1
             self.loader, self.outputer = self.loader.clone(), self.outputer.clone()
+            if isinstance(self.loader.schema, dict):
+                for key, valuer in self.loader.schema.items():
+                    valuer.reset()
             self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
 
             if self.batch_cursor:
@@ -1127,8 +1135,7 @@ class CoreTasker(Tasker):
             self.loader.filter_limit(batch_count)
             self.loader.load(loader_timeout)
             load_count = len(self.loader.datas)
-            for hooker in self.hookers:
-                self.loader.datas = hooker.queried(self, self.loader.datas)
+            self.loader.datas = self.run_queried_hooks(self.loader.datas)
             self.print_queryed_statistics(self.loader, self.status["statistics"]["loader"])
 
             if self.outputer.db.dynamic_schema() and self.schema == ".*" and not self.config["querys"] and not self.intercepts:
@@ -1139,15 +1146,13 @@ class CoreTasker(Tasker):
                 self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
                 self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
                 break
-            for hooker in self.hookers:
-                datas = hooker.loaded(self, datas)
+            datas = self.run_loaded_hooks(datas)
             self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
 
             if last_cursor_data:
                 self.outputer.filter_cursor(last_cursor_data, (batch_index - 1) * batch_count, batch_count)
             self.outputer.store(datas)
-            for hooker in self.hookers:
-                hooker.outputed(self, datas)
+            self.run_outputed_hooks(datas)
             self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
             self.batch_cursor, last_cursor_data = self.loader.last_data, datas[-1]
             self.status["data"]["first"] = datas[0]
@@ -1157,6 +1162,7 @@ class CoreTasker(Tasker):
             for name, database in self.databases.items():
                 database.flush()
             self.states.save(self)
+            total_load_count += load_count
 
         get_logger().info("%s batch end %s, %s", self.name, batch_index - 1, batch_count)
         statistics = (self.loader.__class__.__name__, self.status["statistics"]["loader"], self.outputer.__class__.__name__,
@@ -1168,8 +1174,7 @@ class CoreTasker(Tasker):
         if "@limit" in self.arguments and self.arguments["@limit"] > 0:
             self.loader.filter_limit(self.arguments["@limit"])
         self.loader.load(loader_timeout)
-        for hooker in self.hookers:
-            self.loader.datas = hooker.queried(self, self.loader.datas)
+        self.loader.datas = self.run_queried_hooks(self.loader.datas)
         self.print_queryed_statistics(self.loader, self.status["statistics"]["loader"])
 
         if self.outputer.db.dynamic_schema() and self.schema == ".*" and not self.config["querys"] and not self.intercepts:
@@ -1180,39 +1185,45 @@ class CoreTasker(Tasker):
             self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
             self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
             return self.loader.next()
-        for hooker in self.hookers:
-            datas = hooker.loaded(self, datas)
+        datas = self.run_loaded_hooks(datas)
         self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
 
         self.outputer.store(datas)
-        for hooker in self.hookers:
-            hooker.outputed(self, datas)
+        self.run_outputed_hooks(datas)
         self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
         self.status["data"]["first"] = datas[0]
         self.status["data"]["last"] = datas[-1]
         return self.loader.next()
 
     def run(self):
-        get_logger().info("%s start %s -> %s", self.name, self.config_filename, self.config.get("name"))
-        super(CoreTasker, self).run()
-        batch_count = int(self.arguments.get("@batch", 0))
-        loader_timeout = int(self.arguments.get("@timeout", 0))
+        try:
+            get_logger().info("%s start %s -> %s", self.name, self.config_filename, self.config.get("name"))
+            super(CoreTasker, self).run()
+            batch_count = int(self.arguments.get("@batch", 0))
+            loader_timeout = int(self.arguments.get("@timeout", 0))
 
-        while not self.terminated:
-            if batch_count > 0:
-                if not self.run_batch(batch_count, loader_timeout):
+            while not self.terminated:
+                if batch_count > 0:
+                    if not self.run_batch(batch_count, loader_timeout):
+                        break
+                    continue
+
+                if not self.run_once(loader_timeout):
                     break
-                continue
+                self.loader = self.loader.clone()
+                if isinstance(self.loader.schema, dict):
+                    for key, valuer in self.loader.schema.items():
+                        valuer.reset()
+                self.outputer = self.outputer.clone()
+                self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
 
-            if not self.run_once(loader_timeout):
-                break
-            self.loader = self.loader.clone()
-            self.outputer = self.outputer.clone()
-            self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
-
-        self.status["execute_time"] = (time.time() - self.status.start_time) * 1000
-        get_logger().info("%s finish %s %s %.2fms", self.name, self.config_filename, self.config.get("name"),
-                          self.status["execute_time"])
+            self.status["execute_time"] = (time.time() - self.status.start_time) * 1000
+            get_logger().info("%s finish %s %s %.2fms", self.name, self.config_filename, self.config.get("name"),
+                              self.status["execute_time"])
+        except Exception as e:
+            self.run_finaled_hooks(e)
+        else:
+            self.run_finaled_hooks(None)
 
     def terminate(self):
         if self.terminated:

@@ -37,6 +37,9 @@ class AggregateManager(object):
         self.datas[key] = (scope_data, data, {name: True})
         return scope_data
 
+    def reset(self):
+        self.datas = {}
+
 class AggregateValuer(Valuer):
     def __init__(self, key_valuer, calculate_valuer, inherit_valuers, aggregate_manager, *args, **kwargs):
         self.key_valuer = key_valuer
@@ -95,6 +98,10 @@ class AggregateValuer(Valuer):
         g = gen_iter()
         g.send(None)
         return g
+
+    def reset(self):
+        self.aggregate_manager.reset()
+        super(AggregateValuer, self).reset()
 
     def childs(self):
         childs = []

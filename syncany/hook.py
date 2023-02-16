@@ -12,15 +12,19 @@ class Hooker(object):
     def loaded(self, tasker, datas):
         return datas
 
-    def outputed(self, takser, datas):
+    def outputed(self, tasker, datas):
+        pass
+
+    def finaled(self, tasker, e=None):
         pass
 
 class PipelinesHooker(Hooker):
-    def __init__(self, compiled_valuers=None, queried_valuers=None, loaded_valuers=None, outputed_valuers=None):
+    def __init__(self, compiled_valuers=None, queried_valuers=None, loaded_valuers=None, outputed_valuers=None, finaled_valuers=None):
         self.compiled_valuers = compiled_valuers
         self.queried_valuers = queried_valuers
         self.loaded_valuers = loaded_valuers
         self.outputed_valuers = outputed_valuers
+        self.finaled_valuers = finaled_valuers
 
     def compiled(self, tasker):
         if not self.compiled_valuers:
@@ -50,7 +54,7 @@ class PipelinesHooker(Hooker):
             datas = valuer.get()
         return datas
 
-    def outputed(self, takser, datas):
+    def outputed(self, tasker, datas):
         if not self.outputed_valuers:
             return datas
 
@@ -58,3 +62,11 @@ class PipelinesHooker(Hooker):
             valuer.fill(datas)
             datas = valuer.get()
         return datas
+
+    def finaled(self, tasker, e=None):
+        if not self.finaled_valuers:
+            return
+
+        for valuer in self.finaled_valuers:
+            valuer.fill(e)
+            valuer.get()

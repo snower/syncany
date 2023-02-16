@@ -184,6 +184,49 @@ class Tasker(object):
         self.add_hooker(hooker)
         return func
 
+    def decorator_finaled(self, func):
+        hooker = Hooker()
+        hooker.finaled = func
+        self.add_hooker(hooker)
+        return func
+
+    def run_compiled_hooks(self):
+        try:
+            for hooker in self.hookers:
+                hooker.compiled(self)
+        finally:
+            _thread_local.current_tasker = self
+
+    def run_queried_hooks(self, datas):
+        try:
+            for hooker in self.hookers:
+                datas = hooker.queried(self, datas)
+            return datas
+        finally:
+            _thread_local.current_tasker = self
+
+    def run_loaded_hooks(self, datas):
+        try:
+            for hooker in self.hookers:
+                datas = hooker.loaded(self, datas)
+            return datas
+        finally:
+            _thread_local.current_tasker = self
+
+    def run_outputed_hooks(self, datas):
+        try:
+            for hooker in self.hookers:
+                hooker.outputed(self, datas)
+        finally:
+            _thread_local.current_tasker = self
+
+    def run_finaled_hooks(self, e=None):
+        try:
+            for hooker in self.hookers:
+                hooker.finaled(self, e)
+        finally:
+            _thread_local.current_tasker = self
+
 def current_tasker():
     try:
         return _thread_local.current_tasker

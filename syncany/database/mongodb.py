@@ -62,10 +62,11 @@ class MongoQueryBuilder(QueryBuilder):
             self.limit = (start, count)
 
     def filter_cursor(self, last_data, offset, count):
-        if len(self.primary_keys) == 1 and self.primary_keys[0] in last_data:
-            if self.primary_keys[0] not in self.query:
-                self.query[self.primary_keys[0]] = {}
-            self.query[self.primary_keys[0]]["$gt"] = last_data[self.primary_keys[0]]
+        if last_data and all([primary_key in last_data for primary_key in self.primary_keys]):
+            for primary_key in self.primary_keys:
+                if primary_key not in self.query:
+                    self.query[primary_key] = {}
+                self.query[primary_key]["$gt"] = last_data[primary_key]
         else:
             self.limit = (offset, count)
 

@@ -730,11 +730,17 @@ class StringCalculater(Calculater):
             return ''
 
         func_name = self.name[8:]
-        if isinstance(self.args[0], str) and hasattr(self.args[0], func_name):
-            try:
-                return getattr(self.args[0], func_name)(*tuple(self.args[1:]))
-            except:
-                return ''
+        if isinstance(self.args[0], str):
+            if func_name == "contains":
+                for cs in self.args[1:]:
+                    if not isinstance(cs, str) or cs not in self.args[0]:
+                        return False
+                return True
+            if hasattr(self.args[0], func_name):
+                try:
+                    return getattr(self.args[0], func_name)(*tuple(self.args[1:]))
+                except:
+                    return ''
         return ''
 
 
@@ -798,6 +804,11 @@ class ArrayCalculater(Calculater):
                 return self.to_map()
             if func_name == "flat":
                 return self.flat()
+            if func_name == "contains":
+                for cs in self.args[1:]:
+                    if cs not in self.args[0]:
+                        return False
+                return True
 
             value = list(self.args[0])
             if hasattr(value, func_name):
@@ -822,6 +833,11 @@ class MapCalculater(Calculater):
                 result = getattr(self.args[0], func_name)(*tuple(self.args[1:]))
                 if func_name in ("clear", "update"):
                     return self.args[0]
+                if func_name == "contains":
+                    for cs in self.args[1:]:
+                        if cs not in self.args[0]:
+                            return False
+                    return True
                 return result
             except:
                 return None

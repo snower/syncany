@@ -123,6 +123,10 @@ class Valuer(object):
     def get(self):
         return self.value
 
+    def reset(self):
+        for valuer in self.childs():
+            valuer.reset()
+
     def do_filter(self, value):
         if not self.filter:
             self.value = value

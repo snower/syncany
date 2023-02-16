@@ -79,6 +79,7 @@ class DBLoader(Loader):
             query.order_by(primary_key)
 
         self.datas = query.commit()
+        self.last_data = self.datas[-1] if self.datas else {}
         self.loader_state["query_count"] += 1
         self.loader_state["load_count"] += len(self.datas)
         self.compiled = False
@@ -106,7 +107,6 @@ class DBLoader(Loader):
                                     self.schema[key] = valuer
                                     values[key] = valuer.clone().fill(data)
                 self.datas.append(values)
-                self.last_data = data
 
         return super(DBLoader, self).get()
 
