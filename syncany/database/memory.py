@@ -78,7 +78,8 @@ class MemoryQueryBuilder(QueryBuilder):
             if len(cache_keys[1]) <= 2:
                 return [{}]
             try:
-                return [{} for _ in range(int(cache_keys[1][2:]))]
+                count = int(cache_keys[1][2:])
+                return [{} for _ in range(min(count, self.limit[1]) if self.limit else count)]
             except:
                 return datas
         return datas
