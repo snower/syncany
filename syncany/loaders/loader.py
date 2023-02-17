@@ -113,11 +113,7 @@ class Loader(object):
                 value = data[name].get()
                 if isinstance(value, types.GeneratorType):
                     oyields[name] = value
-                    final_filter = valuer.get_final_filter()
-                    if final_filter:
-                        odata[name] = final_filter.filter(None)
-                    else:
-                        odata[name] = None
+                    odata[name] = None
                     continue
                 odata[name] = value
 

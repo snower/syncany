@@ -85,13 +85,7 @@ class AggregateValuer(Valuer):
         def gen_iter():
             loader_data = yield None
             if not self.loader_loaded:
-                final_filter = self.calculate_valuer.get_final_filter() if not self.filter else self.filter
-                if final_filter:
-                    loader_data[self.key] = final_filter(None)
-                else:
-                    loader_data[self.key] = None
                 loader_data = self.aggregate_manager.add(self.key_value, self.key, loader_data)
-
                 self.calculate_valuer.fill(loader_data)
                 self.do_filter(self.calculate_valuer.get())
                 self.aggregate_manager.set(self.key_value, self.key, self.value)

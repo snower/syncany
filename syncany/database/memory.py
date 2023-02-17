@@ -71,6 +71,16 @@ class MemoryQueryBuilder(QueryBuilder):
         if self.orders:
             datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
                                                 for key, direct in self.orders] if self.orders else None)
+        if not datas:
+            cache_keys = self.name.split(".")
+            if len(cache_keys) != 2 or cache_keys[1][:2] != "--":
+                return datas
+            if len(cache_keys[1]) <= 2:
+                return [{}]
+            try:
+                return [{} for _ in range(int(cache_keys[1][2:]))]
+            except:
+                return datas
         return datas
 
     def verbose(self):
@@ -88,6 +98,10 @@ class MemoryInsertBuilder(InsertBuilder):
             self.datas = [self.datas]
 
     def commit(self):
+        if ".--" in self.name:
+            cache_keys = self.name.split(".")
+            if len(cache_keys) == 2 or cache_keys[1][:2] == "--":
+                return
         datas = self.db.memory_databases.get(self.name, [])
         datas.extend(self.datas)
         self.db.memory_databases[self.name] = datas
@@ -123,6 +137,11 @@ class MemoryUpdateBuilder(UpdateBuilder):
         self.query[(key, "in")] = (value, lambda a, b: a in b)
 
     def commit(self):
+        if ".--" in self.name:
+            cache_keys = self.name.split(".")
+            if len(cache_keys) == 2 or cache_keys[1][:2] == "--":
+                return
+
         datas = []
         for data in self.db.memory_databases.get(self.name, []):
             succed = True
@@ -174,6 +193,11 @@ class MemoryDeleteBuilder(DeleteBuilder):
         self.query[(key, "in")] = (value, lambda a, b: a in b)
 
     def commit(self):
+        if ".--" in self.name:
+            cache_keys = self.name.split(".")
+            if len(cache_keys) == 2 or cache_keys[1][:2] == "--":
+                return
+
         if not self.query:
             self.db.memory_databases[self.name] = []
             return []
