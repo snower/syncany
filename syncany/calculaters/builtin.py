@@ -72,10 +72,14 @@ class AddCalculater(Calculater):
             if isinstance(self.args[0], datetime.date) and isinstance(self.args[1], (int, float)):
                 return self.args[0] + datetime.timedelta(days=int(self.args[1]))
 
-        result = self.args[0]
-        for i in range(1, len(self.args)):
-            result += self.args[i]
-
+        result = None
+        for value in self.args:
+            if value is None:
+                continue
+            if result is None:
+                result = self.format_type(value)
+            else:
+                result += self.format_type(value)
         return result
 
 
@@ -101,10 +105,14 @@ class SubCalculater(Calculater):
             if isinstance(self.args[0], datetime.date) and isinstance(self.args[1], (int, float)):
                 return self.args[0] - datetime.timedelta(days=int(self.args[1]))
 
-        result = self.args[0]
-        for i in range(1, len(self.args)):
-            result -= self.args[i]
-
+        result = None
+        for value in self.args:
+            if value is None:
+                continue
+            if result is None:
+                result = self.format_type(value)
+            else:
+                result -= self.format_type(value)
         return result
 
 
@@ -123,10 +131,14 @@ class MulCalculater(Calculater):
                         data[self.args[1]] = data[self.args[1]] * self.args[2]
             return self.args[0]
 
-        result = self.args[0]
-        for i in range(1, len(self.args)):
-            result *= self.args[i]
-
+        result = None
+        for value in self.args:
+            if value is None:
+                continue
+            if result is None:
+                result = self.format_type(value)
+            else:
+                result *= self.format_type(value)
         return result
 
 
@@ -145,10 +157,14 @@ class DivCalculater(Calculater):
                         data[self.args[1]] = data[self.args[1]] / self.args[2]
             return self.args[0]
 
-        result = self.args[0]
-        for i in range(1, len(self.args)):
-            result /= self.args[i]
-
+        result = None
+        for value in self.args:
+            if value is None:
+                continue
+            if result is None:
+                result = self.format_type(value)
+            else:
+                result /= self.format_type(value)
         return result
 
 
@@ -167,10 +183,14 @@ class ModCalculater(Calculater):
                         data[self.args[1]] = data[self.args[1]] % self.args[2]
             return self.args[0]
 
-        result = self.args[0]
-        for i in range(1, len(self.args)):
-            result = result % self.args[i]
-
+        result = None
+        for value in self.args:
+            if value is None:
+                continue
+            if result is None:
+                result = self.format_type(value)
+            else:
+                result = result % self.format_type(value)
         return result
 
 
@@ -198,18 +218,24 @@ class BitCalculater(Calculater):
             return self.args[0]
 
         if len(self.args) == 3:
+            if self.args[0] is None:
+                return 0
+            if self.args[2] is None:
+                return self.args[0]
             if self.args[1] == ">>":
-                return self.args[0] >> self.args[2]
+                return self.format_type(self.args[0]) >> self.format_type(self.args[2])
             if self.args[1] == "<<":
-                return self.args[0] << self.args[2]
+                return self.format_type(self.args[0]) << self.format_type(self.args[2])
             if self.args[1] == "&":
-                return self.args[0] & self.args[2]
+                return self.format_type(self.args[0]) & self.format_type(self.args[2])
             if self.args[1] == "|":
-                return self.args[0] | self.args[2]
+                return self.format_type(self.args[0]) | self.format_type(self.args[2])
             if self.args[1] == "^":
-                return self.args[0] ^ self.args[2]
+                return self.format_type(self.args[0]) ^ self.format_type(self.args[2])
 
         if len(self.args) == 2:
+            if self.args[1] is None:
+                return 0
             if self.args[0] == "~":
                 return ~ self.args[1]
         return 0
@@ -364,11 +390,15 @@ class GtCalculater(Calculater):
         if not self.args:
             return False
 
-        result = self.args[0]
-        for i in range(1, len(self.args)):
-            if result <= self.args[i]:
+        result = None
+        for value in self.args:
+            if value is None:
+                continue
+            if result is None:
+                result = self.format_type(value)
+                continue
+            if result <= self.format_type(value):
                 return False
-
         return True
 
 
@@ -377,11 +407,15 @@ class GteCalculater(Calculater):
         if not self.args:
             return False
 
-        result = self.args[0]
-        for i in range(1, len(self.args)):
-            if result < self.args[i]:
+        result = None
+        for value in self.args:
+            if value is None:
+                continue
+            if result is None:
+                result = self.format_type(value)
+                continue
+            if result < self.format_type(value):
                 return False
-
         return True
 
 
@@ -390,11 +424,15 @@ class LtCalculater(Calculater):
         if not self.args:
             return False
 
-        result = self.args[0]
-        for i in range(1, len(self.args)):
-            if result >= self.args[i]:
+        result = None
+        for value in self.args:
+            if value is None:
+                continue
+            if result is None:
+                result = self.format_type(value)
+                continue
+            if result >= self.format_type(value):
                 return False
-
         return True
 
 
@@ -403,11 +441,15 @@ class LteCalculater(Calculater):
         if not self.args:
             return False
 
-        result = self.args[0]
-        for i in range(1, len(self.args)):
-            if result > self.args[i]:
+        result = None
+        for value in self.args:
+            if value is None:
+                continue
+            if result is None:
+                result = self.format_type(value)
+                continue
+            if result > self.format_type(value):
                 return False
-
         return True
 
 
@@ -416,11 +458,15 @@ class EqCalculater(Calculater):
         if not self.args:
             return False
 
-        result = self.args[0]
-        for i in range(1, len(self.args)):
-            if result != self.args[i]:
+        result = None
+        for value in self.args:
+            if value is None:
+                continue
+            if result is None:
+                result = self.format_type(value)
+                continue
+            if result != self.format_type(value):
                 return False
-
         return True
 
 
@@ -429,11 +475,15 @@ class NeqCalculater(Calculater):
         if not self.args:
             return False
 
-        result = self.args[0]
-        for i in range(1, len(self.args)):
-            if result == self.args[i]:
+        result = None
+        for value in self.args:
+            if value is None:
+                continue
+            if result is None:
+                result = self.format_type(value)
+                continue
+            if result == self.format_type(value):
                 return False
-
         return True
 
 
@@ -488,22 +538,37 @@ class InCalculater(Calculater):
         if len(self.args) == 2 and isinstance(self.args[0], list):
             return self.args[1] in self.args[0]
 
-        result = self.args[0]
-        for i in range(1, len(self.args)):
-            if result not in self.args[i]:
-                return False
-
+        try:
+            result = self.args[0]
+            for i in range(1, len(self.args)):
+                if result not in self.args[i]:
+                    return False
+        except:
+            return False
         return True
 
 
 class MaxCalculater(Calculater):
+    def max(self, values):
+        result = None
+        for value in values:
+            if value is None:
+                continue
+            if result is None:
+                result = self.format_type(value)
+                continue
+            value = self.format_type(value)
+            if value > result:
+                result = value
+        return result
+
     def calculate(self):
         if not self.args:
             return None
 
         if not isinstance(self.args[0], list):
             if len(self.args) > 1:
-                return max(*tuple(self.args))
+                return self.max(self.args)
             return self.args[0]
 
         if len(self.args) == 2 and isinstance(self.args[1], str):
@@ -529,18 +594,31 @@ class MaxCalculater(Calculater):
 
             if isinstance(self.args[1], dict):
                 return self.args[1].get(max_key_value)
-            return max(*tuple([max_key_value] + list(self.args[1:])))
+            return self.max([max_key_value] + list(self.args[1:]))
         return max_key_value
 
 
 class MinCalculater(Calculater):
+    def min(self, values):
+        result = None
+        for value in values:
+            if value is None:
+                continue
+            if result is None:
+                result = self.format_type(value)
+                continue
+            value = self.format_type(value)
+            if value < result:
+                result = value
+        return result
+
     def calculate(self):
         if not self.args:
             return None
 
         if not isinstance(self.args[0], list):
             if len(self.args) >= 1:
-                return min(*tuple(self.args))
+                return self.min(self.args)
             return self.args[0]
 
         if len(self.args) == 2 and isinstance(self.args[1], str):
@@ -566,7 +644,7 @@ class MinCalculater(Calculater):
 
             if isinstance(self.args[1], dict):
                 return self.args[1].get(min_key_value)
-            return min(*tuple([min_key_value] + list(self.args[1:])))
+            return self.min([min_key_value] + list(self.args[1:]))
         return min_key_value
 
 
@@ -577,7 +655,6 @@ class LenCalculater(Calculater):
 
         if len(self.args) == 1:
             return len(self.args[0])
-
         return len(self.args)
 
 

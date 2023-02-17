@@ -4,8 +4,19 @@
 
 class Calculater(object):
     def __init__(self, name, *args):
+        self.type_cls = None
         self.name = name
         self.args = args
+
+    def format_type(self, value):
+        if value is None:
+            return value
+        if self.type_cls is None:
+            self.type_cls = type(value)
+            return value
+        if isinstance(value, self.type_cls):
+            return value
+        return self.type_cls(value)
 
     def calculate(self):
         if not self.args:

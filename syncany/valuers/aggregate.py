@@ -87,8 +87,9 @@ class AggregateValuer(Valuer):
             if not self.loader_loaded:
                 final_filter = self.calculate_valuer.get_final_filter() if not self.filter else self.filter
                 if final_filter:
-                    final_value = final_filter(None)
-                    loader_data[self.key] = 0 if final_value is None else final_value
+                    loader_data[self.key] = final_filter(None)
+                else:
+                    loader_data[self.key] = None
                 loader_data = self.aggregate_manager.add(self.key_value, self.key, loader_data)
 
                 self.calculate_valuer.fill(loader_data)

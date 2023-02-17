@@ -1222,6 +1222,7 @@ class CoreTasker(Tasker):
                               self.status["execute_time"])
         except Exception as e:
             self.run_finaled_hooks(e)
+            raise
         else:
             self.run_finaled_hooks(None)
 
