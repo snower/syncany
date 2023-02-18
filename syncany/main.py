@@ -15,6 +15,9 @@ from .taskers.manager import TaskerManager
 from .taskers.core import CoreTasker
 from .database.database import DatabaseManager
 
+class TaskerYieldNext(object):
+    pass
+
 def beautify_print(*args, **kwargs):
     rich = get_rich()
     if rich:
@@ -140,12 +143,26 @@ def compile_dependency(arguments, tasker, dependency_taskers):
     for dependency_tasker in dependency_taskers:
         compile_dependency(arguments, *dependency_tasker)
 
+def run_yield(tasker, dependency_taskers):
+    tasker_generator = tasker.run_yield()
+    dependency_tasker_generators = [run_dependency(*dependency_tasker) for dependency_tasker in dependency_taskers]
+    while True:
+        for dependency_tasker_generator in tuple(dependency_tasker_generators):
+            try:
+                yield dependency_tasker_generator.send(None)
+            except StopIteration:
+                dependency_tasker_generators.remove(dependency_tasker_generator)
+        try:
+            yield tasker_generator.send(None)
+        except StopIteration:
+            break
+        yield TaskerYieldNext()
+
 def run_dependency(tasker, dependency_taskers):
-    dependency_statistics = []
-    for dependency_tasker in dependency_taskers:
-        dependency_statistics.append(run_dependency(*dependency_tasker))
     try:
-        statistics = tasker.run()
+        for value in run_yield(tasker, dependency_taskers):
+            if isinstance(value, TaskerYieldNext):
+                yield value
     except SystemError as e:
         tasker.close(False, "signal terminaled")
         raise
@@ -157,7 +174,6 @@ def run_dependency(tasker, dependency_taskers):
         raise
     else:
         tasker.close()
-    return statistics, dependency_statistics
 
 def fix_print_outputer(tasker, register_aps, arguments):
     if "@output" not in register_aps:
@@ -202,10 +218,8 @@ def run(register_aps, ap_arguments, arguments, manager, tasker, dependency_taske
             return 0
         if "@verbose" in arguments and arguments["@verbose"]:
             warp_database_logging(tasker)
-
-        for dependency_tasker in dependency_taskers:
-            run_dependency(*dependency_tasker)
-        tasker.run()
+        for _ in run_yield(tasker, dependency_taskers):
+            continue
     except SystemError:
         tasker.close(False, "signal terminaled")
         get_logger().error("signal exited")

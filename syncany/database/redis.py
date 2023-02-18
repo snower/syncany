@@ -517,5 +517,5 @@ class RedisDB(DataBase):
         self.connection.raw().close()
         self.connection = None
 
-    def dynamic_schema(self):
+    def is_dynamic_schema(self, name):
         return True

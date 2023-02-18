@@ -44,14 +44,14 @@ class DatabaseInstanceBuilder(object):
 
     def __getattr__(self, item):
         if self.driver_instance is None:
-            if item == "get_default_loader":
-                return lambda: "db_loader"
-            if item == "db_update_delete_insert_outputer":
-                return lambda: "db_loader"
+            if item == "sure_loader":
+                return lambda loader: loader
+            if item == "sure_outputer":
+                return lambda outputer: outputer
             if item == "verbose":
                 return lambda: self.name
             if item in ("get_key", "query", "insert", "update", "delete", "cache",
-                        "flush", "close", "dynamic_schema"):
+                        "flush", "close", "is_dynamic_schema", "is_streaming", "set_streaming"):
                 return lambda *args, **kwargs: None
             raise AttributeError(item)
         return getattr(self.driver_instance, item)
@@ -59,8 +59,8 @@ class DatabaseInstanceBuilder(object):
     def __setattr__(self, key, value):
         if self.driver_instance is None:
             if key in ("get_key", "query", "insert", "update", "delete", "cache",
-                       "flush", "close", "dynamic_schema", "get_default_loader",
-                       "get_default_outputer", "verbose"):
+                       "flush", "close", "is_dynamic_schema", "is_streaming", "set_streaming", "sure_loader",
+                       "sure_outputer", "verbose"):
                 self.update_attrs.append((key, value))
             else:
                 return super(DatabaseInstanceBuilder, self).__setattr__(key, value)

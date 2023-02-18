@@ -246,5 +246,13 @@ class BeanstalkDB(DataBase):
         self.connection.close()
         self.connection = None
 
-    def dynamic_schema(self):
+    def is_dynamic_schema(self, name):
         return True
+
+    def is_streaming(self, name):
+        return True
+
+    def sure_loader(self, loader):
+        if not loader or loader == "db_loader":
+            return "db_pull_loader"
+        return loader

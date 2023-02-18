@@ -26,6 +26,13 @@ class DBLoader(Loader):
         loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
         return loader
 
+    def next(self):
+        if not self.loaded:
+            return True
+        if self.db:
+            self.db.is_streaming(self.name)
+        return False
+
     def load(self, timeout=None):
         if self.loaded:
             return

@@ -253,7 +253,14 @@ class MemoryCacheBuilder(CacheBuilder):
 
 
 class MemoryDBDriver(dict):
-    pass
+    def __init__(self, *args, **kwargs):
+        super(MemoryDBDriver, self).__init__(*args, **kwargs)
+
+        self.is_streamings = {}
+
+    def remove(self, name):
+        self.pop(name, None)
+        self.is_streamings.pop(name, None)
 
 
 class MemoryDBFactory(DatabaseFactory):
@@ -303,5 +310,12 @@ class MemoryDB(DataBase):
         self.ensure_memory_databases()
         return MemoryCacheBuilder(self, name, prefix_key, config)
 
-    def dynamic_schema(self):
-        return True
+    def is_dynamic_schema(self, name):
+        self.ensure_memory_databases()
+        if name in self.memory_databases.is_streamings:
+            return self.memory_databases.is_streamings[name]
+        return False
+
+    def set_streaming(self, name, is_streaming=False):
+        self.ensure_memory_databases()
+        self.memory_databases.is_streamings[name] = is_streaming

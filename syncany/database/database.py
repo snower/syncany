@@ -193,14 +193,24 @@ class DataBase(object):
     def close(self):
         pass
 
-    def dynamic_schema(self):
+    def is_dynamic_schema(self, name):
         return False
 
-    def get_default_loader(self):
-        return "db_loader"
+    def is_streaming(self, name):
+        return False
 
-    def get_default_outputer(self):
-        return "db_update_delete_insert_outputer"
+    def set_streaming(self, name, is_streaming=False):
+        pass
+
+    def sure_loader(self, loader):
+        if not loader:
+            return "db_loader"
+        return loader
+
+    def sure_outputer(self, outputer):
+        if not outputer:
+            return "db_update_delete_insert_outputer"
+        return outputer
 
     def verbose(self):
         return self.name

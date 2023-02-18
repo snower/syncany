@@ -301,7 +301,7 @@ class JsonDB(DataBase):
         self.flush()
         self.jsons = {}
 
-    def dynamic_schema(self):
+    def is_dynamic_schema(self, name):
         return True
 
     def verbose(self):

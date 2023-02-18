@@ -91,7 +91,14 @@ class DBJoinLoader(DBLoader):
     def clone(self):
         loader = super(DBJoinLoader, self).clone()
         loader.join_batch = self.join_batch
+        if len(self.data_keys) < self.join_batch:
+            loader.data_keys = self.data_keys
         return loader
+
+    def next(self):
+        if not self.loaded:
+            return True
+        return False
 
     def create_group_macther(self, return_valuer):
         return GroupDBJoinMatcher(return_valuer)
