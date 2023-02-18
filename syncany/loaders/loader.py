@@ -117,9 +117,6 @@ class Loader(object):
                     continue
                 odata[name] = value
 
-            if self.intercepts and self.check_intercepts(odata):
-                continue
-
             if oyields:
                 while oyields:
                     oyield_data = {}
@@ -133,8 +130,12 @@ class Loader(object):
                         except StopIteration:
                             oyields.pop(name)
                     if has_oyield_data:
+                        if self.intercepts and self.check_intercepts(oyield_data):
+                            continue
                         datas.append(oyield_data)
             else:
+                if self.intercepts and self.check_intercepts(odata):
+                    continue
                 datas.append(odata)
         return datas
 
