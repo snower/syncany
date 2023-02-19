@@ -1122,7 +1122,7 @@ class CoreTasker(Tasker):
         batch_index, load_count, total_load_count, last_cursor_data = 0, 0, 0, self.batch_cursor
         get_logger().info("%s batch start %s, %s cursor: %s", self.name, 1, batch_count, "")
 
-        while not self.terminated and total_load_count < limit:
+        while not self.terminated and (limit <= 0 or total_load_count < limit):
             batch_index += 1
             self.loader, self.outputer = self.loader.clone(), self.outputer.clone()
             if isinstance(self.loader.schema, dict):
