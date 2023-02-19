@@ -21,7 +21,7 @@ class TaskerStatus(dict):
         super(TaskerStatus, self).__init__(
             runner_id=None,
             start_time=time.time(),
-            status="running",
+            status="",
             message="",
             trackback=None,
             data={
@@ -159,6 +159,8 @@ class Tasker(object):
 
     def run(self):
         _thread_local.current_tasker = self
+        self.status["start_time"] = time.time()
+        self.status["status"] = "running"
 
     def decorator_compiled(self, func):
         hooker = Hooker()
