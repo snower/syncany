@@ -4,6 +4,11 @@
 
 import os
 import datetime
+import uuid
+try:
+    from bson.objectid import ObjectId
+except ImportError:
+    ObjectId = None
 from ..utils import get_timezone, human_repr_object, sorted_by_keys
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
@@ -266,6 +271,13 @@ class ExeclSheet(object):
                 row = self.sheet_datas[row_index]
                 for col_index in range(len(fields)):
                     col = row[fields[col_index]]
+                    if isinstance(col, datetime.datetime):
+                        if col.tzinfo:
+                            col = col.replace(tzinfo=None)
+                    elif ObjectId is not None and isinstance(col, ObjectId):
+                        col = str(col)
+                    elif isinstance(col, uuid.UUID):
+                        col = str(col)
                     if isinstance(col, str):
                         col = col.encode("utf-8")
                     self.execl_sheet.cell(row_index + 2, col_index + 1, col)
