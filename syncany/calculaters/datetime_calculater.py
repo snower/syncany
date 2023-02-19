@@ -3,7 +3,7 @@
 # create by: snower
 
 import datetime
-from ..utils import get_timezone
+from ..utils import get_timezone, parse_datetime
 from .calculater import Calculater
 
 class TimeWindowCalculater(Calculater):
@@ -12,8 +12,18 @@ class TimeWindowCalculater(Calculater):
             return datetime.datetime.now(tz=get_timezone())
 
         time_period = self.args[0]
-        dt = self.args[1] if len(self.args) >= 2 and isinstance(self.args[1], datetime.datetime) \
-            else datetime.datetime.now(tz=get_timezone())
+        if len(self.args) >= 2 and self.args[1]:
+            if isinstance(self.args[1], datetime.datetime):
+                dt = self.args[1]
+            elif isinstance(self.args[1], str):
+                try:
+                    dt = parse_datetime(self.args[1], None, get_timezone())
+                except:
+                    dt = datetime.datetime.now(tz=get_timezone())
+            else:
+                dt = datetime.datetime.now(tz=get_timezone())
+        else:
+            dt = datetime.datetime.now(tz=get_timezone())
         offset = self.args[1] if len(self.args) >= 2 and isinstance(self.args[1], (int, float)) else \
             (self.args[2] if len(self.args) >= 3 and isinstance(self.args[2], (int, float)) else None)
 
