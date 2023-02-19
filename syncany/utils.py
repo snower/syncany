@@ -40,7 +40,7 @@ def sorted_by_keys(iterable, keys=None, reverse=None):
     reverse_keys = [key for key in keys if isinstance(key, (tuple, list, set)) and len(key) == 2
                     and isinstance(key[0], str) and key[1]]
     if reverse is None:
-        reverse = True if len(reverse_keys) >= len(keys) / 2 else False
+        reverse = True if len(reverse_keys) > len(keys) / 2 else False
     else:
         reverse = True if reverse else False
     sort_keys = []
@@ -61,7 +61,7 @@ def sorted_by_keys(iterable, keys=None, reverse=None):
             key_value = None
             for k in ks:
                 key_value = x[k]
-            if kr == reverse:
+            if not kr:
                 key_values.append(key_value)
             else:
                 key_values.append(-key_value if isinstance(key_value, (int, float)) else CmpValue(key_value, True))
