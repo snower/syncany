@@ -95,15 +95,15 @@ def get_timezone():
 def parse_datetime(value, fmt, tz):
     try:
         dt = pendulum_parse(value)
+        if isinstance(dt, datetime.datetime):
+            if tz != dt.tzinfo:
+                dt = dt.astimezone(tz=tz)
+            return dt
         if isinstance(dt, datetime.date):
             return datetime.datetime(dt.year, dt.month, dt.day, tzinfo=tz)
         if isinstance(dt, datetime.time):
             now = datetime.datetime.now()
             return datetime.datetime(now.year, now.month, now.day, dt.hour, dt.minute, dt.second, dt.microsecond, tzinfo=tz)
-        if isinstance(dt, datetime.datetime):
-            if tz != dt.tzinfo:
-                dt = value.astimezone(tz=tz)
-            return dt
     except ParserError:
         pass
     return datetime.datetime.strptime(value, fmt or "%Y-%m-%d %H:%M:%S")
@@ -111,12 +111,12 @@ def parse_datetime(value, fmt, tz):
 def parse_date(value, fmt, tz):
     try:
         dt = pendulum_parse(value)
-        if isinstance(dt, datetime.date):
-            return dt
         if isinstance(dt, datetime.datetime):
             if tz != dt.tzinfo:
-                dt = value.astimezone(tz=tz)
+                dt = dt.astimezone(tz=tz)
             return datetime.date(dt.year, dt.month, dt.day)
+        if isinstance(dt, datetime.date):
+            return dt
     except ParserError:
         pass
     dt = datetime.datetime.strptime(value, fmt or "%Y-%m-%d")
@@ -125,12 +125,12 @@ def parse_date(value, fmt, tz):
 def parse_time(value, fmt, tz):
     try:
         dt = pendulum_parse(value)
-        if isinstance(dt, datetime.time):
-            return datetime.date.today()
         if isinstance(dt, datetime.datetime):
             if tz != dt.tzinfo:
-                dt = value.astimezone(tz=tz)
+                dt = dt.astimezone(tz=tz)
             return datetime.time(dt.hour, dt.minute, dt.second, dt.microsecond)
+        if isinstance(dt, datetime.time):
+            return datetime.date.today()
     except ParserError:
         pass
     dt = datetime.datetime.strptime("2000-01-01 " + value, "%Y-%m-%d " + (fmt or "%H:%M:%S"))

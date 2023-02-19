@@ -410,6 +410,8 @@ class DateTimeFilter(Filter):
             self.tzname = None
 
     def filter(self, value):
+        if value is None:
+            return None
         localzone = get_timezone()
         if isinstance(value, datetime.datetime):
             if localzone != value.tzinfo:
@@ -472,6 +474,9 @@ class DateTimeFilter(Filter):
 
 class DateFilter(Filter):
     def filter(self, value):
+        if value is None:
+            return None
+
         if isinstance(value, datetime.date):
             if isinstance(value, datetime.datetime):
                 localzone = get_timezone()
@@ -519,6 +524,9 @@ class DateFilter(Filter):
 
 class TimeFilter(Filter):
     def filter(self, value):
+        if value is None:
+            return None
+
         if isinstance(value, datetime.time):
             return value
 
