@@ -37,6 +37,15 @@ class TimeWindowCalculater(Calculater):
             if offset:
                 dt = dt + datetime.timedelta(seconds=int(time_period[:-1]) * offset)
             return dt
+        if time_period[-1] == "w":
+            windex = int(dt.strftime("%W"))
+            dt = datetime.datetime(dt.year, dt.month, dt.day, tzinfo=dt.tzinfo)
+            dt = dt - datetime.timedelta(days=((windex % int(time_period[:-1])) + (int(time_period[:-1]) * offset if offset else 0)) * 7)
+            if len(self.args) >= 4 and isinstance(self.args[3], (int, float)) and 2 <= self.args[3] <= 7:
+                dt = dt - datetime.timedelta(days=dt.weekday() - self.args[3] + 1)
+            else:
+                dt = dt - datetime.timedelta(days=dt.weekday())
+            return dt
         return None
 
 class DateTimeCalculater(Calculater):
