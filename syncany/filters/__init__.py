@@ -14,7 +14,7 @@ FILTERS = {
     'bool': BooleanFilter,
     'array': ArrayFilter,
     'map': MapFilter,
-    "ObjectId": ObjectIdFilter,
+    "objectid": ObjectIdFilter,
     "uuid": UUIDFilter,
     "datetime": DateTimeFilter,
     "date": DateFilter,

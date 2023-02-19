@@ -4,12 +4,27 @@
 
 from .calculater import Calculater
 from .builtin import *
-from .conversion_calculater import ConvCalculater
+from .convert_calculater import *
+from .datetime_calculater import *
+from .transform_calculater import TransformCalculater
 from ..errors import CalculaterUnknownException
 
 CALCULATERS = {
     "": Calculater,
     "type": TypeCalculater,
+    "convert_int": ConvertIntCalculater,
+    "convert_float": ConvertFloatCalculater,
+    "convert_str": ConvertStringCalculater,
+    "convert_bytes": ConvertBytesCalculater,
+    'convert_bool': ConvertBooleanCalculater,
+    'convert_array': ConvertArrayCalculater,
+    'convert_map': ConvertMapCalculater,
+    "convert_objectid": ConvertObjectIdCalculater,
+    "convert_uuid": ConvertUUIDCalculater,
+    "convert_datetime": ConvertDateTimeCalculater,
+    "convert_date": ConvertDateCalculater,
+    "convert_time": ConvertTimeCalculater,
+
     'range': RangeCalculater,
     "add": AddCalculater,
     "sub": SubCalculater,
@@ -17,11 +32,14 @@ CALCULATERS = {
     "div": DivCalculater,
     "mod": ModCalculater,
     "bit": BitCalculater,
+
     "substring": SubstringCalculater,
     "split": SplitCalculater,
     "join": JoinCalculater,
     "now": NowCalculater,
+    "time_window": TimeWindowCalculater,
     "empty": EmptyCalculater,
+
     "gt": GtCalculater,
     "gte": GteCalculater,
     "lt": LtCalculater,
@@ -31,6 +49,7 @@ CALCULATERS = {
     "and": AndCalculater,
     "or": OrCalculater,
     "in": InCalculater,
+
     "max": MaxCalculater,
     "min": MinCalculater,
     "len": LenCalculater,
@@ -40,13 +59,14 @@ CALCULATERS = {
     "sum": SumCalculater,
     "sort": SortCalculater,
     "string": StringCalculater,
+    "datetime": DateTimeCalculater,
     "array": ArrayCalculater,
     "map": MapCalculater,
     "math": MathCalculater,
     "hash": HashCalculater,
     "json": JsonCalculater,
     "struct": StructCalculater,
-    "conv": ConvCalculater,
+    "transform": TransformCalculater,
 }
 
 def find_calculater(name):

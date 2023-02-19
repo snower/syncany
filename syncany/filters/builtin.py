@@ -12,7 +12,7 @@ try:
     from bson.objectid import ObjectId
 except ImportError:
     ObjectId = None
-from ..utils import get_timezone
+from ..utils import get_timezone, parse_datetime, parse_date, parse_time
 from .filter import Filter
 
 class IntFilter(Filter):
@@ -350,7 +350,7 @@ class ObjectIdFilter(Filter):
             return ObjectId(value)
         except:
             try:
-                return datetime.datetime.strptime(value, self.args or "%Y-%m-%d %H:%M:%S").astimezone(tz=get_timezone())
+                return ObjectId.from_datetime(parse_datetime(value, self.args, get_timezone()))
             except:
                 return ObjectId("000000000000000000000000")
 
@@ -456,7 +456,7 @@ class DateTimeFilter(Filter):
             return value
 
         try:
-            return datetime.datetime.strptime(value, self.dtformat or "%Y-%m-%d %H:%M:%S").astimezone(tz=localzone)
+            return parse_datetime(value, self.dtformat, localzone)
         except:
             return None
 
@@ -502,7 +502,7 @@ class DateFilter(Filter):
             return value
 
         try:
-            dt = datetime.datetime.strptime(value, self.args or "%Y-%m-%d").astimezone(tz=get_timezone())
+            dt = parse_date(value, self.args, get_timezone())
             return datetime.date(dt.year, dt.month, dt.day)
         except:
             return None
@@ -552,7 +552,7 @@ class TimeFilter(Filter):
             return value
 
         try:
-            dt = datetime.datetime.strptime("2000-01-01 " + value, "%Y-%m-%d " + (self.args or "%H:%M:%S")).astimezone(tz=get_timezone())
+            dt = parse_time(value, self.args, get_timezone())
             return datetime.time(dt.hour, dt.minute, dt.second)
         except:
             return None

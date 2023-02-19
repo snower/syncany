@@ -2,6 +2,10 @@
 # 18/8/15
 # create by: snower
 
+import datetime
+from ..filters import DateTimeFilter, DateFilter, TimeFilter
+
+
 class Calculater(object):
     def __init__(self, name, *args):
         self.type_cls = None
@@ -16,6 +20,12 @@ class Calculater(object):
             return value
         if isinstance(value, self.type_cls):
             return value
+        if issubclass(self.type_cls, datetime.date):
+            if issubclass(self.type_cls, datetime.datetime):
+                return DateTimeFilter().filter(value)
+            return DateFilter().filter(value)
+        if issubclass(self.type_cls, datetime.time):
+            return TimeFilter().filter(value)
         return self.type_cls(value)
 
     def calculate(self):

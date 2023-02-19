@@ -38,6 +38,7 @@ setup(
     install_requires=[
         "pytz>=2018.5",
         "tzlocal>=1.5.1",
+        "pendulum>=2.1.2"
     ],
     extras_require={
         "pyyaml": ['pyyaml>=5.1.2'],

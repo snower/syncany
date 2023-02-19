@@ -7,6 +7,8 @@ import datetime
 import random
 import string
 import pytz
+from pendulum.parsing import parse as pendulum_parse
+from pendulum.parsing.exceptions import ParserError
 from tzlocal import get_localzone
 
 class CmpValue(object):
@@ -89,6 +91,50 @@ def get_timezone():
         else:
             _timezone = get_localzone()
     return _timezone
+
+def parse_datetime(value, fmt, tz):
+    try:
+        dt = pendulum_parse(value)
+        if isinstance(dt, datetime.date):
+            return datetime.datetime(dt.year, dt.month, dt.day, tzinfo=tz)
+        if isinstance(dt, datetime.time):
+            now = datetime.datetime.now()
+            return datetime.datetime(now.year, now.month, now.day, dt.hour, dt.minute, dt.second, dt.microsecond, tzinfo=tz)
+        if isinstance(dt, datetime.datetime):
+            if tz != dt.tzinfo:
+                dt = value.astimezone(tz=tz)
+            return dt
+    except ParserError:
+        pass
+    return datetime.datetime.strptime(value, fmt or "%Y-%m-%d %H:%M:%S")
+
+def parse_date(value, fmt, tz):
+    try:
+        dt = pendulum_parse(value)
+        if isinstance(dt, datetime.date):
+            return dt
+        if isinstance(dt, datetime.datetime):
+            if tz != dt.tzinfo:
+                dt = value.astimezone(tz=tz)
+            return datetime.date(dt.year, dt.month, dt.day)
+    except ParserError:
+        pass
+    dt = datetime.datetime.strptime(value, fmt or "%Y-%m-%d")
+    return datetime.date(dt.year, dt.month, dt.day)
+
+def parse_time(value, fmt, tz):
+    try:
+        dt = pendulum_parse(value)
+        if isinstance(dt, datetime.time):
+            return datetime.date.today()
+        if isinstance(dt, datetime.datetime):
+            if tz != dt.tzinfo:
+                dt = value.astimezone(tz=tz)
+            return datetime.time(dt.hour, dt.minute, dt.second, dt.microsecond)
+    except ParserError:
+        pass
+    dt = datetime.datetime.strptime("2000-01-01 " + value, "%Y-%m-%d " + (fmt or "%H:%M:%S"))
+    return datetime.time(dt.hour, dt.minute, dt.second, dt.microsecond)
 
 def get_rich():
     if os.environ.get("USE_RICH", 'true').lower() != "true":

@@ -795,6 +795,8 @@ class SortCalculater(Calculater):
 
         if not isinstance(self.args[0], list):
             return self.args[0]
+        if len(self.args) == 2 and not isinstance(self.args[1], bool):
+            return sorted_by_keys(self.args[0], keys=self.args[1], reverse=False)
 
         keys = self.args[2] if len(self.args) >= 3 else None
         return sorted_by_keys(self.args[0], keys=keys,
