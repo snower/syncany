@@ -2,6 +2,8 @@
 # 18/8/6
 # create by: snower
 
+import datetime
+from ..utils import ensure_timezone
 from ..filters import ArrayFilter
 from .valuer import Valuer, LoadAllFieldsException
 
@@ -41,8 +43,11 @@ class DataValuer(Valuer):
 
     def do_filter(self, value):
         if not self.filter:
-            self.value = value
-            return value
+            if isinstance(value, datetime.datetime):
+                self.value = ensure_timezone(value)
+            else:
+                self.value = value
+            return self.value
 
         if isinstance(value, list):
             if isinstance(self.filter, ArrayFilter):

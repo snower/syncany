@@ -96,6 +96,15 @@ def set_timezone(timezone):
     global _timezone
     _timezone = timezone
 
+def ensure_timezone(dt):
+    tz = get_timezone() if not _timezone else _timezone
+    try:
+        if dt.tzinfo != tz:
+            return dt.astimezone(tz=tz)
+    except:
+        return dt
+    return dt
+
 def parse_datetime(value, fmt, tz):
     try:
         dt = pendulum_parse(value)

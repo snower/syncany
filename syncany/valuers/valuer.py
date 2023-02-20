@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 # 18/8/6
 # create by: snower
+import datetime
 
 from ..errors import SyncanyException
+from ..utils import ensure_timezone
 
 class LoadAllFieldsException(SyncanyException):
     pass
@@ -129,8 +131,11 @@ class Valuer(object):
 
     def do_filter(self, value):
         if not self.filter:
-            self.value = value
-            return value
+            if isinstance(value, datetime.datetime):
+                self.value = ensure_timezone(value)
+            else:
+                self.value = value
+            return self.value
 
         self.value = self.filter.filter(value)
         return self.value
