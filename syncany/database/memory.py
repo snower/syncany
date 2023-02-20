@@ -72,13 +72,15 @@ class MemoryQueryBuilder(QueryBuilder):
             datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
                                                 for key, direct in self.orders] if self.orders else None)
         if not datas:
-            cache_keys = self.name.split(".")
-            if len(cache_keys) != 2 or cache_keys[1][:2] != "--":
+            db_keys = self.name.split(".")
+            if len(db_keys) != 2 or db_keys[1][:2] != "--":
                 return datas
-            if len(cache_keys[1]) <= 2:
-                return [{}]
+            if len(db_keys[1]) <= 2:
+                return [] if self.limit and self.limit[0] > 0 else [{}]
             try:
-                count = int(cache_keys[1][2:])
+                count = int(db_keys[1][2:])
+                if self.limit:
+                    count = max(count - self.limit[0], 0)
                 return [{} for _ in range(min(count, self.limit[1]) if self.limit else count)]
             except:
                 return datas
@@ -311,6 +313,9 @@ class MemoryDB(DataBase):
         return MemoryCacheBuilder(self, name, prefix_key, config)
 
     def is_dynamic_schema(self, name):
+        return True
+
+    def is_streaming(self, name):
         self.ensure_memory_databases()
         if name in self.memory_databases.is_streamings:
             return self.memory_databases.is_streamings[name]

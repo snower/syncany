@@ -273,7 +273,7 @@ class CoreTasker(Tasker):
     def compile_filters_parse(self, config_querys):
         if isinstance(config_querys, str):
             keys = config_querys.split("|")
-            filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
+            filters = (keys[1] if len(keys) >= 2 else "").split(" ")
             return [{
                 "name": keys[0],
                 "exps": ["eq"],
@@ -298,7 +298,7 @@ class CoreTasker(Tasker):
                 exps = self.compile_filters_parse_exps(exps)
                 if not exps:
                     continue
-                filters = (keys[1] if len(keys) >= 2 else "str").split(" ")
+                filters = (keys[1] if len(keys) >= 2 else "").split(" ")
                 querys.append({
                     "name": keys[0],
                     "exps": exps,
@@ -336,12 +336,18 @@ class CoreTasker(Tasker):
     def compile_filters_arguments(self, arguments_names, arguments):
         self.config["querys"] = self.compile_filters_parse(self.config["querys"])
 
+        def default_filter(*args, **kwargs):
+            str_filter = self.find_filter_driver('str')(*args, **kwargs)
+            def _(value):
+                return str_filter(value)
+            return _
+
         for query in self.config["querys"]:
             if isinstance(query["exps"], list):
                 for exp_name in query["exps"]:
                     filter_cls = self.find_filter_driver(query["type"])
                     if filter_cls is None:
-                        filter_cls = self.find_filter_driver('str')
+                        filter_cls = default_filter
 
                     if exp_name == "eq":
                         argument = {"name": '%s' % query["name"], "type": filter_cls(query.get("type_args")),
@@ -365,7 +371,7 @@ class CoreTasker(Tasker):
                         continue
                     filter_cls = self.find_filter_driver(query["type"])
                     if filter_cls is None:
-                        filter_cls = self.find_filter_driver('str')
+                        filter_cls = default_filter
                     exp_value = self.run_valuer(exp_value, {})
 
                     if exp_name == "eq":
@@ -479,6 +485,9 @@ class CoreTasker(Tasker):
         if "@batch" not in arguments_names:
             arguments.append({"name": "@batch", "short": "b", "type": int, "default": 0,
                               "help": "per sync batch count (default: 0 all)"})
+        if "@streaming" not in arguments_names:
+            arguments.append({"name": "@streaming", "short": "s", "type": bool, "default": False,
+                              "help": "per sync batch is streaming (default: False)"})
         if "@recovery" not in arguments_names:
             arguments.append({"name": "@recovery", "short": "r", "type": bool, "default": False,
                               "help": "recovery mode (default: False)"})
@@ -561,7 +570,10 @@ class CoreTasker(Tasker):
                             exp = get_expression_name(exp)
                             value = self.run_valuer(value, {})
                             if filter_cls:
-                                value = filter_cls(filter_args).filter(value)
+                                if exp == "in" and isinstance(value, list):
+                                    value = [filter_cls(filter_args).filter(v) for v in value]
+                                else:
+                                    value = filter_cls(filter_args).filter(value)
                             foreign_filters.append((keys[0], exp, value))
                         except KeyError:
                             pass
@@ -1118,24 +1130,24 @@ class CoreTasker(Tasker):
     def run_batch(self, batch_count, loader_timeout):
         self.load_cursor()
         limit = self.arguments["@limit"] if "@limit" in self.arguments and self.arguments["@limit"] > 0 else 0
+        streaming = True if "@streaming" in self.arguments and self.arguments["@streaming"] else False
         batch_count = min(batch_count, limit) if limit > 0 else batch_count
-        batch_index, load_count, total_load_count, last_cursor_data = 0, 0, 0, self.batch_cursor
-        get_logger().info("%s batch start %s, %s cursor: %s", self.name, 1, batch_count, "")
+        load_count, total_load_count, store_count, total_store_count, last_cursor_data = 0, 0, 0, 0, self.batch_cursor
+        get_logger().info("%s batch start %s cursor: %s", self.name, batch_count, "")
 
-        while not self.terminated and (limit <= 0 or total_load_count < limit):
-            batch_index += 1
+        while not self.terminated:
             self.loader, self.outputer = self.loader.clone(), self.outputer.clone()
             if isinstance(self.loader.schema, dict):
                 for key, valuer in self.loader.schema.items():
                     valuer.reset()
             self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
 
-            if self.batch_cursor:
-                self.loader.filter_cursor(self.batch_cursor, (batch_index - 1) * batch_count, batch_count)
+            if self.batch_cursor is not None:
+                self.loader.filter_cursor(self.batch_cursor, total_load_count, batch_count)
                 vcursor = ["%s -> %s" % (primary_key, self.batch_cursor.get(primary_key, ''))
                            for primary_key in self.loader.primary_keys]
-                get_logger().info("%s batch start %s, %s cursor: %s", self.name,
-                                  batch_index, batch_count, " ".join(vcursor))
+                get_logger().info("%s batch current %s %s %s cursor: %s", self.name, batch_count, total_load_count,
+                                  total_store_count, " ".join(vcursor))
 
             self.loader.filter_limit(batch_count)
             self.loader.load(loader_timeout)
@@ -1152,15 +1164,16 @@ class CoreTasker(Tasker):
             self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
 
             if last_cursor_data:
-                self.outputer.filter_cursor(last_cursor_data, (batch_index - 1) * batch_count, batch_count)
+                self.outputer.filter_cursor(last_cursor_data, total_store_count, batch_count)
             self.outputer.store(datas)
-            if hasattr(self.loader, "name") and hasattr(self.outputer, "name"):
-                self.outputer.db.set_streaming(self.outputer.name, self.loader.db.is_streaming(self.loader.name))
+            store_count = len(datas)
+            if hasattr(self.outputer, "name") and (streaming or hasattr(self.loader, "name")):
+                self.outputer.db.set_streaming(self.outputer.name, True if streaming else self.loader.db.is_streaming(self.loader.name))
             self.run_outputed_hooks(datas)
             self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
             for name, database in self.databases.items():
                 database.flush()
-            if self.loader.last_data:
+            if self.loader.last_data is not None:
                 self.batch_cursor = self.loader.last_data
                 if datas:
                     last_cursor_data = datas[-1]
@@ -1168,10 +1181,15 @@ class CoreTasker(Tasker):
                     self.status["data"]["last"] = datas[-1]
                 self.states.save(self)
             total_load_count += load_count
-            if load_count < batch_count:
+            total_store_count += store_count
+            if self.terminated or (0 < limit <= total_load_count) or load_count <= 0:
                 break
+            if streaming:
+                yield batch_count
 
-        get_logger().info("%s batch end %s, %s", self.name, batch_index - 1, batch_count)
+        if hasattr(self.outputer, "name") and self.outputer.db.is_streaming(self.outputer.name):
+            self.outputer.db.set_streaming(self.outputer.name, False)
+        get_logger().info("%s batch finish %s %s %s", self.name, batch_count, total_load_count, total_store_count)
         statistics = (self.loader.__class__.__name__, self.status["statistics"]["loader"], self.outputer.__class__.__name__,
                       self.status["statistics"]["outputer"], len(self.join_loaders), self.status["statistics"]["join_loaders"])
         self.print_statistics(*statistics)
@@ -1214,8 +1232,14 @@ class CoreTasker(Tasker):
                 try:
                     run_count += 1
                     if batch_count > 0:
-                        if not self.run_batch(batch_count, loader_timeout):
-                            break
+                        batch_generator = self.run_batch(batch_count, loader_timeout)
+                        try:
+                            while True:
+                                batch_generator.send(None)
+                                yield run_count
+                        except StopIteration as e:
+                            if not e.value:
+                                break
                         yield run_count
                         continue
                     if not self.run_once(loader_timeout):

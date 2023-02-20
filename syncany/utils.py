@@ -83,7 +83,7 @@ def get_timezone():
     if _timezone is None:
         from .taskers.tasker import current_tasker
         tasker = current_tasker()
-        if "options" in tasker.config and tasker.config["options"]:
+        if tasker and "options" in tasker.config and tasker.config["options"]:
             if "timezone" in tasker.config["options"]:
                 _timezone = pytz.timezone(tasker.config["options"]["timezone"])
             else:
@@ -91,6 +91,10 @@ def get_timezone():
         else:
             _timezone = get_localzone()
     return _timezone
+
+def set_timezone(timezone):
+    global _timezone
+    _timezone = timezone
 
 def parse_datetime(value, fmt, tz):
     try:

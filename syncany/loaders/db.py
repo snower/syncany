@@ -30,7 +30,7 @@ class DBLoader(Loader):
         if not self.loaded:
             return True
         if self.db:
-            self.db.is_streaming(self.name)
+            return self.db.is_streaming(self.name)
         return False
 
     def load(self, timeout=None):
