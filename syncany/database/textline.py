@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # 2020/7/2
 # create by: snower
-
+import datetime
 import os
 import csv
 import json
@@ -155,8 +155,24 @@ class TextLineInsertBuilder(InsertBuilder):
     def __init__(self, *args, **kwargs):
         super(TextLineInsertBuilder, self).__init__(*args, **kwargs)
 
+        self.datetime_format = self.db.config["datetime_format"]
+        self.date_format = self.db.config["date_format"]
+        self.time_format = self.db.config["time_format"]
+
         if isinstance(self.datas, dict):
             self.datas = [self.datas]
+
+    def format_field_value(self, value):
+        if isinstance(value, datetime.date):
+            if isinstance(value, datetime.datetime):
+                return value.strftime(self.datetime_format)
+            return value.strftime(self.date_format)
+        if isinstance(value, datetime.time):
+            return value.strftime(self.time_format)
+        return value
+
+    def format_field_string(self, value):
+        return str(self.format_field_value(value))
 
     def print_write(self, fp):
         if self.db.rich:
@@ -177,7 +193,7 @@ class TextLineInsertBuilder(InsertBuilder):
         for field in self.fields:
             table.add_column(field)
         for data in self.datas:
-            table.add_row(*(str(data[field]) for field in self.fields))
+            table.add_row(*(self.format_field_string(data[field]) for field in self.fields))
         self.db.rich.print(table, file=fp)
         fp.flush()
 
@@ -186,7 +202,7 @@ class TextLineInsertBuilder(InsertBuilder):
             fp.write("\t".join(self.fields) + "\n")
 
             for data in self.datas:
-                data = [str(data[field]) for field in self.fields]
+                data = [self.format_field_string(data[field]) for field in self.fields]
                 fp.write("\t".join(data) + "\n")
         else:
             for data in self.datas:
@@ -198,14 +214,14 @@ class TextLineInsertBuilder(InsertBuilder):
         writer.writerow(self.fields)
 
         for data in self.datas:
-            data = [data[field] for field in self.fields]
+            data = [self.format_field_value(data[field]) for field in self.fields]
             writer.writerow(data)
         fp.flush()
 
     def json_write(self, fp):
         for data in self.datas:
             data = {field: data[field] for field in self.fields}
-            fp.write(json.dumps(data, ensure_ascii=False, default=str))
+            fp.write(json.dumps(data, ensure_ascii=False, default=self.format_field_string))
             fp.write("\n")
         fp.flush()
 
@@ -311,7 +327,10 @@ class TextLineDeleteBuilder(DeleteBuilder):
 
 class TextLineDB(DataBase):
     DEFAULT_CONFIG = {
-        "encoding": os.environ.get("SYNCANYENCODING", "utf-8")
+        "encoding": os.environ.get("SYNCANYENCODING", "utf-8"),
+        "datetime_format": "%Y-%m-%d %H:%M:%S",
+        "date_format": "%Y-%m-%d",
+        "time_format": "%H:%M:%S"
     }
     rich = None
 

@@ -4,6 +4,7 @@
 
 import os
 import json
+import datetime
 from ..utils import human_repr_object, sorted_by_keys
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
@@ -216,14 +217,16 @@ class JsonFile(object):
 class JsonDB(DataBase):
     DEFAULT_CONFIG = {
         "path": "./",
-        "encoding": os.environ.get("SYNCANYENCODING", "utf-8")
+        "encoding": os.environ.get("SYNCANYENCODING", "utf-8"),
+        "datetime_format": None,
+        "date_format": "%Y-%m-%d",
+        "time_format": "%H:%M:%S"
     }
 
     def __init__(self, manager, config):
         all_config = {}
         all_config.update(self.DEFAULT_CONFIG)
         all_config.update(config)
-
         all_config["path"] = os.path.abspath(all_config["path"])
 
         super(JsonDB, self).__init__(manager, all_config)
@@ -237,7 +240,19 @@ class JsonDB(DataBase):
         return JsonFile(name, filename, datas)
 
     def write_file(self, fp, json_file):
-        json.dump(json_file.datas, fp, default=str, indent=4, ensure_ascii=False, sort_keys=True)
+        datetime_format = self.config["datetime_format"]
+        date_format = self.config["date_format"]
+        time_format = self.config["time_format"]
+        def format_field_value(value):
+            if isinstance(value, datetime.date):
+                if isinstance(value, datetime.datetime):
+                    return value.strftime(datetime_format) if datetime_format else value.isoformat()
+                return value.strftime(date_format)
+            if isinstance(value, datetime.time):
+                return value.strftime(time_format)
+            return str(value)
+
+        json.dump(json_file.datas, fp, default=format_field_value, indent=4, ensure_ascii=False, sort_keys=True)
         fp.flush()
 
     def ensure_open_file(self, name):

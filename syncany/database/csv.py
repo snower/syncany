@@ -3,6 +3,7 @@
 # create by: snower
 
 import os
+import datetime
 from ..utils import human_repr_object, sorted_by_keys
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
@@ -230,7 +231,10 @@ class CsvFile(object):
 class CsvDB(DataBase):
     DEFAULT_CONFIG = {
         "path": "./",
-        "encoding": os.environ.get("SYNCANYENCODING", "utf-8")
+        "encoding": os.environ.get("SYNCANYENCODING", "utf-8"),
+        "datetime_format": None,
+        "date_format": "%Y-%m-%d",
+        "time_format": "%H:%M:%S"
     }
 
     def __init__(self, manager, config):
@@ -264,8 +268,20 @@ class CsvDB(DataBase):
         writer = csv.writer(fp, quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
         writer.writerow(fields)
 
+        datetime_format = self.config["datetime_format"]
+        date_format = self.config["date_format"]
+        time_format = self.config["time_format"]
+        def format_field_value(value):
+            if isinstance(value, datetime.date):
+                if isinstance(value, datetime.datetime):
+                    return value.strftime(datetime_format) if datetime_format else value.isoformat()
+                return value.strftime(date_format)
+            if isinstance(value, datetime.time):
+                return value.strftime(time_format)
+            return value
+
         for data in csv_file.datas:
-            data = [data[field] for field in fields]
+            data = [format_field_value(data[field]) for field in fields]
             writer.writerow(data)
         fp.flush()
 
