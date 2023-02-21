@@ -7,6 +7,7 @@ from .builtin import *
 from .convert_calculater import *
 from .datetime_calculater import *
 from .transform_calculater import TransformCalculater
+from .textline_calculater import TextLineCalculater
 from ..errors import CalculaterUnknownException
 
 CALCULATERS = {
@@ -67,6 +68,7 @@ CALCULATERS = {
     "json": JsonCalculater,
     "struct": StructCalculater,
     "transform": TransformCalculater,
+    "textline": TextLineCalculater
 }
 
 def find_calculater(name):

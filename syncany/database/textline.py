@@ -49,12 +49,7 @@ class TextLineQueryBuilder(QueryBuilder):
     def text_read(self, fp):
         datas = []
         try:
-            for line in fp.readline():
-                if not line:
-                    return datas
-                line = line.strip()
-                if not line:
-                    continue
+            for line in fp:
                 datas.append({"line": line})
         except KeyboardInterrupt:
             return datas
@@ -199,11 +194,11 @@ class TextLineInsertBuilder(InsertBuilder):
 
     def text_write(self, fp):
         if len(self.fields) != 1 or self.fields[0] != "line":
-            fp.write("\t".join(self.fields) + "\n")
+            fp.write(" ".join(self.fields) + "\n")
 
             for data in self.datas:
                 data = [self.format_field_string(data[field]) for field in self.fields]
-                fp.write("\t".join(data) + "\n")
+                fp.write(" ".join(data) + "\n")
         else:
             for data in self.datas:
                 fp.write(data["line"] + "\n")
