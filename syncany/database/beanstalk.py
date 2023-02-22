@@ -134,7 +134,6 @@ class BeanstalkQueryBuilder(QueryBuilder):
                     if not cmp(data[key], value):
                         succed = False
                         break
-
                 if succed:
                     datas.append(data)
 

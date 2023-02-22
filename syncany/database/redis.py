@@ -135,13 +135,10 @@ class RedisQueryBuilder(QueryBuilder):
         try:
             load_datas = self.load()
             if not self.query:
-                datas = load_datas[self.limit[0]: self.limit[1]] if self.limit else load_datas
+                datas = load_datas[:]
             else:
-                index, datas = 0, []
+                datas = []
                 for data in load_datas:
-                    if self.limit and (index < self.limit[0] or index > self.limit[1]):
-                        continue
-
                     succed = True
                     for (key, exp), (value, cmp) in self.query.items():
                         if key not in data:
@@ -150,14 +147,14 @@ class RedisQueryBuilder(QueryBuilder):
                         if not cmp(data[key], value):
                             succed = False
                             break
-
                     if succed:
                         datas.append(data)
-                        index += 1
 
             if self.orders:
                 datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
                                                     for key, direct in self.orders] if self.orders else None)
+            if self.limit:
+                datas = datas[self.limit[0]: self.limit[1]]
             return datas
         finally:
             self.db.release_connection()

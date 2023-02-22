@@ -46,15 +46,10 @@ class MemoryQueryBuilder(QueryBuilder):
 
     def commit(self):
         if not self.query:
-            datas = self.db.memory_databases.get(self.name, [])
-            if self.limit:
-                datas = datas[self.limit[0]: self.limit[1]]
+            datas = self.db.memory_databases.get(self.name, [])[:]
         else:
-            index, datas = 0, []
+            datas = []
             for data in self.db.memory_databases.get(self.name, []):
-                if self.limit and (index < self.limit[0] or index > self.limit[1]):
-                    continue
-    
                 succed = True
                 for (key, exp), (value, cmp) in self.query.items():
                     if key not in data:
@@ -63,14 +58,15 @@ class MemoryQueryBuilder(QueryBuilder):
                     if not cmp(data[key], value):
                         succed = False
                         break
-    
                 if succed:
                     datas.append(data)
-                    index += 1
 
         if self.orders:
             datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
                                                 for key, direct in self.orders] if self.orders else None)
+        if self.limit:
+            datas = datas[self.limit[0]: self.limit[1]]
+
         if not datas:
             db_keys = self.name.split(".")
             if len(db_keys) != 2 or db_keys[1][:2] != "--":
