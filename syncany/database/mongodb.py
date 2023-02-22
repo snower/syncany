@@ -337,25 +337,24 @@ class MongoDBFactory(DatabaseFactory):
         except ImportError:
             raise ImportError("pymongo>=3.6.1 is required")
         self.client = pymongo.MongoClient(**self.config)
-        self.drivers.append(self.client)
         return self.client
 
     def ping(self, driver):
         return True
 
     def close(self, driver):
-        if self.client == driver:
+        if self.drivers:
             self.drivers.pop()
             self.client = None
         driver.close()
 
     def pop(self):
-        return self.client
+        return self.drivers[0]
 
     def append(self, driver):
-        if self.client == driver:
+        if self.drivers:
             return
-        driver.close()
+        self.drivers.append(driver)
 
 
 class MongoDB(DataBase):

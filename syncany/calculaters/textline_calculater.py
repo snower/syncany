@@ -2,6 +2,7 @@
 # 2023/2/21
 # create by: snower
 
+from ..taskers.context import TaskerContext
 from .calculater import Calculater
 
 
@@ -115,14 +116,24 @@ class TextLineSplitCalculater(Calculater):
         if len(self.args) >= 2 and isinstance(self.args[0], dict):
             if self.args[1] not in self.args[0]:
                 return None
+            cache = TaskerContext.current().cache("TextLineSplitCalculater::values")
+            cache_value = cache.get(id(self.args[0][self.args[1]]))
+            if cache_value is not None:
+                return cache_value
             line = str(self.args[0][self.args[1]])
             data = self.split(line, self.args[2] if len(self.args) >= 3 and isinstance(self.args[2], str) else ' ')
             data["line"] = line
+            cache.set(id(self.args[0][self.args[1]]), data)
             return data
 
         if isinstance(self.args[0], str):
+            cache = TaskerContext.current().cache("TextLineSplitCalculater::values")
+            cache_value = cache.get(id(self.args[0]))
+            if cache_value is not None:
+                return cache_value
             data = self.split(self.args[0], self.args[1] if len(self.args) >= 2 and isinstance(self.args[1], str) else ' ')
             data["line"] = self.args[0]
+            cache.set(id(self.args[0]), data)
             return data
         return None
 

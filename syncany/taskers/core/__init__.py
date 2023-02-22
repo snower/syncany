@@ -1214,6 +1214,7 @@ class CoreTasker(Tasker):
             self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
             for name, database in self.databases.items():
                 database.flush()
+            self.context.flush()
             if self.loader.last_data is not None:
                 self.batch_cursor = self.loader.last_data
                 if datas:
@@ -1254,6 +1255,9 @@ class CoreTasker(Tasker):
             self.outputer.db.set_streaming(self.outputer.name, self.loader.db.is_streaming(self.loader.name))
         self.run_outputed_hooks(datas)
         self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
+        for name, database in self.databases.items():
+            database.flush()
+        self.context.flush()
         if datas:
             self.status["data"]["first"] = datas[0]
             self.status["data"]["last"] = datas[-1]
@@ -1326,6 +1330,7 @@ class CoreTasker(Tasker):
         for name, database in self.databases.items():
             database.close()
         self.states.close()
+        self.context.close()
         self.valuer_compiler, self.valuer_creater, self.loader_creater, self.outputer_creater = None, None, None, None
 
     def get_status(self):

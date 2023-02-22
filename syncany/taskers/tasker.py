@@ -5,6 +5,7 @@
 import time
 import threading
 from ..utils import gen_runner_id
+from .context import TaskerContext
 from ..loaders import find_loader, Loader
 from ..outputers import find_outputer, Outputer
 from ..valuers import find_valuer, Valuer
@@ -14,6 +15,7 @@ from ..calculaters import find_calculater, Calculater
 from ..hook import Hooker
 
 _thread_local = threading.local()
+TaskerContext._thread_local = _thread_local
 
 
 class TaskerStatus(dict):
@@ -56,6 +58,7 @@ class Tasker(object):
         self.manager = manager
         self.parent = parent
         self.status = TaskerStatus()
+        self.context = TaskerContext()
         self.extensions = {
             "loaders": {},
             "outputers": {},
