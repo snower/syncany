@@ -24,6 +24,8 @@ class TaskerStatus(dict):
             status="",
             message="",
             trackback=None,
+            load_count=0,
+            store_count=0,
             data={
                 "first": None,
                 "last": None

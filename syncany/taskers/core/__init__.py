@@ -948,13 +948,25 @@ class CoreTasker(Tasker):
                     continue
                 getattr(self.loader, "filter_%s" % exp_name)(query["name"], self.arguments[argument_name])
 
-        for order in self.config["orders"]:
-            if isinstance(order, str):
-                self.loader.order_by(order, 1)
-            elif isinstance(order, list) and len(order) >= 2 and isinstance(order[0], str):
-                self.loader.order_by(order[0], -1 if order[1] else 1)
-            elif isinstance(order, dict) and "key" in order:
-                self.loader.order_by(order["key"], -1 if order.get("reverse") else 1)
+        order_keys = set([])
+        if self.config["orders"]:
+            for order in self.config["orders"]:
+                if isinstance(order, str):
+                    self.loader.order_by(order, 1)
+                    order_keys.add(order)
+                elif isinstance(order, list) and len(order) >= 2 and isinstance(order[0], str):
+                    self.loader.order_by(order[0], -1 if order[1] else 1)
+                    order_keys.add(order[0])
+                elif isinstance(order, dict) and "key" in order:
+                    self.loader.order_by(order["key"], -1 if order.get("reverse") else 1)
+                    order_keys.add(order["key"])
+        if self.arguments.get("@primary_order", True):
+            for primary_key in self.loader.primary_keys:
+                if primary_key not in self.schema:
+                    continue
+                if primary_key in order_keys:
+                    continue
+                self.loader.order_by(primary_key, 1)
 
         if self.intercepts:
             for intercept in self.intercepts:
@@ -1044,6 +1056,32 @@ class CoreTasker(Tasker):
                     continue
                 getattr(self.outputer, "filter_%s" % exp_name)(query_name, value_filter(self.arguments[argument_name]))
 
+        order_keys = set([])
+        if self.config["orders"]:
+            for order in self.config["orders"]:
+                if isinstance(order, str):
+                    if order not in self.outputer.schema:
+                        continue
+                    self.outputer.order_by(order, 1)
+                    order_keys.add(order)
+                elif isinstance(order, list) and len(order) >= 2 and isinstance(order[0], str):
+                    if order[0] not in self.outputer.schema:
+                        continue
+                    self.outputer.order_by(order[0], -1 if order[1] else 1)
+                    order_keys.add(order[0])
+                elif isinstance(order, dict) and "key" in order:
+                    if order["key"] not in self.outputer.schema:
+                        continue
+                    self.outputer.order_by(order["key"], -1 if order.get("reverse") else 1)
+                    order_keys.add(order["key"])
+        if self.arguments.get("@primary_order", True):
+            for primary_key in self.outputer.primary_keys:
+                if primary_key not in self.schema:
+                    continue
+                if primary_key in order_keys:
+                    continue
+                self.outputer.order_by(primary_key, 1)
+
     def merge_statistics(self, statistics, child_statistics):
         for key, value in child_statistics.items():
             if key not in statistics:
@@ -1131,8 +1169,7 @@ class CoreTasker(Tasker):
         self.load_cursor()
         limit = self.arguments["@limit"] if "@limit" in self.arguments and self.arguments["@limit"] > 0 else 0
         streaming = True if "@streaming" in self.arguments and self.arguments["@streaming"] else False
-        batch_count = min(batch_count, limit) if limit > 0 else batch_count
-        load_count, total_load_count, store_count, total_store_count, last_cursor_data = 0, 0, 0, 0, self.batch_cursor
+        load_count, store_count, last_cursor_data = 0, 0, self.batch_cursor
         get_logger().info("%s batch start %s cursor: %s", self.name, batch_count, "")
 
         while not self.terminated:
@@ -1143,11 +1180,11 @@ class CoreTasker(Tasker):
             self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
 
             if self.batch_cursor is not None:
-                self.loader.filter_cursor(self.batch_cursor, total_load_count, batch_count)
+                self.loader.filter_cursor(self.batch_cursor, self.status["load_count"], batch_count)
                 vcursor = ["%s -> %s" % (primary_key, self.batch_cursor.get(primary_key, ''))
                            for primary_key in self.loader.primary_keys]
-                get_logger().info("%s batch current %s %s %s cursor: %s", self.name, batch_count, total_load_count,
-                                  total_store_count, " ".join(vcursor))
+                get_logger().info("%s batch current %s %s %s cursor: %s", self.name, batch_count, self.status["load_count"],
+                                  self.status["store_count"], " ".join(vcursor))
 
             self.loader.filter_limit(batch_count)
             self.loader.load(loader_timeout)
@@ -1164,11 +1201,15 @@ class CoreTasker(Tasker):
             self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
 
             if last_cursor_data:
-                self.outputer.filter_cursor(last_cursor_data, total_store_count, batch_count)
+                self.outputer.filter_cursor(last_cursor_data, self.status["store_count"], batch_count)
+            if limit > 0 and self.status["store_count"] + len(datas) > limit:
+                datas = datas[:limit - self.status["store_count"]]
             self.outputer.store(datas)
             store_count = len(datas)
             if hasattr(self.outputer, "name") and (streaming or hasattr(self.loader, "name")):
                 self.outputer.db.set_streaming(self.outputer.name, True if streaming else self.loader.db.is_streaming(self.loader.name))
+            self.status["load_count"] += load_count
+            self.status["store_count"] += store_count
             self.run_outputed_hooks(datas)
             self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
             for name, database in self.databases.items():
@@ -1180,16 +1221,14 @@ class CoreTasker(Tasker):
                     self.status["data"]["first"] = datas[0]
                     self.status["data"]["last"] = datas[-1]
                 self.states.save(self)
-            total_load_count += load_count
-            total_store_count += store_count
-            if self.terminated or (0 < limit <= total_load_count) or load_count <= 0:
+            if self.terminated or (0 < limit <= self.status["store_count"]) or load_count < batch_count / 2:
                 break
-            if streaming:
+            if streaming and store_count > 0:
                 yield batch_count
 
         if hasattr(self.outputer, "name") and self.outputer.db.is_streaming(self.outputer.name):
             self.outputer.db.set_streaming(self.outputer.name, False)
-        get_logger().info("%s batch finish %s %s %s", self.name, batch_count, total_load_count, total_store_count)
+        get_logger().info("%s batch finish %s %s %s", self.name, batch_count, self.status["load_count"], self.status["store_count"])
         statistics = (self.loader.__class__.__name__, self.status["statistics"]["loader"], self.outputer.__class__.__name__,
                       self.status["statistics"]["outputer"], len(self.join_loaders), self.status["statistics"]["join_loaders"])
         self.print_statistics(*statistics)

@@ -43,7 +43,7 @@ class CsvQueryBuilder(QueryBuilder):
         else:
             self.limit = (start, start + count)
 
-    def filter_cursor(self, last_data, offset, count):
+    def filter_cursor(self, last_data, offset, count, primary_orders=None):
         self.limit = (offset, offset + count)
 
     def order_by(self, key, direct=1):

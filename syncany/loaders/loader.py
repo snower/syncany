@@ -58,6 +58,7 @@ class Loader(object):
         loader.schema = schema
         loader.filters = [filter for filter in self.filters]
         loader.orders = [order for order in self.orders]
+        loader.intercepts = [intercept.clone() for intercept in self.intercepts]
         loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
         return loader
 
@@ -195,6 +196,10 @@ class Loader(object):
         self.add_filter(key, "in", value)
 
     def filter_limit(self, value):
+        for filter in self.filters:
+            if filter[1] == "limit":
+                filter[2] = value
+                return
         self.add_filter(None, "limit", value)
 
     def filter_cursor(self, last_data, offset, count):

@@ -183,7 +183,7 @@ class DBJoinLoader(DBLoader):
 
                     if primary_key not in self.data_keys:
                         self.data_keys[primary_key] = [values]
-                    else:
+                    elif primary_key in current_unload_primary_keys:
                         self.data_keys[primary_key].append(values)
                     self.datas.append(values)
                     if self.matchers:

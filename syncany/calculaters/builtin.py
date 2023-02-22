@@ -191,7 +191,7 @@ class ModCalculater(Calculater):
                 result = self.format_type(value)
             else:
                 result = result % self.format_type(value)
-        return result
+        return 0 if result is None else result
 
 
 class BitCalculater(Calculater):
@@ -372,12 +372,15 @@ class EmptyCalculater(Calculater):
         if not self.args:
             return True
 
-        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
-            for data in self.args[0]:
-                if isinstance(data, dict) and self.args[1] in data:
-                    if data[self.args[1]]:
-                        return False
-            return True
+        if len(self.args) == 2:
+            if isinstance(self.args[0], list) and isinstance(self.args[1], str):
+                for data in self.args[0]:
+                    if isinstance(data, dict) and self.args[1] in data:
+                        if data[self.args[1]]:
+                            return False
+                return True
+            elif isinstance(self.args[0], dict) and isinstance(self.args[1], str) and self.args[1] in self.args[0]:
+                return False if self.args[0][self.args[1]] else True
 
         for data in self.args:
             if data:
@@ -386,104 +389,140 @@ class EmptyCalculater(Calculater):
 
 
 class GtCalculater(Calculater):
+    def cmp(self, left_value, right_value):
+        if not left_value and not right_value:
+            return False
+        if left_value and not right_value:
+            return True
+        if not left_value and right_value:
+            return False
+        return left_value > right_value
+
     def calculate(self):
         if not self.args:
             return False
 
-        result = None
-        for value in self.args:
-            if value is None:
-                continue
-            if result is None:
-                result = self.format_type(value)
-                continue
-            if result <= self.format_type(value):
+        left_value, right_value = self.format_type(self.args[0]), None
+        for value in self.args[1:]:
+            right_value = self.format_type(value)
+            if not self.cmp(left_value, right_value):
                 return False
+            left_value, right_value = right_value, None
         return True
 
 
 class GteCalculater(Calculater):
+    def cmp(self, left_value, right_value):
+        if not left_value and not right_value:
+            return True
+        if left_value and not right_value:
+            return True
+        if not left_value and right_value:
+            return False
+        return left_value >= right_value
+
     def calculate(self):
         if not self.args:
             return False
 
-        result = None
-        for value in self.args:
-            if value is None:
-                continue
-            if result is None:
-                result = self.format_type(value)
-                continue
-            if result < self.format_type(value):
+        left_value, right_value = self.format_type(self.args[0]), None
+        for value in self.args[1:]:
+            right_value = self.format_type(value)
+            if not self.cmp(left_value, right_value):
                 return False
+            left_value, right_value = right_value, None
         return True
 
 
 class LtCalculater(Calculater):
+    def cmp(self, left_value, right_value):
+        if not left_value and not right_value:
+            return False
+        if left_value and not right_value:
+            return False
+        if not left_value and right_value:
+            return True
+        return left_value < right_value
+
     def calculate(self):
         if not self.args:
             return False
 
-        result = None
-        for value in self.args:
-            if value is None:
-                continue
-            if result is None:
-                result = self.format_type(value)
-                continue
-            if result >= self.format_type(value):
+        left_value, right_value = self.format_type(self.args[0]), None
+        for value in self.args[1:]:
+            right_value = self.format_type(value)
+            if not self.cmp(left_value, right_value):
                 return False
+            left_value, right_value = right_value, None
         return True
 
 
 class LteCalculater(Calculater):
+    def cmp(self, left_value, right_value):
+        if not left_value and not right_value:
+            return True
+        if left_value and not right_value:
+            return False
+        if not left_value and right_value:
+            return True
+        return left_value <= right_value
+
     def calculate(self):
         if not self.args:
             return False
 
-        result = None
-        for value in self.args:
-            if value is None:
-                continue
-            if result is None:
-                result = self.format_type(value)
-                continue
-            if result > self.format_type(value):
+        left_value, right_value = self.format_type(self.args[0]), None
+        for value in self.args[1:]:
+            right_value = self.format_type(value)
+            if not self.cmp(left_value, right_value):
                 return False
+            left_value, right_value = right_value, None
         return True
 
 
 class EqCalculater(Calculater):
+    def cmp(self, left_value, right_value):
+        if not left_value and not right_value:
+            return True
+        if left_value and not right_value:
+            return False
+        if not left_value and right_value:
+            return False
+        return left_value == right_value
+
     def calculate(self):
         if not self.args:
             return False
 
-        result = None
-        for value in self.args:
-            if value is None:
-                continue
-            if result is None:
-                result = self.format_type(value)
-                continue
-            if result != self.format_type(value):
+        left_value, right_value = self.format_type(self.args[0]), None
+        for value in self.args[1:]:
+            right_value = self.format_type(value)
+            if not self.cmp(left_value, right_value):
                 return False
+            left_value, right_value = right_value, None
         return True
 
 
 class NeqCalculater(Calculater):
+    def cmp(self, left_value, right_value):
+        if not left_value and not right_value:
+            return False
+        if left_value and not right_value:
+            return True
+        if not left_value and right_value:
+            return True
+        return left_value != right_value
+
     def calculate(self):
         if not self.args:
             return False
 
-        result = None
-        for value in self.args:
-            if value is None:
-                continue
-            if result is None:
-                result = self.format_type(value)
-                continue
-            if result == self.format_type(value):
+        left_value, right_value = self.format_type(self.args[0]), None
+        for value in self.args[1:]:
+            right_value = self.format_type(value)
+            if not self.cmp(left_value, right_value):
                 return False
+            left_value, right_value = right_value, None
         return True
 
 
@@ -493,13 +532,16 @@ class AndCalculater(Calculater):
             return None
 
         datas = self.args
-        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
-            datas = []
-            for data in self.args[0]:
-                if isinstance(data, dict) and self.args[1] in data:
-                    datas.append(data[self.args[1]])
+        if len(self.args) == 2:
+            if isinstance(self.args[0], list) and isinstance(self.args[1], str):
+                datas = []
+                for data in self.args[0]:
+                    if isinstance(data, dict) and self.args[1] in data:
+                        datas.append(data[self.args[1]])
+            elif isinstance(self.args[0], dict) and isinstance(self.args[1], str) and self.args[1] in self.args[0]:
+                datas = [self.args[0][self.args[1]]]
 
-        result = datas
+        result = datas[0]
         for i in range(1, len(datas)):
             result = result and datas[i]
         return result
@@ -511,11 +553,14 @@ class OrCalculater(Calculater):
             return None
 
         datas = self.args
-        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
-            datas = []
-            for data in self.args[0]:
-                if isinstance(data, dict) and self.args[1] in data:
-                    datas.append(data[self.args[1]])
+        if len(self.args) == 2:
+            if isinstance(self.args[0], list) and isinstance(self.args[1], str):
+                datas = []
+                for data in self.args[0]:
+                    if isinstance(data, dict) and self.args[1] in data:
+                        datas.append(data[self.args[1]])
+            elif isinstance(self.args[0], dict) and isinstance(self.args[1], str) and self.args[1] in self.args[0]:
+                datas = [self.args[0][self.args[1]]]
 
         result = datas[0]
         for i in range(1, len(datas)):

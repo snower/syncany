@@ -14,6 +14,11 @@ class Calculater(object):
 
     def format_type(self, value):
         if value is None:
+            if self.type_cls:
+                if issubclass(self.type_cls, str):
+                    return ""
+                if issubclass(self.type_cls, (int, float)):
+                    return 0
             return value
         if self.type_cls is None:
             self.type_cls = type(value)

@@ -9,6 +9,7 @@ class Outputer(object):
         self.primary_keys = primary_keys
         self.schema = {}
         self.filters = []
+        self.orders = []
         self.current_cursor = None
         self.load_datas = []
         self.datas = []
@@ -21,6 +22,7 @@ class Outputer(object):
             schema[key] = valuer.clone()
         outputer.schema = schema
         outputer.filters = [filter for filter in self.filters]
+        outputer.orders = [order for order in self.orders]
         return outputer
 
     def add_valuer(self, name, valuer):
@@ -80,6 +82,9 @@ class Outputer(object):
 
     def filter_cursor(self, last_data, offset, count):
         self.current_cursor = (last_data, offset, count)
+
+    def order_by(self, key, direct=1):
+        self.orders.append((key, direct))
 
     def statistics(self):
         return {

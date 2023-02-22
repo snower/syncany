@@ -42,7 +42,7 @@ class QueryBuilder(object):
     def filter_limit(self, count, start=None):
         raise NotImplementedError()
 
-    def filter_cursor(self, last_data, offset, count):
+    def filter_cursor(self, last_data, offset, count, primary_orders=None):
         raise NotImplementedError()
 
     def order_by(self, key, direct=1):

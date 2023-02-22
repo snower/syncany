@@ -23,6 +23,7 @@ class DBLoader(Loader):
         loader.schema = schema
         loader.filters = [filter for filter in self.filters]
         loader.orders = [order for order in self.orders]
+        loader.intercepts = [intercept.clone() for intercept in self.intercepts]
         loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
         return loader
 
@@ -70,20 +71,15 @@ class DBLoader(Loader):
             else:
                 getattr(query, "filter_%s" % exp)(key, value)
 
-        if self.current_cursor:
-            query.filter_cursor(*self.current_cursor)
+        primary_orders = {}
+        for order in self.orders:
+            query.order_by(*order)
+            if order[0] not in self.primary_keys:
+                continue
+            primary_orders[order[0]] = order[1]
 
-        order_keys = set([])
-        if self.orders:
-            for order in self.orders:
-                query.order_by(*order)
-                order_keys.add(order[0])
-        for primary_key in self.primary_keys:
-            if primary_key not in self.schema:
-                continue
-            if primary_key in order_keys:
-                continue
-            query.order_by(primary_key)
+        if self.current_cursor:
+            query.filter_cursor(*self.current_cursor, primary_orders=primary_orders)
 
         self.datas = query.commit()
         self.last_data = self.datas[-1] if self.datas else {}

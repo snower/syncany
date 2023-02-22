@@ -19,6 +19,7 @@ class DBOutputer(Outputer):
             schema[key] = valuer.clone()
         outputer.schema = schema
         outputer.filters = [filter for filter in self.filters]
+        outputer.orders = [order for order in self.orders]
         outputer.insert_batch = self.insert_batch
         return outputer
 

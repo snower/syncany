@@ -50,7 +50,7 @@ class HttpQueryBuilder(QueryBuilder):
         self.query["limitStart"] = str(start or 0)
         self.query["limitCount"] = str(count)
 
-    def filter_cursor(self, last_data, offset, count):
+    def filter_cursor(self, last_data, offset, count, primary_orders=None):
         self.query["limitStart"] = str(offset or 0)
         self.query["limitCount"] = str(count)
 
