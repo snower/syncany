@@ -4,6 +4,8 @@
 
 import os
 import datetime
+from ..taskers.context import TaskerContext
+from ..taskers.iterator import TaskerDataIterator, TaskerFileIterator
 from ..utils import human_repr_object, sorted_by_keys
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
@@ -49,27 +51,83 @@ class CsvQueryBuilder(QueryBuilder):
     def order_by(self, key, direct=1):
         self.orders.append((key, direct))
 
-    def commit(self):
-        csv_file = self.db.ensure_open_file(self.name)
-        if not self.query:
-            datas = csv_file.datas[:]
-        else:
-            datas = []
-            for data in csv_file.datas:
-                succed = True
-                for (key, exp), (value, cmp) in self.query.items():
-                    if key not in data:
-                        succed = False
-                        break
-                    if not cmp(data[key], value):
-                        succed = False
-                        break
-                if succed:
-                    datas.append(data)
+    def open_file(self, name):
+        if not name:
+            raise CsvFileNotFound()
+        names = name.split(".")
+        if len(names) < 2:
+            raise CsvFileNotFound()
+        if names[1][:1] == "&":
+            return None
+        filename = os.path.join(self.db.config["path"], ".".join(names[1:]))
+        if os.path.exists(filename):
+            return open(filename, "r", newline='', encoding=self.db.config.get("encoding", "utf-8"))
+        return None
 
-        if self.orders:
-            datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
-                                                for key, direct in self.orders] if self.orders else None)
+    def csv_read(self, fp, descriptions, limit=0):
+        import csv
+        reader = csv.reader(fp, quotechar='"')
+        datas = []
+        for row in reader:
+            if not descriptions:
+                descriptions.extend(row)
+            else:
+                data = {}
+                for i in range(len(descriptions)):
+                    data[descriptions[i]] = row[i]
+                datas.append(data)
+                if limit > 0 and len(datas) >= limit:
+                    break
+        return datas
+
+    def commit(self):
+        tasker_context, iterator, iterator_name, datas = None, None, None, None
+        if self.name not in self.db.csvs and not self.query and not self.orders and self.limit:
+            tasker_context = TaskerContext.current()
+            iterator_name = "csv::" + self.name
+            iterator = tasker_context.get_iterator(iterator_name)
+            if not iterator or iterator.offset != self.limit[0]:
+                fp = self.open_file(self.name)
+                if fp is not None:
+                    iterator = TaskerFileIterator(fp, [])
+                    tasker_context.add_iterator(iterator_name, iterator)
+            if iterator:
+                datas = self.csv_read(iterator.fp, iterator.fields, self.limit[1])
+                iterator.offset += len(datas)
+                return datas
+
+        if self.query or self.orders:
+            tasker_context = TaskerContext.current()
+            iterator_name = "csv::" + self.name
+            iterator = tasker_context.get_iterator(iterator_name)
+            if iterator:
+                datas = iterator.datas
+
+        if not datas:
+            csv_file = self.db.ensure_open_file(self.name)
+            if not self.query:
+                datas = csv_file.datas[:]
+            else:
+                datas = []
+                for data in csv_file.datas:
+                    succed = True
+                    for (key, exp), (value, cmp) in self.query.items():
+                        if key not in data:
+                            succed = False
+                            break
+                        if not cmp(data[key], value):
+                            succed = False
+                            break
+                    if succed:
+                        datas.append(data)
+
+            if self.orders:
+                datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
+                                                    for key, direct in self.orders] if self.orders else None)
+            if self.query or self.orders:
+                iterator = TaskerDataIterator(datas)
+                tasker_context.add_iterator(iterator_name, iterator)
+
         if self.limit:
             datas = datas[self.limit[0]: self.limit[1]]
         return datas

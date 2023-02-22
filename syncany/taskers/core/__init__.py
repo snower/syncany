@@ -1233,6 +1233,7 @@ class CoreTasker(Tasker):
         statistics = (self.loader.__class__.__name__, self.status["statistics"]["loader"], self.outputer.__class__.__name__,
                       self.status["statistics"]["outputer"], len(self.join_loaders), self.status["statistics"]["join_loaders"])
         self.print_statistics(*statistics)
+        self.context.reset()
         return self.loader.next()
 
     def run_once(self, loader_timeout):
@@ -1261,6 +1262,7 @@ class CoreTasker(Tasker):
         if datas:
             self.status["data"]["first"] = datas[0]
             self.status["data"]["last"] = datas[-1]
+        self.context.reset()
         return self.loader.next()
 
     def run_yield(self):

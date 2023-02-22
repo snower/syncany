@@ -6,6 +6,8 @@ import os
 import csv
 import json
 from ..utils import print_object, get_rich, human_repr_object, human_format_object, sorted_by_keys
+from ..taskers.context import TaskerContext
+from ..taskers.iterator import TaskerFileIterator
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 
@@ -46,29 +48,33 @@ class TextLineQueryBuilder(QueryBuilder):
     def order_by(self, key, direct=1):
         self.orders.append((key, direct))
 
-    def text_read(self, fp):
+    def text_read(self, fp, limit=0):
         datas = []
         try:
             for line in fp:
                 datas.append({"line": line})
+                if limit > 0 and len(datas) >= limit:
+                    break
         except KeyboardInterrupt:
             return datas
         return datas
 
-    def csv_read(self, fp):
+    def csv_read(self, fp, descriptions, limit=0):
         reader = csv.reader(fp, quotechar='"')
-        descriptions, datas = [], []
+        datas = []
         for row in reader:
             if not descriptions:
-                descriptions = row
+                descriptions.extend(row)
             else:
                 data = {}
                 for i in range(len(descriptions)):
                     data[descriptions[i]] = row[i]
                 datas.append(data)
+                if limit > 0 and len(datas) >= limit:
+                    break
         return datas
 
-    def json_read(self, fp):
+    def json_read(self, fp, limit=0):
         datas = []
         try:
             for line in fp.readline():
@@ -76,6 +82,8 @@ class TextLineQueryBuilder(QueryBuilder):
                     return datas
                 try:
                     datas.append(json.loads(line, encoding="utf-8"))
+                    if limit > 0 and len(datas) >= limit:
+                        break
                 except:
                     continue
         except KeyboardInterrupt:
@@ -94,7 +102,7 @@ class TextLineQueryBuilder(QueryBuilder):
 
             fp = open(fileno, "r", newline='', encoding=self.db.config.get("encoding", "utf-8"), closefd=False)
             if self.db.config.get("format") == "csv":
-                rdatas = self.csv_read(fp)
+                rdatas = self.csv_read(fp, [])
             elif self.db.config.get("format") == "json":
                 rdatas = self.json_read(fp)
             else:
@@ -103,16 +111,33 @@ class TextLineQueryBuilder(QueryBuilder):
             filename = os.path.join(self.db.config.get("path", "/"), ".".join(fileinfo[1:]))
             if not os.path.exists(filename):
                 return []
+
+            if not self.query and (not self.orders or self.db.config.get("format") not in ("csv", "json")) and self.limit:
+                tasker_context = TaskerContext.current()
+                iterator_name = "textline::" + self.name
+                iterator = tasker_context.get_iterator(iterator_name)
+                if not iterator or iterator.offset != self.limit[0]:
+                    iterator = TaskerFileIterator(open(filename, "r", newline='', encoding=self.db.config.get("encoding", "utf-8")), [])
+                    tasker_context.add_iterator(iterator_name, iterator)
+                if self.db.config.get("format") == "csv":
+                    rdatas = self.csv_read(iterator.fp, iterator.fields, self.limit[1])
+                elif self.db.config.get("format") == "json":
+                    rdatas = self.json_read(iterator.fp, self.limit[1])
+                else:
+                    rdatas = self.text_read(iterator.fp, self.limit[1])
+                iterator.offset += len(rdatas)
+                return rdatas
+
             with open(filename, "r", newline='', encoding=self.db.config.get("encoding", "utf-8")) as fp:
                 if self.db.config.get("format") == "csv":
-                    rdatas = self.csv_read(fp)
+                    rdatas = self.csv_read(fp, [])
                 elif self.db.config.get("format") == "json":
                     rdatas = self.json_read(fp)
                 else:
                     rdatas = self.text_read(fp)
 
         if not self.query:
-            datas = rdatas[:]
+            datas = rdatas
         else:
             datas = []
             for data in rdatas:

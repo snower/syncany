@@ -22,12 +22,27 @@ class TaskerContext(object):
 
     def __init__(self):
         self.caches = defaultdict(TaskerContextCache)
+        self.iterators = {}
 
     def flush(self):
         self.caches.clear()
 
+    def reset(self):
+        for name, iterator in self.iterators.items():
+            iterator.close()
+        self.iterators.clear()
+
     def close(self):
-        self.caches.clear()
+        self.flush()
+        self.reset()
 
     def cache(self, key):
         return self.caches[key]
+
+    def add_iterator(self, name, iterator):
+        if name in self.iterators:
+            self.iterators[name].close()
+        self.iterators[name] = iterator
+
+    def get_iterator(self, name):
+        return self.iterators.get(name)

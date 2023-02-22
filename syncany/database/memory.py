@@ -4,6 +4,8 @@
 
 import time
 from ..utils import human_repr_object, sorted_by_keys
+from ..taskers.context import TaskerContext
+from ..taskers.iterator import TaskerDataIterator
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, CacheBuilder, DataBase, DatabaseFactory
 
 
@@ -45,25 +47,38 @@ class MemoryQueryBuilder(QueryBuilder):
         self.orders.append((key, direct))
 
     def commit(self):
-        if not self.query:
-            datas = self.db.memory_databases.get(self.name, [])[:]
-        else:
-            datas = []
-            for data in self.db.memory_databases.get(self.name, []):
-                succed = True
-                for (key, exp), (value, cmp) in self.query.items():
-                    if key not in data:
-                        succed = False
-                        break
-                    if not cmp(data[key], value):
-                        succed = False
-                        break
-                if succed:
-                    datas.append(data)
+        tasker_context, iterator, iterator_name, datas = None, None, None, None
+        if self.query or self.orders:
+            tasker_context = TaskerContext.current()
+            iterator_name = "memory::" + self.name
+            iterator = tasker_context.get_iterator(iterator_name)
+            if iterator:
+                datas = iterator.datas
 
-        if self.orders:
-            datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
-                                                for key, direct in self.orders] if self.orders else None)
+        if not datas:
+            if not self.query:
+                datas = self.db.memory_databases.get(self.name, [])[:]
+            else:
+                datas = []
+                for data in self.db.memory_databases.get(self.name, []):
+                    succed = True
+                    for (key, exp), (value, cmp) in self.query.items():
+                        if key not in data:
+                            succed = False
+                            break
+                        if not cmp(data[key], value):
+                            succed = False
+                            break
+                    if succed:
+                        datas.append(data)
+
+            if self.orders:
+                datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
+                                                    for key, direct in self.orders] if self.orders else None)
+            if self.query or self.orders:
+                iterator = TaskerDataIterator(datas)
+                tasker_context.add_iterator(iterator_name, iterator)
+
         if self.limit:
             datas = datas[self.limit[0]: self.limit[1]]
 
