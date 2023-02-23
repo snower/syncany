@@ -112,19 +112,19 @@ class TextLineQueryBuilder(QueryBuilder):
             if not os.path.exists(filename):
                 return []
 
-            if not self.query and (not self.orders or self.db.config.get("format") not in ("csv", "json")) and self.limit:
-                tasker_context = TaskerContext.current()
+            tasker_context = TaskerContext.current()
+            if not self.query and (not self.orders or not tasker_context.tasker.config["orders"]) and self.limit:
                 iterator_name = "textline::" + self.name
                 iterator = tasker_context.get_iterator(iterator_name)
                 if not iterator or iterator.offset != self.limit[0]:
                     iterator = TaskerFileIterator(open(filename, "r", newline='', encoding=self.db.config.get("encoding", "utf-8")), [])
                     tasker_context.add_iterator(iterator_name, iterator)
                 if self.db.config.get("format") == "csv":
-                    rdatas = self.csv_read(iterator.fp, iterator.fields, self.limit[1])
+                    rdatas = self.csv_read(iterator.fp, iterator.fields, self.limit[1] - self.limit[0])
                 elif self.db.config.get("format") == "json":
-                    rdatas = self.json_read(iterator.fp, self.limit[1])
+                    rdatas = self.json_read(iterator.fp, self.limit[1] - self.limit[0])
                 else:
-                    rdatas = self.text_read(iterator.fp, self.limit[1])
+                    rdatas = self.text_read(iterator.fp, self.limit[1] - self.limit[0])
                 iterator.offset += len(rdatas)
                 return rdatas
 

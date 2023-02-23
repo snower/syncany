@@ -1185,8 +1185,8 @@ class CoreTasker(Tasker):
                            for primary_key in self.loader.primary_keys]
                 get_logger().info("%s batch current %s %s %s cursor: %s", self.name, batch_count, self.status["load_count"],
                                   self.status["store_count"], " ".join(vcursor))
-
-            self.loader.filter_limit(batch_count)
+            else:
+                self.loader.filter_limit(batch_count)
             self.loader.load(loader_timeout)
             load_count = len(self.loader.datas)
             self.loader.datas = self.run_queried_hooks(self.loader.datas)
@@ -1222,10 +1222,14 @@ class CoreTasker(Tasker):
                     self.status["data"]["first"] = datas[0]
                     self.status["data"]["last"] = datas[-1]
                 self.states.save(self)
-            if self.terminated or (0 < limit <= self.status["store_count"]) or load_count < batch_count / 2:
-                break
-            if streaming and store_count > 0:
-                yield batch_count
+            if streaming:
+                if self.terminated or (0 < limit <= self.status["store_count"]) or load_count <= 0:
+                    break
+                elif store_count > 0:
+                    yield batch_count
+            else:
+                if self.terminated or (0 < limit <= self.status["store_count"]) or load_count < batch_count:
+                    break
 
         if hasattr(self.outputer, "name") and self.outputer.db.is_streaming(self.outputer.name):
             self.outputer.db.set_streaming(self.outputer.name, False)

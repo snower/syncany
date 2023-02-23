@@ -62,11 +62,11 @@ class MongoQueryBuilder(QueryBuilder):
             self.limit = (start, count)
 
     def filter_cursor(self, last_data, offset, count, primary_orders=None):
-        if last_data and all([primary_key in last_data for primary_key in self.primary_keys]):
+        if primary_orders and last_data and all([primary_key in last_data for primary_key in self.primary_keys]):
             for primary_key in self.primary_keys:
                 if primary_key not in self.query:
                     self.query[primary_key] = {}
-                if primary_orders and primary_key in primary_orders and primary_orders[primary_key] < 0:
+                if primary_key in primary_orders and primary_orders[primary_key] < 0:
                     self.query[primary_key]["$lt"] = last_data[primary_key]
                 else:
                     self.query[primary_key]["$gt"] = last_data[primary_key]

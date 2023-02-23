@@ -76,8 +76,7 @@ class MemoryQueryBuilder(QueryBuilder):
                 datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
                                                     for key, direct in self.orders] if self.orders else None)
             if self.query or self.orders:
-                iterator = TaskerDataIterator(datas)
-                tasker_context.add_iterator(iterator_name, iterator)
+                tasker_context.add_iterator(iterator_name, TaskerDataIterator(datas))
 
         if self.limit:
             datas = datas[self.limit[0]: self.limit[1]]

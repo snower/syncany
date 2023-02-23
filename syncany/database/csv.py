@@ -81,9 +81,8 @@ class CsvQueryBuilder(QueryBuilder):
         return datas
 
     def commit(self):
-        tasker_context, iterator, iterator_name, datas = None, None, None, None
-        if self.name not in self.db.csvs and not self.query and not self.orders and self.limit:
-            tasker_context = TaskerContext.current()
+        tasker_context, iterator_name, datas = TaskerContext.current(), None, None
+        if self.name not in self.db.csvs and not self.query and (not self.orders or not tasker_context.tasker.config["orders"]) and self.limit:
             iterator_name = "csv::" + self.name
             iterator = tasker_context.get_iterator(iterator_name)
             if not iterator or iterator.offset != self.limit[0]:
@@ -92,7 +91,7 @@ class CsvQueryBuilder(QueryBuilder):
                     iterator = TaskerFileIterator(fp, [])
                     tasker_context.add_iterator(iterator_name, iterator)
             if iterator:
-                datas = self.csv_read(iterator.fp, iterator.fields, self.limit[1])
+                datas = self.csv_read(iterator.fp, iterator.fields, self.limit[1] - self.limit[0])
                 iterator.offset += len(datas)
                 return datas
 
@@ -125,8 +124,7 @@ class CsvQueryBuilder(QueryBuilder):
                 datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
                                                     for key, direct in self.orders] if self.orders else None)
             if self.query or self.orders:
-                iterator = TaskerDataIterator(datas)
-                tasker_context.add_iterator(iterator_name, iterator)
+                tasker_context.add_iterator(iterator_name, TaskerDataIterator(datas))
 
         if self.limit:
             datas = datas[self.limit[0]: self.limit[1]]

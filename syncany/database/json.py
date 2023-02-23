@@ -53,10 +53,10 @@ class JsonQueryBuilder(QueryBuilder):
         self.orders.append((key, direct))
 
     def commit(self):
-        tasker_context, iterator, iterator_name, datas = None, None, None, None
+        tasker_context, iterator_name, datas = None, None, None
         if self.query or self.orders:
             tasker_context = TaskerContext.current()
-            iterator_name = "excel::" + self.name
+            iterator_name = "json::" + self.name
             iterator = tasker_context.get_iterator(iterator_name)
             if iterator:
                 datas = iterator.datas
@@ -83,8 +83,7 @@ class JsonQueryBuilder(QueryBuilder):
                 datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
                                                     for key, direct in self.orders] if self.orders else None)
             if self.query or self.orders:
-                iterator = TaskerDataIterator(datas)
-                tasker_context.add_iterator(iterator_name, iterator)
+                tasker_context.add_iterator(iterator_name, TaskerDataIterator(datas))
 
         if self.limit:
             datas = datas[self.limit[0]: self.limit[1]]

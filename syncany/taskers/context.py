@@ -20,6 +20,10 @@ class TaskerContext(object):
         except AttributeError:
             return None
 
+    @property
+    def tasker(self):
+        return self._thread_local.current_tasker
+
     def __init__(self):
         self.caches = defaultdict(TaskerContextCache)
         self.iterators = {}

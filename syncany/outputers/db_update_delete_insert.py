@@ -42,12 +42,17 @@ class DBUpdateDeleteInsertOutputer(DBOutputer):
 
             getattr(query, "filter_%s" % exp)(key, value)
 
-        primary_orders = {}
-        for order in self.orders:
+        primary_orders = {} if len(self.orders) >= len(self.primary_keys) else None
+        for i in range(len(self.orders)):
+            order = self.orders[i]
             query.order_by(*order)
-            if order[0] not in self.primary_keys:
+            if primary_orders is None:
+                continue
+            if i < len(self.primary_keys) and order[0] != self.primary_keys[i]:
+                primary_orders = None
                 continue
             primary_orders[order[0]] = order[1]
+
         if self.current_cursor:
             query.filter_cursor(*self.current_cursor, primary_orders=primary_orders)
 
