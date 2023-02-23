@@ -11,6 +11,82 @@ from ..taskers.iterator import TaskerFileIterator
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
 
 
+class TextLineSpliter(object):
+    ESCAPE_CHARS = ['\a', '\b', '\f', '\n', '\r', '\t', '\v', '\\', '\'', '"', '\0']
+
+    def __init__(self, sep=' ', escapes=('"', "'"), boundarys=None):
+        self.sep = sep
+        self.escapes = escapes
+        self.boundarys = boundarys if boundarys else {"[": "]", "(": ")"}
+        self.line_text = ""
+        self.index = 0
+        self.len = 0
+
+    def next(self):
+        self.index += 1
+
+    def skip_escape(self, c):
+        start_index = self.index
+        self.next()
+        while self.index < self.len:
+            if self.line_text[self.index] != c:
+                self.next()
+                continue
+            backslash = self.index - 1
+            while backslash >= 0:
+                if self.line_text[backslash] != '\\':
+                    break
+                backslash -= 1
+            if (self.index - backslash + 1) % 2 != 0:
+                self.next()
+                continue
+            self.next()
+            return start_index, self.index, self.line_text[start_index: self.index]
+        self.next()
+        raise EOFError(self.line_text[start_index:])
+
+    def read_util(self, cs, escape_chars=('"', "'")):
+        start_index = self.index
+        while self.index < self.len:
+            if self.line_text[self.index] in escape_chars:
+                self.skip_escape(self.line_text[self.index])
+                continue
+            if self.line_text[self.index: self.index + len(cs)] != cs:
+                self.next()
+                continue
+            return start_index, self.index + len(cs) - 1, self.line_text[start_index: self.index + len(cs) - 1]
+        raise EOFError(self.line_text[start_index:])
+
+    def split(self, line_text):
+        self.line_text = line_text.strip()
+        self.index = 0
+        self.len = len(self.line_text)
+
+        fields, field_index = {}, 0
+        start_index = self.index
+        try:
+            while self.index < self.len:
+                if self.line_text[self.index] in self.escapes:
+                    self.skip_escape(self.line_text[self.index])
+                    continue
+                if self.line_text[self.index] in self.boundarys:
+                    self.read_util(self.boundarys[self.line_text[self.index]])
+                    self.next()
+                    continue
+                if self.line_text[self.index] == self.sep:
+                    fields["seg%d" % field_index] = self.line_text[start_index: self.index]
+                    field_index += 1
+                    self.next()
+                    start_index = self.index
+                    continue
+                self.next()
+        except EOFError:
+            pass
+        if start_index < self.index:
+            fields["seg%d" % field_index] = self.line_text[start_index: self.index]
+        return fields
+
+
 class TextLineQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
         super(TextLineQueryBuilder, self).__init__(*args, **kwargs)
@@ -51,10 +127,22 @@ class TextLineQueryBuilder(QueryBuilder):
     def text_read(self, fp, limit=0):
         datas = []
         try:
-            for line in fp:
-                datas.append({"line": line})
-                if limit > 0 and len(datas) >= limit:
-                    break
+            if self.db.config.get("sep"):
+                escapes = (c for c in self.db.config.get("escape", "\"'"))
+                boundarys = self.db.config.get("boundary", "[]()")
+                boundarys = {boundarys[i*2]: boundarys[i*2+1] for i in range(int(len(boundarys) / 2))}
+                textline_spliter = TextLineSpliter(self.db.config["sep"][:1], escapes, boundarys)
+                for line in fp:
+                    data = textline_spliter.split(line)
+                    data["line"] = line
+                    datas.append(data)
+                    if limit > 0 and len(datas) >= limit:
+                        break
+            else:
+                for line in fp:
+                    datas.append({"line": line})
+                    if limit > 0 and len(datas) >= limit:
+                        break
         except KeyboardInterrupt:
             return datas
         return datas
@@ -343,6 +431,9 @@ class TextLineDeleteBuilder(DeleteBuilder):
 class TextLineDB(DataBase):
     DEFAULT_CONFIG = {
         "encoding": os.environ.get("SYNCANYENCODING", "utf-8"),
+        "sep": None,
+        "escape": "\"'",
+        "boundary": "[]()",
         "datetime_format": "%Y-%m-%d %H:%M:%S",
         "date_format": "%Y-%m-%d",
         "time_format": "%H:%M:%S"

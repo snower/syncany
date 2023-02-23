@@ -66,7 +66,8 @@ class CsvQueryBuilder(QueryBuilder):
 
     def csv_read(self, fp, descriptions, limit=0):
         import csv
-        reader = csv.reader(fp, quotechar='"')
+        reader = csv.reader(fp, dialect=self.db.config.get("dialect", "excel"), quotechar=self.db.config.get("quotechar", '"'),
+                            delimiter=self.db.config.get("delimiter", ','))
         datas = []
         for row in reader:
             if not descriptions:
@@ -283,6 +284,9 @@ class CsvDB(DataBase):
     DEFAULT_CONFIG = {
         "path": "./",
         "encoding": os.environ.get("SYNCANYENCODING", "utf-8"),
+        "dialect": "excel",
+        "quotechar": '"',
+        "delimiter": ",",
         "datetime_format": None,
         "date_format": "%Y-%m-%d",
         "time_format": "%H:%M:%S"
@@ -301,7 +305,8 @@ class CsvDB(DataBase):
 
     def read_file(self, name, filename, fp):
         import csv
-        reader = csv.reader(fp, quotechar='"')
+        reader = csv.reader(fp, dialect=self.config.get("dialect", "excel"), quotechar=self.config.get("quotechar", '"'),
+                            delimiter=self.config.get("delimiter", ','))
         descriptions, datas = [], []
         for row in reader:
             if not descriptions:
@@ -316,7 +321,8 @@ class CsvDB(DataBase):
     def write_file(self, fp, csv_file):
         import csv
         fields = csv_file.get_fields()
-        writer = csv.writer(fp, quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+        writer = csv.writer(fp, dialect=self.config.get("dialect", "excel"), quotechar=self.config.get("quotechar", '"'),
+                            delimiter=self.config.get("delimiter", ','), quoting=csv.QUOTE_NONNUMERIC)
         writer.writerow(fields)
 
         datetime_format = self.config["datetime_format"]
