@@ -149,11 +149,11 @@ def run_yield(tasker, dependency_taskers):
     while True:
         for dependency_tasker_generator in tuple(dependency_tasker_generators):
             try:
-                yield dependency_tasker_generator.send(None)
+                dependency_tasker_generator.send(None)
             except StopIteration:
                 dependency_tasker_generators.remove(dependency_tasker_generator)
         try:
-            yield tasker_generator.send(None)
+            tasker_generator.send(None)
         except StopIteration:
             break
         yield TaskerYieldNext()
