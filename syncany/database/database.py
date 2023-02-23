@@ -165,17 +165,35 @@ class DataBase(object):
         self.manager = manager
         self.name = config.pop("name")
         self.config = config
-        self.key = None
+        self.config_key = None
+        self.database_driver = None
 
-    def get_key(self, config):
-        if self.key is not None:
-            return self.key
+    def get_config_key(self):
+        if self.config_key is not None:
+            return self.config_key
 
         cs = []
-        for key in sorted(config.keys()):
-            cs.append("%s=%s" % (key, config[key]))
-        self.key = hashlib.md5("&".join(cs).encode("utf-8")).hexdigest()
-        return self.key
+        for key in sorted(self.config.keys()):
+            cs.append("%s=%s" % (key, self.config[key]))
+        self.config_key = hashlib.md5("&".join(cs).encode("utf-8")).hexdigest()
+        return self.config_key
+
+    def build_factory(self):
+        raise NotImplementedError()
+
+    def acquire_driver(self):
+        if self.database_driver:
+            return self.database_driver
+        if not self.manager.has(self.get_config_key()):
+            self.manager.register(self.get_config_key(), self.build_factory())
+        self.database_driver = self.manager.acquire(self.get_config_key())
+        return self.database_driver
+
+    def release_driver(self):
+        if not self.database_driver:
+            return
+        self.manager.release(self.get_config_key(), self.database_driver)
+        self.database_driver = None
 
     def query(self, name, primary_keys=None, fields=()):
         return QueryBuilder(self, name, primary_keys, fields)
@@ -196,16 +214,16 @@ class DataBase(object):
         pass
 
     def close(self):
-        pass
+        self.release_driver()
 
     def is_dynamic_schema(self, name):
         return False
 
     def is_streaming(self, name):
-        return False
+        return True if self.manager.get_state(self.get_config_key() + "::" + name, "is_streaming") else False
 
     def set_streaming(self, name, is_streaming=False):
-        pass
+        self.manager.set_state(self.get_config_key() + "::" + name, "is_streaming", is_streaming if is_streaming else None)
 
     def sure_loader(self, loader):
         if not loader:
@@ -271,6 +289,7 @@ class DatabaseFactory(object):
 class DatabaseManager(object):
     def __init__(self, idle_timeout=7200, ping_idle_timeout=300):
         self.factorys = {}
+        self.states = {}
         self.lock = threading.Lock()
         self.idle_timeout = idle_timeout
         self.ping_idle_timeout = ping_idle_timeout
@@ -350,3 +369,20 @@ class DatabaseManager(object):
             for key, factory in factorys:
                 if not factory.drivers:
                     self.factorys.pop(key, None)
+
+    def get_state(self, name, key):
+        if name not in self.states:
+            return None
+        return self.states[name].get(key)
+
+    def set_state(self, name, key, value):
+        if value is None:
+            if name not in self.states:
+                return
+            self.states[name].pop(key, None)
+            if not self.states[name]:
+                self.states.pop(name, None)
+        else:
+            if name not in self.states:
+                self.states[name] = {}
+            self.states[name][key] = value

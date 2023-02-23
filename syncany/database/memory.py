@@ -265,14 +265,8 @@ class MemoryCacheBuilder(CacheBuilder):
 
 
 class MemoryDBCollection(dict):
-    def __init__(self, *args, **kwargs):
-        super(MemoryDBCollection, self).__init__(*args, **kwargs)
-
-        self.is_streamings = {}
-
     def remove(self, name):
         self.pop(name, None)
-        self.is_streamings.pop(name, None)
 
 
 class MemoryDBFactory(DatabaseFactory):
@@ -299,15 +293,12 @@ class MemoryDB(DataBase):
 
         self.memory_databases = None
 
+    def build_factory(self):
+        return MemoryDBFactory(self.get_config_key(), self.config)
+
     def ensure_memory_databases(self):
-        if self.memory_databases is not None:
-            return
-        key = self.get_key(self.config)
-        if not self.manager.has(key):
-            self.manager.register(key, MemoryDBFactory(key, self.config))
-        db = self.manager.acquire(key)
-        self.memory_databases = db.raw()
-        self.manager.release(key, db)
+        self.memory_databases = self.acquire_driver().raw()
+        self.release_driver()
 
     def query(self, name, primary_keys=None, fields=()):
         self.ensure_memory_databases()
@@ -331,13 +322,3 @@ class MemoryDB(DataBase):
 
     def is_dynamic_schema(self, name):
         return True
-
-    def is_streaming(self, name):
-        self.ensure_memory_databases()
-        if name in self.memory_databases.is_streamings:
-            return self.memory_databases.is_streamings[name]
-        return False
-
-    def set_streaming(self, name, is_streaming=False):
-        self.ensure_memory_databases()
-        self.memory_databases.is_streamings[name] = is_streaming

@@ -7,7 +7,7 @@ import time
 import pickle
 import json
 from ..utils import human_repr_object, sorted_by_keys
-from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
+from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
 
 
 class StringSerialize(object):
@@ -179,6 +179,23 @@ class BeanstalkDeleteBuilder(DeleteBuilder):
     pass
 
 
+class BeanstalkDBFactory(DatabaseFactory):
+    def create(self):
+        try:
+            import pystalkd
+        except ImportError:
+            raise ImportError("pystalkd>=1.3.0 is required")
+        connection = pystalkd.Beanstalkd.Connection(**self.config)
+        connection.ignore("default")
+        return connection
+
+    def ping(self, driver):
+        return True
+
+    def close(self, driver):
+        driver.instance.close()
+
+
 class BeanstalkDB(DataBase):
     DEFAULT_CONFIG = {
         "host": "127.0.0.1",
@@ -216,16 +233,14 @@ class BeanstalkDB(DataBase):
             self.serialize.dumps = catch_serialize_error(self.serialize.dumps)
             self.serialize.loads = catch_serialize_error(self.serialize.loads)
 
-    def ensure_connection(self):
-        if not self.connection:
-            try:
-                import pystalkd
-            except ImportError:
-                raise ImportError("pystalkd>=1.3.0 is required")
+    def build_factory(self):
+        return BeanstalkDBFactory(self.get_config_key(), self.config)
 
-            self.connection = pystalkd.Beanstalkd.Connection(**self.config)
-            self.connection.ignore("default")
-        return self.connection
+    def ensure_connection(self):
+        return self.acquire_driver().raw()
+
+    def release_connection(self):
+        self.release_driver()
 
     def query(self, name, primary_keys=None, fields=()):
         return BeanstalkQueryBuilder(self, name, primary_keys, fields)
@@ -239,17 +254,14 @@ class BeanstalkDB(DataBase):
     def delete(self, name, primary_keys=None):
         return BeanstalkDeleteBuilder(self, name, primary_keys)
 
-    def close(self):
-        if not self.connection:
-            return
-        self.connection.close()
-        self.connection = None
-
     def is_dynamic_schema(self, name):
         return True
 
     def is_streaming(self, name):
         return True
+
+    def set_streaming(self, name, is_streaming=False):
+        pass
 
     def sure_loader(self, loader):
         if not loader or loader == "db_loader":

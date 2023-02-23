@@ -5,7 +5,7 @@
 import datetime
 import json
 from ..utils import human_repr_object
-from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase
+from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
 
 
 class ElasticsearchQueryBuilder(QueryBuilder):
@@ -284,6 +284,22 @@ class ElasticsearchDeleteBuilder(DeleteBuilder):
         raise NotImplementedError()
 
 
+class ElasticsearchDBFactory(DatabaseFactory):
+    def create(self):
+        try:
+            import elasticsearch
+            import elasticsearch.helpers
+        except ImportError:
+            raise ImportError("elasticsearch>=6.3.1 is required")
+        return elasticsearch.Elasticsearch(**self.config)
+
+    def ping(self, driver):
+        return True
+
+    def close(self, driver):
+        pass
+
+
 class ElasticsearchDB(DataBase):
     DEFAULT_CONFIG = {
         "hosts": "127.0.0.1",
@@ -303,17 +319,19 @@ class ElasticsearchDB(DataBase):
 
         self.connection = None
 
-    def ensure_connection(self):
-        if not self.connection:
-            try:
-                import elasticsearch
-                import elasticsearch.helpers
-            except ImportError:
-                raise ImportError("elasticsearch>=6.3.1 is required")
+    def build_factory(self):
+        return ElasticsearchDBFactory(self.get_config_key(), self.config)
 
-            self.connection = elasticsearch.Elasticsearch(**self.config)
-            self.helpers = lambda: elasticsearch.helpers
-        return self.connection
+    def ensure_connection(self):
+        try:
+            import elasticsearch.helpers
+        except ImportError:
+            raise ImportError("elasticsearch>=6.3.1 is required")
+        self.helpers = lambda: elasticsearch.helpers
+        return self.acquire_driver().raw()
+
+    def release_connection(self):
+        self.release_driver()
 
     def query(self, name, primary_keys=None, fields=()):
         return ElasticsearchQueryBuilder(self, name, primary_keys, fields)
@@ -330,6 +348,3 @@ class ElasticsearchDB(DataBase):
     def helpers(self):
         import elasticsearch.helpers
         return elasticsearch.helpers
-
-    def close(self):
-        self.connection = None

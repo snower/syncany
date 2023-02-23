@@ -369,24 +369,14 @@ class MongoDB(DataBase):
 
         super(MongoDB, self).__init__(manager, all_config)
 
-        self.connection_key = None
-        self.connection = None
+    def build_factory(self):
+        return MongoDBFactory(self.get_config_key(), self.config)
 
     def ensure_connection(self):
-        if self.connection:
-            return self.connection.raw()
-        if not self.connection_key:
-            self.connection_key = self.get_key(self.config)
-            if not self.manager.has(self.connection_key):
-                self.manager.register(self.connection_key, MongoDBFactory(self.connection_key, self.config))
-        self.connection = self.manager.acquire(self.connection_key)
-        return self.connection.raw()
+        return self.acquire_driver().raw()
 
     def release_connection(self):
-        if not self.connection:
-            return
-        self.manager.release(self.connection_key, self.connection)
-        self.connection = None
+        self.release_driver()
 
     def query(self, name, primary_keys=None, fields=()):
         return MongoQueryBuilder(self, name, primary_keys, fields)
@@ -399,12 +389,6 @@ class MongoDB(DataBase):
 
     def delete(self, name, primary_keys=None):
         return MongoDeleteBuilder(self, name, primary_keys)
-
-    def close(self):
-        if not self.connection:
-            return
-        self.connection.raw().close()
-        self.connection = None
 
     def is_dynamic_schema(self, name):
         return True

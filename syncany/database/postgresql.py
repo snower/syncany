@@ -377,30 +377,19 @@ class PostgresqlDB(DataBase):
 
         super(PostgresqlDB, self).__init__(manager, all_config)
 
-        self.connection_key = None
-        self.connection = None
+    def build_factory(self):
+        try:
+            from psycopg2.extras import DictCursor
+        except ImportError:
+            raise ImportError("psycopg2>=2.8.6 is required")
+        self.__class__.DictCursor = DictCursor
+        return PostgresqlDBFactory(self.get_config_key(), self.config)
 
     def ensure_connection(self):
-        if self.connection:
-            return self.connection.raw()
-        if not self.connection_key:
-            self.connection_key = self.get_key(self.config)
-            if not self.manager.has(self.connection_key):
-                self.manager.register(self.connection_key, PostgresqlDBFactory(self.connection_key, self.config))
-
-            try:
-                from psycopg2.extras import DictCursor
-            except ImportError:
-                raise ImportError("PyMySQL>=0.8.1 is required")
-            self.DictCursor = DictCursor
-        self.connection = self.manager.acquire(self.connection_key)
-        return self.connection.raw()
+        return self.acquire_driver().raw()
 
     def release_connection(self):
-        if not self.connection:
-            return
-        self.manager.release(self.connection_key, self.connection)
-        self.connection = None
+        self.release_driver()
 
     def query(self, name, primary_keys=None, fields=()):
         return PostgresqlQueryBuilder(self, name, primary_keys, fields)
@@ -413,12 +402,6 @@ class PostgresqlDB(DataBase):
 
     def delete(self, name, primary_keys=None):
         return PostgresqlDeleteBuilder(self, name, primary_keys)
-
-    def close(self):
-        if not self.connection:
-            return
-        self.connection.raw().close()
-        self.connection = None
 
     def verbose(self):
         return "%s<%s>" % (self.name, self.db_name)

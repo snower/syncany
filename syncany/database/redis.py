@@ -464,8 +464,6 @@ class RedisDB(DataBase):
 
         super(RedisDB, self).__init__(manager, all_config)
 
-        self.connection_key = None
-        self.connection = None
         if self.ignore_serialize_error:
             def catch_serialize_error(func):
                 def _(*args, **kwargs):
@@ -477,21 +475,14 @@ class RedisDB(DataBase):
             self.serialize.dumps = catch_serialize_error(self.serialize.dumps)
             self.serialize.loads = catch_serialize_error(self.serialize.loads)
 
+    def build_factory(self):
+        return RedisDBFactory(self.get_config_key(), self.config)
+
     def ensure_connection(self):
-        if self.connection:
-            return self.connection.raw()
-        if not self.connection_key:
-            self.connection_key = self.get_key(self.config)
-            if not self.manager.has(self.connection_key):
-                self.manager.register(self.connection_key, RedisDBFactory(self.connection_key, self.config))
-        self.connection = self.manager.acquire(self.connection_key)
-        return self.connection.raw()
+        return self.acquire_driver().raw()
 
     def release_connection(self):
-        if not self.connection:
-            return
-        self.manager.release(self.connection_key, self.connection)
-        self.connection = None
+        self.release_driver()
 
     def query(self, name, primary_keys=None, fields=()):
         return RedisQueryBuilder(self, name, primary_keys, fields)
@@ -507,12 +498,6 @@ class RedisDB(DataBase):
 
     def cache(self, name, prefix_key, config=None):
         return RedisCacheBuilder(name, prefix_key, config)
-
-    def close(self):
-        if not self.connection:
-            return
-        self.connection.raw().close()
-        self.connection = None
 
     def is_dynamic_schema(self, name):
         return True
