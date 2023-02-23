@@ -333,10 +333,10 @@ class ClickhouseDBFactory(DatabaseFactory):
         return clickhouse_driver.connect(**self.config)
 
     def ping(self, driver):
-        return driver.ping()
+        return driver.instance.ping()
 
     def close(self, driver):
-        driver.close()
+        driver.instance.close()
 
 
 class ClickhouseDB(DataBase):

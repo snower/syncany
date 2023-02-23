@@ -165,12 +165,17 @@ class DataBase(object):
         self.manager = manager
         self.name = config.pop("name")
         self.config = config
+        self.key = None
 
     def get_key(self, config):
+        if self.key is not None:
+            return self.key
+
         cs = []
         for key in sorted(config.keys()):
             cs.append("%s=%s" % (key, config[key]))
-        return hashlib.md5("&".join(cs).encode("utf-8")).hexdigest()
+        self.key = hashlib.md5("&".join(cs).encode("utf-8")).hexdigest()
+        return self.key
 
     def query(self, name, primary_keys=None, fields=()):
         return QueryBuilder(self, name, primary_keys, fields)
@@ -217,27 +222,27 @@ class DataBase(object):
 
 
 class DatabaseDriver(object):
-    def __init__(self, factory, driver):
+    def __init__(self, factory, instance):
         self.factory = factory
-        self.driver = driver
+        self.instance = instance
         self.idle_time = time.time()
         self.closed = False
 
     def __getitem__(self, item):
-        return self.driver.__getitem__(item)
+        return self.instance.__getitem__(item)
 
     def __getattr__(self, item):
-        return getattr(self.driver, item)
+        return getattr(self.instance, item)
 
     def ping(self):
-        self.factory.ping(self.driver)
+        return self.factory.ping(self)
 
     def close(self):
         self.closed = True
-        self.factory.close(self.driver)
+        self.factory.close(self)
 
     def raw(self):
-        return self.driver
+        return self.instance
 
 
 class DatabaseFactory(object):
@@ -279,12 +284,12 @@ class DatabaseManager(object):
         with self.lock:
             if key in self.factorys:
                 return
-            driver = DatabaseDriver(factory, factory.create())
-            factory.append(driver)
             self.factorys[key] = factory
 
     def acquire(self, key):
-        factory = self.factorys[key]
+        with self.lock:
+            factory = self.factorys[key]
+
         with factory.lock:
             while factory.drivers:
                 driver = factory.pop()
@@ -295,19 +300,17 @@ class DatabaseManager(object):
                         return driver
                 except:
                     driver.close()
-                    continue
             return DatabaseDriver(factory, factory.create())
 
     def release(self, key, driver):
         if self.closed:
             return driver.close()
 
-        if key not in self.factorys:
-            with self.lock:
-                if key not in self.factorys:
-                    self.factorys[key] = driver.factory
+        with self.lock:
+            if key not in self.factorys:
+                self.factorys[key] = driver.factory
+            factory = self.factorys[key]
 
-        factory = self.factorys[key]
         with factory.lock:
             factory.append(driver)
             driver.idle_time = time.time()
@@ -315,18 +318,26 @@ class DatabaseManager(object):
     def close(self):
         self.closed = True
         with self.lock:
-            for key in list(self.factorys.keys()):
-                factory = self.factorys[key]
-                with factory.lock:
-                    while factory.drivers:
-                        driver = factory.pop()
+            factorys, self.factorys = self.factorys, {}
+
+        for key in list(factorys.keys()):
+            factory = factorys[key]
+            with factory.lock:
+                while factory.drivers:
+                    driver = factory.pop()
+                    try:
                         driver.close()
-                self.factorys.pop(key)
+                    except:
+                        pass
+            factorys.pop(key)
 
     def check_timeout(self):
         now = time.time()
-        for key in list(self.factorys.keys()):
-            factory = self.factorys[key]
+
+        with self.lock:
+            factorys = ((key, factory) for key, factory in self.factorys.items())
+
+        for key, factory in factorys:
             with factory.lock:
                 for _ in range(len(factory.drivers)):
                     driver = factory.drivers.popleft()
@@ -335,6 +346,7 @@ class DatabaseManager(object):
                     else:
                         factory.drivers.append(driver)
 
-            with self.lock:
+        with self.lock:
+            for key, factory in factorys:
                 if not factory.drivers:
-                    self.factorys.pop(key)
+                    self.factorys.pop(key, None)

@@ -343,18 +343,10 @@ class MongoDBFactory(DatabaseFactory):
         return True
 
     def close(self, driver):
-        if self.drivers:
-            self.drivers.pop()
-            self.client = None
-        driver.close()
-
-    def pop(self):
-        return self.drivers[0]
-
-    def append(self, driver):
-        if self.drivers:
+        if not self.client:
             return
-        self.drivers.append(driver)
+        self.client.close()
+        self.client = None
 
 
 class MongoDB(DataBase):

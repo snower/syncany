@@ -264,9 +264,9 @@ class MemoryCacheBuilder(CacheBuilder):
         return True
 
 
-class MemoryDBDriver(dict):
+class MemoryDBCollection(dict):
     def __init__(self, *args, **kwargs):
-        super(MemoryDBDriver, self).__init__(*args, **kwargs)
+        super(MemoryDBCollection, self).__init__(*args, **kwargs)
 
         self.is_streamings = {}
 
@@ -276,8 +276,15 @@ class MemoryDBDriver(dict):
 
 
 class MemoryDBFactory(DatabaseFactory):
+    def __init__(self, *args, **kwargs):
+        super(MemoryDBFactory, self).__init__(*args, **kwargs)
+
+        self.memory_collection = None
+
     def create(self):
-        return MemoryDBDriver()
+        if not self.memory_collection:
+            self.memory_collection = MemoryDBCollection()
+        return self.memory_collection
 
     def ping(self, driver):
         return True
