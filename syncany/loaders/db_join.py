@@ -160,7 +160,7 @@ class DBJoinLoader(DBLoader):
                     query.filter_in(self.primary_keys[0], current_unload_primary_keys)
                 else:
                     for j in range(len(self.primary_keys)):
-                        query.filter_in(self.primary_keys[j], [self.unload_primary_keys[key][j] for key in current_unload_primary_keys])
+                        query.filter_in(self.primary_keys[j], list({self.unload_primary_keys[key][j] for key in current_unload_primary_keys}))
                 datas = query.commit()
 
                 for data in datas:
