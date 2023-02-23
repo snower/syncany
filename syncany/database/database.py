@@ -220,9 +220,11 @@ class DataBase(object):
         return False
 
     def is_streaming(self, name):
-        return True if self.manager.get_state(self.get_config_key() + "::" + name, "is_streaming") else False
+        return self.manager.get_state(self.get_config_key() + "::" + name, "is_streaming")
 
-    def set_streaming(self, name, is_streaming=False):
+    def set_streaming(self, name, is_streaming=None):
+        if is_streaming is None:
+            return
         self.manager.set_state(self.get_config_key() + "::" + name, "is_streaming", is_streaming if is_streaming else None)
 
     def sure_loader(self, loader):

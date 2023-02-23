@@ -260,7 +260,7 @@ class BeanstalkDB(DataBase):
     def is_streaming(self, name):
         return True
 
-    def set_streaming(self, name, is_streaming=False):
+    def set_streaming(self, name, is_streaming=None):
         pass
 
     def sure_loader(self, loader):

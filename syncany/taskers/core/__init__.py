@@ -1338,6 +1338,7 @@ class CoreTasker(Tasker):
         self.states.close()
         self.context.close()
         self.valuer_compiler, self.valuer_creater, self.loader_creater, self.outputer_creater = None, None, None, None
+        self.hookers, self.join_loaders, self.global_variables = set([]), {}, {}
 
     def get_status(self):
         if "runner_id" not in self.status or not self.status["runner_id"]:
