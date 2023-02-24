@@ -83,6 +83,15 @@ class Loader(object):
             return True
         return False
 
+    def is_dynamic_schema(self):
+        return False
+
+    def is_streaming(self):
+        return None
+
+    def set_streaming(self, is_streaming=None):
+        pass
+
     def load(self, timeout=None):
         self.loaded = True
 

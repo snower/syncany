@@ -36,6 +36,15 @@ class Outputer(object):
     def store(self, datas):
         self.datas = datas
 
+    def is_dynamic_schema(self):
+        return False
+
+    def is_streaming(self):
+        return None
+
+    def set_streaming(self, is_streaming=None):
+        pass
+
     def add_filter(self, key, exp, value):
         self.filters.append([key, exp, value])
 

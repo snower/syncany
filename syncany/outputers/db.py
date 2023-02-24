@@ -23,6 +23,17 @@ class DBOutputer(Outputer):
         outputer.insert_batch = self.insert_batch
         return outputer
 
+    def is_dynamic_schema(self):
+        return self.db.is_dynamic_schema(self.name)
+
+    def is_streaming(self):
+        return self.db.is_streaming(self.name)
+
+    def set_streaming(self, is_streaming=None):
+        if is_streaming is None:
+            return
+        self.db.set_streaming(self.name, is_streaming)
+
     def statistics(self):
         operator_count = self.outputer_state["insert_count"] + self.outputer_state["update_count"] \
                          + self.outputer_state["delete_count"]

@@ -34,6 +34,17 @@ class DBLoader(Loader):
             return self.db.is_streaming(self.name)
         return False
 
+    def is_dynamic_schema(self):
+        return self.db.is_dynamic_schema(self.name)
+
+    def is_streaming(self):
+        return self.db.is_streaming(self.name)
+
+    def set_streaming(self, is_streaming=None):
+        if is_streaming is None:
+            return
+        self.db.set_streaming(self.name, is_streaming)
+
     def load(self, timeout=None):
         if self.loaded:
             return

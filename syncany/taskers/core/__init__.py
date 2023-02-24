@@ -889,6 +889,7 @@ class CoreTasker(Tasker):
         return getattr(self.outputer_creater, "create_" + config["name"])(config, primary_keys)
 
     def compile_loader(self):
+        loader_config = {}
         if self.config["input"][:2] == "<<":
             self.config["input"] = self.arguments.get("@input", self.config["input"][2:])
         if " use " in self.config["input"]:
@@ -909,11 +910,13 @@ class CoreTasker(Tasker):
             loader = self.databases.instance(db_name).sure_loader(self.config.get("loader"))
         except KeyError:
             raise DatabaseUnknownException(db_name + " is unknown")
-        loader_config = {
+        loader_config.update({
             "name": loader,
             "database": input_loader["database"],
             "is_yield": False,
-        }
+        })
+        if "loader_arguments" in self.config and isinstance(self.config["loader_arguments"], dict):
+            loader_config.update(self.config["loader_arguments"])
         self.loader = self.create_loader(loader_config, input_loader["foreign_key"])
 
         if isinstance(self.schema, dict):
@@ -973,6 +976,7 @@ class CoreTasker(Tasker):
                 self.loader.add_intercept(intercept.clone())
 
     def compile_outputer(self):
+        outputer_config = {}
         if self.config["output"][:2] == ">>":
             self.config["output"] = self.arguments.get("@output", self.config["output"][2:])
         if " use " in self.config["output"]:
@@ -993,10 +997,12 @@ class CoreTasker(Tasker):
             outputer = self.databases.instance(db_name).sure_outputer(self.config.get("outputer"))
         except KeyError:
             raise DatabaseUnknownException(db_name + " is unknown")
-        outputer_config = {
+        outputer_config.update({
             "name": outputer,
             "database": output_outputer["database"],
-        }
+        })
+        if "outputer_arguments" in self.config and isinstance(self.config["outputer_arguments"], dict):
+            outputer_config.update(self.config["outputer_arguments"])
         self.outputer = self.create_outputer(outputer_config, output_outputer["foreign_key"])
 
         if isinstance(self.schema, dict):
@@ -1192,8 +1198,7 @@ class CoreTasker(Tasker):
             self.loader.datas = self.run_queried_hooks(self.loader.datas)
             self.print_queryed_statistics(self.loader, self.status["statistics"]["loader"])
 
-            if hasattr(self.outputer, "name") and self.outputer.db.is_dynamic_schema(self.outputer.name) \
-                    and self.schema == ".*" and not self.config["querys"] and not self.intercepts:
+            if self.outputer.is_dynamic_schema() and self.schema == ".*" and not self.config["querys"] and not self.intercepts:
                 datas = self.loader.datas
             else:
                 datas = self.loader.get()
@@ -1206,8 +1211,7 @@ class CoreTasker(Tasker):
                 datas = datas[:limit - self.status["store_count"]]
             self.outputer.store(datas)
             store_count = len(datas)
-            if hasattr(self.outputer, "name") and (streaming or hasattr(self.loader, "name")):
-                self.outputer.db.set_streaming(self.outputer.name, True if streaming else self.loader.db.is_streaming(self.loader.name))
+            self.outputer.set_streaming(True if streaming else self.loader.is_streaming())
             self.status["load_count"] += load_count
             self.status["store_count"] += store_count
             self.run_outputed_hooks(datas)
@@ -1231,8 +1235,8 @@ class CoreTasker(Tasker):
                 if self.terminated or (0 < limit <= self.status["store_count"]) or load_count < batch_count:
                     break
 
-        if hasattr(self.outputer, "name") and self.outputer.db.is_streaming(self.outputer.name):
-            self.outputer.db.set_streaming(self.outputer.name, False)
+        if self.outputer.is_streaming():
+            self.outputer.set_streaming(False)
         get_logger().info("%s batch finish %s %s %s", self.name, batch_count, self.status["load_count"], self.status["store_count"])
         statistics = (self.loader.__class__.__name__, self.status["statistics"]["loader"], self.outputer.__class__.__name__,
                       self.status["statistics"]["outputer"], len(self.join_loaders), self.status["statistics"]["join_loaders"])
@@ -1247,8 +1251,7 @@ class CoreTasker(Tasker):
         self.loader.datas = self.run_queried_hooks(self.loader.datas)
         self.print_queryed_statistics(self.loader, self.status["statistics"]["loader"])
 
-        if hasattr(self.outputer, "name") and self.outputer.db.is_dynamic_schema(self.outputer.name) \
-                and self.schema == ".*" and not self.config["querys"] and not self.intercepts:
+        if self.outputer.is_dynamic_schema() and self.schema == ".*" and not self.config["querys"] and not self.intercepts:
             datas = self.loader.datas
         else:
             datas = self.loader.get()
@@ -1256,8 +1259,7 @@ class CoreTasker(Tasker):
         self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
 
         self.outputer.store(datas)
-        if hasattr(self.loader, "name") and hasattr(self.outputer, "name"):
-            self.outputer.db.set_streaming(self.outputer.name, self.loader.db.is_streaming(self.loader.name))
+        self.outputer.set_streaming(self.loader.is_streaming())
         self.run_outputed_hooks(datas)
         self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
         for name, database in self.databases.items():

@@ -100,6 +100,15 @@ class DBJoinLoader(DBLoader):
             return True
         return False
 
+    def is_dynamic_schema(self):
+        return False
+
+    def is_streaming(self):
+        return None
+
+    def set_streaming(self, is_streaming=None):
+        pass
+
     def create_group_macther(self, return_valuer):
         return GroupDBJoinMatcher(return_valuer)
 
