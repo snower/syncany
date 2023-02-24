@@ -364,6 +364,8 @@ class TextLineInsertBuilder(InsertBuilder):
                 self.rich_write(fp)
             else:
                 self.text_write(fp)
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("textline::" + self.name)
 
     def verbose(self):
         datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
@@ -396,6 +398,8 @@ class TextLineUpdateBuilder(UpdateBuilder):
         pass
 
     def commit(self):
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("textline::" + self.name)
         return []
 
 
@@ -425,6 +429,8 @@ class TextLineDeleteBuilder(DeleteBuilder):
         pass
 
     def commit(self):
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("textline::" + self.name)
         return []
 
 

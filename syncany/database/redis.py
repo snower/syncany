@@ -5,6 +5,8 @@
 import pickle
 import json
 from ..utils import human_repr_object, sorted_by_keys
+from ..taskers.context import TaskerContext
+from ..taskers.iterator import TaskerDataIterator
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, CacheBuilder, DataBase, DatabaseFactory
 
 
@@ -47,19 +49,115 @@ class PickleSerialize(object):
         return pickle.dumps(value)
 
 
-class RedisQueryBuilder(QueryBuilder):
-    def __init__(self, *args, **kwargs):
-        super(RedisQueryBuilder, self).__init__(*args, **kwargs)
-
-        db_name = self.name.split(".")
+class RedisCommand(object):
+    def __init__(self, serialize, base_prefix, name):
+        self.serialize = serialize
+        db_name = name.split(".")
         if len(db_name) > 1:
             prefix_key = ".".join(db_name[1:]).split("#")
         else:
             prefix_key = db_name[0].split("#")
         if len(prefix_key) > 1:
-            self.data_type, self.prefix_key = prefix_key[0], "#".join(prefix_key[1:])
+            self.data_type, self.prefix_key = prefix_key[0], base_prefix + "#".join(prefix_key[1:])
         else:
-            self.data_type, self.prefix_key = "", prefix_key[0]
+            self.data_type, self.prefix_key = "list", base_prefix + prefix_key[0]
+
+    def command_keys(self, connection):
+        keys = connection.keys(self.prefix_key + "*")
+        datas = []
+        for key in keys:
+            data = connection.get(key)
+            if data is None:
+                continue
+            data = self.serialize.loads(data)
+            if not data:
+                continue
+            if isinstance(data, dict):
+                data["_key"] = key
+            else:
+                data = {"_key": key, "_value": data}
+            datas.append(data)
+        return datas
+
+    def command_lrange(self, connection):
+        datas = []
+        for value in connection.lrange(self.prefix_key, 0, -1):
+            data = self.serialize.loads(value)
+            if not data:
+                continue
+            datas.append(data)
+        return datas
+
+    def command_hgetall(self, connection):
+        datas = []
+        for key, value in connection.hgetall(self.prefix_key).items():
+            data = self.serialize.loads(value)
+            if not data:
+                continue
+            if isinstance(data, dict):
+                data["_key"] = key
+            else:
+                data = {"_key": key, "_value": data}
+            datas.append(data)
+        return datas
+
+    def load_datas(self, connection):
+        if self.data_type == "hash":
+            return self.command_hgetall(connection)
+        if self.data_type == "list":
+            return self.command_lrange(connection)
+        return self.command_keys(connection)
+
+    def command_set(self, connection, primary_keys, datas, expire_seconds):
+        for data in datas:
+            key = ":".join([str(data.get(primary_key, "")) for primary_key in primary_keys])
+            data = self.serialize.dumps(data)
+            connection.set(self.prefix_key + ":" + key, data, expire_seconds)
+
+    def command_lrpush(self, connection, primary_keys, datas, expire_seconds):
+        datas = tuple(self.serialize.dumps(data) for data in datas)
+        if not datas:
+            return
+        connection.rpush(self.prefix_key, *datas)
+        connection.expire(self.prefix_key, expire_seconds)
+
+    def command_hset(self, connection, primary_keys, datas, expire_seconds):
+        for data in datas:
+            key = ":".join([str(data.get(primary_key, "")) for primary_key in primary_keys])
+            data = self.serialize.dumps(data)
+            connection.hset(self.prefix_key, key, data)
+        connection.expire(self.prefix_key, expire_seconds)
+
+    def save_datas(self, connection, primary_keys, datas, expire_seconds):
+        if self.data_type == "hash":
+            return self.command_hset(connection, primary_keys, datas, expire_seconds)
+        if self.data_type == "list":
+            return self.command_lrpush(connection, primary_keys, datas, expire_seconds)
+        self.command_set(connection, primary_keys, datas, expire_seconds)
+
+    def command_del_keys(self, connection):
+        keys = connection.keys(self.prefix_key + "*")
+        for key in keys:
+            connection.delete(key)
+
+    def command_del_list(self, connection):
+        connection.delete(self.prefix_key)
+
+    def command_del_hash(self, connection):
+        connection.delete(self.prefix_key)
+
+    def delete_datas(self, connection):
+        if self.data_type == "hash":
+            return self.command_del_hash(connection)
+        if self.data_type == "list":
+            return self.command_del_list(connection)
+        self.command_del_keys(connection)
+
+
+class RedisQueryBuilder(QueryBuilder, RedisCommand):
+    def __init__(self, *args, **kwargs):
+        QueryBuilder.__init__(self, *args, **kwargs)
+        RedisCommand.__init__(self, self.db.serialize, self.db.base_prefix, self.name)
 
     def filter_gt(self, key, value):
         self.query[(key, '>')] = (value, lambda a, b: a > b)
@@ -94,70 +192,46 @@ class RedisQueryBuilder(QueryBuilder):
     def order_by(self, key, direct=1):
         self.orders.append((key, direct))
 
-    def command_keys(self):
-        connection = self.db.ensure_connection()
-        keys = connection.keys(self.prefix_key + "*")
-        datas = []
-        for key in keys:
-            data = connection.get(key)
-            if data is None:
-                continue
-            data = self.db.serialize.loads(data)
-            if not data:
-                continue
-            if isinstance(data, dict):
-                data["_key"] = key
-            else:
-                data = {"_key": key, "_value": data}
-            datas.append(data)
-        return datas
-
-    def command_hgetall(self):
-        connection = self.db.ensure_connection()
-        datas = []
-        for key, value in connection.hgetall().items():
-            data = self.db.serialize.loads(value)
-            if not data:
-                continue
-            if isinstance(data, dict):
-                data["_key"] = key
-            else:
-                data = {"_key": key, "_value": data}
-            datas.append(data)
-        return datas
-
-    def load(self):
-        if self.data_type == "hash":
-            return self.command_hgetall()
-        return self.command_keys()
-
     def commit(self):
-        try:
-            load_datas = self.load()
-            if not self.query:
-                datas = load_datas[:]
-            else:
-                datas = []
-                for data in load_datas:
-                    succed = True
-                    for (key, exp), (value, cmp) in self.query.items():
-                        if key not in data:
-                            succed = False
-                            break
-                        if not cmp(data[key], value):
-                            succed = False
-                            break
-                    if succed:
-                        datas.append(data)
+        tasker_context, iterator, iterator_name, datas = None, None, None, None
+        if self.query or self.orders:
+            tasker_context = TaskerContext.current()
+            iterator_name = "redis::" + self.name
+            iterator = tasker_context.get_iterator(iterator_name)
+            if iterator:
+                datas = iterator.datas
 
-            if self.orders:
-                datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
-                                                    for key, direct in self.orders] if self.orders else None)
-            if self.limit:
-                datas = datas[self.limit[0]: self.limit[1]]
-            return datas
-        finally:
-            self.db.release_connection()
+        if not datas:
+            try:
+                connection = self.db.ensure_connection()
+                load_datas = self.load_datas(connection)
+                if not self.query:
+                    datas = load_datas[:]
+                else:
+                    datas = []
+                    for data in load_datas:
+                        succed = True
+                        for (key, exp), (value, cmp) in self.query.items():
+                            if key not in data:
+                                succed = False
+                                break
+                            if not cmp(data[key], value):
+                                succed = False
+                                break
+                        if succed:
+                            datas.append(data)
+
+                if self.orders:
+                    datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
+                                                        for key, direct in self.orders] if self.orders else None)
+                if self.query or self.orders:
+                    tasker_context.add_iterator(iterator_name, TaskerDataIterator(datas))
+            finally:
+                self.db.release_connection()
+
+        if self.limit:
+            datas = datas[self.limit[0]: self.limit[1]]
+        return datas
 
     def verbose(self):
         return "filters: %s\nlimit: %s\norderBy: %s" % (
@@ -166,47 +240,15 @@ class RedisQueryBuilder(QueryBuilder):
             self.orders)
 
 
-class RedisInsertBuilder(InsertBuilder):
+class RedisInsertBuilder(InsertBuilder, RedisCommand):
     def __init__(self, *args, **kwargs):
-        super(RedisInsertBuilder, self).__init__(*args, **kwargs)
-
-        db_name = self.name.split(".")
-        if len(db_name) > 1:
-            prefix_key = ".".join(db_name[1:]).split("#")
-        else:
-            prefix_key = db_name[0].split("#")
-        if len(prefix_key) > 1:
-            self.data_type, self.prefix_key = prefix_key[0], "#".join(prefix_key[1:])
-        else:
-            self.data_type, self.prefix_key = "", prefix_key[0]
-        if isinstance(self.datas, dict):
-            self.datas = [self.datas]
-
-    def command_set(self, key, data):
-        connection = self.db.ensure_connection()
-        connection.set(self.prefix_key + ":" + key, data, self.db.expire_seconds)
-
-    def command_hset(self, key, data):
-        connection = self.db.ensure_connection()
-        connection.hset(self.prefix_key, key, data)
-
-    def save(self, key, data):
-        if self.data_type == "hash":
-            return self.command_hset(key, data)
-        self.command_set(key, data)
+        InsertBuilder.__init__(self, *args, **kwargs)
+        RedisCommand.__init__(self, self.db.serialize, self.db.base_prefix, self.name)
 
     def commit(self):
         try:
-            for data in self.datas:
-                key = ":".join([str(data.get(primary_key, "")) for primary_key in self.primary_keys])
-                data = self.db.serialize.dumps(data)
-                if not data:
-                    continue
-                self.save(key, data)
-
-            if self.data_type == "hash":
-                connection = self.db.ensure_connection()
-                connection.expire(self.prefix_key, self.db.expire_seconds)
+            connection = self.db.ensure_connection()
+            self.save_datas(connection, self.primary_keys, self.datas, self.db.expire_seconds)
             return self.datas
         finally:
             self.db.release_connection()
@@ -216,19 +258,10 @@ class RedisInsertBuilder(InsertBuilder):
         return "datas(%d): \n[\n    %s\n]" % (len(self.datas), datas)
 
 
-class RedisUpdateBuilder(UpdateBuilder):
+class RedisUpdateBuilder(UpdateBuilder, RedisCommand):
     def __init__(self, *args, **kwargs):
-        super(RedisUpdateBuilder, self).__init__(*args, **kwargs)
-
-        db_name = self.name.split(".")
-        if len(db_name) > 1:
-            prefix_key = ".".join(db_name[1:]).split("#")
-        else:
-            prefix_key = db_name[0].split("#")
-        if len(prefix_key) > 1:
-            self.data_type, self.prefix_key = prefix_key[0], "#".join(prefix_key[1:])
-        else:
-            self.data_type, self.prefix_key = "", prefix_key[0]
+        UpdateBuilder.__init__(self, *args, **kwargs)
+        RedisCommand.__init__(self, self.db.serialize, self.db.base_prefix, self.name)
 
     def filter_gt(self, key, value):
         self.query[(key, '>')] = (value, lambda a, b: a > b)
@@ -251,28 +284,27 @@ class RedisUpdateBuilder(UpdateBuilder):
     def filter_in(self, key, value):
         self.query[(key, "in")] = (value, lambda a, b: a in b)
 
-    def command_set(self, key, data):
-        connection = self.db.ensure_connection()
-        connection.set(self.prefix_key + ":" + key, data, self.db.expire_seconds)
-
-    def command_hset(self, key, data):
-        connection = self.db.ensure_connection()
-        connection.hset(self.prefix_key, key, data)
-        connection.expire(self.prefix_key, self.db.expire_seconds)
-
-    def save(self, key, data):
-        if self.data_type == "hash":
-            return self.command_hset(key, data)
-        self.command_set(key, data)
-
     def commit(self):
         try:
-            key = ":".join([str(self.update.get(primary_key, "")) for primary_key in self.primary_keys])
-            data = self.db.serialize.dumps(self.update)
-            if not data:
-                return None
-            self.save(key, data)
-            return self.update
+            connection = self.db.ensure_connection()
+            datas = []
+            for data in self.load_datas(connection):
+                succed = True
+                for (key, exp), (value, cmp) in self.query.items():
+                    if key not in data:
+                        succed = False
+                        break
+                    if not cmp(data[key], value):
+                        succed = False
+                        break
+
+                if succed:
+                    datas.append(self.update)
+                else:
+                    datas.append(data)
+            self.delete_datas(connection)
+            if datas:
+                self.save_datas(connection, self.primary_keys, datas, self.db.expire_seconds)
         finally:
             self.db.release_connection()
 
@@ -282,19 +314,10 @@ class RedisUpdateBuilder(UpdateBuilder):
             human_repr_object(self.diff_data))
 
 
-class RedisDeleteBuilder(DeleteBuilder):
+class RedisDeleteBuilder(DeleteBuilder, RedisCommand):
     def __init__(self, *args, **kwargs):
-        super(RedisDeleteBuilder, self).__init__(*args, **kwargs)
-
-        db_name = self.name.split(".")
-        if len(db_name) > 1:
-            prefix_key = ".".join(db_name[1:]).split("#")
-        else:
-            prefix_key = db_name[0].split("#")
-        if len(prefix_key) > 1:
-            self.data_type, self.prefix_key = prefix_key[0], "#".join(prefix_key[1:])
-        else:
-            self.data_type, self.prefix_key = "", prefix_key[0]
+        DeleteBuilder.__init__(self, *args, **kwargs)
+        RedisCommand.__init__(self, self.db.serialize, self.db.base_prefix, self.name)
 
     def filter_gt(self, key, value):
         self.query[(key, '>')] = (value, lambda a, b: a > b)
@@ -317,76 +340,30 @@ class RedisDeleteBuilder(DeleteBuilder):
     def filter_in(self, key, value):
         self.query[(key, "in")] = (value, lambda a, b: a in b)
 
-    def command_keys(self):
-        connection = self.db.ensure_connection()
-        keys = connection.keys(self.prefix_key + "*")
-        datas = []
-        for key in keys:
-            data = connection.get(key)
-            if data is None:
-                continue
-            data = self.db.serialize.loads(data)
-            if not data:
-                continue
-            if isinstance(data, dict):
-                data["_key"] = key
-            else:
-                data = {"_key": key, "_value": data}
-            datas.append(data)
-        return datas
-
-    def command_hgetall(self):
-        connection = self.db.ensure_connection()
-        datas = []
-        for key, value in connection.hgetall().items():
-            data = self.db.serialize.loads(value)
-            if not data:
-                continue
-            if isinstance(data, dict):
-                data["_key"] = key
-            else:
-                data = {"_key": key, "_value": data}
-            datas.append(data)
-        return datas
-
-    def load(self):
-        if self.data_type == "hash":
-            return self.command_hgetall()
-        return self.command_keys()
-
-    def command_del(self, key):
-        connection = self.db.ensure_connection()
-        connection.delete(self.prefix_key + ":" + key)
-
-    def command_hdel(self, key):
-        connection = self.db.ensure_connection()
-        connection.hdel(self.prefix_key, key)
-
-    def delete(self, key):
-        if self.data_type == "hash":
-            return self.command_hdel(key)
-        self.command_del(key)
-
     def commit(self):
         try:
-            load_datas = self.load()
+            connection = self.db.ensure_connection()
             if not self.query:
-                for data in load_datas:
-                    self.delete(data["_key"])
-            else:
-                for data in load_datas:
-                    succed = True
-                    for (key, exp), (value, cmp) in self.query.items():
-                        if key not in data:
-                            succed = False
-                            break
-                        if not cmp(data[key], value):
-                            succed = False
-                            break
+                self.delete_datas(connection)
+                return []
 
-                    if succed:
-                        self.delete(data["_key"])
-            return load_datas
+            datas = []
+            for data in self.load_datas(connection):
+                succed = True
+                for (key, exp), (value, cmp) in self.query.items():
+                    if key not in data:
+                        succed = False
+                        break
+                    if not cmp(data[key], value):
+                        succed = False
+                        break
+
+                if not succed:
+                    datas.append(data)
+
+            self.delete_datas(connection)
+            if datas:
+                self.save_datas(connection, self.primary_keys, datas, self.db.expire_seconds)
         finally:
             self.db.release_connection()
 
@@ -458,9 +435,10 @@ class RedisDB(DataBase):
         all_config.update(self.DEFAULT_CONFIG)
         all_config.update(config)
 
+        self.base_prefix = all_config.pop("prefix") if "prefix" in all_config else ""
         self.serialize = self.SERIALIZES.get(all_config.pop("serialize") if "serialize" in all_config else "json", JsonSerialize)()
         self.ignore_serialize_error = all_config.pop("ignore_serialize_error") if "ignore_serialize_error" in all_config else False
-        self.expire_seconds = all_config.pop("expire_seconds") if "expire_seconds" in all_config else 24 * 60 * 60
+        self.expire_seconds = all_config.pop("expire_seconds") if "expire_seconds" in all_config else 86400
 
         super(RedisDB, self).__init__(manager, all_config)
 

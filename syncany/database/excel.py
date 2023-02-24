@@ -112,6 +112,8 @@ class ExeclInsertBuilder(InsertBuilder):
         execl_sheet.sheet_descriptions = self.fields
         execl_sheet.sheet_datas.extend(self.datas)
         execl_sheet.changed = True
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("excel::" + self.name)
 
     def verbose(self):
         datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
@@ -164,6 +166,8 @@ class ExeclUpdateBuilder(UpdateBuilder):
 
         execl_sheet.sheet_datas = datas
         execl_sheet.changed = True
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("excel::" + self.name)
         return datas
 
     def verbose(self):
@@ -215,6 +219,8 @@ class ExeclDeleteBuilder(DeleteBuilder):
 
         execl_sheet.sheet_datas = datas
         execl_sheet.changed = True
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("excel::" + self.name)
         return datas
 
     def verbose(self):

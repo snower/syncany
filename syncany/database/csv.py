@@ -150,6 +150,8 @@ class CsvInsertBuilder(InsertBuilder):
         csv_file.fields = self.fields
         csv_file.datas.extend(self.datas)
         csv_file.changed = True
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("csv::" + self.name)
 
     def verbose(self):
         datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
@@ -202,6 +204,8 @@ class CsvUpdateBuilder(UpdateBuilder):
 
         csv_file.datas = datas
         csv_file.changed = True
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("csv::" + self.name)
         return datas
 
     def verbose(self):
@@ -253,6 +257,8 @@ class CsvDeleteBuilder(DeleteBuilder):
 
         csv_file.datas = datas
         csv_file.changed = True
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("csv::" + self.name)
         return datas
 
     def verbose(self):

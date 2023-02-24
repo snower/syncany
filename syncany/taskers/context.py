@@ -48,5 +48,11 @@ class TaskerContext(object):
             self.iterators[name].close()
         self.iterators[name] = iterator
 
+    def remove_iterator(self, name):
+        if name not in self.iterators:
+            return
+        iterator = self.iterators.pop(name)
+        iterator.close()
+
     def get_iterator(self, name):
         return self.iterators.get(name)

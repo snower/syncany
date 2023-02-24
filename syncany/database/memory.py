@@ -118,6 +118,8 @@ class MemoryInsertBuilder(InsertBuilder):
         datas = self.db.memory_databases.get(self.name, [])
         datas.extend(self.datas)
         self.db.memory_databases[self.name] = datas
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("memory::" + self.name)
 
     def verbose(self):
         datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
@@ -172,6 +174,8 @@ class MemoryUpdateBuilder(UpdateBuilder):
                 datas.append(data)
 
         self.db.memory_databases[self.name] = datas
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("memory::" + self.name)
         return datas
 
     def verbose(self):
@@ -230,6 +234,8 @@ class MemoryDeleteBuilder(DeleteBuilder):
                 datas.append(data)
 
         self.db.memory_databases[self.name] = datas
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("memory::" + self.name)
         return datas
 
     def verbose(self):

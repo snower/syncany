@@ -107,6 +107,8 @@ class JsonInsertBuilder(InsertBuilder):
         json_file = self.db.ensure_open_file(self.name)
         json_file.datas.extend(self.datas)
         json_file.changed = True
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("json::" + self.name)
 
     def verbose(self):
         datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
@@ -158,6 +160,8 @@ class JsonUpdateBuilder(UpdateBuilder):
 
         json_file.datas = datas
         json_file.changed = True
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("json::" + self.name)
         return datas
 
     def verbose(self):
@@ -209,6 +213,8 @@ class JsonDeleteBuilder(DeleteBuilder):
 
         json_file.datas = datas
         json_file.changed = True
+        tasker_context = TaskerContext.current()
+        tasker_context.remove_iterator("json::" + self.name)
         return datas
 
     def verbose(self):
