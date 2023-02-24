@@ -181,7 +181,7 @@ class MongoQueryBuilder(QueryBuilder):
     def verbose(self):
         if isinstance(self.bquery, tuple):
             return "collection: %s\nquery: %s\nvalues: %s\nlimit: %s\norderBy: %s" % (
-                self.collection_name, self.bquery[0], human_repr_object(self.bquery[1]), self.limit, self.orders)
+                self.collection_name, human_repr_object(self.bquery[0]), human_repr_object(self.bquery[1]), self.limit, self.orders)
         return "collection: %s\nquery: %s\nlimit: %s\norderBy: %s" % (
             self.collection_name, human_repr_object(self.bquery), self.limit, self.orders)
 
@@ -204,8 +204,7 @@ class MongoInsertBuilder(InsertBuilder):
             self.db.release_connection()
 
     def verbose(self):
-        datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
-        return "datas(%d): \n[\n    %s\n]" % (len(self.datas), datas)
+        return "datas(%d): \n%s" % (len(self.datas), human_repr_object(self.datas))
 
 class MongoUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):

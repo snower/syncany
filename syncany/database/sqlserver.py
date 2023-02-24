@@ -210,8 +210,7 @@ class SqlServerInsertBuilder(InsertBuilder):
 
     def verbose(self):
         if isinstance(self.sql, tuple):
-            args = ",\n    ".join([human_repr_object(value) for value in self.sql[1]])
-            return "sql: %s\nargs(%d): \n[\n    %s\n]" % (self.sql[0], len(self.sql[1]), args)
+            return "sql: %s\nargs(%d): \n%s" % (self.sql[0], len(self.sql[1]), human_repr_object(self.sql[1]))
         return "sql: %s" % self.sql
 
 

@@ -275,8 +275,7 @@ class ElasticsearchUpdateBuilder(UpdateBuilder):
         return self.db.helpers().bulk(connection, datas, raise_on_exception=False, raise_on_error=False)
 
     def verbose(self):
-        datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
-        return "datas(%d): \n[\n    %s\n]" % (len(self.datas), datas)
+        return "datas(%d): \n%s" % (len(self.datas), human_repr_object(self.datas))
 
 
 class ElasticsearchDeleteBuilder(DeleteBuilder):

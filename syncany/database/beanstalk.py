@@ -167,8 +167,7 @@ class BeanstalkInsertBuilder(InsertBuilder):
             connection.put()
 
     def verbose(self):
-        datas = ",\n    ".join([human_repr_object(value) for value in self.datas])
-        return "datas(%d): \n[\n    %s\n]" % (len(self.datas), datas)
+        return "datas(%d): \n%s" % (len(self.datas), human_repr_object(self.datas))
 
 
 class BeanstalkUpdateBuilder(UpdateBuilder):

@@ -247,9 +247,9 @@ def human_format_object(value):
             fvalues.append(human_format_object(v))
         return fvalues
 
-    if isinstance(value, datetime.datetime):
-        return HumanRepr('datetime.datetime("%s")' % value.isoformat())
     if isinstance(value, datetime.date):
+        if isinstance(value, datetime.datetime):
+            return HumanRepr('datetime.datetime("%s")' % value.isoformat())
         return HumanRepr('datetime.date("%s")' % value.isoformat())
     if isinstance(value, datetime.time):
         return HumanRepr('datetime.time("%s")' % value.isoformat())
@@ -262,14 +262,18 @@ def human_repr_object(value):
             fvalues.append("%s: %s" % (repr(k), human_repr_object(v)))
         return "{" + ", ".join(fvalues) + "}"
     if isinstance(value, (tuple, set, list)):
-        fvalues = []
-        for v in value:
+        fvalues, require_newline = [], any([isinstance(v, dict) for v in value[:10]])
+        for v in value[:10]:
             fvalues.append(human_repr_object(v))
+        if len(value) > 10:
+            fvalues.append("...(%d)" % len(value))
+        if require_newline:
+            return "[\n    " + ",\n    ".join(fvalues) + "\n]"
         return "[" + ", ".join(fvalues) + "]"
 
-    if isinstance(value, datetime.datetime):
-        return 'datetime.datetime("%s")' % value.isoformat()
     if isinstance(value, datetime.date):
+        if isinstance(value, datetime.datetime):
+            return 'datetime.datetime("%s")' % value.isoformat()
         return 'datetime.date("%s")' % value.isoformat()
     if isinstance(value, datetime.time):
         return 'datetime.time("%s")' % value.isoformat()
