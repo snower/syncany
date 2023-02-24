@@ -1235,14 +1235,15 @@ class CoreTasker(Tasker):
                 if self.terminated or (0 < limit <= self.status["store_count"]) or load_count < batch_count:
                     break
 
-        if self.outputer.is_streaming():
-            self.outputer.set_streaming(False)
         get_logger().info("%s batch finish %s %s %s", self.name, batch_count, self.status["load_count"], self.status["store_count"])
         statistics = (self.loader.__class__.__name__, self.status["statistics"]["loader"], self.outputer.__class__.__name__,
                       self.status["statistics"]["outputer"], len(self.join_loaders), self.status["statistics"]["join_loaders"])
         self.print_statistics(*statistics)
         self.context.reset()
-        return self.loader.next()
+        has_next = self.loader.next()
+        if not has_next and self.outputer.is_streaming():
+            self.outputer.set_streaming(False)
+        return has_next
 
     def run_once(self, loader_timeout):
         if "@limit" in self.arguments and self.arguments["@limit"] > 0:
@@ -1269,7 +1270,10 @@ class CoreTasker(Tasker):
             self.status["data"]["first"] = datas[0]
             self.status["data"]["last"] = datas[-1]
         self.context.reset()
-        return self.loader.next()
+        has_next = self.loader.next()
+        if not has_next and self.outputer.is_streaming():
+            self.outputer.set_streaming(False)
+        return has_next
 
     def run_yield(self):
         get_logger().info("%s start %s -> %s", self.name, self.config_filename, self.config.get("name"))
