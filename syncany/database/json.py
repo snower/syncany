@@ -54,12 +54,12 @@ class JsonQueryBuilder(QueryBuilder):
 
     def commit(self):
         tasker_context, iterator_name, datas = None, None, None
-        if self.query or self.orders:
+        if self.limit and (self.query or self.orders):
             tasker_context = TaskerContext.current()
             iterator_name = "json::" + self.name
             iterator = tasker_context.get_iterator(iterator_name)
-            if iterator:
-                datas = iterator.datas
+            if iterator and iterator.offset == self.limit[0]:
+                datas, iterator.offset = iterator.datas, self.limit[1]
 
         if not datas:
             json_file = self.db.ensure_open_file(self.name)
@@ -82,8 +82,8 @@ class JsonQueryBuilder(QueryBuilder):
             if self.orders:
                 datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
                                                     for key, direct in self.orders] if self.orders else None)
-            if self.query or self.orders:
-                tasker_context.add_iterator(iterator_name, TaskerDataIterator(datas))
+            if self.limit and (self.query or self.orders):
+                tasker_context.add_iterator(iterator_name, TaskerDataIterator(datas, self.limit[1]))
 
         if self.limit:
             datas = datas[self.limit[0]: self.limit[1]]

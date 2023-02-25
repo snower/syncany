@@ -200,7 +200,7 @@ class DBJoinLoader(DBLoader):
 
                 self.loader_state["query_count"] += 1
                 self.loader_state["load_count"] += len(datas)
-            self.unload_primary_keys = set([])
+            self.unload_primary_keys = {}
 
         if self.matchers:
             for primary_key in self.load_primary_keys:

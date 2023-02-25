@@ -8,8 +8,9 @@ class TaskerIterator(object):
 
 
 class TaskerDataIterator(TaskerIterator):
-    def __init__(self, datas):
+    def __init__(self, datas, offset):
         self._datas = datas
+        self.offset = offset
 
     @property
     def datas(self):

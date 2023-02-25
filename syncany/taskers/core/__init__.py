@@ -486,7 +486,7 @@ class CoreTasker(Tasker):
             arguments.append({"name": "@batch", "short": "b", "type": int, "default": 0,
                               "help": "per sync batch count (default: 0 all)"})
         if "@streaming" not in arguments_names:
-            arguments.append({"name": "@streaming", "short": "s", "type": bool, "default": False,
+            arguments.append({"name": "@streaming", "short": "S", "type": bool, "default": False,
                               "help": "per sync batch is streaming (default: False)"})
         if "@recovery" not in arguments_names:
             arguments.append({"name": "@recovery", "short": "r", "type": bool, "default": False,
