@@ -20,9 +20,9 @@
     "shop_date": ["@add", "$.shop_id", "-", "$.order_date|str %Y-%m-%d"],
     "shop_id": "$.shop_id",
     "order_date": "$.order_date|date",
-    "shop_name": ["$.shop_id|ObjectId", "&.mongo_shop.shop::_id", ":$.name"],
-    "dot_id": ["$.shop_id|ObjectId", "&.mongo_shop.shop::_id", ":$.dot_id|int"],
-    "dot_name": ["$.shop_id|ObjectId", "&.mongo_shop.shop::_id", [
+    "shop_name": ["$.shop_id|objectid", "&.mongo_shop.shop::_id", ":$.name"],
+    "dot_id": ["$.shop_id|objectid", "&.mongo_shop.shop::_id", ":$.dot_id|int"],
+    "dot_name": ["$.shop_id|objectid", "&.mongo_shop.shop::_id", [
       ":$.dot_id|int", "&.mysql_ebox.dot::id", "$.name"
     ]],
     "order_cnt": "$.order_cnt|int",

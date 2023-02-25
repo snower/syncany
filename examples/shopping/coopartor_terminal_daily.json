@@ -16,7 +16,7 @@
     "terminal_code": "$.terminal_code",
     "order_date": "$.order_date|date",
     "coopartor_name": ["$.dot_id", "&.mongo_coopartor.dots::dot_id", [
-      ":#yield", "$.parent_link_ids|array", ["$.*|ObjectId", "&.mongo_coopartor.coopartor::_id", "$.name"]
+      ":#yield", "$.parent_link_ids|array", ["$.*|objectid", "&.mongo_coopartor.coopartor::_id", "$.name"]
     ]],
     "terminal_name": "$.terminal_name",
     "dot_id": "$.dot_id",

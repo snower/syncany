@@ -17,7 +17,7 @@
     "order_date": "$.order_date|date",
     "coopartor_name": ["$.dot_id", "&.mongo_coopartor.dots::dot_id", [
       ":#yield", "$.parent_link_ids|array", [
-        ":$.*|ObjectId", "&.mongo_coopartor.coopartor::_id", "$.name"
+        ":$.*|objectid", "&.mongo_coopartor.coopartor::_id", "$.name"
       ]
     ]],
     "shop_name": "$.shop_name",

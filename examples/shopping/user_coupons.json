@@ -10,8 +10,8 @@
     "user_coupon_id": "$._id|str",
     "dot_id": "$.dot_id|int",
     "coupon_id": "$.coupon_id|str",
-    "coupon_batch": ["$.coupon_id|ObjectId", "&.mongo_trading.coupon::_id", ":$.batch"],
-    "coupon_name": ["$.coupon_id|ObjectId", "&.mongo_trading.coupon::_id", ":$.name"],
+    "coupon_batch": ["$.coupon_id|objectid", "&.mongo_trading.coupon::_id", ":$.batch"],
+    "coupon_name": ["$.coupon_id|objectid", "&.mongo_trading.coupon::_id", ":$.name"],
     "start_time": "$.start_time|datetime %Y-%m-%d %H:%M:%S",
     "expried_time": "$.expried_time|datetime %Y-%m-%d %H:%M:%S",
     "coupon_channel": "$.channel_name|str",
@@ -19,12 +19,12 @@
       "#case": "$.channel_name|str",
       "admin": "管理后台发送",
       "#end": ["$._id|str", "&.mysql_analysis.coupon_channel_users::user_coupon_id", [
-        ":$.channel_id|ObjectId", "&.mongo_trading.coupon_channels::_id", ":$.name|str"
+        ":$.channel_id|objectid", "&.mongo_trading.coupon_channels::_id", ":$.name|str"
       ]]
     },
     "uid": "$.uid|str",
-    "username": ["$.uid|ObjectId", "&.mongo_user.user::_id", ":$.username"],
-    "nickname": ["$.uid|ObjectId", "&.mongo_user.user::_id", ":$.nickname"],
+    "username": ["$.uid|objectid", "&.mongo_user.user::_id", ":$.username"],
+    "nickname": ["$.uid|objectid", "&.mongo_user.user::_id", ":$.nickname"],
     "order_id": ["$._id", ["&.mongo_trading.order_coupons::user_coupon_id", {"status":  0}], ":$.order_id|str"],
     "total_fee": ["$._id", ["&.mongo_trading.order_coupons::user_coupon_id", {"status":  0}], [
       ":$.order_id|str", "&.mysql_trading.trading_order::order_id", ":$.total_fee|int"

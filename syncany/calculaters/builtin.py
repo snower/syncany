@@ -40,7 +40,7 @@ class TypeCalculater(Calculater):
             return "float"
 
         if ObjectId and isinstance(self.args[0], ObjectId):
-            return "ObjectId"
+            return "objectid"
 
         return type(self.args[0]).__module__ + "." + type(self.args[0]).__name__
 

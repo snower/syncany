@@ -54,7 +54,7 @@ class ValuerCompiler(object):
         if filter_name in ("int", "float", "str", 'bool'):
             filter = {"name": filter_name, "args": None}
         elif ObjectId is not None and isinstance(value, ObjectId):
-            filter = {"name": "ObjectId", "args": None}
+            filter = {"name": "objectid", "args": None}
         elif isinstance(value, datetime.datetime):
             filter = {"name": "datetime", "args": None}
         elif isinstance(value, datetime.date):

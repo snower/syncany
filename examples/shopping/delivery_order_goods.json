@@ -12,8 +12,8 @@
     "order_id": "$.order_id",
     "delivery_id": "$.delivery_id",
     "uid": "$.uid",
-    "username": ["$.uid|ObjectId", "&.mongo_user.user::_id", ":$.username"],
-    "nickname": ["$.uid|ObjectId", "&.mongo_user.user::_id", ":$.nickname"],
+    "username": ["$.uid|objectid", "&.mongo_user.user::_id", ":$.username"],
+    "nickname": ["$.uid|objectid", "&.mongo_user.user::_id", ":$.nickname"],
     "shop_id": ["$.delivery_id", "&.mysql_trading.delivery_order::id", [
       ":$.warehouse_id|int", "&.mongo_shop.shop::warehouse_id", ":$._id|str"
     ]],
@@ -21,18 +21,18 @@
       ":$.warehouse_id|int", "&.mongo_shop.shop::warehouse_id", ":$.name"
     ]],
     "community_id": ["$.order_id", "&.mongo_trading.order_address::order_id", [
-      ":$.address_id|ObjectId", "&.mongo_ebox.canopy::_id", ":$.community_id|str"
+      ":$.address_id|objectid", "&.mongo_ebox.canopy::_id", ":$.community_id|str"
     ]],
     "community_name": ["$.order_id", "&.mongo_trading.order_address::order_id", [
-      ":$.address_id|ObjectId", "&.mongo_ebox.canopy::_id", [
-        ":$.community_id|ObjectId", "&.mongo_ebox.community::_id", ":$.name"
+      ":$.address_id|objectid", "&.mongo_ebox.canopy::_id", [
+        ":$.community_id|objectid", "&.mongo_ebox.community::_id", ":$.name"
       ]
     ]],
     "canopy_id": ["$.order_id", "&.mongo_trading.order_address::order_id", [
-      ":$.address_id|ObjectId", "&.mongo_ebox.canopy::_id", ":$._id|str"
+      ":$.address_id|objectid", "&.mongo_ebox.canopy::_id", ":$._id|str"
     ]],
     "canopy_name": ["$.order_id", "&.mongo_trading.order_address::order_id", [
-      ":$.address_id|ObjectId", "&.mongo_ebox.canopy::_id", ":$.name"
+      ":$.address_id|objectid", "&.mongo_ebox.canopy::_id", ":$.name"
     ]],
     "delivery_time": ["$.delivery_id", "&.mysql_trading.delivery_order::id", ":$.delivery_time|datetime %Y-%m-%d %H:%M:%S"],
     "delivery_type": ["$.delivery_id", "&.mysql_trading.delivery_order::id", ":$.delivery_type"],
@@ -47,10 +47,10 @@
     }],
     "sku_id": "$.sku_id",
     "trading_id": ["$.order_id", "&.mongo_trading.order_trading_snapshots::order_id", [
-      ":@index", "$$.sku_id|ObjectId", "$.*|array", "sku_id", ":$.trading_id|str"
+      ":@index", "$$.sku_id|objectid", "$.*|array", "sku_id", ":$.trading_id|str"
     ]],
     "title": ["$.order_id", "&.mongo_trading.order_trading_snapshots::order_id", [
-      ":@index", "$$.sku_id|ObjectId", "$.*|array", "sku_id", ":$.trading.title|str"
+      ":@index", "$$.sku_id|objectid", "$.*|array", "sku_id", ":$.trading.title|str"
     ]],
     "num": "$.num",
     "price": ["$.order_id", "&.mysql_trading.trading_order_goods::order_id", [
@@ -66,12 +66,12 @@
     ]],
     "tracking_username": ["$.order_id", "&.mongo_tracking.tracking_orders::order_id", [
       ":@max", "$.*|array", "_id",  [
-        ":$.tracking_uid|ObjectId", "&.mongo_user.user::_id", ":$.username|str"
+        ":$.tracking_uid|objectid", "&.mongo_user.user::_id", ":$.username|str"
       ]
     ]],
     "tracking_nickname": ["$.order_id", "&.mongo_tracking.tracking_orders::order_id", [
       ":@max", "$.*|array", "_id",  [
-        ":$.tracking_uid|ObjectId", "&.mongo_user.user::_id", ":$.nickname|str"
+        ":$.tracking_uid|objectid", "&.mongo_user.user::_id", ":$.nickname|str"
       ]
     ]],
     "delivery_status": ["$.delivery_id", "&.mysql_trading.delivery_order::id", ":$.status"],

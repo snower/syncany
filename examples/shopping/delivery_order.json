@@ -11,23 +11,23 @@
     "dot_id": "$.dot_id",
     "order_id": "$.order_id",
     "uid": "$.uid",
-    "username": ["$.uid|ObjectId", "&.mongo_user.user::_id", ":$.username"],
-    "nickname": ["$.uid|ObjectId", "&.mongo_user.user::_id", ":$.nickname"],
+    "username": ["$.uid|objectid", "&.mongo_user.user::_id", ":$.username"],
+    "nickname": ["$.uid|objectid", "&.mongo_user.user::_id", ":$.nickname"],
     "shop_id": ["$.warehouse_id|int", "&.mongo_shop.shop::warehouse_id", ":$._id|str"],
     "shop_name": ["$.warehouse_id|int", "&.mongo_shop.shop::warehouse_id", ":$.name"],
     "community_id": ["$.order_id", "&.mongo_trading.order_address::order_id", [
-      ":$.address_id|ObjectId", "&.mongo_ebox.canopy::_id", ":$.community_id|str"
+      ":$.address_id|objectid", "&.mongo_ebox.canopy::_id", ":$.community_id|str"
     ]],
     "community_name": ["$.order_id", "&.mongo_trading.order_address::order_id", [
-      ":$.address_id|ObjectId", "&.mongo_ebox.canopy::_id", [
-        ":$.community_id|ObjectId", "&.mongo_ebox.community::_id", ":$.name"
+      ":$.address_id|objectid", "&.mongo_ebox.canopy::_id", [
+        ":$.community_id|objectid", "&.mongo_ebox.community::_id", ":$.name"
       ]
     ]],
     "canopy_id": ["$.order_id", "&.mongo_trading.order_address::order_id", [
-      ":$.address_id|ObjectId", "&.mongo_ebox.canopy::_id", ":$._id|str"
+      ":$.address_id|objectid", "&.mongo_ebox.canopy::_id", ":$._id|str"
     ]],
     "canopy_name": ["$.order_id", "&.mongo_trading.order_address::order_id", [
-      ":$.address_id|ObjectId", "&.mongo_ebox.canopy::_id", ":$.name"
+      ":$.address_id|objectid", "&.mongo_ebox.canopy::_id", ":$.name"
     ]],
     "delivery_time": "$.delivery_time|datetime %Y-%m-%d %H:%M:%S",
     "delivery_type": "$.delivery_type",
@@ -71,12 +71,12 @@
     ]],
     "tracking_username": ["$.order_id", "&.mongo_tracking.tracking_orders::order_id", [
       ":@max", "$.*|array", "_id",  [
-        ":$.tracking_uid|ObjectId", "&.mongo_user.user::_id", ":$.username|str"
+        ":$.tracking_uid|objectid", "&.mongo_user.user::_id", ":$.username|str"
       ]
     ]],
     "tracking_nickname": ["$.order_id", "&.mongo_tracking.tracking_orders::order_id", [
       ":@max", "$.*|array", "_id",  [
-        ":$.tracking_uid|ObjectId", "&.mongo_user.user::_id", ":$.nickname|str"
+        ":$.tracking_uid|objectid", "&.mongo_user.user::_id", ":$.nickname|str"
       ]
     ]],
     "status": "$.status",
