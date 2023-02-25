@@ -15,7 +15,7 @@ CALCULATERS = {
     "type": TypeCalculater,
     "convert_int": ConvertIntCalculater,
     "convert_float": ConvertFloatCalculater,
-    "convert_str": ConvertStringCalculater,
+    "convert_string": ConvertStringCalculater,
     "convert_bytes": ConvertBytesCalculater,
     'convert_bool': ConvertBooleanCalculater,
     'convert_array': ConvertArrayCalculater,
