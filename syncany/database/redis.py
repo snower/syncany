@@ -252,6 +252,8 @@ class RedisInsertBuilder(InsertBuilder, RedisCommand):
             return self.datas
         finally:
             self.db.release_connection()
+            tasker_context = TaskerContext.current()
+            tasker_context.remove_iterator("redis::" + self.name)
 
     def verbose(self):
         return "datas(%d): \n%s" % (len(self.datas), human_repr_object(self.datas))
@@ -306,6 +308,8 @@ class RedisUpdateBuilder(UpdateBuilder, RedisCommand):
                 self.save_datas(connection, self.primary_keys, datas, self.db.expire_seconds)
         finally:
             self.db.release_connection()
+            tasker_context = TaskerContext.current()
+            tasker_context.remove_iterator("redis::" + self.name)
 
     def verbose(self):
         return "filters: %s\nupdateDatas: %s" % (
@@ -365,6 +369,8 @@ class RedisDeleteBuilder(DeleteBuilder, RedisCommand):
                 self.save_datas(connection, self.primary_keys, datas, self.db.expire_seconds)
         finally:
             self.db.release_connection()
+            tasker_context = TaskerContext.current()
+            tasker_context.remove_iterator("redis::" + self.name)
 
     def verbose(self):
         return "filters: %s" % human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])
