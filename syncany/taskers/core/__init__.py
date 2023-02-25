@@ -1175,7 +1175,7 @@ class CoreTasker(Tasker):
         self.load_cursor()
         limit = self.arguments["@limit"] if "@limit" in self.arguments and self.arguments["@limit"] > 0 else 0
         streaming = True if "@streaming" in self.arguments and self.arguments["@streaming"] else False
-        load_count, store_count, last_cursor_data = 0, 0, self.batch_cursor
+        self.status["load_count"], self.status["store_count"], load_count, store_count, last_cursor_data = 0, 0, 0, 0, self.batch_cursor
         get_logger().info("%s batch start %s cursor: %s", self.name, batch_count, "")
 
         while not self.terminated:
@@ -1249,6 +1249,7 @@ class CoreTasker(Tasker):
         if "@limit" in self.arguments and self.arguments["@limit"] > 0:
             self.loader.filter_limit(self.arguments["@limit"])
         self.loader.load(loader_timeout)
+        self.status["load_count"] = len(self.loader.datas)
         self.loader.datas = self.run_queried_hooks(self.loader.datas)
         self.print_queryed_statistics(self.loader, self.status["statistics"]["loader"])
 
@@ -1260,6 +1261,7 @@ class CoreTasker(Tasker):
         self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
 
         self.outputer.store(datas)
+        self.status["store_count"] = len(datas)
         self.outputer.set_streaming(self.loader.is_streaming())
         self.run_outputed_hooks(datas)
         self.print_stored_statistics(self.outputer, self.status["statistics"]["outputer"])
@@ -1302,6 +1304,8 @@ class CoreTasker(Tasker):
                     yield run_count
                 except ContinueTasker:
                     yield run_count
+                self.status["total_load_count"] += self.status["load_count"]
+                self.status["total_store_count"] += self.status["store_count"]
                 self.loader = self.loader.clone()
                 if isinstance(self.loader.schema, dict):
                     for key, valuer in self.loader.schema.items():
@@ -1309,9 +1313,11 @@ class CoreTasker(Tasker):
                 self.outputer = self.outputer.clone()
                 self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
 
+            self.status["total_load_count"] += self.status["load_count"]
+            self.status["total_store_count"] += self.status["store_count"]
             self.status["execute_time"] = (time.time() - self.status.start_time) * 1000
-            get_logger().info("%s finish %s %s %.2fms", self.name, self.config_filename, self.config.get("name"),
-                              self.status["execute_time"])
+            get_logger().info("%s finish %s %s load %s store %s %.2fms", self.name, self.config_filename, self.config.get("name"),
+                              self.status["total_load_count"], self.status["total_store_count"], self.status["execute_time"])
         except Exception as e:
             self.run_finaled_hooks(e)
             raise

@@ -28,6 +28,8 @@ class TaskerStatus(dict):
             trackback=None,
             load_count=0,
             store_count=0,
+            total_load_count=0,
+            total_store_count=0,
             data={
                 "first": None,
                 "last": None
