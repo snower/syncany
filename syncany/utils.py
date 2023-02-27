@@ -54,7 +54,7 @@ def sorted_by_keys(iterable, keys=None, reverse=None):
         sort_keys.append(sort_key)
     if len(sort_keys) == 1 and len(sort_keys[0][0]) == 1:
         sort_key = sort_keys[0][0][0]
-        return sorted(iterable, key=lambda x: x[sort_key], reverse=sort_keys[0][1])
+        return sorted(iterable, key=lambda x: x[sort_key], reverse=reverse)
     def get_key(x):
         key_values = []
         for ks, kr in sort_keys:
