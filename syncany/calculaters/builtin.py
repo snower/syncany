@@ -8,6 +8,7 @@ import hashlib
 import datetime
 import pytz
 import json
+import re
 from ..utils import get_timezone, sorted_by_keys
 from .calculater import Calculater
 try:
@@ -1050,5 +1051,16 @@ class StructCalculater(Calculater):
             return None
         try:
             return list(struct.unpack(self.args[0], self.args[1]))
+        except:
+            return None
+
+
+class ReCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return None
+        r = re.compile(self.args[1], re.DOTALL | re.MULTILINE)
+        try:
+            return getattr(r, self.name[4:],)(self.args[0], *tuple(self.args[2:]))
         except:
             return None

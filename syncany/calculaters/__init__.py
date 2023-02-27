@@ -67,6 +67,7 @@ CALCULATERS = {
     "hash": HashCalculater,
     "json": JsonCalculater,
     "struct": StructCalculater,
+    "re": ReCalculater,
     "transform": TransformCalculater,
     "textline": TextLineCalculater
 }
