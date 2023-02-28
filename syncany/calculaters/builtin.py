@@ -1059,8 +1059,24 @@ class ReCalculater(Calculater):
     def calculate(self):
         if not self.args:
             return None
-        r = re.compile(self.args[1], re.DOTALL | re.MULTILINE)
+
+        if isinstance(self.args[0], re.Match):
+            try:
+                return getattr(self.args[0], self.name[4:])(*tuple(self.args[1:]))
+            except:
+                return None
+        if not isinstance(self.args[0], str) or not self.args[0]:
+            return None
+
+        if self.args[0] == "/":
+            index = self.args[0].rindex("/")
+            pattern, flags = self.args[1: index], re.DOTALL
+            for fc in self.args[index + 1:]:
+                flags |= re.RegexFlag.__members__.get(fc.upper(), 0)
+        else:
+            pattern, flags = self.args[0], re.DOTALL
+        r = re.compile(pattern, flags)
         try:
-            return getattr(r, self.name[4:],)(self.args[0], *tuple(self.args[2:]))
+            return getattr(r, self.name[4:])(self.args[1], *tuple(self.args[2:]))
         except:
             return None
