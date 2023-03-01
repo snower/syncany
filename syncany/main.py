@@ -246,6 +246,8 @@ def run(register_aps, ap_arguments, arguments, manager, tasker, dependency_taske
     return 0
 
 def main():
+    if os.getcwd() not in sys.path:
+        sys.path.append(os.getcwd())
     if len(sys.argv) < 2:
         print("usage: syncany [-h] json|yaml")
         print("syncany error: too few arguments")
