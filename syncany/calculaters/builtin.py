@@ -349,22 +349,40 @@ class NowCalculater(Calculater):
         if not self.args:
             return datetime.datetime.now(tz=get_timezone())
 
-        if self.args[0] and self.args[0][0] in ("-", "+") and self.args[0][-1] in ("Y", "m", "d", "H", "M", "S"):
+        if isinstance(self.args[0], int):
+            return self.at(datetime.datetime.now(tz=get_timezone()), *tuple(self.args))
+        if not self.args[0]:
+            return datetime.datetime.now(tz=get_timezone())
+        if self.args[0][0] in ("-", "+") and self.args[0][-1] in ("Y", "m", "d", "H", "M", "S"):
             try:
                 seconds = int(self.args[0][1:-1]) * self.TIMEDELTAS[self.args[0][-1]]
             except:
-                return datetime.datetime.now(tz=get_timezone())
+                if len(self.args) >= 2:
+                    return self.at(datetime.datetime.now(tz=pytz.timezone(self.args[0])), *tuple(self.args[1:]))
+                return datetime.datetime.now(tz=pytz.timezone(self.args[0]))
 
-            if len(self.args) >= 2:
-                now = datetime.datetime.now(tz=pytz.timezone(self.args[1]))
+            if len(self.args) >= 3:
+                now = self.at(datetime.datetime.now(tz=pytz.timezone(self.args[1])), *tuple(self.args[2:]))
+            elif len(self.args) >= 2:
+                if isinstance(self.args[1], int):
+                    now = self.at(datetime.datetime.now(tz=get_timezone()), *tuple(self.args[1:]))
+                else:
+                    now = datetime.datetime.now(tz=pytz.timezone(self.args[1]))
             else:
                 now = datetime.datetime.now(tz=get_timezone())
 
             if self.args[0][0] == "-":
                 return now - datetime.timedelta(seconds=seconds)
             return now + datetime.timedelta(seconds=seconds)
-
+        if len(self.args) >= 2:
+            return self.at(datetime.datetime.now(tz=pytz.timezone(self.args[0])), *tuple(self.args[1:]))
         return datetime.datetime.now(tz=pytz.timezone(self.args[0]))
+
+    def at(self, dt, hour=0, minute=0, second=0, microsecond=0):
+        return datetime.datetime(dt.year, dt.month, dt.day,
+                                 hour if hour is not None else dt.hour, minute if minute is not None else dt.minute,
+                                 second if second is not None else dt.second, microsecond if microsecond is not None else dt.microsecond,
+                                 tzinfo=dt.tzinfo)
 
 
 

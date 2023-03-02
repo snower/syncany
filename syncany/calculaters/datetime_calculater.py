@@ -3,8 +3,10 @@
 # create by: snower
 
 import datetime
+import pytz
 from ..utils import get_timezone, parse_datetime
 from .calculater import Calculater
+
 
 class TimeWindowCalculater(Calculater):
     def calculate(self):
@@ -58,14 +60,39 @@ class TimeWindowCalculater(Calculater):
             return dt
         return None
 
+
 class DateTimeCalculater(Calculater):
     def calculate(self):
         if not self.args:
             return None
 
-        if not isinstance(self.args[0], datetime.datetime):
-            return None
         func_name = self.name[10:]
+        if isinstance(self.args[0], (datetime.date, datetime.time)):
+            if hasattr(self.args[0], func_name):
+                return getattr(self.args[0], func_name)(*tuple(self.args[1:]))
+            return None
+
+        if func_name == "on":
+            return self.on(*tuple(self.args))
+        if func_name == "at":
+            return self.at(*tuple(self.args))
+        if func_name == "startofday":
+            return self.at(self.args[0], 0)
+        if func_name == "astimezone":
+            if len(self.args) >= 2 and isinstance(self.args[1], str):
+                return self.args[0].astimezone(pytz.timezone(self.args[1]))
+            return self.args[0].astimezone(self.args[1])
         if hasattr(self.args[0], func_name):
             return getattr(self.args[0], func_name)(*tuple(self.args[1:]))
         return None
+
+    def on(self, dt, year=None, month=None, day=None):
+        return datetime.datetime(year if year is not None else dt.year, month if month is not None else dt.month,
+                                 day if day is not None else dt.day, dt.hour, dt.minute, dt.second,
+                                 dt.microsecond, tzinfo=dt.tzinfo)
+
+    def at(self, dt, hour=0, minute=0, second=0, microsecond=0):
+        return datetime.datetime(dt.year, dt.month, dt.day,
+                                 hour if hour is not None else dt.hour, minute if minute is not None else dt.minute,
+                                 second if second is not None else dt.second, microsecond if microsecond is not None else dt.microsecond,
+                                 tzinfo=dt.tzinfo)
