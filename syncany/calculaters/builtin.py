@@ -407,6 +407,16 @@ class EmptyCalculater(Calculater):
         return True
 
 
+class IsNullCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return True
+        for value in self.args:
+            if value is not None:
+                return False
+        return True
+
+
 class GtCalculater(Calculater):
     def cmp(self, left_value, right_value):
         if not left_value and not right_value:

@@ -40,7 +40,7 @@ CALCULATERS = {
     "now": NowCalculater,
     "time_window": TimeWindowCalculater,
     "empty": EmptyCalculater,
-
+    "is_null": IsNullCalculater,
     "gt": GtCalculater,
     "gte": GteCalculater,
     "lt": LtCalculater,
