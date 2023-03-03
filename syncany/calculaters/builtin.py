@@ -362,7 +362,10 @@ class NowCalculater(Calculater):
                 return datetime.datetime.now(tz=pytz.timezone(self.args[0]))
 
             if len(self.args) >= 3:
-                now = self.at(datetime.datetime.now(tz=pytz.timezone(self.args[1])), *tuple(self.args[2:]))
+                if isinstance(self.args[1], int):
+                    now = self.at(datetime.datetime.now(), *tuple(self.args[1:]))
+                else:
+                    now = self.at(datetime.datetime.now(tz=pytz.timezone(self.args[1])), *tuple(self.args[2:]))
             elif len(self.args) >= 2:
                 if isinstance(self.args[1], int):
                     now = self.at(datetime.datetime.now(tz=get_timezone()), *tuple(self.args[1:]))
