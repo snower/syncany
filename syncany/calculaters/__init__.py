@@ -33,6 +33,7 @@ CALCULATERS = {
     "div": DivCalculater,
     "mod": ModCalculater,
     "bit": BitCalculater,
+    "neg": NegCalculater,
 
     "substring": SubstringCalculater,
     "split": SplitCalculater,

@@ -242,6 +242,34 @@ class BitCalculater(Calculater):
         return 0
 
 
+class NegCalculater(Calculater):
+    def neg_value(self, value):
+        if isinstance(value, (int, float)):
+            return -value
+        if isinstance(value, (str, bytes, list, tuple)):
+            return value[::-1]
+        if isinstance(value, bool):
+            return True if value is False else False
+        return value
+
+    def calculate(self):
+        if not self.args:
+            return None
+
+        if len(self.args) == 1:
+            if isinstance(self.args[0], list):
+                return [self.neg_value(value) for value in self.args[0]]
+            return self.neg_value(self.args[0])
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) \
+                and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data:
+                    data[self.args[1]] = self.neg_value(data[self.args[1]])
+            return self.args[0]
+        return [self.neg_value(value) for value in self.args]
+
+
 class SubstringCalculater(Calculater):
     def calculate(self):
         if not self.args:
