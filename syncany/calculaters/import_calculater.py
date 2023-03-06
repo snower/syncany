@@ -2,6 +2,8 @@
 # 2020/11/3
 # create by: snower
 
+import traceback
+from ..logger import get_logger
 from .calculater import Calculater
 
 
@@ -17,9 +19,17 @@ class ImportCalculater(Calculater):
         if not callable(module_or_func):
             raise NotImplementedError("%s not callable %s" % (self._import_module, calculate_name))
 
-        if len(self.args) == 1 and isinstance(self.args[0], list):
-            return module_or_func(*tuple(self.args[0]))
-        return module_or_func(*tuple(self.args))
+        try:
+            if len(self.args) == 1 and isinstance(self.args[0], list) and self.args[0] and isinstance(self.args[0][0], dict):
+                try:
+                    return module_or_func(*tuple(self.args[0]))
+                except TypeError:
+                    pass
+            return module_or_func(*tuple(self.args))
+        except Exception as e:
+            get_logger().warning("import calculater execute %s(%s) error: %s\n%s", calculate_name, self.args, e,
+                                 traceback.format_exc())
+            return None
 
 
 def create_import_calculater(name, module):
