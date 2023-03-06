@@ -40,7 +40,6 @@ CALCULATERS = {
     "convert_date": ConvertDateCalculater,
     "convert_time": ConvertTimeCalculater,
 
-    'range': RangeCalculater,
     "add": AddCalculater,
     "sub": SubCalculater,
     "mul": MulCalculater,
@@ -49,12 +48,6 @@ CALCULATERS = {
     "bit": BitCalculater,
     "neg": NegCalculater,
 
-    "substring": SubstringCalculater,
-    "split": SplitCalculater,
-    "join": JoinCalculater,
-    "now": NowCalculater,
-    "time_window": TimeWindowCalculater,
-    "empty": EmptyCalculater,
     "gt": GtCalculater,
     "gte": GteCalculater,
     "lt": LtCalculater,
@@ -65,6 +58,15 @@ CALCULATERS = {
     "or": OrCalculater,
     "in": InCalculater,
 
+    'range': RangeCalculater,
+    "substring": SubstringCalculater,
+    "split": SplitCalculater,
+    "join": JoinCalculater,
+    "now": NowCalculater,
+    "time_window": TimeWindowCalculater,
+    "empty": EmptyCalculater,
+    "contain": ContainCalculater,
+
     "max": MaxCalculater,
     "min": MinCalculater,
     "len": LenCalculater,
@@ -73,6 +75,7 @@ CALCULATERS = {
     "filter": FilterCalculater,
     "sum": SumCalculater,
     "sort": SortCalculater,
+
     "string": StringCalculater,
     "datetime": DateTimeCalculater,
     "array": ArrayCalculater,

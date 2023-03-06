@@ -22,7 +22,7 @@ except ImportError:
 class TypeCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return 0
+            return ""
 
         if self.args[0] is None:
             return "null"
@@ -83,7 +83,7 @@ class IsNullCalculater(Calculater):
 class IsIntCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return True
+            return False
         if len(self.args) == 1:
             return isinstance(self.args[0], int)
 
@@ -102,7 +102,7 @@ class IsIntCalculater(Calculater):
 class IsFloatCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return True
+            return False
         if len(self.args) == 1:
             return isinstance(self.args[0], float)
 
@@ -121,7 +121,7 @@ class IsFloatCalculater(Calculater):
 class IsNumberCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return True
+            return False
         if len(self.args) == 1:
             return isinstance(self.args[0], (int, float))
 
@@ -140,7 +140,7 @@ class IsNumberCalculater(Calculater):
 class IsStringCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return True
+            return False
         if len(self.args) == 1:
             return isinstance(self.args[0], str)
 
@@ -159,7 +159,7 @@ class IsStringCalculater(Calculater):
 class IsBytesCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return True
+            return False
         if len(self.args) == 1:
             return isinstance(self.args[0], bytes)
 
@@ -178,7 +178,7 @@ class IsBytesCalculater(Calculater):
 class IsBooleanCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return True
+            return False
         if len(self.args) == 1:
             return isinstance(self.args[0], bool)
 
@@ -197,7 +197,7 @@ class IsBooleanCalculater(Calculater):
 class IsArrayCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return True
+            return False
         if len(self.args) == 1:
             return isinstance(self.args[0], (list, tuple, set))
 
@@ -216,7 +216,7 @@ class IsArrayCalculater(Calculater):
 class IsMapCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return True
+            return False
         if len(self.args) == 1:
             return isinstance(self.args[0], dict)
 
@@ -238,7 +238,7 @@ class IsObjectIdCalculater(Calculater):
             raise ImportError(u"bson required")
 
         if not self.args:
-            return True
+            return False
         if len(self.args) == 1:
             return isinstance(self.args[0], ObjectId)
 
@@ -257,7 +257,7 @@ class IsObjectIdCalculater(Calculater):
 class IsUUIDCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return True
+            return False
         if len(self.args) == 1:
             return isinstance(self.args[0], uuid.UUID)
 
@@ -276,7 +276,7 @@ class IsUUIDCalculater(Calculater):
 class IsDateTimeCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return True
+            return False
         if len(self.args) == 1:
             return isinstance(self.args[0], datetime.datetime)
 
@@ -295,7 +295,7 @@ class IsDateTimeCalculater(Calculater):
 class IsDateCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return True
+            return False
         if len(self.args) == 1:
             return isinstance(self.args[0], datetime.date)
 
@@ -314,7 +314,7 @@ class IsDateCalculater(Calculater):
 class IsTimeCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return True
+            return False
         if len(self.args) == 1:
             return isinstance(self.args[0], datetime.date)
 
@@ -719,6 +719,31 @@ class EmptyCalculater(Calculater):
         for data in self.args:
             if data:
                 return False
+        return True
+
+
+class ContainCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return False
+
+        if len(self.args) == 3 and isinstance(self.args[0], list) and isinstance(self.args[2], str):
+            datas = []
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[2] in data:
+                    datas.append(data[self.args[2]])
+            return self.args[1] in datas
+
+        if len(self.args) == 2 and isinstance(self.args[0], list):
+            return self.args[1] in self.args[0]
+
+        try:
+            result = self.args[0]
+            for i in range(1, len(self.args)):
+                if result not in self.args[i]:
+                    return False
+        except:
+            return False
         return True
 
 
