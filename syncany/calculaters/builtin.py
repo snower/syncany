@@ -6,6 +6,8 @@ import struct
 import math
 import hashlib
 import datetime
+import uuid
+
 import pytz
 import json
 import re
@@ -26,7 +28,7 @@ class TypeCalculater(Calculater):
             return "null"
 
         if self.args[0] is True or self.args[0] is False:
-            return "boolean"
+            return "bool"
 
         if isinstance(self.args[0], dict):
             return "map"
@@ -43,7 +45,289 @@ class TypeCalculater(Calculater):
         if ObjectId and isinstance(self.args[0], ObjectId):
             return "objectid"
 
+        if isinstance(self.args[0], uuid.UUID):
+            return "uuid"
+
+        if isinstance(self.args[0], datetime.date):
+            return "date"
+
+        if isinstance(self.args[0], datetime.datetime):
+            return "datetime"
+
+        if isinstance(self.args[0], datetime.time):
+            return "time"
+
         return type(self.args[0]).__module__ + "." + type(self.args[0]).__name__
+
+
+
+class IsNullCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return True
+        if len(self.args) == 1:
+            return self.args[0] is None
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data and data[self.args[1]] is not None:
+                    return False
+            return True
+
+        for value in self.args:
+            if value is not None:
+                return False
+        return True
+
+
+class IsIntCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return True
+        if len(self.args) == 1:
+            return isinstance(self.args[0], int)
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data and not isinstance(data[self.args[1]], int):
+                    return False
+            return True
+
+        for value in self.args:
+            if not isinstance(value, int):
+                return False
+        return True
+
+
+class IsFloatCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return True
+        if len(self.args) == 1:
+            return isinstance(self.args[0], float)
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data and not isinstance(data[self.args[1]], float):
+                    return False
+            return True
+
+        for value in self.args:
+            if not isinstance(value, float):
+                return False
+        return True
+
+
+class IsNumberCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return True
+        if len(self.args) == 1:
+            return isinstance(self.args[0], (int, float))
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data and not isinstance(data[self.args[1]], (int, float)):
+                    return False
+            return True
+
+        for value in self.args:
+            if not isinstance(value, (int, float)):
+                return False
+        return True
+
+
+class IsStringCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return True
+        if len(self.args) == 1:
+            return isinstance(self.args[0], str)
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data and not isinstance(data[self.args[1]], str):
+                    return False
+            return True
+
+        for value in self.args:
+            if not isinstance(value, str):
+                return False
+        return True
+
+
+class IsBytesCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return True
+        if len(self.args) == 1:
+            return isinstance(self.args[0], bytes)
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data and not isinstance(data[self.args[1]], bytes):
+                    return False
+            return True
+
+        for value in self.args:
+            if not isinstance(value, bytes):
+                return False
+        return True
+
+
+class IsBooleanCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return True
+        if len(self.args) == 1:
+            return isinstance(self.args[0], bool)
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data and not isinstance(data[self.args[1]], bool):
+                    return False
+            return True
+
+        for value in self.args:
+            if not isinstance(value, bool):
+                return False
+        return True
+
+
+class IsArrayCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return True
+        if len(self.args) == 1:
+            return isinstance(self.args[0], (list, tuple, set))
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data and not isinstance(data[self.args[1]], (list, tuple, set)):
+                    return False
+            return True
+
+        for value in self.args:
+            if not isinstance(value, (list, tuple, set)):
+                return False
+        return True
+
+
+class IsMapCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return True
+        if len(self.args) == 1:
+            return isinstance(self.args[0], dict)
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data and not isinstance(data[self.args[1]], dict):
+                    return False
+            return True
+
+        for value in self.args:
+            if not isinstance(value, dict):
+                return False
+        return True
+
+
+class IsObjectIdCalculater(Calculater):
+    def calculate(self):
+        if ObjectId is None:
+            raise ImportError(u"bson required")
+
+        if not self.args:
+            return True
+        if len(self.args) == 1:
+            return isinstance(self.args[0], ObjectId)
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data and not isinstance(data[self.args[1]], ObjectId):
+                    return False
+            return True
+
+        for value in self.args:
+            if not isinstance(value, ObjectId):
+                return False
+        return True
+
+
+class IsUUIDCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return True
+        if len(self.args) == 1:
+            return isinstance(self.args[0], uuid.UUID)
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data and not isinstance(data[self.args[1]], uuid.UUID):
+                    return False
+            return True
+
+        for value in self.args:
+            if not isinstance(value, uuid.UUID):
+                return False
+        return True
+
+
+class IsDateTimeCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return True
+        if len(self.args) == 1:
+            return isinstance(self.args[0], datetime.datetime)
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data and not isinstance(data[self.args[1]], datetime.datetime):
+                    return False
+            return True
+
+        for value in self.args:
+            if not isinstance(value, datetime.datetime):
+                return False
+        return True
+
+
+class IsDateCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return True
+        if len(self.args) == 1:
+            return isinstance(self.args[0], datetime.date)
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data and not isinstance(data[self.args[1]], datetime.date):
+                    return False
+            return True
+
+        for value in self.args:
+            if not isinstance(value, datetime.date):
+                return False
+        return True
+
+
+class IsTimeCalculater(Calculater):
+    def calculate(self):
+        if not self.args:
+            return True
+        if len(self.args) == 1:
+            return isinstance(self.args[0], datetime.date)
+
+        if len(self.args) == 2 and isinstance(self.args[0], list) and isinstance(self.args[1], str):
+            for data in self.args[0]:
+                if isinstance(data, dict) and self.args[1] in data and not isinstance(data[self.args[1]], datetime.date):
+                    return False
+            return True
+
+        for value in self.args:
+            if not isinstance(value, datetime.date):
+                return False
+        return True
 
 
 class RangeCalculater(Calculater):
@@ -434,16 +718,6 @@ class EmptyCalculater(Calculater):
 
         for data in self.args:
             if data:
-                return False
-        return True
-
-
-class IsNullCalculater(Calculater):
-    def calculate(self):
-        if not self.args:
-            return True
-        for value in self.args:
-            if value is not None:
                 return False
         return True
 
