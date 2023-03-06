@@ -25,7 +25,7 @@ class ConvertIntCalculater(Calculater):
 class ConvertFloatCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return None
+            return 0.0
 
         if len(self.args) >= 1 and isinstance(self.args[0], list):
             datas = []
@@ -42,7 +42,7 @@ class ConvertFloatCalculater(Calculater):
 class ConvertStringCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return None
+            return ''
 
         if len(self.args) >= 1 and isinstance(self.args[0], list):
             datas = []
@@ -59,7 +59,7 @@ class ConvertStringCalculater(Calculater):
 class ConvertBytesCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return None
+            return b''
 
         if len(self.args) >= 1 and isinstance(self.args[0], list):
             datas = []
@@ -76,7 +76,7 @@ class ConvertBytesCalculater(Calculater):
 class ConvertBooleanCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return None
+            return False
 
         if len(self.args) >= 1 and isinstance(self.args[0], list):
             datas = []
@@ -93,21 +93,24 @@ class ConvertBooleanCalculater(Calculater):
 class ConvertArrayCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return None
+            return []
         return ArrayFilter(*tuple(self.args[1:])).filter(self.args[0])
 
 
 class ConvertMapCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return None
+            return {}
         return MapFilter(*tuple(self.args[1:])).filter(self.args[0])
 
 
 class ConvertObjectIdCalculater(Calculater):
     def calculate(self):
+        if ObjectId is None:
+            raise ImportError(u"bson required")
+
         if not self.args:
-            return None
+            return ObjectId("000000000000000000000000")
 
         if len(self.args) >= 1 and isinstance(self.args[0], list):
             datas = []
@@ -124,7 +127,7 @@ class ConvertObjectIdCalculater(Calculater):
 class ConvertUUIDCalculater(Calculater):
     def calculate(self):
         if not self.args:
-            return None
+            return uuid.UUID("00000000-0000-0000-0000-000000000000")
 
         if len(self.args) >= 1 and isinstance(self.args[0], list):
             datas = []
