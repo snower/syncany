@@ -10,16 +10,19 @@ class ConvertIntCalculater(Calculater):
         if not self.args:
             return 0
 
-        if len(self.args) >= 1 and isinstance(self.args[0], list):
-            datas = []
+        filter = IntFilter(*tuple(self.args[1:]))
+        if isinstance(self.args[0], list):
+            result = []
             for data in self.args[0]:
-                if isinstance(data, dict):
-                    if isinstance(self.args[1], str) and self.args[1] in data:
-                        datas.append(IntFilter(*tuple(self.args[2:])).filter(data[self.args[1]]))
-                else:
-                    datas.append(IntFilter(*tuple(self.args[1:])).filter(self.args[0]))
-            return datas
-        return IntFilter(*tuple(self.args[1:])).filter(self.args[0])
+                try:
+                    value = int(data)
+                except:
+                    value = filter.filter(data)
+                    if value == 0:
+                        continue
+                result.append(value)
+            return result if result else [0]
+        return filter.filter(self.args[0])
 
 
 class ConvertFloatCalculater(Calculater):
@@ -27,16 +30,19 @@ class ConvertFloatCalculater(Calculater):
         if not self.args:
             return 0.0
 
-        if len(self.args) >= 1 and isinstance(self.args[0], list):
-            datas = []
+        filter = FloatFilter(*tuple(self.args[1:]))
+        if isinstance(self.args[0], list):
+            result = []
             for data in self.args[0]:
-                if isinstance(data, dict):
-                    if isinstance(self.args[1], str) and self.args[1] in data:
-                        datas.append(FloatFilter(*tuple(self.args[2:])).filter(data[self.args[1]]))
-                else:
-                    datas.append(FloatFilter(*tuple(self.args[1:])).filter(self.args[0]))
-            return datas
-        return FloatFilter(*tuple(self.args[1:])).filter(self.args[0])
+                try:
+                    value = float(data)
+                except:
+                    value = filter.filter(data)
+                    if value == 0:
+                        continue
+                result.append(value)
+            return result if result else [0.0]
+        return filter.filter(self.args[0])
 
 
 class ConvertStringCalculater(Calculater):
@@ -44,16 +50,10 @@ class ConvertStringCalculater(Calculater):
         if not self.args:
             return ''
 
-        if len(self.args) >= 1 and isinstance(self.args[0], list):
-            datas = []
-            for data in self.args[0]:
-                if isinstance(data, dict):
-                    if isinstance(self.args[1], str) and self.args[1] in data:
-                        datas.append(StringFilter(*tuple(self.args[2:])).filter(data[self.args[1]]))
-                else:
-                    datas.append(StringFilter(*tuple(self.args[1:])).filter(self.args[0]))
-            return datas
-        return StringFilter(*tuple(self.args[1:])).filter(self.args[0])
+        filter = StringFilter(*tuple(self.args[1:]))
+        if isinstance(self.args[0], list):
+            return [filter.filter(data) for data in self.args[0]]
+        return filter.filter(self.args[0])
 
 
 class ConvertBytesCalculater(Calculater):
@@ -61,16 +61,10 @@ class ConvertBytesCalculater(Calculater):
         if not self.args:
             return b''
 
-        if len(self.args) >= 1 and isinstance(self.args[0], list):
-            datas = []
-            for data in self.args[0]:
-                if isinstance(data, dict):
-                    if isinstance(self.args[1], str) and self.args[1] in data:
-                        datas.append(BytesFilter(*tuple(self.args[2:])).filter(data[self.args[1]]))
-                else:
-                    datas.append(BytesFilter(*tuple(self.args[1:])).filter(self.args[0]))
-            return datas
-        return BytesFilter(*tuple(self.args[1:])).filter(self.args[0])
+        filter = BytesFilter(*tuple(self.args[1:]))
+        if isinstance(self.args[0], list):
+            return [filter.filter(data) for data in self.args[0]]
+        return filter.filter(self.args[0])
 
 
 class ConvertBooleanCalculater(Calculater):
@@ -78,16 +72,10 @@ class ConvertBooleanCalculater(Calculater):
         if not self.args:
             return False
 
-        if len(self.args) >= 1 and isinstance(self.args[0], list):
-            datas = []
-            for data in self.args[0]:
-                if isinstance(data, dict):
-                    if isinstance(self.args[1], str) and self.args[1] in data:
-                        datas.append(BooleanFilter(*tuple(self.args[2:])).filter(data[self.args[1]]))
-                else:
-                    datas.append(BooleanFilter(*tuple(self.args[1:])).filter(self.args[0]))
-            return datas
-        return BooleanFilter(*tuple(self.args[1:])).filter(self.args[0])
+        filter = BooleanFilter(*tuple(self.args[1:]))
+        if isinstance(self.args[0], list):
+            return [filter.filter(data) for data in self.args[0]]
+        return filter.filter(self.args[0])
 
 
 class ConvertArrayCalculater(Calculater):
@@ -109,36 +97,44 @@ class ConvertObjectIdCalculater(Calculater):
         if ObjectId is None:
             raise ImportError(u"bson required")
 
+        default_value = ObjectId("000000000000000000000000")
         if not self.args:
-            return ObjectId("000000000000000000000000")
+            return default_value
 
-        if len(self.args) >= 1 and isinstance(self.args[0], list):
-            datas = []
+        filter = ObjectIdFilter(*tuple(self.args[1:]))
+        if isinstance(self.args[0], list):
+            result = []
             for data in self.args[0]:
-                if isinstance(data, dict):
-                    if isinstance(self.args[1], str) and self.args[1] in data:
-                        datas.append(ObjectIdFilter(*tuple(self.args[2:])).filter(data[self.args[1]]))
-                else:
-                    datas.append(ObjectIdFilter(*tuple(self.args[1:])).filter(self.args[0]))
-            return datas
-        return ObjectIdFilter(*tuple(self.args[1:])).filter(self.args[0])
+                try:
+                    value = ObjectId(data)
+                except:
+                    value = filter.filter(data)
+                    if value == default_value:
+                        continue
+                result.append(value)
+            return result if result else [default_value]
+        return filter.filter(self.args[0])
 
 
 class ConvertUUIDCalculater(Calculater):
     def calculate(self):
+        default_value = uuid.UUID("00000000-0000-0000-0000-000000000000")
         if not self.args:
-            return uuid.UUID("00000000-0000-0000-0000-000000000000")
+            return default_value
 
-        if len(self.args) >= 1 and isinstance(self.args[0], list):
-            datas = []
+        filter = UUIDFilter(*tuple(self.args[1:]))
+        if isinstance(self.args[0], list):
+            result = []
             for data in self.args[0]:
-                if isinstance(data, dict):
-                    if isinstance(self.args[1], str) and self.args[1] in data:
-                        datas.append(UUIDFilter(*tuple(self.args[2:])).filter(data[self.args[1]]))
-                else:
-                    datas.append(UUIDFilter(*tuple(self.args[1:])).filter(self.args[0]))
-            return datas
-        return UUIDFilter(*tuple(self.args[1:])).filter(self.args[0])
+                try:
+                    value = uuid.UUID(data)
+                except:
+                    value = filter.filter(data)
+                    if value == default_value:
+                        continue
+                result.append(value)
+            return result if result else [default_value]
+        return filter.filter(self.args[0])
 
 
 class ConvertDateTimeCalculater(Calculater):
@@ -146,16 +142,16 @@ class ConvertDateTimeCalculater(Calculater):
         if not self.args:
             return None
 
-        if len(self.args) >= 1 and isinstance(self.args[0], list):
-            datas = []
+        filter = DateTimeFilter(*tuple(self.args[1:]))
+        if isinstance(self.args[0], list):
+            result = []
             for data in self.args[0]:
-                if isinstance(data, dict):
-                    if isinstance(self.args[1], str) and self.args[1] in data:
-                        datas.append(DateTimeFilter(*tuple(self.args[2:])).filter(data[self.args[1]]))
-                else:
-                    datas.append(DateTimeFilter(*tuple(self.args[1:])).filter(self.args[0]))
-            return datas
-        return DateTimeFilter(*tuple(self.args[1:])).filter(self.args[0])
+                value = filter.filter(data)
+                if value is None:
+                    continue
+                result.append(value)
+            return result if result else [None]
+        return filter.filter(self.args[0])
 
 
 class ConvertDateCalculater(Calculater):
@@ -163,16 +159,16 @@ class ConvertDateCalculater(Calculater):
         if not self.args:
             return None
 
-        if len(self.args) >= 1 and isinstance(self.args[0], list):
-            datas = []
+        filter = DateFilter(*tuple(self.args[1:]))
+        if isinstance(self.args[0], list):
+            result = []
             for data in self.args[0]:
-                if isinstance(data, dict):
-                    if isinstance(self.args[1], str) and self.args[1] in data:
-                        datas.append(DateFilter(*tuple(self.args[2:])).filter(data[self.args[1]]))
-                else:
-                    datas.append(DateFilter(*tuple(self.args[1:])).filter(self.args[0]))
-            return datas
-        return DateFilter(*tuple(self.args[1:])).filter(self.args[0])
+                value = filter.filter(data)
+                if value is None:
+                    continue
+                result.append(value)
+            return result if result else [None]
+        return filter.filter(self.args[0])
 
 
 class ConvertTimeCalculater(Calculater):
@@ -180,13 +176,13 @@ class ConvertTimeCalculater(Calculater):
         if not self.args:
             return None
 
-        if len(self.args) >= 1 and isinstance(self.args[0], list):
-            datas = []
+        filter = TimeFilter(*tuple(self.args[1:]))
+        if isinstance(self.args[0], list):
+            result = []
             for data in self.args[0]:
-                if isinstance(data, dict):
-                    if isinstance(self.args[1], str) and self.args[1] in data:
-                        datas.append(TimeFilter(*tuple(self.args[2:])).filter(data[self.args[1]]))
-                else:
-                    datas.append(TimeFilter(*tuple(self.args[1:])).filter(self.args[0]))
-            return datas
-        return TimeFilter(*tuple(self.args[1:])).filter(self.args[0])
+                value = filter.filter(data)
+                if value is None:
+                    continue
+                result.append(value)
+            return result if result else [None]
+        return filter.filter(self.args[0])

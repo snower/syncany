@@ -45,15 +45,15 @@ class IntFilter(Filter):
             return int(value.total_seconds())
 
         if isinstance(value, (list, tuple, set)):
-            result = 0
+            result = []
             for cv in value:
-                result += self.filter(cv)
+                result.append(self.filter(cv))
             return result
 
         if isinstance(value, dict):
-            result = 0
+            result = {}
             for ck, cv in value.items():
-                result += self.filter(cv)
+                result[ck] = self.filter(cv)
             return result
 
         try:
@@ -91,15 +91,15 @@ class FloatFilter(Filter):
             return float(value.total_seconds())
 
         if isinstance(value, (list, tuple, set)):
-            result = 0.0
+            result = []
             for cv in value:
-                result += self.filter(cv)
+                result.append(self.filter(cv))
             return result
 
         if isinstance(value, dict):
-            result = 0.0
+            result = {}
             for ck, cv in value.items():
-                result += self.filter(cv)
+                result[ck] = self.filter(cv)
             return result
 
         try:
@@ -159,6 +159,18 @@ class StringFilter(Filter):
             except:
                 return ""
 
+        if isinstance(value, (list, tuple, set)):
+            result = []
+            for cv in value:
+                result.append(self.filter(cv))
+            return result
+
+        if isinstance(value, dict):
+            result = {}
+            for ck, cv in value.items():
+                result[ck] = self.filter(cv)
+            return result
+
         if self.args:
             try:
                 return self.args % value
@@ -217,10 +229,22 @@ class BytesFilter(Filter):
         if isinstance(value, str):
             try:
                 if self.args == "hex":
-                    return binascii.b2a_hex(value)
+                    return binascii.b2a_hex(value.encode(self.args or "utf-8"))
                 return value.encode(self.args or "utf-8")
             except:
                 return b""
+
+        if isinstance(value, (list, tuple, set)):
+            result = []
+            for cv in value:
+                result.append(self.filter(cv))
+            return result
+
+        if isinstance(value, dict):
+            result = {}
+            for ck, cv in value.items():
+                result[ck] = self.filter(cv)
+            return result
 
         if self.args:
             try:
@@ -236,6 +260,18 @@ class BooleanFilter(Filter):
     def filter(self, value):
         if value is True or value is False:
             return value
+
+        if isinstance(value, (list, tuple, set)):
+            result = []
+            for cv in value:
+                result.append(self.filter(cv))
+            return result
+
+        if isinstance(value, dict):
+            result = {}
+            for ck, cv in value.items():
+                result[ck] = self.filter(cv)
+            return result
 
         try:
             return bool(value)
