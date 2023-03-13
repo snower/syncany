@@ -353,8 +353,6 @@ class TextLineInsertBuilder(InsertBuilder):
             return
 
         filename = os.path.join(self.db.config.get("path", "/"), ".".join(fileinfo[1:]))
-        if not os.path.exists(filename):
-            return []
         with open(filename, "w", newline='', encoding=self.db.config.get("encoding", "utf-8")) as fp:
             if self.db.config.get("format") == "csv":
                 self.csv_write(fp)
