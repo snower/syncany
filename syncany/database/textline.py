@@ -304,7 +304,8 @@ class TextLineInsertBuilder(InsertBuilder):
         sep = self.db.config.get("sep") or " "
 
         def format_field(value):
-            if isinstance(value, (str, datetime.date, datetime.time)):
+            value = self.format_field_string(value)
+            if sep in value:
                 return "'%s'" % self.format_field_string(value)
             return self.format_field_string(value)
         for data in self.datas:
