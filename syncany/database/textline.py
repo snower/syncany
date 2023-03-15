@@ -301,15 +301,15 @@ class TextLineInsertBuilder(InsertBuilder):
         fp.flush()
 
     def text_write(self, fp):
-        if len(self.fields) != 1 or self.fields[0] != "line":
-            fp.write(" ".join(self.fields) + "\n")
+        sep = self.db.config.get("sep") or " "
 
-            for data in self.datas:
-                data = [self.format_field_string(data[field]) for field in self.fields]
-                fp.write(" ".join(data) + "\n")
-        else:
-            for data in self.datas:
-                fp.write(data["line"] + "\n")
+        def format_field(value):
+            if isinstance(value, (str, datetime.date, datetime.time)):
+                return "'%s'" % self.format_field_string(value)
+            return self.format_field_string(value)
+        for data in self.datas:
+            data = [format_field(data[field]) for field in self.fields]
+            fp.write(sep.join(data) + "\n")
         fp.flush()
 
     def csv_write(self, fp):
@@ -342,6 +342,8 @@ class TextLineInsertBuilder(InsertBuilder):
                 self.csv_write(fp)
             elif self.db.config.get("format") == "json":
                 self.json_write(fp)
+            elif self.db.config.get("format") == "txt":
+                self.text_write(fp)
             elif self.db.config.get("format") == "richtable":
                 self.rich_write(fp)
             elif fileno == 1 and self.db.config.get("format") == "print":
@@ -358,6 +360,8 @@ class TextLineInsertBuilder(InsertBuilder):
                 self.csv_write(fp)
             elif self.db.config.get("format") == "json":
                 self.json_write(fp)
+            elif self.db.config.get("format") == "txt":
+                self.text_write(fp)
             elif self.db.config.get("format") == "richtable":
                 self.rich_write(fp)
             else:
