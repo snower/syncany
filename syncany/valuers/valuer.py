@@ -1,50 +1,74 @@
 # -*- coding: utf-8 -*-
 # 18/8/6
 # create by: snower
-import datetime
 
+import datetime
 from ..errors import SyncanyException
 from ..utils import ensure_timezone
 
 class LoadAllFieldsException(SyncanyException):
     pass
 
-def dict_key(key):
+
+def get_key(data, key, dot_keys):
+    if key in data:
+        return data[key], 1
+    if not dot_keys or len(dot_keys) <= 1:
+        return None, 1
+    for i in range(1, len(dot_keys)):
+        dot_key = ".".join(dot_keys[:i + 1])
+        if dot_key in data:
+            return data[dot_key], i + 1
+    return None, 1
+
+def dict_key(key, dot_keys=None):
     def _(data):
         if isinstance(data, list):
-            if len(data) > 1:
-                return [d[key] for d in data if isinstance(d, dict) and key in d]
-            if len(data) == 1:
-                data = data[0]
-        if isinstance(data, dict) and key in data:
-            return data[key]
-        return None
+            rdata, rindex = [], len(dot_keys)
+            for value in data:
+                if not isinstance(value, dict):
+                    continue
+                value, vindex = get_key(value, key, dot_keys)
+                if value is None:
+                    continue
+                rdata.append(value)
+                rindex = min(rindex, vindex)
+            return rdata, rindex
+        if isinstance(data, dict):
+            return get_key(data, key, dot_keys)
+        return None, 1
     return _
 
 def list_key(key):
     def _(data):
         if isinstance(data, dict):
+            colon_key = ":%d" % key
+            if colon_key in data:
+                return data[colon_key], 1
             if key == 0:
-                return data
-            return None
+                return data, 1
+            return None, 1
         if isinstance(data, list) and key < len(data):
-            return data[key]
-        return None
+            return data[key], 1
+        return None, 1
     return _
 
 def slice_key(key):
     def _(data):
         if isinstance(data, dict):
+            colon_key = ":" + ":".join([str(k) for k in key])
+            if colon_key in data:
+                return data[colon_key], 1
             if key and key[0] == 0:
-                return data
-            return None
+                return data, 1
+            return None, 1
         if isinstance(data, list):
             if len(key) == 1:
-                return data[key[0]:]
+                return data[key[0]:], 1
             if len(key) == 2:
-                return data[key[0]: key[1]]
-            return data[key[0]: key[1]: key[2]]
-        return None
+                return data[key[0]: key[1]], 1
+            return data[key[0]: key[1]: key[2]], 1
+        return None, 1
     return _
 
 class Valuer(object):
@@ -73,7 +97,9 @@ class Valuer(object):
             self.key_getters = self.KEY_GETTER_CACHES[self.key]
             return
 
-        for key in self.key.split("."):
+        keys = self.key.split(".")
+        for i in range(len(keys)):
+            key = keys[i]
             if key[:1] == ":":
                 slices = []
                 for slice in key[1:].split(":"):
@@ -90,7 +116,11 @@ class Valuer(object):
                     slices = [slice for slice in slices if slice is not None]
                     self.key_getters.append(slice_key(slices))
             else:
-                self.key_getters.append(dict_key(key))
+                self.key_getters.append(dict_key(key, keys[i:]))
+        if len(self.KEY_GETTER_CACHES) > 1024:
+            cache_keys = list(self.KEY_GETTER_CACHES.keys())
+            for cache_key in cache_keys[:len(cache_keys) - 512]:
+                self.KEY_GETTER_CACHES.pop(cache_key, None)
         self.KEY_GETTER_CACHES[self.key] = self.key_getters
 
     def clone(self):
@@ -114,8 +144,12 @@ class Valuer(object):
         else:
             self.parse_key()
         try:
-            for getter in self.key_getters:
-                data = getter(data)
+            key_getter_index, key_getter_len = 0, len(self.key_getters)
+            while key_getter_index < key_getter_len:
+                data, index = self.key_getters[key_getter_index](data)
+                if data is None:
+                    break
+                key_getter_index += index
             self.value = data
         except:
             self.value = None
