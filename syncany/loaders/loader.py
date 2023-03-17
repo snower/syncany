@@ -4,7 +4,8 @@
 
 import types
 import re
-from collections import defaultdict
+from collections import defaultdict, deque
+from ..valuers import Valuer
 
 class KeyMatcher(object):
     def __init__(self, matcher, valuer):
@@ -48,6 +49,7 @@ class Loader(object):
         self.key_matchers = []
         self.datas = []
         self.loaded = False
+        self.geted = False
         self.loader_state = defaultdict(int)
 
     def clone(self):
@@ -96,31 +98,34 @@ class Loader(object):
         self.loaded = True
 
     def get(self):
+        if self.geted:
+            return self.datas
         if not self.loaded:
             self.load()
 
-        datas = []
+        datas, self.datas = deque(self.datas), []
         if not self.is_yield:
-            for data in self.datas:
-                odata = {}
+            while datas:
+                data, odata = datas.popleft(), {}
                 for name, valuer in self.schema.items():
-                    if name not in data:
-                        odata[name] = valuer.get()
-                        continue
-                    odata[name] = data[name].get()
+                    if name not in data or not isinstance(data[name], Valuer):
+                        odata[name] = valuer.clone().fill(data).get()
+                    else:
+                        odata[name] = data[name].get()
                 if self.intercepts and self.check_intercepts(odata):
                     continue
-                datas.append(odata)
-            return datas
+                self.datas.append(odata)
+            self.geted = True
+            return self.datas
 
         oyields = {}
-        for data in self.datas:
-            odata = {}
+        while datas:
+            data, odata = datas.popleft(), {}
             for name, valuer in self.schema.items():
-                if name not in data:
-                    odata[name] = valuer.get()
-                    continue
-                value = data[name].get()
+                if name not in data or not isinstance(data[name], Valuer):
+                    value = valuer.clone().fill(data).get()
+                else:
+                    value = data[name].get()
                 if isinstance(value, types.GeneratorType):
                     oyields[name] = value
                     odata[name] = None
@@ -142,12 +147,13 @@ class Loader(object):
                     if has_oyield_data:
                         if self.intercepts and self.check_intercepts(oyield_data):
                             continue
-                        datas.append(oyield_data)
+                        self.datas.append(oyield_data)
             else:
                 if self.intercepts and self.check_intercepts(odata):
                     continue
-                datas.append(odata)
-        return datas
+                self.datas.append(odata)
+        self.geted = True
+        return self.datas
 
     def check_intercepts(self, data):
         intercept_stoped = False

@@ -104,27 +104,34 @@ class DBLoader(Loader):
         self.loaded = True
 
     def get(self):
+        if self.geted:
+            return self.datas
         if not self.loaded:
             self.load()
 
         if not self.compiled:
-            datas, self.datas = self.datas, []
-            for data in datas:
-                values = {}
-                if not self.key_matchers:
-                    for key, field in self.schema.items():
-                        values[key] = field.clone().fill(data)
-                else:
-                    for key, value in data.items():
+            if not self.key_matchers:
+                require_loaded_schema_items = [(key, field) for key, field in self.schema.items() if field.require_loaded()]
+                if not require_loaded_schema_items:
+                    return super(DBLoader, self).get()
+                for i in range(len(self.datas)):
+                    values = {key: value for key, value in self.datas[i].items()}
+                    for key, field in require_loaded_schema_items:
+                        values[key] = field.clone().fill(self.datas[i])
+                    self.datas[i] = values
+            else:
+                for i in range(len(self.datas)):
+                    values = {}
+                    for key, value in self.datas[i].items():
                         if key in self.schema:
-                            values[key] = self.schema[key].clone().fill(data)
+                            values[key] = self.schema[key].clone().fill(self.datas[i])
                         else:
                             for key_matcher in self.key_matchers:
                                 if key_matcher.match(key):
                                     valuer = key_matcher.create_key(key)
                                     self.schema[key] = valuer
-                                    values[key] = valuer.clone().fill(data)
-                self.datas.append(values)
+                                    values[key] = valuer.clone().fill(self.datas[i])
+                    self.datas[i] = values
 
         return super(DBLoader, self).get()
 

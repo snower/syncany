@@ -3,7 +3,7 @@
 # create by: snower
 
 import math
-from collections import defaultdict
+from collections import defaultdict, deque
 from .db import DBOutputer
 from ..valuers.valuer import LoadAllFieldsException
 
@@ -123,11 +123,13 @@ class DBUpdateDeleteInsertOutputer(DBOutputer):
         super(DBUpdateDeleteInsertOutputer, self).store(datas)
         self.load()
 
+        datas = deque(datas)
         insert_datas = []
         update_datas = {}
         delete_datas = []
 
-        for data in datas:
+        while datas:
+            data = datas.popleft()
             primary_key = self.get_data_primary_key(data)
             if primary_key in self.load_data_keys:
                 self.update(data, self.load_data_keys[primary_key])
