@@ -33,5 +33,5 @@ class ImportCalculater(Calculater):
 
 
 def create_import_calculater(name, module):
-    name = "".join([n[:1].upper() + n[1:] for n in name.split("_")])
-    return type(name + "ImportCalculater", (ImportCalculater,), dict(_import_name=name, _import_module=module))
+    class_name = "".join([n[:1].upper() + n[1:] for n in name.split("_")]) + "ImportCalculater"
+    return type(class_name, (ImportCalculater,), dict(_import_name=name, _import_module=module))

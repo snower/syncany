@@ -150,7 +150,9 @@ class CoreTasker(Tasker):
 
     def load_imports(self):
         for name, package in self.config["imports"].items():
-            module = __import__(package, {}, {})
+            if not package or isinstance(package, (bool, int, float, list, tuple, set, dict)):
+                continue
+            module = __import__(package, {}, {}) if isinstance(package, str) else package
             try:
                 if not self.find_calculater_driver(name):
                     self.register_calculater_driver(name, create_import_calculater(name, module))
