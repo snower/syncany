@@ -10,35 +10,26 @@ class LoaderJoinWarp(object):
     __loader = None
 
     def __init__(self, loader):
-        self.__origin_loader = loader
         self.__loader = loader
 
     def __getattr__(self, item):
-        if self.__loader is None or item in ("_LoaderJoinWarp__origin_loader", "_LoaderJoinWarp__loader"):
+        if self.__loader is None or item == "_LoaderJoinWarp__loader":
             return super(LoaderJoinWarp, self).__getattr__(item)
-
         return getattr(self.__loader, item)
 
     def __setattr__(self, key, value):
-        if self.__loader is None or key in ("_LoaderJoinWarp__origin_loader", "_LoaderJoinWarp__loader"):
+        if self.__loader is None or key == "_LoaderJoinWarp__loader":
             return super(LoaderJoinWarp, self).__setattr__(key, value)
-
         return setattr(self.__loader, key, value)
 
     def __str__(self):
-        if self.__loader is None:
-            return super(LoaderJoinWarp, self).__str__()
-
         return str(self.__loader)
 
     def __repr__(self):
-        if self.__loader is None:
-            return super(LoaderJoinWarp, self).__repr__()
-
         return repr(self.__loader)
 
     def clone(self):
-        self.__loader = self.__origin_loader.clone()
+        self.__loader = self.__loader.clone()
         return self
 
     def add_valuer(self, name, valuer):
