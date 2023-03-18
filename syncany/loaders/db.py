@@ -2,6 +2,7 @@
 # 18/8/6
 # create by: snower
 
+import copy
 from collections import defaultdict
 from .loader import Loader
 from ..valuers.valuer import LoadAllFieldsException
@@ -97,7 +98,7 @@ class DBLoader(Loader):
             query.filter_cursor(*self.current_cursor, primary_orders=primary_orders)
 
         self.datas = query.commit()
-        self.last_data = self.datas[-1] if self.datas else {}
+        self.last_data = copy.copy(self.datas[-1]) if self.datas else {}
         self.loader_state["query_count"] += 1
         self.loader_state["load_count"] += len(self.datas)
         self.compiled = False

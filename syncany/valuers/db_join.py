@@ -65,6 +65,7 @@ class DBJoinValuer(Valuer):
         elif join_values and any([join_value is not None for join_value in join_values]):
             self.matcher = self.loader.create_macther(self.foreign_keys, join_values)
             self.matcher.add_valuer(self.return_valuer)
+        self.loader.try_load()
         return self
 
     def get(self):

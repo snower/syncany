@@ -2,7 +2,6 @@
 # 18/8/6
 # create by: snower
 
-import math
 from collections import defaultdict
 from .db import DBLoader
 from ..valuers.valuer import LoadAllFieldsException
@@ -138,13 +137,13 @@ class DBJoinLoader(DBLoader):
         if self.loaded:
             return
 
-        unload_primary_keys = None
         if self.unload_primary_keys:
             fields = set([])
             if not self.key_matchers:
                 for key, exp, value in self.filters:
-                    if key:
-                        fields.add(key)
+                    if not key:
+                        continue
+                    fields.add(key)
                 try:
                     for name, valuer in self.schema.items():
                         for field in valuer.get_fields():
@@ -152,75 +151,97 @@ class DBJoinLoader(DBLoader):
                 except LoadAllFieldsException:
                     fields = []
 
-            unload_primary_keys = list(self.unload_primary_keys.keys())
-            for i in range(math.ceil(float(len(unload_primary_keys)) / float(self.join_batch))):
-                current_unload_primary_keys = unload_primary_keys[i * self.join_batch: (i + 1) * self.join_batch]
-                if not current_unload_primary_keys:
-                    break
-
-                query = self.db.query(self.name, self.primary_keys, list(fields))
-                for key, exp, value in self.filters:
-                    if key is None:
-                        getattr(query, "filter_%s" % exp)(value)
-                    else:
-                        getattr(query, "filter_%s" % exp)(key, value)
-
-                if len(self.primary_keys) == 1:
-                    query.filter_in(self.primary_keys[0], current_unload_primary_keys)
+            query = self.db.query(self.name, self.primary_keys, list(fields))
+            for key, exp, value in self.filters:
+                if key is None:
+                    getattr(query, "filter_%s" % exp)(value)
                 else:
-                    for j in range(len(self.primary_keys)):
-                        query.filter_in(self.primary_keys[j], list({self.unload_primary_keys[key][j] for key in current_unload_primary_keys}))
-                datas = query.commit()
+                    getattr(query, "filter_%s" % exp)(key, value)
 
-                for data in datas:
-                    primary_key = self.get_data_primary_key(data)
+            if len(self.primary_keys) == 1:
+                query.filter_in(self.primary_keys[0], list(self.unload_primary_keys.keys()))
+            else:
+                for j in range(len(self.primary_keys)):
+                    query.filter_in(self.primary_keys[j], list({primary_value[j] for primary_value
+                                                                in self.unload_primary_keys.values()}))
+            datas = query.commit()
 
-                    values = {}
-                    if not self.key_matchers:
-                        for key, field in self.schema.items():
-                            values[key] = field.clone().fill(data)
-                    else:
-                        for key, value in data.items():
-                            if key in self.schema:
-                                values[key] = self.schema[key].clone().fill(data)
-                            else:
-                                for key_matcher in self.key_matchers:
-                                    if key_matcher.match(key):
-                                        valuer = key_matcher.create_key(key)
-                                        self.schema[key] = valuer
-                                        values[key] = valuer.clone().fill(data)
+            for i in range(len(datas)):
+                data, values = datas[i], {}
+                primary_key = self.get_data_primary_key(data)
+                if not self.key_matchers:
+                    for key, field in self.schema.items():
+                        values[key] = field.clone().fill(data)
+                else:
+                    for key, value in data.items():
+                        if key in self.schema:
+                            values[key] = self.schema[key].clone().fill(data)
+                        else:
+                            for key_matcher in self.key_matchers:
+                                if key_matcher.match(key):
+                                    valuer = key_matcher.create_key(key)
+                                    self.schema[key] = valuer
+                                    values[key] = valuer.clone().fill(data)
 
-                    if primary_key not in self.data_keys:
-                        self.data_keys[primary_key] = [values]
-                    elif primary_key in current_unload_primary_keys:
-                        self.data_keys[primary_key].append(values)
-                    self.datas.append(values)
-                    if self.matchers:
-                        self.load_primary_keys.add(primary_key)
+                if primary_key not in self.data_keys:
+                    self.data_keys[primary_key] = [values]
+                elif primary_key in self.unload_primary_keys:
+                    self.data_keys[primary_key].append(values)
+                datas[i] = values
 
-                self.loader_state["query_count"] += 1
-                self.loader_state["load_count"] += len(datas)
-            self.unload_primary_keys = {}
+            self.datas = datas
+            self.loader_state["query_count"] += 1
+            self.loader_state["load_count"] += len(datas)
 
         if self.matchers:
             for primary_key in self.load_primary_keys:
-                values = self.data_keys.get(primary_key)
-                if primary_key in self.matchers:
-                    if len(values) == 1:
-                        for matcher in self.matchers[primary_key]:
-                            matcher.fill(values[0])
-                    else:
-                        for matcher in self.matchers[primary_key]:
-                            matcher.fill(values)
-                    self.matchers.pop(primary_key)
-                if unload_primary_keys and primary_key in unload_primary_keys:
-                    unload_primary_keys.remove(primary_key)
-            if unload_primary_keys:
-                for primary_key in unload_primary_keys:
-                    if primary_key in self.matchers:
-                        for matcher in self.matchers[primary_key]:
-                            matcher.fill(None)
-                        self.matchers.pop(primary_key)
+                if primary_key not in self.matchers:
+                    continue
+                values = self.data_keys.get(primary_key, None)
+                if values and len(values) == 1:
+                    for matcher in self.matchers[primary_key]:
+                        matcher.fill(values[0])
+                else:
+                    for matcher in self.matchers[primary_key]:
+                        matcher.fill(values)
+                self.matchers.pop(primary_key)
 
+            for primary_key in self.unload_primary_keys:
+                if primary_key not in self.matchers:
+                    continue
+                values = self.data_keys.get(primary_key, None)
+                if values and len(values) == 1:
+                    for matcher in self.matchers[primary_key]:
+                        matcher.fill(values[0])
+                else:
+                    for matcher in self.matchers[primary_key]:
+                        matcher.fill(values)
+                self.matchers.pop(primary_key)
+
+        self.unload_primary_keys = {}
         self.load_primary_keys = set([])
         self.loaded = True
+
+    def try_load(self):
+        if self.loaded:
+            return
+        if len(self.unload_primary_keys) >= self.join_batch:
+            return self.load()
+        if not self.load_primary_keys:
+            return
+
+        for primary_key in self.load_primary_keys:
+            if primary_key not in self.matchers:
+                continue
+            values = self.data_keys.get(primary_key, None)
+            if values and len(values) == 1:
+                for matcher in self.matchers[primary_key]:
+                    matcher.fill(values[0])
+            else:
+                for matcher in self.matchers[primary_key]:
+                    matcher.fill(values)
+            self.matchers.pop(primary_key)
+
+        self.load_primary_keys.clear()
+        if not self.unload_primary_keys:
+            self.loaded = True
