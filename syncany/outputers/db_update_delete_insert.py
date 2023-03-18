@@ -57,7 +57,7 @@ class DBUpdateDeleteInsertOutputer(DBOutputer):
             query.filter_cursor(*self.current_cursor, primary_orders=primary_orders)
 
         self.load_data_keys = {}
-        self.load_datas = query.commit()
+        self.load_datas, query = query.commit(), None
         for i in range(len(self.load_datas)):
             data, values = self.load_datas[i], {}
             primary_key = self.get_data_primary_key(data)

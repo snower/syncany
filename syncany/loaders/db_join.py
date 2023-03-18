@@ -133,7 +133,7 @@ class DBJoinLoader(DBLoader):
         self.loaded = False
         return matcher
 
-    def load(self, timeout=None):
+    def load_join(self):
         if self.loaded:
             return
 
@@ -164,7 +164,7 @@ class DBJoinLoader(DBLoader):
                 for j in range(len(self.primary_keys)):
                     query.filter_in(self.primary_keys[j], list({primary_value[j] for primary_value
                                                                 in self.unload_primary_keys.values()}))
-            datas = query.commit()
+            datas, query = query.commit(), None
 
             for i in range(len(datas)):
                 data, values = datas[i], {}
@@ -226,7 +226,7 @@ class DBJoinLoader(DBLoader):
         if self.loaded:
             return
         if len(self.unload_primary_keys) >= self.join_batch:
-            return self.load()
+            return self.load_join()
         if not self.load_primary_keys:
             return
 
@@ -245,3 +245,8 @@ class DBJoinLoader(DBLoader):
         self.load_primary_keys.clear()
         if not self.unload_primary_keys:
             self.loaded = True
+
+    def load(self, timeout=None):
+        self.load_join()
+        if len(self.data_keys) >= self.join_batch:
+            self.datas, self.data_keys = [], {}

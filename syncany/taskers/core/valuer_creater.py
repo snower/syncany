@@ -41,6 +41,45 @@ class LoaderJoinWarp(object):
         self.__loader = self.__origin_loader.clone()
         return self
 
+    def add_valuer(self, name, valuer):
+        return self.__loader.add_valuer(name, valuer)
+
+    def add_intercept(self, intercept):
+        return self.__loader.add_intercept(intercept)
+
+    def add_key_matcher(self, matcher, valuer):
+        return self.__loader.add_key_matcher(matcher, valuer)
+
+    def get_data_primary_key(self, data):
+        return self.__loader.get_data_primary_key(data)
+
+    def next(self):
+        return self.__loader.next()
+
+    def is_dynamic_schema(self):
+        return self.__loader.is_dynamic_schema()
+
+    def is_streaming(self):
+        return self.__loader.is_streaming()
+
+    def set_streaming(self, is_streaming=None):
+        return self.__loader.set_streaming(is_streaming)
+
+    def create_group_macther(self, return_valuer):
+        return self.__loader.create_group_macther(return_valuer)
+
+    def create_macther(self, keys, values):
+        return self.__loader.create_macther(keys, values)
+
+    def try_load(self):
+        return self.__loader.try_load()
+
+    def load(self, timeout=None):
+        return self.__loader.load(timeout)
+
+    def statistics(self):
+        return self.__loader.statistics()
+
 class ValuerCreater(object):
     def __init__(self, tasker):
         self.tasker = tasker

@@ -41,7 +41,7 @@ class DBUpdateInsertOutputer(DBOutputer):
             for primary_key in self.primary_keys:
                 query.filter_in(primary_key, list(primary_values[primary_key]))
 
-            self.load_datas.extend(query.commit())
+            query = self.load_datas.extend(query.commit())
             self.outputer_state["query_count"] += 1
         self.outputer_state["load_count"] += len(self.load_datas)
 

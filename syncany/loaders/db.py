@@ -97,7 +97,7 @@ class DBLoader(Loader):
         if self.current_cursor:
             query.filter_cursor(*self.current_cursor, primary_orders=primary_orders)
 
-        self.datas = query.commit()
+        self.datas, query = query.commit(), None
         self.last_data = copy.copy(self.datas[-1]) if self.datas else {}
         self.loader_state["query_count"] += 1
         self.loader_state["load_count"] += len(self.datas)
