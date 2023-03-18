@@ -28,39 +28,32 @@ class DBUpdateInsertOutputer(DBOutputer):
         except LoadAllFieldsException:
             fields = []
 
-        load_datas = []
-        if len(self.primary_keys) == 1:
-            for i in range(math.ceil(float(len(datas)) / float(self.join_batch))):
-                query = self.db.query(self.name, self.primary_keys, list(fields))
-                primary_values = []
-                for data in datas[i * self.join_batch: (i + 1) * self.join_batch]:
-                    primary_values.append(data[self.primary_keys[0]])
-                query.filter_in(self.primary_keys[0], primary_values)
-
-                load_datas.extend(query.commit())
-                self.outputer_state["query_count"] += 1
-        else:
-            for data in datas:
-                query = self.db.query(self.name, self.primary_keys, list(fields))
+        self.load_datas, self.load_data_keys = [], {}
+        for i in range(math.ceil(float(len(datas)) / float(self.join_batch))):
+            current_datas = datas[i * self.join_batch: (i + 1) * self.join_batch]
+            if not current_datas:
+                break
+            query = self.db.query(self.name, self.primary_keys, list(fields))
+            primary_values = {primary_key: set([]) for primary_key in self.primary_keys}
+            for data in current_datas:
                 for primary_key in self.primary_keys:
-                    if primary_key not in data:
-                        continue
-                    query.filter_eq(primary_key, data[primary_key])
+                    primary_values[primary_key].add(data[primary_key])
+            for primary_key in self.primary_keys:
+                query.filter_in(primary_key, list(primary_values[primary_key]))
 
-                load_datas.extend(query.commit())
-                self.outputer_state["query_count"] += 1
-        self.outputer_state["load_count"] += len(load_datas)
+            self.load_datas.extend(query.commit())
+            self.outputer_state["query_count"] += 1
+        self.outputer_state["load_count"] += len(self.load_datas)
 
-        for data in load_datas:
+        for i in range(len(self.load_datas)):
+            data, values = self.load_datas[i], {}
             primary_key = self.get_data_primary_key(data)
-
-            values = {}
             for key, field in self.schema.items():
                 values[key] = field.clone().fill(data)
                 setattr(values[key], "value_type_class", data.get(key).__class__)
 
             self.load_data_keys[primary_key] = values
-            self.load_datas.append(values)
+            self.load_datas[i] = values
 
     def insert(self, datas):
         if self.insert_batch > 0:

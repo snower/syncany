@@ -56,19 +56,19 @@ class DBUpdateDeleteInsertOutputer(DBOutputer):
         if self.current_cursor:
             query.filter_cursor(*self.current_cursor, primary_orders=primary_orders)
 
-        datas = query.commit()
-        for data in datas:
+        self.load_data_keys = {}
+        self.load_datas = query.commit()
+        for i in range(len(self.load_datas)):
+            data, values = self.load_datas[i], {}
             primary_key = self.get_data_primary_key(data)
-
-            values = {}
             for key, field in self.schema.items():
                 values[key] = field.clone().fill(data)
                 setattr(values[key], "value_type_class", data.get(key).__class__)
 
             self.load_data_keys[primary_key] = values
-            self.load_datas.append(values)
+            self.load_datas[i] = values
         self.outputer_state["query_count"] += 1
-        self.outputer_state["load_count"] += len(datas)
+        self.outputer_state["load_count"] += len(self.load_datas)
 
     def insert(self, datas):
         if self.insert_batch > 0:
