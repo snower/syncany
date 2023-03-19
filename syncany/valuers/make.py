@@ -133,7 +133,7 @@ class MakeValuer(Valuer):
             childs.append(self.return_valuer)
         if self.inherit_valuers:
             childs.extend(self.inherit_valuers)
-        return []
+        return childs
 
     def get_fields(self):
         fields = []
