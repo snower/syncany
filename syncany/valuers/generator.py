@@ -96,7 +96,13 @@ class YieldValuer(Valuer):
         def gen_iter():
             gdata = yield None
             for data in self.iter_datas:
-                if isinstance(data, types.GeneratorType):
+                if isinstance(data, types.FunctionType):
+                    try:
+                        child_data = data(gdata)
+                        gdata = yield child_data
+                    except StopIteration:
+                        pass
+                elif isinstance(data, types.GeneratorType):
                     while True:
                         try:
                             child_data = data.send(gdata)
