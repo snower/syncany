@@ -38,9 +38,9 @@ class KeyMatcher(object):
         self.key_events.append(event)
 
 class Loader(object):
-    def __init__(self, primary_keys, is_yield=False, **kwargs):
+    def __init__(self, primary_keys, valuer_type=0, **kwargs):
         self.primary_keys = primary_keys
-        self.is_yield = is_yield
+        self.valuer_type = valuer_type
         self.schema = {}
         self.filters = []
         self.orders = []
@@ -53,7 +53,7 @@ class Loader(object):
         self.loader_state = defaultdict(int)
 
     def clone(self):
-        loader = self.__class__(self.primary_keys, self.is_yield)
+        loader = self.__class__(self.primary_keys, self.valuer_type)
         schema = {}
         for key, valuer in self.schema.items():
             schema[key] = valuer.clone()
@@ -104,7 +104,7 @@ class Loader(object):
             self.load()
 
         datas, self.datas = deque(self.datas), []
-        if not self.is_yield:
+        if not self.valuer_type:
             while datas:
                 data, odata = datas.popleft(), {}
                 for name, valuer in self.schema.items():
@@ -118,7 +118,7 @@ class Loader(object):
             self.geted = True
             return self.datas
 
-        oyields = {}
+        oyields, ofuncs = {}, {}
         while datas:
             data, odata = datas.popleft(), {}
             for name, valuer in self.schema.items():
@@ -126,6 +126,10 @@ class Loader(object):
                     value = valuer.clone().fill(data).get()
                 else:
                     value = data[name].get()
+                if isinstance(value, types.FunctionType):
+                    ofuncs[name] = value
+                    odata[name] = None
+                    continue
                 if isinstance(value, types.GeneratorType):
                     oyields[name] = value
                     odata[name] = None
@@ -147,6 +151,12 @@ class Loader(object):
                     if has_oyield_data:
                         if self.intercepts and self.check_intercepts(odata):
                             continue
+                        if ofuncs:
+                            try:
+                                for name, ofunc in ofuncs.items():
+                                    odata[name] = ofunc(odata)
+                            except StopIteration:
+                                continue
                         self.datas.append(odata)
                         if not oyields:
                             break
@@ -154,6 +164,12 @@ class Loader(object):
             else:
                 if self.intercepts and self.check_intercepts(odata):
                     continue
+                if ofuncs:
+                    try:
+                        for name, ofunc in ofuncs.items():
+                            odata[name] = ofunc(odata)
+                    except StopIteration:
+                        continue
                 self.datas.append(odata)
         self.geted = True
         return self.datas

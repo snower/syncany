@@ -915,7 +915,7 @@ class CoreTasker(Tasker):
         loader_config.update({
             "name": loader,
             "database": input_loader["database"],
-            "is_yield": False,
+            "valuer_type": 0,
         })
         if "loader_arguments" in self.config and isinstance(self.config["loader_arguments"], dict):
             loader_config.update(self.config["loader_arguments"])
@@ -933,9 +933,12 @@ class CoreTasker(Tasker):
                     self.loader.add_valuer(name, valuer)
                 if inherit_valuers:
                     raise OverflowError(name + " inherit out of range")
-                if yield_valuers or aggregate_valuers:
-                    loader_config["is_yield"] = True
-                    self.loader.is_yield = True
+                loader_config["valuer_type"] = 0
+                if yield_valuers:
+                    loader_config["valuer_type"] |= 0x01
+                if aggregate_valuers:
+                    loader_config["valuer_type"] |= 0x02
+                self.loader.valuer_type = loader_config["valuer_type"]
         elif self.schema == ".*":
             self.loader.add_key_matcher(".*", self.create_valuer(self.valuer_compiler.compile_data_valuer("", None)))
 

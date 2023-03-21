@@ -25,7 +25,7 @@ class LoaderCreater(object):
         loader_cls = self.find_loader_driver(config["name"])
         if not loader_cls:
             raise LoaderUnknownException(config["name"] + " is unknown")
-        return loader_cls(config["datas"], primary_keys, is_yield=config.get("is_yield", False))
+        return loader_cls(config["datas"], primary_keys, valuer_type=config.get("valuer_type", 0))
 
     def create_db_loader(self, config, primary_keys):
         loader_cls = self.find_loader_driver(config["name"])
@@ -34,7 +34,7 @@ class LoaderCreater(object):
 
         db_name = config["database"].split(".")[0]
         return loader_cls(self.databases.instance(db_name), config["database"], primary_keys,
-                          is_yield=config.get("is_yield", False))
+                          valuer_type=config.get("valuer_type", 0))
 
     def create_db_join_loader(self, config, primary_keys):
         loader_cls = self.find_loader_driver(config["name"])
@@ -42,7 +42,7 @@ class LoaderCreater(object):
             raise LoaderUnknownException(config["name"] + " is unknown")
         db_name = config["database"].split(".")[0]
         return loader_cls(self.databases.instance(db_name), config["database"], primary_keys,
-                          is_yield=config.get("is_yield", False),
+                          valuer_type=config.get("valuer_type", 0),
                           join_batch=self.tasker.arguments.get("@join_batch", 1000))
 
     def create_db_pull_loader(self, config, primary_keys):
@@ -52,4 +52,4 @@ class LoaderCreater(object):
 
         db_name = config["database"].split(".")[0]
         return loader_cls(self.databases.instance(db_name), config["database"], primary_keys,
-                          is_yield=config.get("is_yield", False))
+                          valuer_type=config.get("valuer_type", 0))

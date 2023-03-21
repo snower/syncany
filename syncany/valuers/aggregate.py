@@ -4,6 +4,9 @@
 
 from .valuer import Valuer
 
+def raise_stop_iteration(data):
+    raise StopIteration
+
 class AggregateValue(object):
     def __init__(self, data, state):
         self.scope_data = None
@@ -95,24 +98,18 @@ class AggregateValuer(Valuer):
         self.key_value = self.key_valuer.get() if self.key_valuer else ""
         self.loader_loaded = self.aggregate_manager.loaded(self.key_value, self.key)
         if self.loader_loaded:
-            loader_data = self.aggregate_manager.get(self.key_value)
-            self.calculate_valuer.fill(loader_data)
+            cdata = self.aggregate_manager.get(self.key_value)
+            self.calculate_valuer.fill(cdata)
             self.do_filter(self.calculate_valuer.get())
             self.aggregate_manager.set(self.key_value, self.key, self.value)
+            return raise_stop_iteration
 
-        def gen_iter():
-            loader_data = yield None
-            if self.loader_loaded:
-                return None
-            self.calculate_valuer.fill(loader_data)
+        def calculate_value(data):
+            self.calculate_valuer.fill(data)
             self.do_filter(self.calculate_valuer.get())
-            self.aggregate_manager.add(self.key_value, self.key, loader_data, self.value)
-            if self.value is not None:
-                return self.value
-            yield self.value
-        g = gen_iter()
-        g.send(None)
-        return g
+            self.aggregate_manager.add(self.key_value, self.key, data, self.value)
+            return self.value
+        return calculate_value
 
     def reset(self):
         self.aggregate_manager.reset()
