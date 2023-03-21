@@ -134,20 +134,23 @@ class Loader(object):
 
             if oyields:
                 while oyields:
-                    oyield_data = {}
-                    for name, value in odata.items():
-                        oyield_data[name] = value
                     has_oyield_data = False
-                    for name, oyield in list(oyields.items()):
+                    for name, oyield in tuple(oyields.items()):
                         try:
-                            oyield_data[name] = oyield.send(oyield_data)
+                            odata[name] = oyield.send(odata)
                             has_oyield_data = True
-                        except StopIteration:
+                        except StopIteration as e:
+                            if e.value is not None:
+                                odata[name] = e.value
+                                has_oyield_data = True
                             oyields.pop(name)
                     if has_oyield_data:
-                        if self.intercepts and self.check_intercepts(oyield_data):
+                        if self.intercepts and self.check_intercepts(odata):
                             continue
-                        self.datas.append(oyield_data)
+                        self.datas.append(odata)
+                        if not oyields:
+                            break
+                        odata = {name: value for name, value in odata.items()}
             else:
                 if self.intercepts and self.check_intercepts(odata):
                     continue

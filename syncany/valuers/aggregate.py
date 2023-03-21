@@ -4,6 +4,12 @@
 
 from .valuer import Valuer
 
+class AggregateValue(object):
+    def __init__(self, data, state):
+        self.scope_data = None
+        self.data = data
+        self.state = state
+
 class AggregateManager(object):
     def __init__(self):
         self.datas = {}
@@ -12,30 +18,43 @@ class AggregateManager(object):
         if key not in self.datas:
             return False
 
-        if name not in self.datas[key][2]:
+        if name not in self.datas[key].state:
             return False
         return True
 
     def get(self, key):
         if key not in self.datas:
             return None
-        return self.datas[key][0]
+        aggregate_value = self.datas[key]
+        return aggregate_value.scope_data or aggregate_value.data
 
     def set(self, key, name, value):
         if key not in self.datas:
             return None
 
-        self.datas[key][0][name] = value
-        if name in self.datas[key][1]:
-            self.datas[key][1][name] = value
+        aggregate_value = self.datas[key]
+        if name in aggregate_value.data:
+            aggregate_value.data[name] = value
+            if aggregate_value.scope_data:
+                aggregate_value.scope_data[name] = value
+        else:
+            if not aggregate_value.scope_data:
+                aggregate_value.scope_data = {key: value for key, value in aggregate_value.data.items()}
+            aggregate_value.scope_data[name] = value
 
-    def add(self, key, name, data):
+    def add(self, key, name, data, value):
         if key in self.datas:
-            self.datas[key][2][name] = True
-            return self.datas[key][0]
-        scope_data = {k: v for k, v in data.items()}
-        self.datas[key] = (scope_data, data, {name: True})
-        return scope_data
+            aggregate_value = self.datas[key]
+            aggregate_value.state[name] = True
+        else:
+            aggregate_value = AggregateValue(data, {name: True})
+            self.datas[key] = aggregate_value
+
+        if name in aggregate_value.data:
+            aggregate_value.data[name] = value
+        else:
+            aggregate_value.scope_data = {key: value for key, value in aggregate_value.data.items()}
+            aggregate_value.scope_data[name] = value
 
     def reset(self):
         self.datas = {}
@@ -77,20 +96,20 @@ class AggregateValuer(Valuer):
         self.loader_loaded = self.aggregate_manager.loaded(self.key_value, self.key)
         if self.loader_loaded:
             loader_data = self.aggregate_manager.get(self.key_value)
-
             self.calculate_valuer.fill(loader_data)
             self.do_filter(self.calculate_valuer.get())
             self.aggregate_manager.set(self.key_value, self.key, self.value)
 
         def gen_iter():
             loader_data = yield None
-            if not self.loader_loaded:
-                loader_data = self.aggregate_manager.add(self.key_value, self.key, loader_data)
-                self.calculate_valuer.fill(loader_data)
-                self.do_filter(self.calculate_valuer.get())
-                self.aggregate_manager.set(self.key_value, self.key, self.value)
-                yield self.value
-
+            if self.loader_loaded:
+                return None
+            self.calculate_valuer.fill(loader_data)
+            self.do_filter(self.calculate_valuer.get())
+            self.aggregate_manager.add(self.key_value, self.key, loader_data, self.value)
+            if self.value is not None:
+                return self.value
+            yield self.value
         g = gen_iter()
         g.send(None)
         return g
