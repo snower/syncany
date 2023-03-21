@@ -10,7 +10,7 @@ from .calculater import Calculater
 
 class ImportCalculater(Calculater):
     def calculate(self):
-        if "::" in self.name:
+        if len(self._import_name) + 2 < len(self.name):
             calculate_name = self.name[(len(self._import_name) + 2):]
             attr_names = calculate_name.split(".")
             module_or_func = self._import_module
