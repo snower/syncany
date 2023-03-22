@@ -83,7 +83,7 @@ class DBJoinLoader(DBLoader):
         super(DBJoinLoader, self).__init__(*args, **kwargs)
 
         self.data_keys = {}
-        self.unload_primary_keys = {}
+        self.unload_primary_keys = set([])
         self.load_primary_keys = set([])
         self.matchers = defaultdict(list)
 
@@ -119,14 +119,14 @@ class DBJoinLoader(DBLoader):
         if len(self.primary_keys) == 1:
             self.matchers[values[0]].append(matcher)
             if values[0] not in self.data_keys:
-                self.unload_primary_keys[values[0]] = None
+                self.unload_primary_keys.add(values[0])
             else:
                 self.load_primary_keys.add(values[0])
         else:
-            data_key = "--".join(str(value) for value in values)
+            data_key = tuple(values)
             self.matchers[data_key].append(matcher)
             if data_key not in self.data_keys:
-                self.unload_primary_keys[data_key] = values
+                self.unload_primary_keys.add(data_key)
             else:
                 self.load_primary_keys.add(data_key)
 
@@ -159,11 +159,11 @@ class DBJoinLoader(DBLoader):
                     getattr(query, "filter_%s" % exp)(key, value)
 
             if len(self.primary_keys) == 1:
-                query.filter_in(self.primary_keys[0], list(self.unload_primary_keys.keys()))
+                query.filter_in(self.primary_keys[0], list(self.unload_primary_keys))
             else:
                 for j in range(len(self.primary_keys)):
                     query.filter_in(self.primary_keys[j], list({primary_value[j] for primary_value
-                                                                in self.unload_primary_keys.values()}))
+                                                                in self.unload_primary_keys}))
             datas, query = query.commit(), None
 
             for i in range(len(datas)):
@@ -218,7 +218,7 @@ class DBJoinLoader(DBLoader):
                         matcher.fill(values)
                 self.matchers.pop(primary_key)
 
-        self.unload_primary_keys = {}
+        self.unload_primary_keys = set([])
         self.load_primary_keys = set([])
         self.loaded = True
 

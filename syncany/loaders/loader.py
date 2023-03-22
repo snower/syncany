@@ -78,7 +78,7 @@ class Loader(object):
     def get_data_primary_key(self, data):
         if len(self.primary_keys) == 1:
             return data.get(self.primary_keys[0], '')
-        return "--".join([str(data.get(pk, '')) for pk in self.primary_keys])
+        return tuple(data.get(pk, '') for pk in self.primary_keys)
 
     def next(self):
         if not self.loaded:
@@ -138,37 +138,32 @@ class Loader(object):
 
             if oyields:
                 while oyields:
+                    oyield_data = {name: value for name, value in odata.items()}
                     has_oyield_data = False
                     for name, oyield in tuple(oyields.items()):
                         try:
-                            odata[name] = oyield.send(odata)
+                            oyield_data[name] = oyield.send(oyield_data)
                             has_oyield_data = True
                         except StopIteration as e:
                             if e.value is not None:
-                                odata[name] = e.value
+                                oyield_data[name] = e.value
                                 has_oyield_data = True
                             oyields.pop(name)
                     if has_oyield_data:
-                        if self.intercepts and self.check_intercepts(odata):
+                        if self.intercepts and self.check_intercepts(oyield_data):
                             continue
                         if ofuncs:
                             has_func_data = False
                             for name, ofunc in ofuncs.items():
                                 try:
-                                    odata[name] = ofunc(odata)
+                                    oyield_data[name] = ofunc(oyield_data)
                                     has_func_data = True
                                 except StopIteration:
                                     continue
                             if has_func_data:
-                                self.datas.append(odata)
-                                if not oyields:
-                                    break
-                                odata = {name: value for name, value in odata.items()}
+                                self.datas.append(oyield_data)
                         else:
-                            self.datas.append(odata)
-                            if not oyields:
-                                break
-                            odata = {name: value for name, value in odata.items()}
+                            self.datas.append(oyield_data)
             else:
                 if self.intercepts and self.check_intercepts(odata):
                     continue
