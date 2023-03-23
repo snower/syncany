@@ -6,15 +6,15 @@ from .calculater import Calculater
 
 
 class TransformV4HCalculater(Calculater):
-    def calculate(self):
-        if len(self.args) < 3:
+    def calculate(self, *args):
+        if len(args) < 3:
             return None
 
-        datas = self.args[0] if isinstance(self.args[0], list) else \
-            ([self.args[0]] if isinstance(self.args[0], dict) else [])
-        key, vkey = self.args[1], self.args[2]
-        if len(self.args) >= 4:
-            reserved_keys = set(self.args[3] if isinstance(self.args[3], list) else [self.args[3]])
+        datas = args[0] if isinstance(args[0], list) else \
+            ([args[0]] if isinstance(args[0], dict) else [])
+        key, vkey = args[1], args[2]
+        if len(args) >= 4:
+            reserved_keys = set(args[3] if isinstance(args[3], list) else [args[3]])
         else:
             reserved_keys = set([])
         reserved_keys.add(key)
@@ -33,15 +33,15 @@ class TransformV4HCalculater(Calculater):
 
 
 class TransformH4VCalculater(Calculater):
-    def calculate(self):
-        if len(self.args) < 3:
+    def calculate(self, *args):
+        if len(args) < 3:
             return None
 
-        vhkey, vvkey = self.args[1], self.args[2]
-        vcount_key = self.args[3] if len(self.args) >= 4 else None
+        vhkey, vvkey = args[1], args[2]
+        vcount_key = args[3] if len(args) >= 4 else None
         vcount_callable = callable(vcount_key) if vcount_key else False
-        datas = self.args[0] if isinstance(self.args[0], list) else \
-            ([self.args[0]] if isinstance(self.args[0], dict) else [])
+        datas = args[0] if isinstance(args[0], list) else \
+            ([args[0]] if isinstance(args[0], dict) else [])
 
         hkeys, vkeys, mdata = {}, {}, {}
         for data in datas:
@@ -94,15 +94,15 @@ class TransformV2HCalculater(Calculater):
                 continue
             tasker.outputer.add_valuer(key, valuer)
 
-    def calculate(self):
-        if len(self.args) < 3:
+    def calculate(self, *args):
+        if len(args) < 3:
             return None
 
-        vhkey, vvkey = self.args[1], self.args[2]
-        vcount_key = self.args[3] if len(self.args) >= 4 else None
+        vhkey, vvkey = args[1], args[2]
+        vcount_key = args[3] if len(args) >= 4 else None
         vcount_callable = callable(vcount_key) if vcount_key else False
-        datas = self.args[0] if isinstance(self.args[0], list) else \
-            ([self.args[0]] if isinstance(self.args[0], dict) else [])
+        datas = args[0] if isinstance(args[0], list) else \
+            ([args[0]] if isinstance(args[0], dict) else [])
 
         hkeys, vkeys, mdata = {}, {}, {}
         for data in datas:
@@ -156,15 +156,15 @@ class TransformH2VCalculater(Calculater):
                 continue
             tasker.outputer.add_valuer(key, valuer)
 
-    def calculate(self):
-        if len(self.args) < 3:
+    def calculate(self, *args):
+        if len(args) < 3:
             return None
 
-        datas = self.args[0] if isinstance(self.args[0], list) else \
-            ([self.args[0]] if isinstance(self.args[0], dict) else [])
-        key, vkey = self.args[1], self.args[2]
-        if len(self.args) >= 4:
-            reserved_keys = set(self.args[3] if isinstance(self.args[3], list) else [self.args[3]])
+        datas = args[0] if isinstance(args[0], list) else \
+            ([args[0]] if isinstance(args[0], dict) else [])
+        key, vkey = args[1], args[2]
+        if len(args) >= 4:
+            reserved_keys = set(args[3] if isinstance(args[3], list) else [args[3]])
         else:
             reserved_keys = set([])
         reserved_keys.add(key)
@@ -184,13 +184,13 @@ class TransformH2VCalculater(Calculater):
 
 
 class TransformUniqKVCalculater(Calculater):
-    def calculate(self):
-        if len(self.args) < 4:
+    def calculate(self, *args):
+        if len(args) < 4:
             return None
 
-        datas = self.args[0] if isinstance(self.args[0], list) else \
-            ([self.args[0]] if isinstance(self.args[0], dict) else [])
-        ukey, kkey, vkey = self.args[1], self.args[2], self.args[3]
+        datas = args[0] if isinstance(args[0], list) else \
+            ([args[0]] if isinstance(args[0], dict) else [])
+        ukey, kkey, vkey = args[1], args[2], args[3]
         keys = set([])
         result, uniq_datas = [], {}
         for data in datas:
@@ -245,7 +245,7 @@ class TransformCalculater(Calculater):
         else:
             self.transform = None
 
-    def calculate(self):
+    def calculate(self, *args):
         if self.transform:
-            return self.transform.calculate()
+            return self.transform.calculate(*args)
         return None

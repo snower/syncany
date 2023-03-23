@@ -9,25 +9,25 @@ from .calculater import Calculater
 
 
 class TimeWindowCalculater(Calculater):
-    def calculate(self):
-        if not self.args:
+    def calculate(self, *args):
+        if not args:
             return datetime.datetime.now(tz=get_timezone())
 
-        time_period = self.args[0]
-        if len(self.args) >= 2 and self.args[1]:
-            if isinstance(self.args[1], datetime.datetime):
-                dt = self.args[1]
-            elif isinstance(self.args[1], str):
+        time_period = args[0]
+        if len(args) >= 2 and args[1]:
+            if isinstance(args[1], datetime.datetime):
+                dt = args[1]
+            elif isinstance(args[1], str):
                 try:
-                    dt = parse_datetime(self.args[1], None, get_timezone())
+                    dt = parse_datetime(args[1], None, get_timezone())
                 except:
                     dt = datetime.datetime.now(tz=get_timezone())
             else:
                 dt = datetime.datetime.now(tz=get_timezone())
         else:
             dt = datetime.datetime.now(tz=get_timezone())
-        offset = self.args[1] if len(self.args) >= 2 and isinstance(self.args[1], (int, float)) else \
-            (self.args[2] if len(self.args) >= 3 and isinstance(self.args[2], (int, float)) else None)
+        offset = args[1] if len(args) >= 2 and isinstance(args[1], (int, float)) else \
+            (args[2] if len(args) >= 3 and isinstance(args[2], (int, float)) else None)
 
         if time_period[-1] == "d":
             dt = datetime.datetime(dt.year, dt.month, dt.day - dt.day % int(time_period[:-1]), tzinfo=dt.tzinfo)
@@ -53,8 +53,8 @@ class TimeWindowCalculater(Calculater):
             windex = int(dt.strftime("%W"))
             dt = datetime.datetime(dt.year, dt.month, dt.day, tzinfo=dt.tzinfo)
             dt = dt - datetime.timedelta(days=((windex % int(time_period[:-1])) + (int(time_period[:-1]) * offset if offset else 0)) * 7)
-            if len(self.args) >= 4 and isinstance(self.args[3], (int, float)) and 2 <= self.args[3] <= 7:
-                dt = dt - datetime.timedelta(days=dt.weekday() - self.args[3] + 1)
+            if len(args) >= 4 and isinstance(args[3], (int, float)) and 2 <= args[3] <= 7:
+                dt = dt - datetime.timedelta(days=dt.weekday() - args[3] + 1)
             else:
                 dt = dt - datetime.timedelta(days=dt.weekday())
             return dt
@@ -62,28 +62,28 @@ class TimeWindowCalculater(Calculater):
 
 
 class DateTimeCalculater(Calculater):
-    def calculate(self):
-        if not self.args:
+    def calculate(self, *args):
+        if not args:
             return None
 
         func_name = self.name[10:]
-        if isinstance(self.args[0], (datetime.date, datetime.time)):
-            if hasattr(self.args[0], func_name):
-                return getattr(self.args[0], func_name)(*tuple(self.args[1:]))
+        if isinstance(args[0], (datetime.date, datetime.time)):
+            if hasattr(args[0], func_name):
+                return getattr(args[0], func_name)(*tuple(args[1:]))
             return None
 
         if func_name == "on":
-            return self.on(*tuple(self.args))
+            return self.on(*tuple(args))
         if func_name == "at":
-            return self.at(*tuple(self.args))
+            return self.at(*tuple(args))
         if func_name == "startofday":
-            return self.at(self.args[0], 0)
+            return self.at(args[0], 0)
         if func_name == "astimezone":
-            if len(self.args) >= 2 and isinstance(self.args[1], str):
-                return self.args[0].astimezone(pytz.timezone(self.args[1]))
-            return self.args[0].astimezone(self.args[1])
-        if hasattr(self.args[0], func_name):
-            return getattr(self.args[0], func_name)(*tuple(self.args[1:]))
+            if len(args) >= 2 and isinstance(args[1], str):
+                return args[0].astimezone(pytz.timezone(args[1]))
+            return args[0].astimezone(args[1])
+        if hasattr(args[0], func_name):
+            return getattr(args[0], func_name)(*tuple(args[1:]))
         return None
 
     def on(self, dt, year=None, month=None, day=None):

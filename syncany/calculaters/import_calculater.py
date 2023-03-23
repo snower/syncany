@@ -9,7 +9,7 @@ from .calculater import Calculater
 
 
 class ImportCalculater(Calculater):
-    def calculate(self):
+    def calculate(self, *args):
         if len(self._import_name) + 2 < len(self.name):
             calculate_name = self.name[(len(self._import_name) + 2):]
             attr_names = calculate_name.split(".")
@@ -27,16 +27,16 @@ class ImportCalculater(Calculater):
             module_or_func = self._import_module
 
         try:
-            if not self.args:
+            if not args:
                 return module_or_func()
-            if len(self.args) == 1 and isinstance(self.args[0], list) and self.args[0] and isinstance(self.args[0][0], dict):
+            if len(args) == 1 and isinstance(args[0], list) and args[0] and isinstance(args[0][0], dict):
                 try:
-                    return module_or_func(*tuple(self.args[0]))
+                    return module_or_func(*tuple(args[0]))
                 except TypeError:
                     pass
-            return module_or_func(*tuple(self.args))
+            return module_or_func(*args)
         except Exception as e:
-            get_logger().warning("import calculater execute %s(%s) error: %s\n%s", calculate_name, self.args, e,
+            get_logger().warning("import calculater execute %s(%s) error: %s\n%s", calculate_name, args, e,
                                  traceback.format_exc())
             return None
 
