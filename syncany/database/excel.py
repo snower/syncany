@@ -42,7 +42,10 @@ class ExeclQueryBuilder(QueryBuilder):
         self.query[(key, "!=")] = (value, lambda a, b: a != b)
 
     def filter_in(self, key, value):
-        self.query[(key, "in")] = (value, lambda a, b: a in b)
+        try:
+            self.query[(key, "in")] = (set(value) if isinstance(value, list) else value, lambda a, b: a in b)
+        except:
+            self.query[(key, "in")] = (value, lambda a, b: a in b)
 
     def filter_limit(self, count, start=None):
         if not start:
