@@ -7,13 +7,14 @@ from ..filters import DateTimeFilter, DateFilter, TimeFilter
 
 
 class Calculater(object):
-    default_instance = None
+    _instances = {}
 
     @classmethod
     def instance(cls, name):
-        if cls.default_instance is None or cls.default_instance.__class__ is not cls:
-            cls.default_instance = cls(name)
-        return cls.default_instance
+        instance_id = (cls.__name__, id(cls), name)
+        if instance_id not in cls._instances:
+            cls._instances[instance_id] = cls(name)
+        return cls._instances[instance_id]
 
     def __init__(self, name):
         self.name = name
