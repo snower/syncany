@@ -88,7 +88,8 @@ def warp_database_logging(tasker):
 
 def load_dependency(parent, filename, parent_arguments, ap, register_aps):
     tasker = CoreTasker(filename, parent.manager, parent)
-    arguments = tasker.load()
+    tasker.load()
+    arguments = tasker.compile_arguments()
     setattr(tasker, "parent_arguments", parent_arguments)
 
     for argument in arguments:
@@ -266,7 +267,8 @@ def main():
 
         manager = TaskerManager(DatabaseManager())
         tasker = CoreTasker(sys.argv[1], manager)
-        arguments = tasker.load()
+        tasker.load()
+        arguments = tasker.compile_arguments()
         tasker.config_logging()
 
         if "description" in tasker.config and tasker.config["description"]:

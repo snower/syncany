@@ -91,22 +91,53 @@ class ValuerCreater(object):
         return self.tasker.create_loader(*args, **kwargs)
 
     def create_join_loader(self, config, join_loaders, renew=False):
+        def format_value_cache_key(value):
+            if isinstance(value, dict):
+                return "{" + ", ".join(["%s: %s" % (format_value_cache_key(key), format_value_cache_key(value[key]))
+                                        for key in sorted(value.keys())]) + "}"
+            if isinstance(value, (tuple, list, set)):
+                try:
+                    return "[" + ", ".join([format_value_cache_key(v) for v in sorted(list(value))]) + "]"
+                except:
+                    return "[" + ", ".join([format_value_cache_key(v) for v in value]) + "]"
+            return str(value)
+
         loader_cache_key, loader_cache_foreign_filters = None, ""
         if join_loaders is not None:
             if config["foreign_filters"]:
-                loader_cache_foreign_filters = "&".join(sorted(["%s%s%s" % (name, exp, str(value)) for name, exp, value in config["foreign_filters"]]))
-            loader_cache_key = "::".join([config["loader"]["name"], config["loader"]["database"], "+".join(sorted(config["foreign_keys"])),
+                loader_cache_foreign_filters = "&".join(sorted(["%s__%s=%s" % (name, exp, format_value_cache_key(valuer))
+                                                                for name, exp, valuer, _, _ in config["foreign_filters"]]))
+            loader_cache_key = "::".join([config["loader"]["name"], config["loader"]["database"],
+                                          "+".join(sorted(config["foreign_keys"])),
                                           loader_cache_foreign_filters])
             if not renew and loader_cache_key in join_loaders:
                 return join_loaders[loader_cache_key]
 
         loader = self.create_loader(config["loader"], config["foreign_keys"])
         if config["foreign_filters"]:
-            for name, exp, value in config["foreign_filters"]:
-                if exp == "eq":
-                    loader.add_filter(name, exp, value)
-                else:
-                    getattr(loader, "filter_" + exp)(name, value)
+            for name, exp, valuer, filter_cls, filter_args in config["foreign_filters"]:
+                inherit_valuers, yield_valuers, aggregate_valuers = [], [], []
+                valuer = self.create_valuer(valuer, schema_field_name="",
+                                            inherit_valuers=inherit_valuers, join_loaders=self.tasker.join_loaders,
+                                            yield_valuers=yield_valuers, aggregate_valuers=aggregate_valuers,
+                                            define_valuers={},
+                                            global_variables=dict(**self.tasker.config["variables"]),
+                                            global_states=self.tasker.states)
+
+                def add_foreign_filter(name, exp, valuer):
+                    def _():
+                        value = self.tasker.execute_valuer(valuer, self.tasker.arguments)
+                        if filter_cls:
+                            if exp == "in" and isinstance(value, list):
+                                value = [filter_cls(filter_args).filter(v) for v in value]
+                            else:
+                                value = filter_cls(filter_args).filter(value)
+                        if exp == "eq":
+                            loader.add_filter(name, exp, value)
+                        else:
+                            getattr(loader, "filter_" + exp)(name, value)
+                    return _
+                self.tasker.add_init_executer(add_foreign_filter(name, exp, valuer))
         loader = LoaderJoinWarp(loader)
         if loader_cache_key is not None:
             if loader_cache_key in join_loaders:

@@ -72,6 +72,10 @@ class CoreTasker(Tasker):
         self.join_loaders = {}
         self.global_variables = {}
         self.batch_cursor = None
+        self.init_executers = []
+
+    def add_init_executer(self, executer):
+        self.init_executers.append(executer)
 
     def load_config(self, filename):
         if filename[:12] == "__inline__::":
@@ -193,7 +197,7 @@ class CoreTasker(Tasker):
             else:
                 self.batch_cursor = {[self.loader.primary_keys[0]]: self.config["cursor"]}
         else:
-            self.batch_cursor[self.loader.primary_keys[0]] = self.run_valuer(self.config["cursor"], {})
+            self.batch_cursor[self.loader.primary_keys[0]] = self.run_valuer(self.config["cursor"], self.arguments)
 
     def config_logging(self):
         if "logger" in self.config and isinstance(self.config["logger"], dict):
@@ -204,9 +208,16 @@ class CoreTasker(Tasker):
 
     def compile_variables(self):
         for key, value in self.config["variables"].items():
-            self.global_variables[key] = self.run_valuer(value, {})
+
+            def init_global_variable(key, value):
+                def _():
+                    self.global_variables[key] = self.run_valuer(value, self.arguments)
+                return _
+            self.add_init_executer(init_global_variable(key, value))
 
     def compile_sources(self, config=None):
+        if not self.config["sources"]:
+            return
         if isinstance(config, dict):
             for key, value in list(config.items()):
                 if isinstance(value, str):
@@ -251,53 +262,56 @@ class CoreTasker(Tasker):
                 self.config["schema"][key[:-1]] = valuer
                 self.config["schema"].pop(key)
 
-    def compile_filters_parse_exps(self, exps):
-        if isinstance(exps, dict):
-            result = {}
-            for exp, value in exps.items():
-                try:
-                    exp_name = get_expression_name(exp)
-                except KeyError:
-                    continue
-                result[exp_name] = value
-            return result if result else None
-        if isinstance(exps, list):
+    def compile_querys(self, config_querys):
+        def parse_exps(exps):
             result = []
-            for exp in exps:
-                try:
-                    exp_name = get_expression_name(exp)
-                except KeyError:
-                    continue
-                result.append(exp_name)
-            return result if result else None
-        return {"eq": exps}
+            if isinstance(exps, dict):
+                for exp, value in exps.items():
+                    try:
+                        exp_name = get_expression_name(exp)
+                    except KeyError:
+                        continue
+                    ref_argument_name = value[1:] if isinstance(value, str) and value[:1] == "?" else None
+                    result.append({"exp": exp, "exp_name": exp_name,
+                                   "valuer": self.compile_valuer(value) if not ref_argument_name else None,
+                                   "ref_argument_name": ref_argument_name})
+            elif isinstance(exps, list):
+                for exp in exps:
+                    try:
+                        exp_name = get_expression_name(exp)
+                    except KeyError:
+                        continue
+                    result.append({"exp": exp, "exp_name": exp_name, "valuer": None, "ref_argument_name": None})
+            else:
+                ref_argument_name = exps[1:] if isinstance(exps, str) and exps[:1] == "?" else None
+                result.append({"exp": "==", "exp_name": "eq",
+                               "valuer": self.compile_valuer(exps) if ref_argument_name else None,
+                               "ref_argument_name": ref_argument_name})
+            return result
 
-    def compile_filters_parse(self, config_querys):
         if isinstance(config_querys, str):
             keys = config_querys.split("|")
             filters = (keys[1] if len(keys) >= 2 else "").split(" ")
             return [{
                 "name": keys[0],
-                "exps": ["eq"],
+                "exps": {"exp": "==", "exp_name": "eq", "valuer": None, "ref_argument_name": None},
                 "type": filters[0],
-                'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None,
-                'refs': {}
+                'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
             }]
 
         if isinstance(config_querys, dict):
             if len(config_querys) == 4 and "name" in config_querys and "exps" in config_querys \
                     and "type" in config_querys and "type_args" in config_querys:
-                exps = self.compile_filters_parse_exps(config_querys["exps"])
+                exps = parse_exps(config_querys["exps"])
                 if not exps:
                     return []
                 config_querys["exps"] = exps
-                config_querys["refs"] = {}
                 return [config_querys]
 
             querys = []
             for name, exps in config_querys.items():
                 keys = name.split("|")
-                exps = self.compile_filters_parse_exps(exps)
+                exps = parse_exps(exps)
                 if not exps:
                     continue
                 filters = (keys[1] if len(keys) >= 2 else "").split(" ")
@@ -305,8 +319,7 @@ class CoreTasker(Tasker):
                     "name": keys[0],
                     "exps": exps,
                     "type": filters[0],
-                    'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None,
-                    'refs': {}
+                    'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
                 })
             return querys
 
@@ -314,195 +327,16 @@ class CoreTasker(Tasker):
             querys = []
             for cq in config_querys:
                 if isinstance(cq, str):
-                    querys.extend(self.compile_filters_parse(cq))
+                    querys.extend(self.compile_querys(cq))
                 elif isinstance(cq, dict) and len(cq) == 4 and "name" in cq \
                     and "exps" in cq and "type" in cq and "type_args" in cq:
-                    exps = self.compile_filters_parse_exps(cq["exps"])
+                    exps = parse_exps(cq["exps"])
                     if not exps:
                         continue
                     cq["exps"] = exps
-                    cq["refs"] = {}
                     querys.append(cq)
             return querys
         return []
-
-    def compile_merge_argument(self, argument, child_argument):
-        for k, v in child_argument.items():
-            if k == "name":
-                continue
-            if k != "type" and k in argument:
-                continue
-            argument[k] = v
-        return argument
-
-    def compile_filters_arguments(self, arguments_names, arguments):
-        self.config["querys"] = self.compile_filters_parse(self.config["querys"])
-
-        def default_filter(*args, **kwargs):
-            str_filter = self.find_filter_driver('str')(*args, **kwargs)
-            def _(value):
-                return str_filter(value)
-            return _
-
-        for query in self.config["querys"]:
-            if isinstance(query["exps"], list):
-                for exp_name in query["exps"]:
-                    filter_cls = self.find_filter_driver(query["type"])
-                    if filter_cls is None:
-                        filter_cls = default_filter
-
-                    if exp_name == "eq":
-                        argument = {"name": '%s' % query["name"], "type": filter_cls(query.get("type_args")),
-                                    "help": "query argument '%s'" % query["name"]}
-                    elif exp_name == "in":
-                        argument = {"name": '%s' % query["name"], "type": filter_cls(query.get("type_args")),
-                                    "nargs": "+", "action": "extend",
-                                    "help": "query arguments '%s'" % query["name"]}
-                    else:
-                        argument = {"name": '%s__%s' % (query["name"], exp_name), "type": filter_cls(query.get("type_args")),
-                                    "help": "query argument '%s__%s'" % (query["name"], exp_name)}
-                    if argument["name"] in arguments_names:
-                        self.compile_merge_argument(arguments_names[argument["name"]], argument)
-                        continue
-                    arguments.append(argument)
-                    arguments_names[argument["name"]] = argument
-            elif isinstance(query["exps"], dict):
-                for exp_name, exp_value in query["exps"].items():
-                    if isinstance(exp_value, str) and exp_value[:1] == "?":
-                        query["refs"][exp_name] = exp_value[1:]
-                        continue
-                    filter_cls = self.find_filter_driver(query["type"])
-                    if filter_cls is None:
-                        filter_cls = default_filter
-                    exp_value = self.run_valuer(exp_value, {})
-
-                    if exp_name == "eq":
-                        argument = {"name": '%s' % query["name"], "type": filter_cls(query.get("type_args")),
-                                    "default": exp_value, "help": "query argument '%s' (default: %s)" % (query["name"], exp_value)}
-                    elif exp_name == "in":
-                        argument = {"name": '%s' % query["name"], "type": filter_cls(query.get("type_args")),
-                                    "nargs": "+", "action": "extend", "default": exp_value,
-                                    "help": "query arguments '%s' (default: %s)" % (query["name"], " ".join([str(ev) for ev in exp_value]))}
-                    else:
-                        argument = {"name": '%s__%s' % (query["name"], exp_name), "type": filter_cls(query.get("type_args")),
-                                    "default": exp_value, "help": "query argument '%s__%s' (default: %s)" % (query["name"], exp_name, exp_value)}
-                    if argument["name"] in arguments_names:
-                        self.compile_merge_argument(arguments_names[argument["name"]], argument)
-                        continue
-                    arguments.append(argument)
-                    arguments_names[argument["name"]] = argument
-
-    def compile_sources_arguments(self, arguments_names, arguments, config):
-        if isinstance(config, dict):
-            for key, value in config.items():
-                self.compile_sources_arguments(arguments_names, arguments, value)
-        elif isinstance(config, list):
-            for value in config:
-                self.compile_sources_arguments(arguments_names, arguments, value)
-        elif isinstance(config, str):
-            if config[:1] != "?":
-                return
-            name = config[1:]
-            keys = name.split("|")
-            filters = (keys[1] if len(keys) >= 2 else "").split(" ")
-            filter_cls = self.find_filter_driver(filters[0])
-            filter_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
-            argument = {"name": keys[0], "type": filter_cls(filter_args) if filter_cls else str, "help": "%s" % keys[0]}
-            if argument["name"] in arguments_names:
-                self.compile_merge_argument(arguments_names[argument["name"]], argument)
-                return
-            arguments.append(argument)
-            arguments_names[argument["name"]] = argument
-
-    def compile_arguments(self):
-        arguments_names, arguments = {}, []
-        for name, argument in self.config["arguments"].items():
-            keys = name.split("|")
-            filters = (keys[1] if len(keys) >= 2 else "").split(" ")
-            filter_cls = self.find_filter_driver(filters[0])
-            filter_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
-
-            if isinstance(argument, dict):
-                argument["name"] = keys[0]
-                if "default" in argument:
-                    argument["default"] = self.run_valuer(argument["default"], {})
-                if "type" not in argument:
-                    if filter_cls:
-                        argument["type"] = filter_cls(filter_args)
-                    else:
-                        argument["type"] = type(argument.get("default", ""))
-                if "help" not in argument:
-                    argument["help"] = "%s (default: %s)" % (name, argument.get("default", ""))
-            else:
-                argument = self.run_valuer(argument, {})
-                if filter_cls:
-                    argument_type = filter_cls(filter_args)
-                else:
-                    argument_type = type(argument)
-                argument = {"name":  keys[0], "type": argument_type, "default": argument,
-                            "help": "%s (default: %s)" % (name, argument)}
-
-            if argument["name"] in arguments_names:
-                self.compile_merge_argument(arguments_names[argument["name"]], argument)
-                continue
-            arguments.append(argument)
-            arguments_names[argument["name"]] = argument
-
-        self.compile_sources_arguments(arguments_names, arguments, self.config)
-        self.compile_filters_arguments(arguments_names, arguments)
-
-        if "input" in self.config and "@input" not in arguments_names:
-            if isinstance(self.config["input"], list) and self.config["input"] and self.config["input"][0][0] == "@":
-                self.config["input"] = self.run_valuer(self.config["input"], {})
-            if self.config["input"][:2] == "<<":
-                arguments.append({"name": "@input", "short": "i", "type": str, "default": self.config["input"][2:],
-                                  "help": "data input (default: %s)" % self.config["input"][2:]})
-
-        if "loader" in self.config and "@loader" not in arguments_names:
-            if isinstance(self.config["loader"], list) and self.config["loader"] and self.config["loader"][0][0] == "@":
-                self.config["loader"] = self.run_valuer(self.config["loader"], {})
-            if self.config["loader"][:2] == "<<":
-                arguments.append({"name": "@loader", "type": str, "default": self.config["loader"][2:],
-                                  "choices": ("db_loader",),
-                                  "help": "data loader (default: %s)" % self.config["loader"][2:]})
-
-        if "output" in self.config and "@output" not in arguments_names:
-            if isinstance(self.config["output"], list) and self.config["output"] and self.config["output"][0][0] == "@":
-                self.config["output"] = self.run_valuer(self.config["output"], {})
-            if self.config["output"][:2] == ">>":
-                arguments.append({"name": "@output", "short": "o", "type": str, "default": self.config["output"][2:],
-                                  "help": "data output (default: %s)" % self.config["output"][2:]})
-
-        if "outputer" in self.config and "@outputer" not in arguments_names:
-            if isinstance(self.config["outputer"], list) and self.config["outputer"] and self.config["outputer"][0][0] == "@":
-                self.config["outputer"] = self.run_valuer(self.config["outputer"], {})
-            if self.config["outputer"][:2] == ">>":
-                arguments.append({"name": "@outputer", "type": str, "default": self.config["outputer"][2:],
-                                  "choices": tuple(self.outputer_creater.can_uses()),
-                                  "help": "data outputer (default: %s)" % self.config["outputer"][2:]})
-
-        if "@limit" not in arguments_names:
-            arguments.append({"name": "@limit", "short": "l", "type": int, "default": 0,
-                              "help": "load limit count (default: 0 all)"})
-        if "@batch" not in arguments_names:
-            arguments.append({"name": "@batch", "short": "b", "type": int, "default": 0,
-                              "help": "per sync batch count (default: 0 all)"})
-        if "@streaming" not in arguments_names:
-            arguments.append({"name": "@streaming", "short": "S", "type": bool, "default": False,
-                              "help": "per sync batch is streaming (default: False)"})
-        if "@recovery" not in arguments_names:
-            arguments.append({"name": "@recovery", "short": "r", "type": bool, "default": False,
-                              "help": "recovery mode (default: False)"})
-        if "@join_batch" not in arguments_names:
-            arguments.append({"name": "@join_batch", "type": int, "default": 1000,
-                              "help": "join batch count (default: 1000)"})
-        if "@insert_batch" not in arguments_names:
-            arguments.append({"name": "@insert_batch", "type": int, "default": 0,
-                              "help": "insert batch count (default: 0 all)"})
-        if "@timeout" not in arguments_names:
-            arguments.append({"name": "@timeout", "type": int, "default": 0,
-                              "help": "loader timeout (default: 0 none timeout)"})
-        return arguments
 
     def compile_key(self, key):
         if not isinstance(key, str) or key == "":
@@ -570,20 +404,13 @@ class CoreTasker(Tasker):
                     for exp, value in exps.items():
                         try:
                             exp = get_expression_name(exp)
-                            value = self.run_valuer(value, {})
-                            if filter_cls:
-                                if exp == "in" and isinstance(value, list):
-                                    value = [filter_cls(filter_args).filter(v) for v in value]
-                                else:
-                                    value = filter_cls(filter_args).filter(value)
-                            foreign_filters.append((keys[0], exp, value))
+                            valuer = self.compile_valuer(value)
+                            foreign_filters.append((keys[0], exp, valuer, filter_cls, filter_args))
                         except KeyError:
                             pass
                 else:
-                    value = self.run_valuer(exps, {})
-                    if filter_cls:
-                        value = filter_cls(filter_args).filter(value)
-                    foreign_filters.append((keys[0], 'eq', value))
+                    valuer = self.compile_valuer(exps)
+                    foreign_filters.append((keys[0], 'eq', valuer, filter_cls, filter_args))
 
         return {
             "database": foreign_key[0],
@@ -840,8 +667,10 @@ class CoreTasker(Tasker):
                                     global_variables=dict(**self.config["variables"]), global_states=self.states)
         if not valuer:
             return config
-        valuer.fill(data)
-        value = valuer.get()
+        return self.execute_valuer(valuer, data)
+
+    def execute_valuer(self, valuer, data):
+        value = valuer.fill(data).get()
         if isinstance(value, types.GeneratorType):
             oyield = value
             while True:
@@ -890,6 +719,28 @@ class CoreTasker(Tasker):
 
         return getattr(self.outputer_creater, "create_" + config["name"])(config, primary_keys)
 
+    def create_query_valuer(self, query, query_exp):
+        if query_exp["ref_argument_name"]:
+            argument_name = query_exp["ref_argument_name"]
+        elif query_exp["exp_name"] in ("eq", "in"):
+            argument_name = query["name"]
+        else:
+            argument_name = "%s__%s" % (query["name"], query_exp["exp_name"])
+        if argument_name in self.arguments:
+            valuer = self.compile_valuer(["#const", self.arguments[argument_name]])
+        else:
+            if not query_exp["valuer"]:
+                raise ValueError("%s %s value invaild" % (query["name"], query_exp["exp_name"]))
+            valuer = query_exp["valuer"]
+        inherit_valuers, yield_valuers, aggregate_valuers = [], [], []
+        valuer = self.create_valuer(valuer, schema_field_name="",
+                                    inherit_valuers=inherit_valuers, join_loaders=self.join_loaders,
+                                    yield_valuers=yield_valuers, aggregate_valuers=aggregate_valuers, define_valuers={},
+                                    global_variables=dict(**self.config["variables"]), global_states=self.states)
+        if not valuer:
+            raise ValueError("%s %s value invaild" % (query["name"], query_exp["exp_name"]))
+        return valuer
+
     def compile_loader(self):
         loader_config = {}
         if self.config["input"][:2] == "<<":
@@ -933,7 +784,6 @@ class CoreTasker(Tasker):
                     self.loader.add_valuer(name, valuer)
                 if inherit_valuers:
                     raise OverflowError(name + " inherit out of range")
-                loader_config["valuer_type"] = 0
                 if yield_valuers:
                     loader_config["valuer_type"] |= 0x01
                 if aggregate_valuers:
@@ -943,18 +793,17 @@ class CoreTasker(Tasker):
             self.loader.add_key_matcher(".*", self.create_valuer(self.valuer_compiler.compile_data_valuer("", None)))
 
         for query in self.config["querys"]:
-            for exp_name in query["exps"]:
-                if not hasattr(self.loader, "filter_%s" % exp_name):
+            for query_exp in query["exps"]:
+                if not hasattr(self.loader, "filter_%s" % query_exp["exp_name"]):
                     continue
-                if exp_name in query["refs"]:
-                    argument_name = query["refs"][exp_name]
-                elif exp_name in ("eq", "in"):
-                    argument_name = query["name"]
-                else:
-                    argument_name = "%s__%s" % (query["name"], exp_name)
-                if argument_name not in self.arguments:
-                    continue
-                getattr(self.loader, "filter_%s" % exp_name)(query["name"], self.arguments[argument_name])
+                valuer = self.create_query_valuer(query, query_exp)
+
+                def add_loader_filter(query_name, exp_name, query_valuer):
+                    def _():
+                        getattr(self.loader, "filter_%s" % exp_name)(query_name,
+                                                                     self.execute_valuer(query_valuer, self.arguments))
+                    return _
+                self.add_init_executer(add_loader_filter(query["name"], query_exp["exp_name"], valuer))
 
         order_keys = set([])
         if self.config["orders"]:
@@ -1054,18 +903,20 @@ class CoreTasker(Tasker):
             else:
                 value_filter = lambda v: v
 
-            for exp_name in query["exps"]:
-                if not hasattr(self.outputer, "filter_%s" % exp_name):
+            for query_exp in query["exps"]:
+                if not hasattr(self.loader, "filter_%s" % query_exp["exp_name"]):
                     continue
-                if exp_name in query["refs"]:
-                    argument_name = query["refs"][exp_name]
-                elif exp_name == "eq":
-                    argument_name = query["name"]
-                else:
-                    argument_name = "%s__%s" % (query["name"], exp_name)
-                if argument_name not in self.arguments:
-                    continue
-                getattr(self.outputer, "filter_%s" % exp_name)(query_name, value_filter(self.arguments[argument_name]))
+                valuer = self.create_query_valuer(query, query_exp)
+
+                def add_outputer_filter(query_name, exp_name, query_valuer):
+                    def _():
+                        value = self.execute_valuer(query_valuer, self.arguments)
+                        getattr(self.outputer, "filter_%s" % exp_name)(query_name,
+                                                                       [value_filter(v) for v in value]
+                                                                       if exp_name == "in" and isinstance(value, list)
+                                                                       else value_filter(value))
+                    return _
+                self.add_init_executer(add_outputer_filter(query_name, query_exp["exp_name"], valuer))
 
         order_keys = set([])
         if self.config["orders"]:
@@ -1159,7 +1010,6 @@ class CoreTasker(Tasker):
         self.load_databases()
         self.load_caches()
         self.load_states()
-        return self.compile_arguments()
 
     def compile(self, arguments):
         super(CoreTasker, self).compile(arguments)
@@ -1167,6 +1017,7 @@ class CoreTasker(Tasker):
         self.compile_sources(self.config)
         self.compile_options()
         self.compile_variables()
+        self.config["querys"] = self.compile_querys(self.config["querys"])
         self.compile_schema()
         self.compile_intercepts()
         self.compile_pipelines()
@@ -1290,6 +1141,9 @@ class CoreTasker(Tasker):
         run_count = 0
 
         try:
+            for init_executer in self.init_executers:
+                init_executer()
+
             while not self.terminated:
                 try:
                     run_count += 1
@@ -1376,3 +1230,162 @@ class CoreTasker(Tasker):
         else:
             status["cursor"] = self.batch_cursor
         return status
+
+    def merge_arguments(self, argument, child_argument):
+        for k, v in child_argument.items():
+            if k == "name":
+                continue
+            if k != "type" and k in argument:
+                continue
+            argument[k] = v
+        return argument
+
+    def compile_querys_arguments(self, arguments_names, arguments):
+        def default_filter(*args, **kwargs):
+            str_filter = self.find_filter_driver('str')(*args, **kwargs)
+            def _(value):
+                return str_filter(value)
+            return _
+
+        for query in self.compile_querys(self.config["querys"]):
+            for query_exp in query["exps"]:
+                if query_exp["ref_argument_name"]:
+                    continue
+                filter_cls = self.find_filter_driver(query["type"])
+                if filter_cls is None:
+                    filter_cls = default_filter
+                exp_value = self.run_valuer(query_exp["valuer"], self.arguments) if query_exp["valuer"] else None
+
+                if query_exp["exp_name"] == "eq":
+                    argument = {"name": '%s' % query["name"], "type": filter_cls(query.get("type_args")),
+                                "help": "query argument '%s'" % query["name"]}
+                elif query_exp["exp_name"] == "in":
+                    argument = {"name": '%s' % query["name"], "type": filter_cls(query.get("type_args")),
+                                "nargs": "+", "action": "extend",
+                                "help": "query arguments '%s'" % query["name"]}
+                else:
+                    argument = {"name": '%s__%s' % (query["name"], query_exp["exp_name"]), "type": filter_cls(query.get("type_args")),
+                                "help": "query argument '%s__%s'" % (query["name"], query_exp["exp_name"])}
+                if exp_value is not None:
+                    argument["default"] = exp_value
+                    if query_exp["exp_name"] == "in":
+                        argument["help"] += "(default: %s)" % " ".join([str(ev) for ev in exp_value])
+                    else:
+                        argument["help"] += "(default: %s)" % exp_value
+                if argument["name"] in arguments_names:
+                    self.merge_arguments(arguments_names[argument["name"]], argument)
+                    continue
+                arguments.append(argument)
+                arguments_names[argument["name"]] = argument
+
+    def compile_sources_arguments(self, arguments_names, arguments, config):
+        if isinstance(config, dict):
+            for key, value in config.items():
+                self.compile_sources_arguments(arguments_names, arguments, value)
+        elif isinstance(config, list):
+            for value in config:
+                self.compile_sources_arguments(arguments_names, arguments, value)
+        elif isinstance(config, str):
+            if config[:1] != "?":
+                return
+            name = config[1:]
+            keys = name.split("|")
+            filters = (keys[1] if len(keys) >= 2 else "").split(" ")
+            filter_cls = self.find_filter_driver(filters[0])
+            filter_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
+            argument = {"name": keys[0], "type": filter_cls(filter_args) if filter_cls else str, "help": "%s" % keys[0]}
+            if argument["name"] in arguments_names:
+                self.merge_arguments(arguments_names[argument["name"]], argument)
+                return
+            arguments.append(argument)
+            arguments_names[argument["name"]] = argument
+
+    def compile_arguments(self):
+        arguments_names, arguments = {}, []
+        for name, argument in self.config["arguments"].items():
+            keys = name.split("|")
+            filters = (keys[1] if len(keys) >= 2 else "").split(" ")
+            filter_cls = self.find_filter_driver(filters[0])
+            filter_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
+
+            if isinstance(argument, dict):
+                argument["name"] = keys[0]
+                if "default" in argument:
+                    argument["default"] = self.run_valuer(argument["default"], self.arguments)
+                if "type" not in argument:
+                    if filter_cls:
+                        argument["type"] = filter_cls(filter_args)
+                    else:
+                        argument["type"] = type(argument.get("default", ""))
+                if "help" not in argument:
+                    argument["help"] = "%s (default: %s)" % (name, argument.get("default", ""))
+            else:
+                argument = self.run_valuer(argument, self.arguments)
+                if filter_cls:
+                    argument_type = filter_cls(filter_args)
+                else:
+                    argument_type = type(argument)
+                argument = {"name":  keys[0], "type": argument_type, "default": argument,
+                            "help": "%s (default: %s)" % (name, argument)}
+
+            if argument["name"] in arguments_names:
+                self.merge_arguments(arguments_names[argument["name"]], argument)
+                continue
+            arguments.append(argument)
+            arguments_names[argument["name"]] = argument
+
+        self.compile_sources_arguments(arguments_names, arguments, self.config)
+        self.compile_querys_arguments(arguments_names, arguments)
+
+        if "input" in self.config and "@input" not in arguments_names:
+            if isinstance(self.config["input"], list) and self.config["input"] and self.config["input"][0][0] == "@":
+                self.config["input"] = self.run_valuer(self.config["input"], self.arguments)
+            if self.config["input"][:2] == "<<":
+                arguments.append({"name": "@input", "short": "i", "type": str, "default": self.config["input"][2:],
+                                  "help": "data input (default: %s)" % self.config["input"][2:]})
+
+        if "loader" in self.config and "@loader" not in arguments_names:
+            if isinstance(self.config["loader"], list) and self.config["loader"] and self.config["loader"][0][0] == "@":
+                self.config["loader"] = self.run_valuer(self.config["loader"], self.arguments)
+            if self.config["loader"][:2] == "<<":
+                arguments.append({"name": "@loader", "type": str, "default": self.config["loader"][2:],
+                                  "choices": ("db_loader",),
+                                  "help": "data loader (default: %s)" % self.config["loader"][2:]})
+
+        if "output" in self.config and "@output" not in arguments_names:
+            if isinstance(self.config["output"], list) and self.config["output"] and self.config["output"][0][0] == "@":
+                self.config["output"] = self.run_valuer(self.config["output"], self.arguments)
+            if self.config["output"][:2] == ">>":
+                arguments.append({"name": "@output", "short": "o", "type": str, "default": self.config["output"][2:],
+                                  "help": "data output (default: %s)" % self.config["output"][2:]})
+
+        if "outputer" in self.config and "@outputer" not in arguments_names:
+            if isinstance(self.config["outputer"], list) and self.config["outputer"] and self.config["outputer"][0][0] == "@":
+                self.config["outputer"] = self.run_valuer(self.config["outputer"], self.arguments)
+            if self.config["outputer"][:2] == ">>":
+                arguments.append({"name": "@outputer", "type": str, "default": self.config["outputer"][2:],
+                                  "choices": tuple(self.outputer_creater.can_uses()),
+                                  "help": "data outputer (default: %s)" % self.config["outputer"][2:]})
+
+        if "@limit" not in arguments_names:
+            arguments.append({"name": "@limit", "short": "l", "type": int, "default": 0,
+                              "help": "load limit count (default: 0 all)"})
+        if "@batch" not in arguments_names:
+            arguments.append({"name": "@batch", "short": "b", "type": int, "default": 0,
+                              "help": "per sync batch count (default: 0 all)"})
+        if "@streaming" not in arguments_names:
+            arguments.append({"name": "@streaming", "short": "S", "type": bool, "default": False,
+                              "help": "per sync batch is streaming (default: False)"})
+        if "@recovery" not in arguments_names:
+            arguments.append({"name": "@recovery", "short": "r", "type": bool, "default": False,
+                              "help": "recovery mode (default: False)"})
+        if "@join_batch" not in arguments_names:
+            arguments.append({"name": "@join_batch", "type": int, "default": 1000,
+                              "help": "join batch count (default: 1000)"})
+        if "@insert_batch" not in arguments_names:
+            arguments.append({"name": "@insert_batch", "type": int, "default": 0,
+                              "help": "insert batch count (default: 0 all)"})
+        if "@timeout" not in arguments_names:
+            arguments.append({"name": "@timeout", "type": int, "default": 0,
+                              "help": "loader timeout (default: 0 none timeout)"})
+        return arguments
