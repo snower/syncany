@@ -55,7 +55,15 @@ def find_valuer(name):
         raise ValuerUnknownException("%s is unknown valuer" % name)
     return VALUERS[name]
 
-def register_valuer(name, valuer):
+def register_valuer(name, valuer=None):
+    if valuer is None:
+        def _(valuer):
+            if not issubclass(valuer, Valuer):
+                raise TypeError("is not Valuer")
+            VALUERS[name] = valuer
+            return valuer
+        return _
+
     if not issubclass(valuer, Valuer):
         raise TypeError("is not Valuer")
     VALUERS[name] = valuer

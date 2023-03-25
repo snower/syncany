@@ -99,7 +99,15 @@ def find_database(name):
     return DatabaseInstanceBuilder(name)
 
 
-def register_database(name, database):
+def register_database(name, database=None):
+    if database is None:
+        def _(database):
+            if not issubclass(database, DataBase):
+                raise TypeError("is not DataBase")
+            DATABASES[name] = database
+            return database
+        return _
+
     if not issubclass(database, DataBase):
         raise TypeError("is not DataBase")
     DATABASES[name] = database

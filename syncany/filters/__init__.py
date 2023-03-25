@@ -26,7 +26,15 @@ def find_filter(name):
         return None
     return FILTERS[name]
 
-def register_filter(name, filter):
+def register_filter(name, filter=None):
+    if filter is None:
+        def _(filter):
+            if not issubclass(filter, Filter):
+                raise TypeError("is not Filter")
+            FILTERS[name] = filter
+            return filter
+        return _
+
     if not issubclass(filter, Filter):
         raise TypeError("is not Filter")
     FILTERS[name] = filter

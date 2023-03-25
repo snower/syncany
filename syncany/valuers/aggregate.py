@@ -4,9 +4,8 @@
 
 from .valuer import Valuer
 
-class AggregateValue(object):
+class AggregateData(object):
     def __init__(self, data, state):
-        self.scope_data = None
         self.data = data
         self.state = state
 
@@ -17,7 +16,6 @@ class AggregateManager(object):
     def loaded(self, key, name):
         if key not in self.datas:
             return False
-
         if name not in self.datas[key].state:
             return False
         return True
@@ -25,36 +23,21 @@ class AggregateManager(object):
     def get(self, key):
         if key not in self.datas:
             return None
-        aggregate_value = self.datas[key]
-        return aggregate_value.scope_data or aggregate_value.data
+        return self.datas[key].data
 
     def set(self, key, name, value):
         if key not in self.datas:
             return None
-
-        aggregate_value = self.datas[key]
-        if name in aggregate_value.data:
-            aggregate_value.data[name] = value
-            if aggregate_value.scope_data:
-                aggregate_value.scope_data[name] = value
-        else:
-            if not aggregate_value.scope_data:
-                aggregate_value.scope_data = {key: value for key, value in aggregate_value.data.items()}
-            aggregate_value.scope_data[name] = value
+        self.datas[key].data[name] = value
 
     def add(self, key, name, data, value):
         if key in self.datas:
             aggregate_value = self.datas[key]
             aggregate_value.state[name] = True
         else:
-            aggregate_value = AggregateValue(data, {name: True})
+            aggregate_value = AggregateData(data, {name: True})
             self.datas[key] = aggregate_value
-
-        if name in aggregate_value.data:
-            aggregate_value.data[name] = value
-        else:
-            aggregate_value.scope_data = {key: value for key, value in aggregate_value.data.items()}
-            aggregate_value.scope_data[name] = value
+        aggregate_value.data[name] = value
 
     def reset(self):
         self.datas = {}

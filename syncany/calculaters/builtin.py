@@ -46,6 +46,11 @@ class TypeCalculater(TypingCalculater):
         return type(value).__module__ + "." + type(value).__name__
 
 
+class MakeCalculater(Calculater):
+    def calculate(self, *args):
+        return args
+
+
 class IsNullCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
@@ -1124,9 +1129,9 @@ class HashCalculater(Calculater):
 class JsonCalculater(Calculater):
     def calculate(self, *args):
         if self.name == "json::encode":
-            return self.encode()
+            return self.encode(args)
         if self.name == "json::decode":
-            return self.decode()
+            return self.decode(args)
         return None
 
     def encode(self, args):
@@ -1149,9 +1154,9 @@ class JsonCalculater(Calculater):
 class StructCalculater(Calculater):
     def calculate(self, *args):
         if self.name == "struct::pack":
-            return self.pack()
+            return self.pack(args)
         if self.name == "json::unpack":
-            return self.unpack()
+            return self.unpack(args)
         return None
 
     def pack(self, args):

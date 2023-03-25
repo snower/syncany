@@ -5,10 +5,11 @@
 version = "0.2.2"
 version_info = (0, 2, 2)
 
-from .loaders import Loader
-from .outputers import Outputer
-from .valuers import Valuer
-from .filters import Filter
-from .database import DataBase
-from .calculaters import Calculater
+from .loaders import Loader, register_loader
+from .outputers import Outputer, register_outputer
+from .valuers import Valuer, register_valuer
+from .filters import Filter, register_filter
+from .database import DataBase, register_database
+from .calculaters import Calculater, register_calculater
+from .taskers.config import Parser, ConfigReader, register_parser, register_reader
 from .taskers.tasker import current_tasker

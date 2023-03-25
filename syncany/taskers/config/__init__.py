@@ -33,13 +33,29 @@ def load_config(filename):
     parser = PARSERS[content_type](content)
     return parser.parse()
 
-def register_reader(name, reader):
+def register_reader(name, reader=None):
+    if reader is None:
+        def _(reader):
+            if not issubclass(reader, ConfigReader):
+                raise TypeError("is not ConfigReader")
+            READERS[name] = reader
+            return reader
+        return _
+
     if not issubclass(reader, ConfigReader):
         raise TypeError("is not ConfigReader")
     READERS[name] = reader
     return reader
 
-def register_parser(name, parser):
+def register_parser(name, parser=None):
+    if parser is None:
+        def _(parser):
+            if not issubclass(parser, Parser):
+                raise TypeError("is not Parser")
+            PARSERS[name] = parser
+            return parser
+        return _
+
     if not issubclass(parser, Parser):
         raise TypeError("is not Parser")
     PARSERS[name] = parser

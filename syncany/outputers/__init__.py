@@ -21,7 +21,15 @@ def find_outputer(name):
         raise OutputerUnknownException("%s is unknown outputer" % name)
     return OUTPUTERS[name]
 
-def register_outputer(name, outputer):
+def register_outputer(name, outputer=None):
+    if outputer is None:
+        def _(outputer):
+            if not issubclass(outputer, Outputer):
+                raise TypeError("is not Outputer")
+            OUTPUTERS[name] = outputer
+            return outputer
+        return _
+
     if not issubclass(outputer, Outputer):
         raise TypeError("is not Outputer")
     OUTPUTERS[name] = outputer

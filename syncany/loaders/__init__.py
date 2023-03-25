@@ -21,7 +21,15 @@ def find_loader(name):
         raise LoaderUnknownException("%s is unknown loader" % name)
     return LOADERS[name]
 
-def register_loader(name, loader):
+def register_loader(name, loader=None):
+    if loader is None:
+        def _(loader):
+            if not issubclass(loader, Loader):
+                raise TypeError("is not Loader")
+            LOADERS[name] = loader
+            return loader
+        return _
+
     if not issubclass(loader, Loader):
         raise TypeError("is not Loader")
     LOADERS[name] = loader

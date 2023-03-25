@@ -2,7 +2,7 @@
 # 18/8/15
 # create by: snower
 
-from .calculater import Calculater
+from .calculater import Calculater, TypeFormatCalculater, TypingCalculater, MathematicalCalculater
 from .builtin import *
 from .convert_calculater import *
 from .datetime_calculater import *
@@ -13,6 +13,7 @@ from ..errors import CalculaterUnknownException
 CALCULATERS = {
     "": Calculater,
     "type": TypeCalculater,
+    "make": MakeCalculater,
     "is_null": IsNullCalculater,
     "is_int": IsIntCalculater,
     "is_float": IsFloatCalculater,
@@ -95,7 +96,15 @@ def find_calculater(name):
         raise CalculaterUnknownException("%s is unknown calculater" % name)
     return CALCULATERS[name]
 
-def register_calculater(name, calculater):
+def register_calculater(name, calculater=None):
+    if calculater is None:
+        def _(calculater):
+            if not issubclass(calculater, Calculater):
+                raise TypeError("is not Calculater")
+            CALCULATERS[name] = calculater
+            return calculater
+        return _
+
     if not issubclass(calculater, Calculater):
         raise TypeError("is not Calculater")
     CALCULATERS[name] = calculater
