@@ -57,7 +57,7 @@ class TextLineSpliter(object):
             return start_index, self.index + len(cs) - 1, self.line_text[start_index: self.index + len(cs) - 1]
         raise EOFError(self.line_text[start_index:])
 
-    def split(self, line_text):
+    def split(self, line_text, field_names=None):
         self.line_text = line_text.strip()
         self.index = 0
         self.len = len(self.line_text)
@@ -74,7 +74,9 @@ class TextLineSpliter(object):
                     self.next()
                     continue
                 if self.line_text[self.index] == self.sep:
-                    fields["seg%d" % field_index] = self.line_text[start_index: self.index]
+                    field_name = "seg%d" % field_index
+                    if not field_names or field_name in field_names:
+                        fields[field_name] = self.line_text[start_index: self.index]
                     field_index += 1
                     self.next()
                     start_index = self.index
@@ -83,7 +85,9 @@ class TextLineSpliter(object):
         except EOFError:
             pass
         if start_index < self.index:
-            fields["seg%d" % field_index] = self.line_text[start_index: self.index]
+            field_name = "seg%d" % field_index
+            if not field_names or field_name in field_names:
+                fields[field_name] = self.line_text[start_index: self.index]
         return fields
 
 
@@ -125,7 +129,7 @@ class TextLineQueryBuilder(QueryBuilder):
         self.orders.append((key, direct))
 
     def text_read(self, fp, limit=0):
-        datas = []
+        fields, datas = (set(self.fields) if self.fields else None), []
         try:
             if self.db.config.get("sep"):
                 escapes = (c for c in self.db.config.get("escape", "\"'"))
@@ -133,8 +137,9 @@ class TextLineQueryBuilder(QueryBuilder):
                 boundarys = {boundarys[i*2]: boundarys[i*2+1] for i in range(int(len(boundarys) / 2))}
                 textline_spliter = TextLineSpliter(self.db.config["sep"][:1], escapes, boundarys)
                 for line in fp:
-                    data = textline_spliter.split(line)
-                    data["line"] = line
+                    data = textline_spliter.split(line, fields)
+                    if not fields or "line" in fields:
+                        data["line"] = line
                     datas.append(data)
                     if limit > 0 and len(datas) >= limit:
                         break
@@ -149,13 +154,15 @@ class TextLineQueryBuilder(QueryBuilder):
 
     def csv_read(self, fp, descriptions, limit=0):
         reader = csv.reader(fp, quotechar='"')
-        datas = []
+        fields, datas = (set(self.fields) if self.fields else None), []
         for row in reader:
             if not descriptions:
                 descriptions.extend(row)
             else:
                 data = {}
                 for i in range(len(descriptions)):
+                    if fields and descriptions[i] not in fields:
+                        continue
                     data[descriptions[i]] = row[i]
                 datas.append(data)
                 if limit > 0 and len(datas) >= limit:

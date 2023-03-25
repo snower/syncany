@@ -28,10 +28,7 @@ class DBLoadValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
-        if not hasattr(self.loader, "db_load_valuer_loaded_datas"):
-            self.loader.load()
-            setattr(self.loader, "db_load_valuer_loaded_datas", self.loader.get())
-        self.return_valuer.fill(self.loader.db_load_valuer_loaded_datas)
+        self.return_valuer.fill(self.loader.get())
         return self
 
     def get(self):

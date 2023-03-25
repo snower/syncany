@@ -71,13 +71,15 @@ class CsvQueryBuilder(QueryBuilder):
         import csv
         reader = csv.reader(fp, dialect=self.db.config.get("dialect", "excel"), quotechar=self.db.config.get("quotechar", '"'),
                             delimiter=self.db.config.get("delimiter", ','))
-        datas = []
+        fields, datas = (set(self.fields) if self.fields else None), []
         for row in reader:
             if not descriptions:
                 descriptions.extend(row)
             else:
                 data = {}
                 for i in range(len(descriptions)):
+                    if fields and descriptions[i] not in fields:
+                        continue
                     data[descriptions[i]] = row[i]
                 datas.append(data)
                 if limit > 0 and len(datas) >= limit:
@@ -86,7 +88,8 @@ class CsvQueryBuilder(QueryBuilder):
 
     def commit(self):
         tasker_context, iterator_name, datas = TaskerContext.current(), None, None
-        if self.name not in self.db.csvs and not self.query and (not self.orders or not tasker_context.tasker.config["orders"]) and self.limit:
+        if self.name not in self.db.csvs and not self.query and \
+                (not self.orders or not tasker_context.tasker.config["orders"]) and self.limit:
             iterator_name = "csv::" + self.name
             iterator = tasker_context.get_iterator(iterator_name)
             if not iterator or iterator.offset != self.limit[0]:
@@ -107,12 +110,23 @@ class CsvQueryBuilder(QueryBuilder):
                 datas, iterator.offset = iterator.datas, self.limit[1]
 
         if not datas:
-            csv_file = self.db.ensure_open_file(self.name)
+            if self.name not in self.db.csvs:
+                fp = self.open_file(self.name)
+                if fp is None:
+                    return []
+                try:
+                    load_datas = self.csv_read(fp, [], 0)
+                finally:
+                    fp.close()
+            else:
+                csv_file = self.db.ensure_open_file(self.name)
+                load_datas = csv_file.datas[:] if not self.query else csv_file.datas
+
             if not self.query:
-                datas = csv_file.datas[:]
+                datas = load_datas
             else:
                 datas = []
-                for data in csv_file.datas:
+                for data in load_datas:
                     succed = True
                     for (key, exp), (value, cmp) in self.query.items():
                         if key not in data:
