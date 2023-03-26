@@ -118,9 +118,8 @@ class Loader(object):
             self.geted = True
             return self.datas
 
-        oyields, ofuncs = {}, {}
         while datas:
-            data, odata = datas.popleft(), {}
+            data, odata, oyields, ofuncs = datas.popleft(), {}, {}, {}
             for name, valuer in self.schema.items():
                 if name not in data or not isinstance(data[name], Valuer):
                     value = valuer.clone().fill(data).get()

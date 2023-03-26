@@ -6,7 +6,7 @@ import types
 import copy
 from collections import defaultdict, deque
 from .loader import Loader
-from ..valuers.valuer import Valuer, LoadAllFieldsException
+from ..valuers.valuer import LoadAllFieldsException
 
 class DBLoader(Loader):
     def __init__(self, db, name, *args, **kwargs):
@@ -115,7 +115,7 @@ class DBLoader(Loader):
             if not self.key_matchers:
                 require_loaded_schema_items = [(key, field) for key, field in self.schema.items() if field.require_loaded()]
                 if not require_loaded_schema_items:
-                    if not self.valuer_type or self.valuer_type == 0x02:
+                    if not self.valuer_type:
                         return self.fast_get()
                     return super(DBLoader, self).get()
                 for i in range(len(self.datas)):
@@ -139,67 +139,22 @@ class DBLoader(Loader):
         return super(DBLoader, self).get()
 
     def fast_get(self):
-        if not self.valuer_type:
-            if not self.intercepts:
-                for i in range(len(self.datas)):
-                    data = self.datas[i]
-                    self.datas[i] = {name: valuer.clone().fill(data).get()
-                                     for name, valuer in self.schema.items()}
-                self.geted = True
-                return self.datas
-
-            datas, self.datas = deque(self.datas), []
-            while datas:
-                data = datas.popleft()
-                odata = {name: valuer.clone().fill(data).get()
-                         for name, valuer in self.schema.items()}
-                if self.check_intercepts(odata):
-                    continue
-                self.datas.append(odata)
+        if not self.intercepts:
+            for i in range(len(self.datas)):
+                data = self.datas[i]
+                self.datas[i] = {name: valuer.clone().fill(data).get()
+                                 for name, valuer in self.schema.items()}
             self.geted = True
             return self.datas
 
         datas, self.datas = deque(self.datas), []
-        if not self.intercepts:
-            while datas:
-                data, odata, has_func_data = datas.popleft(), {}, False
-                for name, valuer in self.schema.items():
-                    value = valuer.clone().fill(data).get()
-                    if isinstance(value, types.FunctionType):
-                        try:
-                            odata[name] = value(odata)
-                            has_func_data = True
-                        except StopIteration:
-                            continue
-                    else:
-                        odata[name] = value
-                if has_func_data:
-                    self.datas.append(odata)
-            self.geted = True
-            return self.datas
-
-        ofuncs = {}
         while datas:
-            data, odata = datas.popleft(), {}
-            for name, valuer in self.schema.items():
-                value = valuer.clone().fill(data).get()
-                if isinstance(value, types.FunctionType):
-                    ofuncs[name] = value
-                    odata[name] = None
-                    continue
-                odata[name] = value
-
+            data = datas.popleft()
+            odata = {name: valuer.clone().fill(data).get()
+                     for name, valuer in self.schema.items()}
             if self.check_intercepts(odata):
                 continue
-            has_func_data = False
-            for name, ofunc in ofuncs.items():
-                try:
-                    odata[name] = ofunc(odata)
-                    has_func_data = True
-                except StopIteration:
-                    continue
-            if has_func_data:
-                self.datas.append(odata)
+            self.datas.append(odata)
         self.geted = True
         return self.datas
 
