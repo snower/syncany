@@ -5,102 +5,163 @@
 from .calculater import Calculater
 
 
-class TransformV4HCalculater(Calculater):
-    def calculate(self, *args):
-        if len(args) < 3:
-            return None
-
-        datas = args[0] if isinstance(args[0], list) else \
-            ([args[0]] if isinstance(args[0], dict) else [])
-        key, vkey = args[1], args[2]
-        if len(args) >= 4:
-            reserved_keys = set(args[3] if isinstance(args[3], list) else [args[3]])
-        else:
-            reserved_keys = set([])
-        reserved_keys.add(key)
-        reserved_keys.add(vkey)
-        result, reserved_data = [], {}
-        for data in datas:
-            for k, v in data.items():
-                if k in reserved_keys:
-                    reserved_data[k] = v
-            for k, v in data.items():
-                if k not in reserved_keys:
-                    reserved_data[key] = k
-                    reserved_data[vkey] = v
-                    result.append(dict(**reserved_data))
-        return result
-
-
-class TransformH4VCalculater(Calculater):
-    def calculate(self, *args):
-        if len(args) < 3:
-            return None
-
-        vhkey, vvkey = args[1], args[2]
-        vcount_key = args[3] if len(args) >= 4 else None
-        vcount_callable = callable(vcount_key) if vcount_key else False
-        datas = args[0] if isinstance(args[0], list) else \
-            ([args[0]] if isinstance(args[0], dict) else [])
-
-        hkeys, vkeys, mdata = {}, {}, {}
-        for data in datas:
-            if vhkey not in data:
-                continue
-            if vvkey not in data:
-                continue
-            hvalue, vvalue = data[vhkey], data[vvkey]
-            if hvalue not in hkeys:
-                hkeys[hvalue] = True
-            if vvalue not in vkeys:
-                vkeys[vvalue] = True
-            if hvalue not in mdata:
-                mdata[hvalue] = {}
-            if not vcount_key:
-                if vvalue not in mdata[hvalue]:
-                    mdata[hvalue][vvalue] = 1
-                else:
-                    mdata[hvalue][vvalue] += 1
-                continue
-
-            if vcount_callable:
-                if vvalue not in mdata[hvalue]:
-                    mdata[hvalue][vvalue] = vcount_key(dict(value=0, data=data))
-                else:
-                    mdata[hvalue][vvalue] = vcount_key(dict(value=mdata[hvalue][vvalue], data=data))
-            elif vcount_key in data and isinstance(data[vcount_key], (int, float)):
-                if vvalue not in mdata[hvalue]:
-                    mdata[hvalue][vvalue] = data[vcount_key]
-                else:
-                    mdata[hvalue][vvalue] += data[vcount_key]
-
-        result = []
-        for vkey in vkeys:
-            data = {vvkey: vkey}
-            for hkey in hkeys:
-                data[hkey] = mdata[hkey][vkey] if hkey in mdata and vkey in mdata[hkey] else 0
-            result.append(data)
-        return result
-
-
-class TransformV2HCalculater(Calculater):
-    def update_outputer_schema(self, xkeys):
+class TransformCalculater(Calculater):
+    def update_outputer_schema(self, keys):
         from ..taskers.tasker import current_tasker
         tasker = current_tasker()
         tasker.outputer.schema = {}
-        for key in xkeys:
+        for key in keys:
             valuer = tasker.create_valuer(tasker.valuer_compiler.compile_data_valuer(key, None))
             if not valuer:
                 continue
             tasker.outputer.add_valuer(key, valuer)
 
+
+class TransformV4HCalculater(TransformCalculater):
+    """
+    转为kEY-VALUE纵向表
+        参数1：key
+        参数2：value
+
+    如以下表格：
+     --------------------
+    | id | name   |  age |
+     --------------------
+    | 1  | limei  |  18  |
+    | 2  | wanzhi |  22  |
+     --------------------
+
+    经过transform::v4h('key', 'value', 'name')后变为：
+
+     -------------------------
+    | key   | value  | name   |
+     -------------------------
+    | id    | 1      | limei  |
+    | age   | 18     | limei  |
+    | id    | 2      | wanzhi |
+    | age   | 22     | wanzhi |
+     -------------------------
+    """
+
     def calculate(self, *args):
         if len(args) < 3:
-            return None
+            return []
+
+        datas = args[0] if isinstance(args[0], list) else \
+            ([args[0]] if isinstance(args[0], dict) else [])
+        key, vkey = args[1], args[2]
+        reserved_keys = [key, vkey]
+        if len(args) >= 4:
+            reserved_keys.extend(list(set(args[3])) if isinstance(args[3], list) else [args[3]])
+        result, reserved_data = [], {key: None, vkey: None}
+        for data in datas:
+            for k, v in data.items():
+                if k not in reserved_keys:
+                    continue
+                reserved_data[k] = v
+            for k, v in data.items():
+                if k in reserved_keys:
+                    continue
+                reserved_data[key] = k
+                reserved_data[vkey] = v
+                result.append(dict(**reserved_data))
+
+        self.update_outputer_schema(reserved_keys)
+        return result
+
+
+class TransformH4VCalculater(TransformCalculater):
+    """
+    把kEY-VALUE转为横向表
+
+    如以下表格：
+     ----------------------
+    | key      | name   | value |
+     ----------------------
+    | order_id | limei  | 1     |
+    | goods    | limei  | 青菜   |
+    | age      | limei  | 18    |
+    | order_id | wanzhi | 2     |
+    | goods    | wanzhi | 白菜   |
+    | age      | wanzhi | 22    |
+    | order_id | wanzhi | 3     |
+    | goods    | wanzhi | 青菜   |
+    | age      | wanzhi | 22    |
+     ----------------------
+
+    经过transform::h4v('name', 'key', 'value')后变为：
+
+     ------------------------
+    | name | id | goods | age |
+     -------------------------
+    | limei  | 1  | 青菜 | 18  |
+    | wanzhi | 2  | 白菜 | 22  |
+    | wanzhi | 2  | 青菜 | 22  |
+     ------------------------
+    """
+
+    def calculate(self, *args):
+        if len(args) < 3:
+            return []
 
         vhkey, vvkey = args[1], args[2]
-        vcount_key = args[3] if len(args) >= 4 else None
-        vcount_callable = callable(vcount_key) if vcount_key else False
+        vikey = args[3] if len(args) >= 4 else None
+        vvkey_callable = callable(vvkey) if vvkey else False
+        datas = args[0] if isinstance(args[0], list) else \
+            ([args[0]] if isinstance(args[0], dict) else [])
+
+        vkeys, ivalue, rdata, result = ([] if vikey is None else [vikey]), None, None, []
+        for data in datas:
+            if vhkey not in data:
+                continue
+            if vvkey not in data:
+                continue
+            hvalue, vvalue, vivalue = data[vhkey], (vvkey(data) if vvkey_callable else data[vvkey]), (data[vikey] if vikey in data else None)
+            if (ivalue is None and rdata is None) or hvalue in rdata or (vikey is not None and vivalue != ivalue):
+                if rdata is not None:
+                    result.append(rdata)
+                ivalue, rdata = vivalue, ({} if vikey is None else {vikey: vivalue})
+            rdata[hvalue] = vvalue
+            if hvalue not in vkeys:
+                vkeys.append(hvalue)
+        if rdata:
+            result.append(rdata)
+
+        self.update_outputer_schema(vkeys)
+        return result
+
+
+class TransformV2HCalculater(TransformCalculater):
+    """
+    纵向表转为横向表
+        参数1：横向表头
+        参数2：纵向统计值
+        参数3：值，相同位置如有多个值数字则加和，否则最后一个值有效，无第三个参数时统计数量
+
+    如以下表格：
+     -------------------------------------
+    | id | name   |  order_date  | amount |
+     -------------------------------------
+    | 1  | limei  |  2022-01-01  | 5.5    |
+    | 2  | wanzhi |  2022-01-01  | 8.2    |
+     -------------------------------------
+
+    经过transform::v2h('name', 'order_date', 'amount')后变为：
+
+     --------------------------------
+    | order_date   | limei  | wanzhi |
+     --------------------------------
+    | 2022-01-01   | 5.5    | 8.2    |
+     --------------------------------
+    """
+
+    def calculate(self, *args):
+        if len(args) < 3:
+            return []
+
+        vhkey, vvkey = args[1], args[2]
+        vvalue_key = args[3] if len(args) >= 4 else None
+        vvalue_callable = callable(vvalue_key) if vvalue_key else False
         datas = args[0] if isinstance(args[0], list) else \
             ([args[0]] if isinstance(args[0], dict) else [])
 
@@ -117,23 +178,30 @@ class TransformV2HCalculater(Calculater):
                 vkeys[vvalue] = True
             if hvalue not in mdata:
                 mdata[hvalue] = {}
-            if not vcount_key:
+            if not vvalue_key:
                 if vvalue not in mdata[hvalue]:
                     mdata[hvalue][vvalue] = 1
                 else:
                     mdata[hvalue][vvalue] += 1
                 continue
 
-            if vcount_callable:
+            if vvalue_callable:
                 if vvalue not in mdata[hvalue]:
-                    mdata[hvalue][vvalue] = vcount_key(dict(value=0, data=data))
+                    mdata[hvalue][vvalue] = vvalue_key(dict(value=0, data=data))
                 else:
-                    mdata[hvalue][vvalue] = vcount_key(dict(value=mdata[hvalue][vvalue], data=data))
-            elif vcount_key in data and isinstance(data[vcount_key], (int, float)):
-                if vvalue not in mdata[hvalue]:
-                    mdata[hvalue][vvalue] = data[vcount_key]
+                    mdata[hvalue][vvalue] = vvalue_key(dict(value=mdata[hvalue][vvalue], data=data))
+            elif vvalue_key in data:
+                if data[vvalue_key] is None and vvalue in mdata[hvalue]:
+                    continue
+                if isinstance(data[vvalue_key], (int, float)):
+                    if vvalue not in mdata[hvalue]:
+                        mdata[hvalue][vvalue] = data[vvalue_key]
+                    else:
+                        mdata[hvalue][vvalue] += data[vvalue_key]
                 else:
-                    mdata[hvalue][vvalue] += data[vcount_key]
+                    mdata[hvalue][vvalue] = data[vvalue_key]
+            elif vvalue not in mdata[hvalue]:
+                mdata[hvalue][vvalue] = 0
 
         result = []
         for vkey in vkeys:
@@ -145,53 +213,88 @@ class TransformV2HCalculater(Calculater):
         return result
 
 
-class TransformH2VCalculater(Calculater):
-    def update_outputer_schema(self, xkeys):
-        from ..taskers.tasker import current_tasker
-        tasker = current_tasker()
-        tasker.outputer.schema = {}
-        for key in xkeys:
-            valuer = tasker.create_valuer(tasker.valuer_compiler.compile_data_valuer(key, None))
-            if not valuer:
-                continue
-            tasker.outputer.add_valuer(key, valuer)
+class TransformH2VCalculater(TransformCalculater):
+    """
+    横向表转为纵向表
+        参数1：横向表头
+        参数2：纵向统计值
+        参数3：值，不传递不保留值
+
+    如以下表格：
+     --------------------------------
+    | order_date   | limei  | wanzhi |
+     --------------------------------
+    | 2022-01-01   | 5.5    | 8.2    |
+    | 2022-01-02   | 4.3    | 1.8    |
+     --------------------------------
+
+    经过transform::h2v('name', 'order_date', 'amount')后变为：
+
+    --------------------------------
+    | name   |  order_date  | amount |
+    --------------------------------
+    | limei  |  2022-01-01  | 5.5    |
+    | wanzhi |  2022-01-01  | 8.2    |
+    | limei  |  2022-01-02  | 4.3    |
+    | wanzhi |  2022-01-02  | 1.8    |
+     --------------------------------
+    """
 
     def calculate(self, *args):
         if len(args) < 3:
-            return None
+            return []
 
         datas = args[0] if isinstance(args[0], list) else \
             ([args[0]] if isinstance(args[0], dict) else [])
-        key, vkey = args[1], args[2]
-        if len(args) >= 4:
-            reserved_keys = set(args[3] if isinstance(args[3], list) else [args[3]])
-        else:
-            reserved_keys = set([])
-        reserved_keys.add(key)
-        reserved_keys.add(vkey)
+        hkey, vkey, vvkey = args[1], args[2], (args[3] if len(args) >= 4 else None)
+
         result, reserved_data = [], {}
         for data in datas:
+            reserved_data[vkey] = data.get(vkey)
             for k, v in data.items():
-                if k in reserved_keys:
-                    reserved_data[k] = v
-            for k, v in data.items():
-                if k not in reserved_keys:
-                    reserved_data[key] = k
-                    reserved_data[vkey] = v
-                    result.append(dict(**reserved_data))
+                if k == vkey:
+                    continue
+                reserved_data[hkey] = k
+                if vvkey:
+                    reserved_data[vvkey] = v
+                result.append(dict(**reserved_data))
         self.update_outputer_schema(list(reserved_data.keys()))
         return result
 
 
-class TransformUniqKVCalculater(Calculater):
+class TransformUniqKVCalculater(TransformCalculater):
+    """
+    去重，重复行横向扩展
+        参数1：重复字段key
+        参数2：横向表头key
+        参数3：值key, 相同位置如有多个值数字则加和，否则最后一个值有效，无第三个参数时统计数量
+
+    如以下表格：
+     ---------------------------------------------
+    | id | name   |  order_date  | amount | goods |
+     ---------------------------------------------
+    | 1  | limei  |  2022-01-01  | 5.5    | 青菜   |
+    | 2  | wanzhi |  2022-01-01  | 8.2    | 白菜   |
+    | 3  | wanzhi |  2022-01-01  | 2.2    | 青菜   |
+     ---------------------------------------------
+
+    经过transform::v2h('order_date', 'name', 'amount')后变为：
+
+     -------------------------------------------------------------
+    | id | name   |  order_date  | amount | goods | limei | wanzhi |
+     ---------------------------------------------
+    | 1  | limei  |  2022-01-01  | 5.5    | 青菜   | 5.5   | 10.4    |
+     --------------------------------------------------------------
+    """
+
     def calculate(self, *args):
-        if len(args) < 4:
-            return None
+        if len(args) < 3:
+            return []
 
         datas = args[0] if isinstance(args[0], list) else \
             ([args[0]] if isinstance(args[0], dict) else [])
-        ukey, kkey, vkey = args[1], args[2], args[3]
-        keys = set([])
+        ukey, kkey, vkey = args[1], args[2], (args[3] if len(args) >= 4 else None)
+        keys = []
         result, uniq_datas = [], {}
         for data in datas:
             if ukey not in data:
@@ -200,21 +303,46 @@ class TransformUniqKVCalculater(Calculater):
             uvalue = data[ukey]
             if uvalue not in uniq_datas:
                 for k in data:
-                    keys.add(k)
+                    if k in keys:
+                        continue
+                    keys.append(k)
                 uniq_datas[uvalue] = data
                 result.append(data)
 
             uniq_data = uniq_datas[uvalue]
+            if not vkey:
+                if kkey not in data:
+                    continue
+                if data[kkey] not in uniq_data:
+                    uniq_data[data[kkey]] = 1
+                else:
+                    uniq_data[data[kkey]] += 1
+                if data[kkey] not in keys:
+                    keys.append(data[kkey])
+                continue
+
             if kkey in data and vkey in data:
-                uniq_data[data[kkey]] = data[vkey]
-                keys.add(data[kkey])
+                if data[vkey] is None and data[kkey] in uniq_data:
+                    continue
+                if isinstance(data[vkey], (int, float)):
+                    if data[kkey] in uniq_data:
+                        uniq_data[data[kkey]] += data[vkey]
+                    else:
+                        uniq_data[data[kkey]] = data[vkey]
+                else:
+                    uniq_data[data[kkey]] = data[vkey]
+                if data[kkey] not in keys:
+                    keys.append(data[kkey])
 
         from ..taskers.tasker import current_tasker
         tasker = current_tasker()
-        valuer = tasker.outputer.schema[vkey]
+        valuer = tasker.outputer.schema[vkey] if vkey else None
         for data in result:
             for key in keys:
                 if key in data:
+                    continue
+                if not valuer:
+                    data[key] = 0
                     continue
                 data[key] = valuer.clone().fill(None).get()
 
@@ -228,9 +356,9 @@ class TransformUniqKVCalculater(Calculater):
         return result
 
 
-class TransformCalculater(Calculater):
+class TransformVHKCalculater(TransformCalculater):
     def __init__(self, *args, **kwargs):
-        super(TransformCalculater, self).__init__(*args, **kwargs)
+        super(TransformVHKCalculater, self).__init__(*args, **kwargs)
 
         if self.name == "transform::v4h":
             self.transform = TransformV4HCalculater(*args, **kwargs)

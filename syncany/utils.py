@@ -263,8 +263,8 @@ def human_repr_object(value):
             fvalues.append("%s: %s" % (repr(k), human_repr_object(v)))
         return "{" + ", ".join(fvalues) + "}"
     if isinstance(value, (tuple, set, list)):
-        fvalues, require_newline = [], any([isinstance(v, dict) for v in value[:10]])
-        for v in value[:10]:
+        fvalues, require_newline = [], any([isinstance(v, dict) for v in list(value)[:10]])
+        for v in list(value)[:10]:
             fvalues.append(human_repr_object(v))
         if len(value) > 10:
             fvalues.append("...(%d)" % len(value))

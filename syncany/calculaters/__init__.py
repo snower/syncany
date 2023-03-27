@@ -6,7 +6,7 @@ from .calculater import Calculater, TypeFormatCalculater, TypingCalculater, Math
 from .builtin import *
 from .convert_calculater import *
 from .datetime_calculater import *
-from .transform_calculater import TransformCalculater
+from .transform_calculater import TransformCalculater, TransformVHKCalculater
 from .textline_calculater import TextLineCalculater
 from ..errors import CalculaterUnknownException
 
@@ -86,7 +86,7 @@ CALCULATERS = {
     "json": JsonCalculater,
     "struct": StructCalculater,
     "re": ReCalculater,
-    "transform": TransformCalculater,
+    "transform": TransformVHKCalculater,
     "textline": TextLineCalculater
 }
 
