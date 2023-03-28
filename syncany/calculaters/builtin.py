@@ -33,14 +33,16 @@ class TypeCalculater(TypingCalculater):
             return "int"
         if isinstance(value, float):
             return "float"
+        if isinstance(value, str):
+            return "str"
         if ObjectId and isinstance(value, ObjectId):
             return "objectid"
         if isinstance(value, uuid.UUID):
             return "uuid"
-        if isinstance(value, datetime.date):
-            return "date"
         if isinstance(value, datetime.datetime):
             return "datetime"
+        if isinstance(value, datetime.date):
+            return "date"
         if isinstance(value, datetime.time):
             return "time"
         return type(value).__module__ + "." + type(value).__name__
