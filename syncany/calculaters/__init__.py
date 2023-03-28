@@ -28,6 +28,7 @@ CALCULATERS = {
     "is_datetime": IsDateTimeCalculater,
     "is_date": IsDateCalculater,
     "is_time": IsTimeCalculater,
+    "is": IsCalculater,
     "convert_int": ConvertIntCalculater,
     "convert_float": ConvertFloatCalculater,
     "convert_string": ConvertStringCalculater,
@@ -49,6 +50,7 @@ CALCULATERS = {
     "bit": BitCalculater,
     "neg": NegCalculater,
 
+    "not": NotCalculater,
     "gt": GtCalculater,
     "gte": GteCalculater,
     "lt": LtCalculater,

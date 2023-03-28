@@ -265,6 +265,11 @@ class IsTimeCalculater(Calculater):
         return isinstance(data, datetime.time)
 
 
+class IsCalculater(MathematicalCalculater):
+    def mathematical_calculate(self, left_value, right_value, args):
+        return left_value is right_value
+
+
 class RangeCalculater(Calculater):
     def calculate(self, *args):
         return range(*args)
@@ -365,6 +370,11 @@ class NegCalculater(TypingCalculater):
         if isinstance(value, bool):
             return True if value is False else False
         return value
+
+
+class NotCalculater(TypingCalculater):
+    def typing_calculate(self, value, args):
+        return not value
 
 
 class SubstringCalculater(TypingCalculater):
