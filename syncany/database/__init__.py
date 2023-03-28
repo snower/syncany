@@ -21,6 +21,7 @@ DATABASES = {
     "beanstalk": ".beanstalk.BeanstalkDB",
     "redis": ".redis.RedisDB",
     "http": ".http.HttpDataBase",
+    "sqlite": ".sqlite.SqliteDB",
 }
 
 
