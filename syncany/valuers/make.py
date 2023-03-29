@@ -12,10 +12,15 @@ class MakeValuer(Valuer):
         self.inherit_valuers = inherit_valuers
         super(MakeValuer, self).__init__(*args, **kwargs)
 
-    def init_valuer(self):
+    def new_init(self):
+        super(MakeValuer, self).new_init()
         self.wait_loaded = True if not self.return_valuer else False
         if not self.wait_loaded and self.return_valuer:
             self.check_wait_loaded()
+
+    def clone_init(self, from_valuer):
+        super(MakeValuer, self).clone_init(from_valuer)
+        self.wait_loaded = from_valuer.wait_loaded
 
     def check_wait_loaded(self):
         if isinstance(self.value_valuer, dict):
@@ -52,7 +57,7 @@ class MakeValuer(Valuer):
         return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         return self.__class__(value_valuer, return_valuer, inherit_valuers,
-                              self.key, self.filter, wait_loaded=self.wait_loaded)
+                              self.key, self.filter, from_valuer=self)
 
     def fill(self, data):
         if self.inherit_valuers:

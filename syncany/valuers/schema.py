@@ -13,7 +13,7 @@ class SchemaValuer(Valuer):
         schema_valuers = {}
         for name, valuer in self.schema_valuers.items():
             schema_valuers[name] = valuer.clone()
-        return self.__class__(schema_valuers, self.key, self.filter)
+        return self.__class__(schema_valuers, self.key, self.filter, from_valuer=self)
 
     def fill(self, data):
         super(SchemaValuer, self).fill(data)

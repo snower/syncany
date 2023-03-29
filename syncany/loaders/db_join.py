@@ -18,13 +18,7 @@ class DBJoinMatcher(object):
         return matcher
 
     def fill(self, values):
-        if values is None:
-            self.data = None
-        elif isinstance(values, list):
-            self.data = [{key: valuer.get() for key, valuer in value.items()} for value in values]
-        else:
-            self.data = {key: valuer.get() for key, valuer in values.items()}
-
+        self.data = values
         for valuer in self.valuers:
             valuer.fill(self.data)
 
@@ -171,17 +165,17 @@ class DBJoinLoader(DBLoader):
                 primary_key = self.get_data_primary_key(data)
                 if not self.key_matchers:
                     for key, field in self.schema.items():
-                        values[key] = field.clone().fill(data)
+                        values[key] = field.reinit().fill(data).get()
                 else:
                     for key, value in data.items():
                         if key in self.schema:
-                            values[key] = self.schema[key].clone().fill(data)
+                            values[key] = self.schema[key].reinit().fill(data).get()
                         else:
                             for key_matcher in self.key_matchers:
                                 if key_matcher.match(key):
                                     valuer = key_matcher.create_key(key)
                                     self.schema[key] = valuer
-                                    values[key] = valuer.clone().fill(data)
+                                    values[key] = valuer.reinit().fill(data).get()
 
                 if primary_key not in self.data_keys:
                     self.data_keys[primary_key] = [values]

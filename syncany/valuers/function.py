@@ -25,7 +25,7 @@ class LambdaValuer(Valuer):
     def clone(self):
         calculate_valuer = self.calculate_valuer.clone() if self.calculate_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
-        return self.__class__(calculate_valuer, inherit_valuers, self.key, self.filter)
+        return self.__class__(calculate_valuer, inherit_valuers, self.key, self.filter, from_valuer=self)
 
     def fill(self, data):
         if self.inherit_valuers:

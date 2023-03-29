@@ -26,7 +26,12 @@ class DBJoinValuer(Valuer):
         return_valuer = self.return_valuer.clone()
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         return self.__class__(self.loader, self.foreign_keys, self.foreign_filters,
-                              args_valuers, return_valuer, inherit_valuers, self.key, self.filter)
+                              args_valuers, return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self)
+
+    def reinit(self):
+        self.matcher = None
+        self.is_group_matcher = False
+        return super(DBJoinValuer, self).reinit()
 
     def fill(self, data):
         if self.inherit_valuers:

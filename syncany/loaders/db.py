@@ -142,7 +142,7 @@ class DBLoader(Loader):
         if not self.intercepts:
             for i in range(len(self.datas)):
                 data = self.datas[i]
-                self.datas[i] = {name: valuer.clone().fill(data).get()
+                self.datas[i] = {name: valuer.reinit().fill(data).get()
                                  for name, valuer in self.schema.items()}
             self.geted = True
             return self.datas
@@ -150,7 +150,7 @@ class DBLoader(Loader):
         datas, self.datas = deque(self.datas), []
         while datas:
             data = datas.popleft()
-            odata = {name: valuer.clone().fill(data).get()
+            odata = {name: valuer.reinit().fill(data).get()
                      for name, valuer in self.schema.items()}
             if self.check_intercepts(odata):
                 continue

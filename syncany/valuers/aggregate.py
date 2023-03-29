@@ -63,7 +63,13 @@ class AggregateValuer(Valuer):
         key_valuer = self.key_valuer.clone() if self.key_valuer else None
         calculate_valuer = self.calculate_valuer.clone() if self.calculate_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
-        return self.__class__(key_valuer, calculate_valuer, inherit_valuers, self.aggregate_manager, self.key, self.filter)
+        return self.__class__(key_valuer, calculate_valuer, inherit_valuers, self.aggregate_manager, self.key,
+                              self.filter, from_valuer=self)
+
+    def reinit(self):
+        self.key_value = None
+        self.loader_loaded = False
+        return super(AggregateValuer, self).reinit()
 
     def fill(self, data):
         if self.inherit_valuers:

@@ -109,7 +109,7 @@ class Loader(object):
                 data, odata = datas.popleft(), {}
                 for name, valuer in self.schema.items():
                     if name not in data or not isinstance(data[name], Valuer):
-                        odata[name] = valuer.clone().fill(data).get()
+                        odata[name] = valuer.reinit().fill(data).get()
                     else:
                         odata[name] = data[name].get()
                 if self.intercepts and self.check_intercepts(odata):
@@ -122,7 +122,7 @@ class Loader(object):
             data, odata, oyields, ofuncs = datas.popleft(), {}, {}, {}
             for name, valuer in self.schema.items():
                 if name not in data or not isinstance(data[name], Valuer):
-                    value = valuer.clone().fill(data).get()
+                    value = valuer.reinit().fill(data).get()
                 else:
                     value = data[name].get()
                 if isinstance(value, types.FunctionType):

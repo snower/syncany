@@ -14,9 +14,15 @@ class IfValuer(Valuer):
         self.inherit_valuers = inherit_valuers
         super(IfValuer, self).__init__(*args, **kwargs)
 
-    def init_valuer(self):
+    def new_init(self):
+        super(IfValuer, self).new_init()
         self.value_wait_loaded = True if self.value_valuer and self.value_valuer.require_loaded() else False
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
+
+    def clone_init(self, from_valuer):
+        super(IfValuer, self).clone_init(from_valuer)
+        self.value_wait_loaded = from_valuer.value_wait_loaded
+        self.wait_loaded = from_valuer.wait_loaded
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
@@ -28,7 +34,7 @@ class IfValuer(Valuer):
         return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         return self.__class__(true_valuer, false_valuer, value_valuer, return_valuer, inherit_valuers,
-                              self.key, self.filter, value_wait_loaded=self.value_wait_loaded, wait_loaded=self.wait_loaded)
+                              self.key, self.filter, from_valuer=self)
 
     def fill(self, data):
         if self.inherit_valuers:

@@ -27,9 +27,14 @@ class InheritValuer(Valuer):
             return inherit_valuer
 
         value_valuer = self.value_valuer.clone() if self.value_valuer else None
-        inherit_valuer = self.__class__(value_valuer, self.key, self.filter)
+        inherit_valuer = self.__class__(value_valuer, self.key, self.filter, from_valuer=self)
         self.cloned_child_valuer = inherit_valuer.get_inherit_child_valuer()
         return inherit_valuer
+
+    def reinit(self):
+        self.filled = False
+        self.cloned_child_valuer = None
+        return super(InheritValuer, self).reinit()
 
     def fill(self, data):
         if self.value_valuer:
@@ -74,8 +79,12 @@ class InheritChildValuer(Valuer):
             return child_valuer
 
         value_valuer = self.value_valuer.clone() if self.value_valuer else None
-        self.cloned_inherit_valuer = InheritValuer(value_valuer, self.key, self.filter)
+        self.cloned_inherit_valuer = InheritValuer(value_valuer, self.key, self.filter, from_valuer=self)
         return self.cloned_inherit_valuer.get_inherit_child_valuer()
+
+    def reinit(self):
+        self.cloned_inherit_valuer = None
+        return super(InheritChildValuer, self).reinit()
 
     def fill(self, data):
         return self

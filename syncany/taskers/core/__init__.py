@@ -1038,7 +1038,7 @@ class CoreTasker(Tasker):
             self.loader, self.outputer = self.loader.clone(), self.outputer.clone()
             if isinstance(self.loader.schema, dict):
                 for key, valuer in self.loader.schema.items():
-                    valuer.reset()
+                    valuer.reinit().reset()
             self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
 
             if self.batch_cursor is not None:
@@ -1168,7 +1168,7 @@ class CoreTasker(Tasker):
                 self.loader = self.loader.clone()
                 if isinstance(self.loader.schema, dict):
                     for key, valuer in self.loader.schema.items():
-                        valuer.reset()
+                        valuer.reinit().reset()
                 self.outputer = self.outputer.clone()
                 self.join_loaders = {key: join_loader.clone() for key, join_loader in self.join_loaders.items()}
 

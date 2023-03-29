@@ -15,15 +15,26 @@ class DataValuer(Valuer):
 
         self.option = None
 
+    def new_init(self):
+        super(DataValuer, self).new_init()
+        if self.key in self.KEY_GETTER_CACHES:
+            self.key_getters = self.KEY_GETTER_CACHES[self.key]
+        else:
+            self.parse_key()
+
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self):
         return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
-        valuer = self.__class__(return_valuer, inherit_valuers, self.key, self.filter)
+        valuer = self.__class__(return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self)
         valuer.option = self.option
         return valuer
+
+    def reinit(self):
+        self.option = None
+        return super(DataValuer, self).reinit()
 
     def fill(self, data):
         if self.inherit_valuers:

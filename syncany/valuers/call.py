@@ -36,11 +36,17 @@ class CallValuer(Valuer):
         self.calculated = False
         self.calculated_key = None
 
-    def init_valuer(self):
+    def new_init(self):
+        super(CallValuer, self).new_init()
         self.value_wait_loaded = False if not self.value_valuer else self.value_valuer.require_loaded()
         self.calculate_wait_loaded = True if not self.value_wait_loaded or not self.return_valuer or \
                                              (self.calculate_valuer and
                                               self.calculate_valuer.require_loaded()) else False
+
+    def clone_init(self, from_valuer):
+        super(CallValuer, self).clone_init(from_valuer)
+        self.value_wait_loaded = from_valuer.value_wait_loaded
+        self.calculate_wait_loaded = from_valuer.calculate_wait_loaded
 
     def get_manager(self):
         return self.return_manager
@@ -54,8 +60,12 @@ class CallValuer(Valuer):
         return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         return self.__class__(value_valuer, calculate_valuer, return_valuer, inherit_valuers,
-                              self.return_manager, self.key, self.filter, value_wait_loaded=self.value_wait_loaded,
-                              calculate_wait_loaded=self.calculate_wait_loaded)
+                              self.return_manager, self.key, self.filter, from_valuer=self)
+
+    def reinit(self):
+        self.calculated = False
+        self.calculated_key = None
+        return super(CallValuer, self).reinit()
 
     def fill(self, data):
         if self.inherit_valuers:

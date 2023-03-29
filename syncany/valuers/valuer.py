@@ -74,23 +74,22 @@ def slice_key(key):
 class Valuer(object):
     KEY_GETTER_CACHES = {}
 
-    def __init__(self, key, filter=None, **state_kwargs):
+    def __init__(self, key, filter=None, from_valuer=None):
         self.key = key
         self.filter = filter
         self.value = None
-        self.key_getters = []
-
-        if self.filter:
-            self.value = self.filter.filter(self.value)
-
-        if state_kwargs:
-            for name, value in state_kwargs.items():
-                setattr(self, name, value)
+        if from_valuer is None:
+            self.new_init()
         else:
-            self.init_valuer()
+            self.clone_init(from_valuer)
 
-    def init_valuer(self):
-        pass
+    def new_init(self):
+        self.key_getters = []
+        self.child_valuers = self.childs()
+
+    def clone_init(self, from_valuer):
+        self.key_getters = from_valuer.key_getters
+        self.child_valuers = from_valuer.child_valuers
 
     def parse_key(self):
         if self.key in self.KEY_GETTER_CACHES:
@@ -126,6 +125,14 @@ class Valuer(object):
     def clone(self):
         return self.__class__(self.key, self.filter)
 
+    def reinit(self):
+        self.value = None
+        if self.filter:
+            self.value = self.filter.filter(self.value)
+        for valuer in self.child_valuers:
+            valuer.reinit()
+        return self
+
     def fill(self, data):
         if data is None or not self.key:
             self.do_filter(None)
@@ -139,10 +146,11 @@ class Valuer(object):
             self.do_filter(data[self.key])
             return self
 
-        if self.key in self.KEY_GETTER_CACHES:
-            self.key_getters = self.KEY_GETTER_CACHES[self.key]
-        else:
-            self.parse_key()
+        if not self.key_getters:
+            if self.key in self.KEY_GETTER_CACHES:
+                self.key_getters = self.KEY_GETTER_CACHES[self.key]
+            else:
+                self.parse_key()
         try:
             key_getter_index, key_getter_len = 0, len(self.key_getters)
             while key_getter_index < key_getter_len:
@@ -160,7 +168,7 @@ class Valuer(object):
         return self.value
 
     def reset(self):
-        for valuer in self.childs():
+        for valuer in self.child_valuers:
             valuer.reset()
 
     def do_filter(self, value):
@@ -184,7 +192,7 @@ class Valuer(object):
         return self.filter
 
     def require_loaded(self):
-        for child in self.childs():
+        for child in self.child_valuers:
             if child.require_loaded():
                 return True
         return False

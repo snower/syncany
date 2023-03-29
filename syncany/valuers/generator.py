@@ -15,10 +15,15 @@ class YieldValuer(Valuer):
         self.iter_valuers = []
         self.iter_datas = []
 
-    def init_valuer(self):
+    def new_init(self):
+        super(YieldValuer, self).new_init()
         self.wait_loaded = True if not self.return_valuer else False
         if self.return_valuer:
             self.check_wait_loaded()
+
+    def clone_init(self, from_valuer):
+        super(YieldValuer, self).clone_init(from_valuer)
+        self.wait_loaded = from_valuer.wait_loaded
 
     def check_wait_loaded(self):
         if self.value_valuer and self.value_valuer.require_loaded():
@@ -32,7 +37,12 @@ class YieldValuer(Valuer):
         return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         return self.__class__(value_valuer, return_valuer, inherit_valuers,
-                              self.key, self.filter, wait_loaded=self.wait_loaded)
+                              self.key, self.filter, from_valuer=self)
+
+    def reinit(self):
+        self.iter_valuers = []
+        self.iter_datas = []
+        return super(YieldValuer, self).reinit()
 
     def fill(self, data):
         if self.inherit_valuers:

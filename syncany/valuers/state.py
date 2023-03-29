@@ -13,8 +13,13 @@ class StateValuer(Valuer):
         self.inherit_valuers = inherit_valuers
         super(StateValuer, self).__init__(*args, **kwargs)
 
-    def init_valuer(self):
+    def new_init(self):
+        super(StateValuer, self).new_init()
         self.calculate_wait_loaded = self.calculate_valuer and self.calculate_valuer.require_loaded()
+
+    def clone_init(self, from_valuer):
+        super(StateValuer, self).clone_init(from_valuer)
+        self.calculate_wait_loaded = from_valuer.calculate_wait_loaded
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
@@ -25,7 +30,7 @@ class StateValuer(Valuer):
         return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         return self.__class__(self.state_value, calculate_valuer, default_valuer, return_valuer, inherit_valuers,
-                              self.key, self.filter, calculate_wait_loaded=self.calculate_wait_loaded)
+                              self.key, self.filter, from_valuer=self)
 
     def fill(self, data):
         if self.inherit_valuers:

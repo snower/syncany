@@ -12,11 +12,15 @@ class CalculateValuer(Valuer):
         self.inherit_valuers = inherit_valuers
         super(CalculateValuer, self).__init__(*args, **kwargs)
 
-    def init_valuer(self):
+    def new_init(self):
+        super(CalculateValuer, self).new_init()
         self.wait_loaded = True if not self.return_valuer else False
-
         if self.return_valuer:
             self.check_wait_loaded(self.args_valuers)
+
+    def clone_init(self, from_valuer):
+        super(CalculateValuer, self).clone_init(from_valuer)
+        self.wait_loaded = from_valuer.wait_loaded
 
     def check_wait_loaded(self, valuers):
         for valuer in valuers:
@@ -34,7 +38,7 @@ class CalculateValuer(Valuer):
         return_valuer = self.return_valuer.clone() if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         return self.__class__(self.calculater, args_valuers, return_valuer, inherit_valuers,
-                              self.key, self.filter, wait_loaded=self.wait_loaded)
+                              self.key, self.filter, from_valuer=self)
 
     def fill(self, data):
         if self.inherit_valuers:

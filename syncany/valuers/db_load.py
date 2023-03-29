@@ -21,7 +21,7 @@ class DBLoadValuer(Valuer):
         return_valuer = self.return_valuer.clone()
         inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         return self.__class__(self.loader, self.foreign_keys, self.foreign_filters,
-                              return_valuer, inherit_valuers, self.key, self.filter)
+                              return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self)
 
     def fill(self, data):
         if self.inherit_valuers:
