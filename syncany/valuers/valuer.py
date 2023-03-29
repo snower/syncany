@@ -127,8 +127,6 @@ class Valuer(object):
 
     def reinit(self):
         self.value = None
-        if self.filter:
-            self.value = self.filter.filter(self.value)
         for valuer in self.child_valuers:
             valuer.reinit()
         return self
