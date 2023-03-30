@@ -106,9 +106,6 @@ class DBJoinLoader(DBLoader):
         return GroupDBJoinMatcher(return_valuer)
 
     def create_macther(self, keys, values):
-        if keys != self.primary_keys:
-            self.primary_keys = keys
-
         matcher = DBJoinMatcher(keys, values)
         if len(self.primary_keys) == 1:
             self.matchers[values[0]].append(matcher)
@@ -160,13 +157,21 @@ class DBJoinLoader(DBLoader):
                                                                 in self.unload_primary_keys}))
             datas, query = query.commit(), None
 
-            for i in range(len(datas)):
-                data, values = datas[i], {}
-                primary_key = self.get_data_primary_key(data)
-                if not self.key_matchers:
-                    for key, field in self.schema.items():
-                        values[key] = field.reinit().fill(data).get()
-                else:
+            if not self.key_matchers:
+                for i in range(len(datas)):
+                    data = datas[i]
+                    primary_key = self.get_data_primary_key(data)
+                    values = {key: field.reinit().fill(data).get() for key, field in self.schema.items()}
+
+                    if primary_key not in self.data_keys:
+                        self.data_keys[primary_key] = [values]
+                    elif primary_key in self.unload_primary_keys:
+                        self.data_keys[primary_key].append(values)
+                    datas[i] = values
+            else:
+                for i in range(len(datas)):
+                    data, values = datas[i], {}
+                    primary_key = self.get_data_primary_key(data)
                     for key, value in data.items():
                         if key in self.schema:
                             values[key] = self.schema[key].reinit().fill(data).get()
@@ -177,11 +182,11 @@ class DBJoinLoader(DBLoader):
                                     self.schema[key] = valuer
                                     values[key] = valuer.reinit().fill(data).get()
 
-                if primary_key not in self.data_keys:
-                    self.data_keys[primary_key] = [values]
-                elif primary_key in self.unload_primary_keys:
-                    self.data_keys[primary_key].append(values)
-                datas[i] = values
+                    if primary_key not in self.data_keys:
+                        self.data_keys[primary_key] = [values]
+                    elif primary_key in self.unload_primary_keys:
+                        self.data_keys[primary_key].append(values)
+                    datas[i] = values
 
             self.datas = datas
             self.loader_state["query_count"] += 1

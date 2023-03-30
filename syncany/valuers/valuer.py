@@ -123,7 +123,7 @@ class Valuer(object):
         self.KEY_GETTER_CACHES[self.key] = self.key_getters
 
     def clone(self):
-        return self.__class__(self.key, self.filter)
+        return self.__class__(self.key, self.filter, from_valuer=self)
 
     def reinit(self):
         self.value = None

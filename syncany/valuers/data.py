@@ -32,10 +32,6 @@ class DataValuer(Valuer):
         valuer.option = self.option
         return valuer
 
-    def reinit(self):
-        self.option = None
-        return super(DataValuer, self).reinit()
-
     def fill(self, data):
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
