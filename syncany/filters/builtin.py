@@ -298,15 +298,15 @@ class ArrayFilter(Filter):
 
 class MapFilter(Filter):
     def filter(self, value):
+        if not value:
+            return {}
+
         if isinstance(value, dict):
             if self.args:
                 return {value[self.args]: value} if self.args in value else {}
             return value
 
         if isinstance(value, (set, list, tuple)):
-            if not value:
-                return {}
-
             if self.args:
                 result = {}
                 for v in value:
@@ -328,21 +328,21 @@ class MapFilter(Filter):
             if all([isinstance(v, dict) for v in value]):
                 return {"index" + str(i): value[i] for i in range(len(value))}
 
-            value = list(value)
-            value_len = len(value)
+            if all([isinstance(v, (list, tuple)) and len(v) == 2 for v in value]):
+                return {v[0]: v[1] for v in value}
 
             try:
-                return {value[i]: (value[i + 1] if i + 1 < value_len else None) for i in range(0, value_len, 2)}
+                return {v: None for v in value}
             except:
-                pass
-
-        if value is None:
-            return {}
+                return {"index" + str(i): value[i] for i in range(len(value))}
 
         try:
-            return dict(value)
+            return {value: None}
         except:
-            return {}
+            try:
+                return dict(value)
+            except:
+                return {}
 
 class ObjectIdFilter(Filter):
     def __init__(self, *args, **kwargs):
