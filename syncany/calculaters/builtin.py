@@ -268,6 +268,12 @@ class IsTimeCalculater(Calculater):
 
 
 class IsCalculater(MathematicalCalculater):
+    def calculate(self, *args):
+        if args and len(args) == 2:
+            if args[0] is None and args[1] is None:
+                return True
+        return super(IsCalculater, self).calculate(*args)
+
     def mathematical_calculate(self, left_value, right_value, args):
         return left_value is right_value
 
