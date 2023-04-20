@@ -184,9 +184,7 @@ class Loader(object):
     def check_intercepts(self, data):
         intercept_stoped = False
         for intercept in self.intercepts:
-            intercept = intercept.clone()
-            intercept.fill(data)
-            intercept_result = intercept.get()
+            intercept_result = intercept.reinit().fill(data).get()
             if intercept_result is not None and not intercept_result:
                 intercept_stoped = True
                 break
