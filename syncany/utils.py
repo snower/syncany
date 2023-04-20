@@ -109,22 +109,41 @@ def ensure_timezone(dt):
 def parse_datetime(value, fmt, tz):
     try:
         dt = pendulum_parse(value)
-        if isinstance(dt, datetime.datetime):
-            if tz != dt.tzinfo:
-                dt = dt.astimezone(tz=tz)
-            return dt
-        if isinstance(dt, datetime.date):
-            return datetime.datetime(dt.year, dt.month, dt.day, tzinfo=tz)
-        if isinstance(dt, datetime.time):
-            now = datetime.datetime.now()
-            return datetime.datetime(now.year, now.month, now.day, dt.hour, dt.minute, dt.second, dt.microsecond, tzinfo=tz)
     except ParserError:
-        pass
+        try:
+            if "." in value:
+                if len(value.split(".")[0]) == 6:
+                    dt = datetime.datetime.strptime(value, "%H%M%S.%f")
+                    now = datetime.datetime.now()
+                    return datetime.datetime(now.year, now.month, now.day, dt.hour, dt.minute, dt.second,
+                                             dt.microsecond, tzinfo=tz)
+                dt = datetime.datetime.strptime(value, "%Y%m%d%H%M%S.%f")
+            elif len(value) == 8:
+                dt = datetime.datetime.strptime(value, "%Y%m%d%H%M%S.%f")
+            elif len(value) == 6:
+                dt = datetime.datetime.strptime(value, "%H%M%S")
+                now = datetime.datetime.now()
+                return datetime.datetime(now.year, now.month, now.day, dt.hour, dt.minute, dt.second, dt.microsecond,
+                                         tzinfo=tz)
+            else:
+                dt = datetime.datetime.strptime(value, "%Y%m%d%H%M%S")
+        except:
+            return datetime.datetime.strptime(value, fmt or "%Y-%m-%d %H:%M:%S")
+
+    if isinstance(dt, datetime.datetime):
+        if tz != dt.tzinfo:
+            dt = dt.astimezone(tz=tz)
+        return dt
+    if isinstance(dt, datetime.date):
+        return datetime.datetime(dt.year, dt.month, dt.day, tzinfo=tz)
+    if isinstance(dt, datetime.time):
+        now = datetime.datetime.now()
+        return datetime.datetime(now.year, now.month, now.day, dt.hour, dt.minute, dt.second, dt.microsecond, tzinfo=tz)
     return datetime.datetime.strptime(value, fmt or "%Y-%m-%d %H:%M:%S")
 
 def parse_date(value, fmt, tz):
     try:
-        dt = pendulum_parse(value)
+        dt = parse_datetime(value, fmt, tz)
         if isinstance(dt, datetime.datetime):
             if tz != dt.tzinfo:
                 dt = dt.astimezone(tz=tz)
@@ -138,7 +157,7 @@ def parse_date(value, fmt, tz):
 
 def parse_time(value, fmt, tz):
     try:
-        dt = pendulum_parse(value)
+        dt = parse_datetime(value, fmt, tz)
         if isinstance(dt, datetime.datetime):
             if tz != dt.tzinfo:
                 dt = dt.astimezone(tz=tz)
