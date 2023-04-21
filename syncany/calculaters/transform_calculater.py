@@ -11,6 +11,8 @@ class TransformCalculater(Calculater):
         tasker = current_tasker()
         tasker.outputer.schema = {}
         for key in keys:
+            if not isinstance(key, str):
+                continue
             valuer = tasker.create_valuer(tasker.valuer_compiler.compile_data_valuer(key, None))
             if not valuer:
                 continue
@@ -52,7 +54,7 @@ class TransformV4HCalculater(TransformCalculater):
         key, vkey = args[1], args[2]
         reserved_keys = [key, vkey]
         if len(args) >= 4:
-            reserved_keys.extend(list(set(args[3])) if isinstance(args[3], list) else [args[3]])
+            reserved_keys.extend(list({str(k) for k in args[3]}) if isinstance(args[3], list) else [str(args[3])])
         result, reserved_data = [], {key: None, vkey: None}
         for data in datas:
             for k, v in data.items():
@@ -123,7 +125,7 @@ class TransformH4VCalculater(TransformCalculater):
                 ivalue, rdata = vivalue, ({} if vikey is None else {vikey: vivalue})
             rdata[hvalue] = vvalue
             if hvalue not in vkeys:
-                vkeys.append(hvalue)
+                vkeys.append(str(hvalue))
         if rdata:
             result.append(rdata)
 
@@ -209,7 +211,7 @@ class TransformV2HCalculater(TransformCalculater):
             for hkey in hkeys:
                 data[hkey] = mdata[hkey][vkey] if hkey in mdata and vkey in mdata[hkey] else 0
             result.append(data)
-        self.update_outputer_schema([vvkey] + list(hkeys.keys()))
+        self.update_outputer_schema([str(vvkey)] + [str(hkey) for hkey in hkeys.keys()])
         return result
 
 
@@ -258,7 +260,7 @@ class TransformH2VCalculater(TransformCalculater):
                 if vvkey:
                     reserved_data[vvkey] = v
                 result.append(dict(**reserved_data))
-        self.update_outputer_schema(list(reserved_data.keys()))
+        self.update_outputer_schema([str(key) for key in reserved_data.keys()])
         return result
 
 
@@ -309,30 +311,32 @@ class TransformUniqKVCalculater(TransformCalculater):
                 uniq_datas[uvalue] = data
                 result.append(data)
 
-            uniq_data = uniq_datas[uvalue]
+            uniq_data, data_key = uniq_datas[uvalue], None
             if not vkey:
                 if kkey not in data:
                     continue
-                if data[kkey] not in uniq_data:
-                    uniq_data[data[kkey]] = 1
+                data_key = str(data[kkey])
+                if data_key not in uniq_data:
+                    uniq_data[data_key] = 1
                 else:
-                    uniq_data[data[kkey]] += 1
-                if data[kkey] not in keys:
-                    keys.append(data[kkey])
+                    uniq_data[data_key] += 1
+                if data_key not in keys:
+                    keys.append(data_key)
                 continue
 
             if kkey in data and vkey in data:
-                if data[vkey] is None and data[kkey] in uniq_data:
+                data_key = str(data[kkey])
+                if data[vkey] is None and data_key in uniq_data:
                     continue
                 if isinstance(data[vkey], (int, float)):
-                    if data[kkey] in uniq_data:
-                        uniq_data[data[kkey]] += data[vkey]
+                    if data_key in uniq_data:
+                        uniq_data[data_key] += data[vkey]
                     else:
-                        uniq_data[data[kkey]] = data[vkey]
+                        uniq_data[data_key] = data[vkey]
                 else:
-                    uniq_data[data[kkey]] = data[vkey]
-                if data[kkey] not in keys:
-                    keys.append(data[kkey])
+                    uniq_data[data_key] = data[vkey]
+                if data_key not in keys:
+                    keys.append(data_key)
 
         from ..taskers.tasker import current_tasker
         tasker = current_tasker()
