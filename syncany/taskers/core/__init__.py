@@ -1054,7 +1054,8 @@ class CoreTasker(Tasker):
             self.loader.datas = self.run_queried_hooks(self.loader.datas)
             self.print_queryed_statistics(self.loader, self.status["statistics"]["loader"])
 
-            if self.outputer.is_dynamic_schema() and self.schema == ".*" and not self.config["querys"] and not self.intercepts:
+            if self.outputer.is_dynamic_schema() and self.schema == ".*" and not self.config["querys"] \
+                    and not self.intercepts and not self.hookers:
                 datas = self.loader.datas
             else:
                 datas = self.loader.get()
@@ -1109,7 +1110,8 @@ class CoreTasker(Tasker):
         self.loader.datas = self.run_queried_hooks(self.loader.datas)
         self.print_queryed_statistics(self.loader, self.status["statistics"]["loader"])
 
-        if self.outputer.is_dynamic_schema() and self.schema == ".*" and not self.config["querys"] and not self.intercepts:
+        if self.outputer.is_dynamic_schema() and self.schema == ".*" and not self.config["querys"] \
+                and not self.intercepts and not self.hookers:
             datas = self.loader.datas
         else:
             datas = self.loader.get()
