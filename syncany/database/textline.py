@@ -208,7 +208,7 @@ class TextLineQueryBuilder(QueryBuilder):
                 return []
 
             tasker_context = TaskerContext.current()
-            if not self.query and (not self.orders or not tasker_context.tasker.config["orders"]) and self.limit:
+            if not self.query and tasker_context and (not self.orders or not tasker_context.tasker.config["orders"]) and self.limit:
                 iterator_name = "textline::" + self.name
                 iterator = tasker_context.get_iterator(iterator_name)
                 if not iterator or iterator.offset != self.limit[0]:
@@ -375,7 +375,8 @@ class TextLineInsertBuilder(InsertBuilder):
             else:
                 self.text_write(fp)
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("textline::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("textline::" + self.name)
 
     def verbose(self):
         return "datas(%d): \n%s" % (len(self.datas), human_repr_object(self.datas))
@@ -408,7 +409,8 @@ class TextLineUpdateBuilder(UpdateBuilder):
 
     def commit(self):
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("textline::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("textline::" + self.name)
         return []
 
 
@@ -439,7 +441,8 @@ class TextLineDeleteBuilder(DeleteBuilder):
 
     def commit(self):
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("textline::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("textline::" + self.name)
         return []
 
 

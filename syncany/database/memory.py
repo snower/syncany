@@ -53,10 +53,11 @@ class MemoryQueryBuilder(QueryBuilder):
         tasker_context, iterator, iterator_name, datas = None, None, None, None
         if self.limit and (self.query or self.orders):
             tasker_context = TaskerContext.current()
-            iterator_name = "memory::" + self.name
-            iterator = tasker_context.get_iterator(iterator_name)
-            if iterator and iterator.offset == self.limit[0]:
-                datas, iterator.offset = iterator.datas, self.limit[1]
+            if tasker_context:
+                iterator_name = "memory::" + self.name
+                iterator = tasker_context.get_iterator(iterator_name)
+                if iterator and iterator.offset == self.limit[0]:
+                    datas, iterator.offset = iterator.datas, self.limit[1]
 
         if not datas:
             if not self.query:
@@ -122,7 +123,8 @@ class MemoryInsertBuilder(InsertBuilder):
         datas.extend(self.datas)
         self.db.memory_databases[self.name] = datas
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("memory::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("memory::" + self.name)
 
     def verbose(self):
         return "datas(%d): \n%s" % (len(self.datas), human_repr_object(self.datas))
@@ -177,7 +179,8 @@ class MemoryUpdateBuilder(UpdateBuilder):
 
         self.db.memory_databases[self.name] = datas
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("memory::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("memory::" + self.name)
         return datas
 
     def verbose(self):
@@ -237,7 +240,8 @@ class MemoryDeleteBuilder(DeleteBuilder):
 
         self.db.memory_databases[self.name] = datas
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("memory::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("memory::" + self.name)
         return datas
 
     def verbose(self):

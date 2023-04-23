@@ -63,10 +63,11 @@ class ExeclQueryBuilder(QueryBuilder):
         tasker_context, iterator_name, datas = None, None, None
         if self.limit and (self.query or self.orders):
             tasker_context = TaskerContext.current()
-            iterator_name = "excel::" + self.name
-            iterator = tasker_context.get_iterator(iterator_name)
-            if iterator and iterator.offset == self.limit[0]:
-                datas, iterator.offset = iterator.datas, self.limit[1]
+            if tasker_context:
+                iterator_name = "excel::" + self.name
+                iterator = tasker_context.get_iterator(iterator_name)
+                if iterator and iterator.offset == self.limit[0]:
+                    datas, iterator.offset = iterator.datas, self.limit[1]
 
         if not datas:
             execl_sheet = self.db.ensure_open_file(self.name)
@@ -116,7 +117,8 @@ class ExeclInsertBuilder(InsertBuilder):
         execl_sheet.sheet_datas.extend(self.datas)
         execl_sheet.changed = True
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("excel::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("excel::" + self.name)
 
     def verbose(self):
         return "datas(%d): \n%s" % (len(self.datas), human_repr_object(self.datas))
@@ -169,7 +171,8 @@ class ExeclUpdateBuilder(UpdateBuilder):
         execl_sheet.sheet_datas = datas
         execl_sheet.changed = True
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("excel::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("excel::" + self.name)
         return datas
 
     def verbose(self):
@@ -222,7 +225,8 @@ class ExeclDeleteBuilder(DeleteBuilder):
         execl_sheet.sheet_datas = datas
         execl_sheet.changed = True
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("excel::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("excel::" + self.name)
         return datas
 
     def verbose(self):

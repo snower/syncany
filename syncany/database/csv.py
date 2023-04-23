@@ -88,7 +88,7 @@ class CsvQueryBuilder(QueryBuilder):
 
     def commit(self):
         tasker_context, iterator_name, datas = TaskerContext.current(), None, None
-        if self.name not in self.db.csvs and not self.query and \
+        if self.name not in self.db.csvs and not self.query and tasker_context and \
                 (not self.orders or not tasker_context.tasker.config["orders"]) and self.limit:
             iterator_name = "csv::" + self.name
             iterator = tasker_context.get_iterator(iterator_name)
@@ -104,10 +104,11 @@ class CsvQueryBuilder(QueryBuilder):
 
         if self.limit and (self.query or self.orders):
             tasker_context = TaskerContext.current()
-            iterator_name = "csv::" + self.name
-            iterator = tasker_context.get_iterator(iterator_name)
-            if iterator and iterator.offset == self.limit[0]:
-                datas, iterator.offset = iterator.datas, self.limit[1]
+            if tasker_context:
+                iterator_name = "csv::" + self.name
+                iterator = tasker_context.get_iterator(iterator_name)
+                if iterator and iterator.offset == self.limit[0]:
+                    datas, iterator.offset = iterator.datas, self.limit[1]
 
         if not datas:
             if self.name not in self.db.csvs:
@@ -168,7 +169,8 @@ class CsvInsertBuilder(InsertBuilder):
         csv_file.datas.extend(self.datas)
         csv_file.changed = True
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("csv::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("csv::" + self.name)
 
     def verbose(self):
         return "datas(%d): \n%s" % (len(self.datas), human_repr_object(self.datas))
@@ -221,7 +223,8 @@ class CsvUpdateBuilder(UpdateBuilder):
         csv_file.datas = datas
         csv_file.changed = True
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("csv::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("csv::" + self.name)
         return datas
 
     def verbose(self):
@@ -274,7 +277,8 @@ class CsvDeleteBuilder(DeleteBuilder):
         csv_file.datas = datas
         csv_file.changed = True
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("csv::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("csv::" + self.name)
         return datas
 
     def verbose(self):

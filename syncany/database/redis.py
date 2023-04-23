@@ -199,10 +199,11 @@ class RedisQueryBuilder(QueryBuilder, RedisCommand):
         tasker_context, iterator, iterator_name, datas = None, None, None, None
         if self.limit and (self.query or self.orders):
             tasker_context = TaskerContext.current()
-            iterator_name = "redis::" + self.name
-            iterator = tasker_context.get_iterator(iterator_name)
-            if iterator and iterator.offset == self.limit[0]:
-                datas, iterator.offset = iterator.datas, self.limit[1]
+            if tasker_context:
+                iterator_name = "redis::" + self.name
+                iterator = tasker_context.get_iterator(iterator_name)
+                if iterator and iterator.offset == self.limit[0]:
+                    datas, iterator.offset = iterator.datas, self.limit[1]
 
         if not datas:
             try:
@@ -256,7 +257,8 @@ class RedisInsertBuilder(InsertBuilder, RedisCommand):
         finally:
             self.db.release_connection()
             tasker_context = TaskerContext.current()
-            tasker_context.remove_iterator("redis::" + self.name)
+            if tasker_context:
+                tasker_context.remove_iterator("redis::" + self.name)
 
     def verbose(self):
         return "datas(%d): \n%s" % (len(self.datas), human_repr_object(self.datas))
@@ -312,7 +314,8 @@ class RedisUpdateBuilder(UpdateBuilder, RedisCommand):
         finally:
             self.db.release_connection()
             tasker_context = TaskerContext.current()
-            tasker_context.remove_iterator("redis::" + self.name)
+            if tasker_context:
+                tasker_context.remove_iterator("redis::" + self.name)
 
     def verbose(self):
         return "filters: %s\nupdateDatas: %s" % (
@@ -373,7 +376,8 @@ class RedisDeleteBuilder(DeleteBuilder, RedisCommand):
         finally:
             self.db.release_connection()
             tasker_context = TaskerContext.current()
-            tasker_context.remove_iterator("redis::" + self.name)
+            if tasker_context:
+                tasker_context.remove_iterator("redis::" + self.name)
 
     def verbose(self):
         return "filters: %s" % human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()])

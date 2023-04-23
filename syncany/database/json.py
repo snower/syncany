@@ -59,10 +59,11 @@ class JsonQueryBuilder(QueryBuilder):
         tasker_context, iterator_name, datas = None, None, None
         if self.limit and (self.query or self.orders):
             tasker_context = TaskerContext.current()
-            iterator_name = "json::" + self.name
-            iterator = tasker_context.get_iterator(iterator_name)
-            if iterator and iterator.offset == self.limit[0]:
-                datas, iterator.offset = iterator.datas, self.limit[1]
+            if tasker_context:
+                iterator_name = "json::" + self.name
+                iterator = tasker_context.get_iterator(iterator_name)
+                if iterator and iterator.offset == self.limit[0]:
+                    datas, iterator.offset = iterator.datas, self.limit[1]
 
         if not datas:
             json_file = self.db.ensure_open_file(self.name)
@@ -111,7 +112,8 @@ class JsonInsertBuilder(InsertBuilder):
         json_file.datas.extend(self.datas)
         json_file.changed = True
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("json::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("json::" + self.name)
 
     def verbose(self):
         return "datas(%d): \n%s" % (len(self.datas), human_repr_object(self.datas))
@@ -163,7 +165,8 @@ class JsonUpdateBuilder(UpdateBuilder):
         json_file.datas = datas
         json_file.changed = True
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("json::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("json::" + self.name)
         return datas
 
     def verbose(self):
@@ -216,7 +219,8 @@ class JsonDeleteBuilder(DeleteBuilder):
         json_file.datas = datas
         json_file.changed = True
         tasker_context = TaskerContext.current()
-        tasker_context.remove_iterator("json::" + self.name)
+        if tasker_context:
+            tasker_context.remove_iterator("json::" + self.name)
         return datas
 
     def verbose(self):
