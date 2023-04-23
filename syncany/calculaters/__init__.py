@@ -112,7 +112,7 @@ def find_calculater(name):
         if not isinstance(calculater_cls, type) or not issubclass(calculater_cls, Calculater):
             raise TypeError("is not Calculater")
         CALCULATERS[name] = calculater_cls
-    elif isinstance(CALCULATERS[name], (types.FunctionType, types.BuiltinFunctionType, types.LambdaType)):
+    elif isinstance(CALCULATERS[name], (types.FunctionType, types.LambdaType)):
         calculater_cls = CALCULATERS[name]()
         if not isinstance(calculater_cls, type) or not issubclass(calculater_cls, Calculater):
             raise TypeError("is not Calculater")

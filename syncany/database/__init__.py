@@ -84,7 +84,7 @@ class DatabaseInstanceBuilder(object):
             if not isinstance(database_cls, type) or not issubclass(database_cls, DataBase):
                 raise TypeError("is not DataBase")
             DATABASES[self.driver_name] = database_cls
-        elif isinstance(DATABASES[self.driver_name], (types.FunctionType, types.BuiltinFunctionType, types.LambdaType)):
+        elif isinstance(DATABASES[self.driver_name], (types.FunctionType, types.LambdaType)):
             database_cls = DATABASES[self.driver_name]()
             if not isinstance(database_cls, type) or not issubclass(database_cls, DataBase):
                 raise TypeError("is not DataBase")

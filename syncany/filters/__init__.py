@@ -40,7 +40,7 @@ def find_filter(name):
         if not isinstance(filter_cls, type) or not issubclass(filter_cls, Filter):
             raise TypeError("is not Filter")
         FILTERS[name] = filter_cls
-    elif isinstance(FILTERS[name], (types.FunctionType, types.BuiltinFunctionType, types.LambdaType)):
+    elif isinstance(FILTERS[name], (types.FunctionType, types.LambdaType)):
         filter_cls = FILTERS[name]()
         if not isinstance(filter_cls, type) or not issubclass(filter_cls, Filter):
             raise TypeError("is not Filter")
