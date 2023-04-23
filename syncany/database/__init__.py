@@ -2,6 +2,7 @@
 # 18/8/6
 # create by: snower
 
+import types
 from .database import DataBase
 from ..errors import DatabaseUnknownException
 
@@ -74,9 +75,20 @@ class DatabaseInstanceBuilder(object):
             if module_name[0] == ".":
                 module_name = module_name[1:]
                 module = __import__(module_name, globals(), globals(), [module_name], 1)
+            elif "." in module_name:
+                from_module_name, _, module_name = module_name.rpartition(".")
+                module = __import__(from_module_name, globals(), globals(), [module_name])
             else:
                 module = __import__(module_name)
-            DATABASES[self.driver_name] = getattr(module, cls_name)
+            database_cls = getattr(module, cls_name)
+            if not isinstance(database_cls, type) or not issubclass(database_cls, DataBase):
+                raise TypeError("is not DataBase")
+            DATABASES[self.driver_name] = database_cls
+        elif isinstance(DATABASES[self.driver_name], (types.FunctionType, types.BuiltinFunctionType, types.LambdaType)):
+            database_cls = DATABASES[self.driver_name]()
+            if not isinstance(database_cls, type) or not issubclass(database_cls, DataBase):
+                raise TypeError("is not DataBase")
+            DATABASES[self.driver_name] = database_cls
 
         if self.driver_instance is None:
             self.driver_instance = DATABASES[self.driver_name](self.manager, self.config)
@@ -103,13 +115,15 @@ def find_database(name):
 def register_database(name, database=None):
     if database is None:
         def _(database):
-            if not issubclass(database, DataBase):
+            if not isinstance(database, str) and not callable(database) \
+                    and (not isinstance(database, type) or not issubclass(database, DataBase)):
                 raise TypeError("is not DataBase")
             DATABASES[name] = database
             return database
         return _
 
-    if not issubclass(database, DataBase):
+    if not isinstance(database, str) and not callable(database) \
+            and (not isinstance(database, type) or not issubclass(database, DataBase)):
         raise TypeError("is not DataBase")
     DATABASES[name] = database
     return database

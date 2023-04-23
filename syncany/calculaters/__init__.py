@@ -2,6 +2,7 @@
 # 18/8/15
 # create by: snower
 
+import types
 from .calculater import Calculater, TypeFormatCalculater, TypingCalculater, MathematicalCalculater
 from .builtin import *
 from .convert_calculater import *
@@ -96,18 +97,40 @@ def find_calculater(name):
     name = name.split("::")[0]
     if name not in CALCULATERS:
         raise CalculaterUnknownException("%s is unknown calculater" % name)
+
+    if isinstance(CALCULATERS[name], str):
+        module_name, _, cls_name = CALCULATERS[name].rpartition(".")
+        if module_name[0] == ".":
+            module_name = module_name[1:]
+            module = __import__(module_name, globals(), globals(), [module_name], 1)
+        elif "." in module_name:
+            from_module_name, _, module_name = module_name.rpartition(".")
+            module = __import__(from_module_name, globals(), globals(), [module_name])
+        else:
+            module = __import__(module_name)
+        calculater_cls = getattr(module, cls_name)
+        if not isinstance(calculater_cls, type) or not issubclass(calculater_cls, Calculater):
+            raise TypeError("is not Calculater")
+        CALCULATERS[name] = calculater_cls
+    elif isinstance(CALCULATERS[name], (types.FunctionType, types.BuiltinFunctionType, types.LambdaType)):
+        calculater_cls = CALCULATERS[name]()
+        if not isinstance(calculater_cls, type) or not issubclass(calculater_cls, Calculater):
+            raise TypeError("is not Calculater")
+        CALCULATERS[name] = calculater_cls
     return CALCULATERS[name]
 
 def register_calculater(name, calculater=None):
     if calculater is None:
         def _(calculater):
-            if not issubclass(calculater, Calculater):
+            if not isinstance(calculater, str) and not callable(calculater) \
+                    and (not isinstance(calculater, type) or not issubclass(calculater, Calculater)):
                 raise TypeError("is not Calculater")
             CALCULATERS[name] = calculater
             return calculater
         return _
 
-    if not issubclass(calculater, Calculater):
+    if not isinstance(calculater, str) and not callable(calculater) \
+            and (not isinstance(calculater, type) or not issubclass(calculater, Calculater)):
         raise TypeError("is not Calculater")
     CALCULATERS[name] = calculater
     return calculater
