@@ -54,4 +54,6 @@ class DBDeleteInsertOutputer(DBOutputer):
         super(DBDeleteInsertOutputer, self).store(datas)
 
         self.remove()
+        if not datas:
+            return
         self.insert(datas)

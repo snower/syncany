@@ -313,7 +313,9 @@ class MongoDeleteBuilder(DeleteBuilder):
     def commit(self):
         connection = self.db.ensure_connection()
         try:
-            return connection[self.db_name][self.collection_name].remove(self.query, multi=True)
+            if not self.query and self.db.delete_all_drop_collection:
+                return connection[self.db_name][self.collection_name].drop()
+            return connection[self.db_name][self.collection_name].delete_many(self.query)
         finally:
             self.db.release_connection()
 
@@ -365,6 +367,8 @@ class MongoDB(DataBase):
 
         self.db_name = all_config.pop("db") if "db" in all_config else all_config["name"]
         self.virtual_collections = all_config.pop("virtual_views") if "virtual_views" in all_config else []
+        self.delete_all_drop_collection = all_config.pop("delete_all_drop_collection") \
+            if "delete_all_drop_collection" in all_config else False
 
         super(MongoDB, self).__init__(manager, all_config)
 

@@ -79,7 +79,7 @@ class MemoryQueryBuilder(QueryBuilder):
             if self.orders:
                 datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
                                                     for key, direct in self.orders] if self.orders else None)
-            if self.limit and (self.query or self.orders):
+            if tasker_context and self.limit and (self.query or self.orders):
                 tasker_context.add_iterator(iterator_name, TaskerDataIterator(datas, self.limit[1]))
 
         if self.limit:
@@ -221,7 +221,7 @@ class MemoryDeleteBuilder(DeleteBuilder):
                 return
 
         if not self.query:
-            self.db.memory_databases[self.name] = []
+            self.db.memory_databases.pop(self.name, None)
             return []
 
         datas = []

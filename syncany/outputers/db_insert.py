@@ -20,4 +20,6 @@ class DBInsertOutputer(DBOutputer):
 
     def store(self, datas):
         super(DBInsertOutputer, self).store(datas)
+        if not datas:
+            return
         self.insert(datas)

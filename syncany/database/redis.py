@@ -228,7 +228,7 @@ class RedisQueryBuilder(QueryBuilder, RedisCommand):
                 if self.orders:
                     datas = sorted_by_keys(datas, keys=[(key, True if direct < 0 else False)
                                                         for key, direct in self.orders] if self.orders else None)
-                if self.limit and (self.query or self.orders):
+                if tasker_context and self.limit and (self.query or self.orders):
                     tasker_context.add_iterator(iterator_name, TaskerDataIterator(datas, self.limit[1]))
             finally:
                 self.db.release_connection()

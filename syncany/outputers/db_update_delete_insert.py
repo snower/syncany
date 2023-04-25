@@ -147,6 +147,5 @@ class DBUpdateDeleteInsertOutputer(DBOutputer):
 
         if delete_datas:
             self.remove(delete_datas)
-
         if insert_datas:
             self.insert(insert_datas)
