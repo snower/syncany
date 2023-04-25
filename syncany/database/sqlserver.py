@@ -332,7 +332,10 @@ class SqlServerDeleteBuilder(DeleteBuilder):
 
     def commit(self):
         db_name = ("[%s].[%s].[%s]" % (self.db.db_name, self.dbo_name, self.table_name))
-        sql = "DELETE FROM %s WHERE %s" % (db_name, " AND ".join(self.query))
+        if not self.query and self.db.delete_all_truncate_table:
+            sql = "TRUNCATE TABLE %s" % db_name
+        else:
+            sql = "DELETE FROM %s WHERE %s" % (db_name, " AND ".join(self.query))
         connection = self.db.ensure_connection()
         cursor = connection.cursor(as_dict=True)
         try:
@@ -391,6 +394,8 @@ class SqlServerDB(DataBase):
 
         self.db_name = all_config["database"] if "database" in all_config else all_config["name"]
         self.virtual_tables = all_config.pop("virtual_views") if "virtual_views" in all_config else []
+        self.delete_all_truncate_table = all_config.pop("delete_all_truncate_table") \
+            if "delete_all_truncate_table" in all_config else False
 
         super(SqlServerDB, self).__init__(manager, all_config)
 
