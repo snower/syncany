@@ -19,6 +19,8 @@ class ImportCalculater(Calculater):
                     raise NotImplementedError("%s not implemented %s" % (self._import_module, calculate_name))
                 module_or_func = getattr(module_or_func, attr_name)
             if not callable(module_or_func):
+                if not args:
+                    return module_or_func
                 raise NotImplementedError("%s not callable %s" % (self._import_module, calculate_name))
         else:
             calculate_name = self.name

@@ -102,12 +102,12 @@ def find_calculater(name):
         module_name, _, cls_name = CALCULATERS[name].rpartition(".")
         if module_name[0] == ".":
             module_name = module_name[1:]
-            module = __import__(module_name, globals(), globals(), [module_name], 1)
+            module = __import__(module_name, globals(), locals(), [module_name], 1)
         elif "." in module_name:
             from_module_name, _, module_name = module_name.rpartition(".")
-            module = __import__(from_module_name, globals(), globals(), [module_name])
+            module = __import__(from_module_name, globals(), locals(), [module_name])
         else:
-            module = __import__(module_name)
+            module = __import__(module_name, globals(), locals())
         calculater_cls = getattr(module, cls_name)
         if not isinstance(calculater_cls, type) or not issubclass(calculater_cls, Calculater):
             raise TypeError("is not Calculater")
