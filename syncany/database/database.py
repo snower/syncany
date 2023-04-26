@@ -3,7 +3,6 @@
 # create by: snower
 
 import time
-import hashlib
 from collections import deque
 import threading
 
@@ -171,11 +170,7 @@ class DataBase(object):
     def get_config_key(self):
         if self.config_key is not None:
             return self.config_key
-
-        cs = []
-        for key in sorted(self.config.keys()):
-            cs.append("%s=%s" % (key, self.config[key]))
-        self.config_key = hashlib.md5("&".join(cs).encode("utf-8")).hexdigest()
+        self.config_key = "%s::%s" % (self.__class__.__name__, self.name)
         return self.config_key
 
     def build_factory(self):
