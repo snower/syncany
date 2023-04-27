@@ -6,6 +6,8 @@ from .data import Valuer
 
 
 class DBJoinValuer(Valuer):
+    matcher = None
+
     def __init__(self, loader, foreign_keys, foreign_filters, args_valuers, return_valuer, inherit_valuers, *args, **kwargs):
         self.loader = loader
         self.foreign_keys = foreign_keys
@@ -15,22 +17,27 @@ class DBJoinValuer(Valuer):
         self.foreign_filters = foreign_filters
         super(DBJoinValuer, self).__init__(*args, **kwargs)
 
-        self.matcher = None
-        self.is_group_matcher = False
-
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self):
-        args_valuers = [args_valuer.clone() for args_valuer in self.args_valuers] if self.args_valuers else None
-        return_valuer = self.return_valuer.clone()
-        inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+    def clone(self, contexter=None):
+        args_valuers = [args_valuer.clone(contexter) for args_valuer in self.args_valuers] if self.args_valuers else None
+        return_valuer = self.return_valuer.clone(contexter)
+        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
+            if self.inherit_valuers else None
+        if contexter is not None:
+            return ContextDBJoinValuer(self.loader, self.foreign_keys, self.foreign_filters,
+                                       args_valuers, return_valuer, inherit_valuers, self.key, self.filter,
+                                       from_valuer=self, contexter=contexter)
+        if isinstance(self, ContextDBJoinValuer):
+            return ContextDBJoinValuer(self.loader, self.foreign_keys, self.foreign_filters,
+                                       args_valuers, return_valuer, inherit_valuers, self.key, self.filter,
+                                       from_valuer=self, contexter=self.contexter)
         return self.__class__(self.loader, self.foreign_keys, self.foreign_filters,
                               args_valuers, return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self)
 
     def reinit(self):
         self.matcher = None
-        self.is_group_matcher = False
         return super(DBJoinValuer, self).reinit()
 
     def fill(self, data):
@@ -50,8 +57,7 @@ class DBJoinValuer(Valuer):
 
         max_value_size = max([len(join_value) if isinstance(join_value, list) else 1 for join_value in join_values])
         if max_value_size > 1:
-            self.matcher = self.loader.create_group_macther(self.return_valuer)
-            self.is_group_matcher = True
+            group_macther = self.loader.create_group_macther(self.return_valuer)
             for i in range(max_value_size):
                 ds, has_value = [], False
                 for join_value in join_values:
@@ -64,19 +70,23 @@ class DBJoinValuer(Valuer):
                 if not has_value:
                     continue
                 matcher = self.loader.create_macther(self.foreign_keys, ds)
-                return_valuer = DBJoinGroupMatchValuer(self.matcher, "*")
+                return_valuer = DBJoinGroupMatchValuer(group_macther, "*")
                 matcher.add_valuer(return_valuer)
-                self.matcher.add_valuer(return_valuer)
+                group_macther.add_valuer(return_valuer)
+            self.matcher = group_macther
         elif join_values and any([join_value is not None for join_value in join_values]):
-            self.matcher = self.loader.create_macther(self.foreign_keys, join_values)
-            self.matcher.add_valuer(self.return_valuer)
+            matcher = self.loader.create_macther(self.foreign_keys, join_values)
+            matcher.add_valuer(self.return_valuer)
+            self.matcher = matcher
         self.loader.try_load()
         return self
 
     def get(self):
         self.loader.load()
-        if self.is_group_matcher:
-            self.matcher.get()
+
+        matcher = self.matcher
+        if matcher.get_matcher_type() == 2:
+            matcher.get()
         return self.return_valuer.get()
 
     def childs(self):
@@ -114,13 +124,66 @@ class DBJoinValuer(Valuer):
         return True
 
 
+class ContextDBJoinValuer(DBJoinValuer):
+    def __init__(self, *args, **kwargs):
+        self.contexter = kwargs.pop("contexter")
+        self.value_context_id = (id(self), "value")
+        self.matcher_context_id = (id(self), "matcher")
+        super(ContextDBJoinValuer, self).__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        try:
+            return self.contexter.values[self.value_context_id]
+        except KeyError:
+            return None
+
+    @value.setter
+    def value(self, v):
+        if v is None:
+            if self.value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.value_context_id)
+            return
+        self.contexter.values[self.value_context_id] = v
+
+    @property
+    def matcher(self):
+        try:
+            return self.contexter.values[self.matcher_context_id]
+        except KeyError:
+            return None
+
+    @matcher.setter
+    def matcher(self, v):
+        if v is None:
+            if self.matcher_context_id in self.contexter.values:
+                self.contexter.values.pop(self.matcher_context_id)
+            return
+        self.contexter.values[self.matcher_context_id] = v
+
+
+    def get(self):
+        contexter_values = self.contexter.values
+        try:
+            self.loader.load()
+        finally:
+            self.contexter.values = contexter_values
+
+        matcher = self.matcher
+        if matcher.get_matcher_type() == 2:
+            try:
+                matcher.get()
+            finally:
+                self.contexter.values = contexter_values
+        return self.return_valuer.get()
+
 class DBJoinGroupMatchValuer(Valuer):
     def __init__(self, matcher, *args, **kwargs):
         self.matcher = matcher
         self.loaded = False
         super(DBJoinGroupMatchValuer, self).__init__(*args, **kwargs)
 
-    def clone(self):
+    def clone(self, contexter=None):
         return self.__class__(self.matcher, self.key, self.filter)
 
     def fill(self, data):

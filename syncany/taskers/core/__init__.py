@@ -15,6 +15,7 @@ from .states import States
 from .option import DataValuerOutputerOption
 from ...calculaters.import_calculater import create_import_calculater
 from ...utils import get_expression_name, gen_runner_id
+from ...valuers import Contexter
 from .valuer_compiler import ValuerCompiler
 from .valuer_creater import ValuerCreater
 from .loader_creater import LoaderCreater
@@ -781,6 +782,8 @@ class CoreTasker(Tasker):
                                             aggregate_valuers=aggregate_valuers, define_valuers={},
                                             global_variables=self.global_variables, global_states=self.states)
                 if valuer:
+                    if valuer.require_loaded():
+                        valuer = valuer.clone(Contexter())
                     self.loader.add_valuer(name, valuer)
                 if inherit_valuers:
                     raise OverflowError(name + " inherit out of range")

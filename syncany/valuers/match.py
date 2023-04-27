@@ -6,6 +6,7 @@ import re
 import json
 from .valuer import Valuer
 
+
 class Matcher(object):
     ARRAY_SEPS = {"{": "}", "[": "]", "(": ")"}
 
@@ -32,6 +33,7 @@ class Matcher(object):
     def match(self, value):
         return None
 
+
 class ReMatcher(Matcher):
     RE_FLAGS = {"a": re.A, "i": re.I, "l": re.L, "u": re.U, "m": re.M, "s": re.S, "x": re.X}
 
@@ -53,6 +55,7 @@ class ReMatcher(Matcher):
             return {"match_groups": list(m.groups()), "match": self.matcher, "value": value}
         except:
             return None
+
 
 class InMatcher(Matcher):
     def __init__(self, *args, **kwargs):
@@ -86,6 +89,7 @@ class InMatcher(Matcher):
                 return {"match_key": i, "match_value": self.values[i], "match": self.matcher, "value": value}
         return None
 
+
 class CmpMatcher(Matcher):
     def __init__(self, *args, **kwargs):
         super(CmpMatcher, self).__init__(*args, **kwargs)
@@ -114,14 +118,16 @@ class CmpMatcher(Matcher):
                 return None
         return {"match": self.matcher, "value": value}
 
+
 class MatchValuer(Valuer):
+    matched_value = None
+
     def __init__(self, match_valuers, default_match_valuer, value_valuer, return_valuer, inherit_valuers, *args, **kwargs):
         self.match_valuers = match_valuers
         self.default_match_valuer = default_match_valuer
         self.value_valuer = value_valuer
         self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
-        self.matched_value = None
         super(MatchValuer, self).__init__(*args, **kwargs)
 
     def new_init(self):
@@ -145,14 +151,21 @@ class MatchValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self):
+    def clone(self, contexter=None):
         match_valuers = {}
         for name, valuer in self.match_valuers.items():
-            match_valuers[name] = valuer.clone()
-        default_match_valuer = self.default_match_valuer.clone() if self.default_match_valuer else None
-        value_valuer = self.value_valuer.clone() if self.value_valuer else None
-        return_valuer = self.return_valuer.clone() if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+            match_valuers[name] = valuer.clone(contexter)
+        default_match_valuer = self.default_match_valuer.clone(contexter) if self.default_match_valuer else None
+        value_valuer = self.value_valuer.clone(contexter) if self.value_valuer else None
+        return_valuer = self.return_valuer.clone(contexter) if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
+            if self.inherit_valuers else None
+        if contexter is not None:
+            return ContextMatchValuer(match_valuers, default_match_valuer, value_valuer, return_valuer, inherit_valuers,
+                                      self.key, self.filter, from_valuer=self, contexter=contexter)
+        if isinstance(self, ContextMatchValuer):
+            return ContextMatchValuer(match_valuers, default_match_valuer, value_valuer, return_valuer, inherit_valuers,
+                                      self.key, self.filter, from_valuer=self, contexter=self.contexter)
         return self.__class__(match_valuers, default_match_valuer, value_valuer, return_valuer, inherit_valuers,
                               self.key, self.filter, from_valuer=self)
     
@@ -171,46 +184,52 @@ class MatchValuer(Valuer):
                 if self.default_match_valuer:
                     self.default_match_valuer.fill(data)
                 return self
-            self.value = self.value_valuer.get()
+            value = self.value_valuer.get()
         else:
-            self.value = data
+            value = data
 
+        matched_value = None
         for matcher in self.matchers:
-            self.matched_value = matcher.match(self.value)
-            if self.matched_value is not None:
-                self.match_valuers[matcher.matcher].fill(self.matched_value)
+            matched_value = matcher.match(value)
+            if matched_value is not None:
+                self.match_valuers[matcher.matcher].fill(matched_value)
                 break
-        if self.matched_value is None and self.default_match_valuer:
+        if matched_value is None and self.default_match_valuer:
             self.default_match_valuer.fill(data)
 
         if self.wait_loaded:
-            if self.matched_value is not None:
-                self.do_filter(self.match_valuers[self.matched_value["match"]].get())
+            if matched_value is not None:
+                self.value = self.do_filter(self.match_valuers[matched_value["match"]].get())
             elif self.default_match_valuer:
-                self.do_filter(self.default_match_valuer.get())
-            self.return_valuer.fill(self.value)
+                self.value = self.do_filter(self.default_match_valuer.get())
+            if self.return_valuer:
+                self.return_valuer.fill(value)
+            else:
+                self.value = value
+        self.matched_value = matched_value
         return self
 
     def get(self):
         if self.value_valuer and self.value_wait_loaded:
-            self.value = self.value_valuer.get()
+            value, matched_value = self.value_valuer.get(), None
             for matcher in self.matchers:
-                self.matched_value = matcher.match(self.value)
-                if self.matched_value is not None:
-                    self.match_valuers[matcher.matcher].fill(self.matched_value)
+                matched_value = matcher.match(value)
+                if matched_value is not None:
+                    self.match_valuers[matcher.matcher].fill(matched_value)
                     break
         elif self.wait_loaded:
             return self.return_valuer.get()
+        else:
+            value, matched_value = self.value, self.matched_value
 
-        if self.matched_value is not None:
-            self.do_filter(self.match_valuers[self.matched_value["match"]].get())
+        if matched_value is not None:
+            value = self.do_filter(self.match_valuers[matched_value["match"]].get())
         elif self.default_match_valuer:
-            self.do_filter(self.default_match_valuer.get())
+            value = self.do_filter(self.default_match_valuer.get())
 
         if self.return_valuer:
-            self.return_valuer.fill(self.value)
-            self.value = self.return_valuer.get()
-        return self.value
+            return self.return_valuer.fill(self.value).get()
+        return value
 
     def childs(self):
         childs = list(self.match_valuers.values())
@@ -263,3 +282,41 @@ class MatchValuer(Valuer):
             if final_filter is not None and final_filter.__class__ != filter.__class__:
                 return None
         return final_filter
+
+
+class ContextMatchValuer(MatchValuer):
+    def __init__(self, *args, **kwargs):
+        self.contexter = kwargs.pop("contexter")
+        self.value_context_id = (id(self), "value")
+        self.matched_value_context_id = (id(self), "matched_value")
+        super(ContextMatchValuer, self).__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        try:
+            return self.contexter.values[self.value_context_id]
+        except KeyError:
+            return None
+
+    @value.setter
+    def value(self, v):
+        if v is None:
+            if self.value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.value_context_id)
+            return
+        self.contexter.values[self.value_context_id] = v
+
+    @property
+    def matched_value(self):
+        try:
+            return self.contexter.values[self.matched_value_context_id]
+        except KeyError:
+            return None
+
+    @matched_value.setter
+    def matched_value(self, v):
+        if v is None:
+            if self.matched_value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.matched_value_context_id)
+            return
+        self.contexter.values[self.matched_value_context_id] = v

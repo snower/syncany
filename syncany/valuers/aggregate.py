@@ -4,10 +4,12 @@
 
 from .valuer import Valuer
 
+
 class AggregateData(object):
     def __init__(self, data, state):
         self.data = data
         self.state = state
+
 
 class AggregateManager(object):
     def __init__(self):
@@ -42,6 +44,7 @@ class AggregateManager(object):
     def reset(self):
         self.datas = {}
 
+
 class AggregateValuer(Valuer):
     def __init__(self, key_valuer, calculate_valuer, inherit_valuers, aggregate_manager, *args, **kwargs):
         self.key_valuer = key_valuer
@@ -50,26 +53,25 @@ class AggregateValuer(Valuer):
         self.aggregate_manager = aggregate_manager or AggregateManager()
         super(AggregateValuer, self).__init__(*args, **kwargs)
 
-        self.key_value = None
-        self.loader_loaded = False
-
     def get_manager(self):
         return self.aggregate_manager
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self):
-        key_valuer = self.key_valuer.clone() if self.key_valuer else None
-        calculate_valuer = self.calculate_valuer.clone() if self.calculate_valuer else None
-        inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+    def clone(self, contexter=None):
+        key_valuer = self.key_valuer.clone(contexter) if self.key_valuer else None
+        calculate_valuer = self.calculate_valuer.clone(contexter) if self.calculate_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
+            if self.inherit_valuers else None
+        if contexter is not None:
+            return ContextAggregateValuer(key_valuer, calculate_valuer, inherit_valuers, self.aggregate_manager, self.key,
+                                          self.filter, from_valuer=self, contexter=contexter)
+        if isinstance(self, ContextAggregateValuer):
+            return self.__class__(key_valuer, calculate_valuer, inherit_valuers, self.aggregate_manager, self.key,
+                                  self.filter, from_valuer=self, contexter=self.contexter)
         return self.__class__(key_valuer, calculate_valuer, inherit_valuers, self.aggregate_manager, self.key,
                               self.filter, from_valuer=self)
-
-    def reinit(self):
-        self.key_value = None
-        self.loader_loaded = False
-        return super(AggregateValuer, self).reinit()
 
     def fill(self, data):
         if self.inherit_valuers:
@@ -81,21 +83,19 @@ class AggregateValuer(Valuer):
         return self
 
     def get(self):
-        self.key_value = self.key_valuer.get() if self.key_valuer else ""
+        key_value = self.key_valuer.get() if self.key_valuer else ""
 
         def calculate_value(data):
-            self.loader_loaded = self.aggregate_manager.loaded(self.key_value, self.key)
-            if self.loader_loaded:
-                cdata = self.aggregate_manager.get(self.key_value)
-                self.calculate_valuer.fill(cdata)
-                self.do_filter(self.calculate_valuer.get())
-                self.aggregate_manager.set(self.key_value, self.key, self.value)
+            loader_loaded = self.aggregate_manager.loaded(key_value, self.key)
+            if loader_loaded:
+                cdata = self.aggregate_manager.get(key_value)
+                value = self.do_filter(self.calculate_valuer.fill(cdata).get())
+                self.aggregate_manager.set(key_value, self.key, value)
                 raise StopIteration
 
-            self.calculate_valuer.fill(data)
-            self.do_filter(self.calculate_valuer.get())
-            self.aggregate_manager.add(self.key_value, self.key, data, self.value)
-            return self.value
+            value = self.do_filter(self.calculate_valuer.fill(data).get())
+            self.aggregate_manager.add(key_value, self.key, data, value)
+            return value
         return calculate_value
 
     def reset(self):
@@ -132,3 +132,26 @@ class AggregateValuer(Valuer):
         if self.calculate_valuer:
             return self.calculate_valuer.get_final_filter()
         return None
+
+
+class ContextAggregateValuer(AggregateValuer):
+    def __init__(self, *args, **kwargs):
+        self.contexter = kwargs.pop("contexter")
+        self.value_context_id = (id(self), "value")
+        super(ContextAggregateValuer, self).__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        try:
+            return self.contexter.values[self.value_context_id]
+        except KeyError:
+            return None
+
+    @value.setter
+    def value(self, v):
+        if v is None:
+            if self.value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.value_context_id)
+            return
+        self.contexter.values[self.value_context_id] = v
+

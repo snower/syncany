@@ -4,6 +4,7 @@
 
 from ..database import DatabaseInstanceBuilder
 
+
 class CacheLoader(object):
     def __init__(self, name, db, config):
         self.name = name

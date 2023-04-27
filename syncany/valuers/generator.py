@@ -5,7 +5,11 @@
 import types
 from .valuer import Valuer, LoadAllFieldsException
 
+
 class YieldValuer(Valuer):
+    iter_valuers = None
+    iter_datas = None
+
     def __init__(self, value_valuer, return_valuer, inherit_valuers, *args, **kwargs):
         self.value_valuer = value_valuer
         self.return_valuer = return_valuer
@@ -32,10 +36,17 @@ class YieldValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self):
-        value_valuer = self.value_valuer.clone() if self.value_valuer else None
-        return_valuer = self.return_valuer.clone() if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+    def clone(self, contexter=None):
+        value_valuer = self.value_valuer.clone(contexter) if self.value_valuer else None
+        return_valuer = self.return_valuer.clone(contexter) if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
+            if self.inherit_valuers else None
+        if contexter is not None:
+            return ContextYieldValuer(value_valuer, return_valuer, inherit_valuers,
+                                      self.key, self.filter, from_valuer=self, contexter=contexter)
+        if isinstance(self, ContextYieldValuer):
+            return ContextYieldValuer(value_valuer, return_valuer, inherit_valuers,
+                                      self.key, self.filter, from_valuer=self, contexter=self.contexter)
         return self.__class__(value_valuer, return_valuer, inherit_valuers,
                               self.key, self.filter, from_valuer=self)
 
@@ -56,15 +67,17 @@ class YieldValuer(Valuer):
             if self.value_valuer:
                 data = self.value_valuer.get()
 
+            iter_valuers = []
             if isinstance(data, list):
                 for d in data:
                     return_valuer = self.return_valuer.clone()
                     return_valuer.fill(self.do_filter(d))
-                    self.iter_valuers.append(return_valuer)
+                    iter_valuers.append(return_valuer)
             else:
                 return_valuer = self.return_valuer.clone()
                 return_valuer.fill(self.do_filter(data))
-                self.iter_valuers.append(return_valuer)
+                iter_valuers.append(return_valuer)
+            self.iter_valuers = iter_valuers
             return self
 
         if not self.value_valuer:
@@ -82,30 +95,36 @@ class YieldValuer(Valuer):
                 else:
                     data = self.iter_datas
 
+                iter_valuers = []
                 if isinstance(data, list):
                     for d in data:
                         return_valuer = self.return_valuer.clone()
                         return_valuer.fill(self.do_filter(d))
-                        self.iter_valuers.append(return_valuer)
+                        iter_valuers.append(return_valuer)
                 else:
                     return_valuer = self.return_valuer.clone()
                     return_valuer.fill(self.do_filter(data))
-                    self.iter_valuers.append(return_valuer)
+                    iter_valuers.append(return_valuer)
+            else:
+                iter_valuers = self.iter_valuers
 
-            self.iter_datas = []
-            for valuer in self.iter_valuers:
-                self.iter_datas.append(valuer.get())
+            iter_datas = []
+            for valuer in iter_valuers:
+                iter_datas.append(valuer.get())
         else:
             if self.value_valuer:
+                iter_datas = []
                 data = self.value_valuer.get()
                 if isinstance(data, list):
-                    self.iter_datas = [self.do_filter(d) for d in data]
+                    iter_datas = [self.do_filter(d) for d in data]
                 else:
-                    self.iter_datas = [self.do_filter(data)]
+                    iter_datas = [self.do_filter(data)]
+            else:
+                iter_datas = self.iter_datas
 
         def gen_iter():
             gdata = yield None
-            for data in self.iter_datas:
+            for data in iter_datas:
                 if isinstance(data, types.FunctionType):
                     try:
                         child_data = data(gdata)
@@ -162,3 +181,57 @@ class YieldValuer(Valuer):
         if self.filter:
             return self.filter
         return None
+
+
+class ContextYieldValuer(YieldValuer):
+    def __init__(self, *args, **kwargs):
+        self.contexter = kwargs.pop("contexter")
+        self.value_context_id = (id(self), "value")
+        self.iter_valuers_context_id = (id(self), "iter_valuers")
+        self.iter_datas_context_id = (id(self), "iter_datas")
+        super(ContextYieldValuer, self).__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        try:
+            return self.contexter.values[self.value_context_id]
+        except KeyError:
+            return None
+
+    @value.setter
+    def value(self, v):
+        if v is None:
+            if self.value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.value_context_id)
+            return
+        self.contexter.values[self.value_context_id] = v
+
+    @property
+    def iter_valuers(self):
+        try:
+            return self.contexter.values[self.iter_valuers_context_id]
+        except KeyError:
+            return []
+
+    @iter_valuers.setter
+    def iter_valuers(self, v):
+        if not v:
+            if self.iter_valuers_context_id in self.contexter.values:
+                self.contexter.values.pop(self.iter_valuers_context_id)
+            return
+        self.contexter.values[self.iter_valuers_context_id] = v
+
+    @property
+    def iter_datas(self):
+        try:
+            return self.contexter.values[self.iter_datas_context_id]
+        except KeyError:
+            return []
+
+    @iter_datas.setter
+    def iter_datas(self, v):
+        if not v:
+            if self.iter_valuers_context_id in self.contexter.values:
+                self.contexter.values.pop(self.iter_valuers_context_id)
+            return
+        self.contexter.values[self.iter_datas_context_id] = v

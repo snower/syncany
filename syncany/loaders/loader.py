@@ -5,7 +5,8 @@
 import types
 import re
 from collections import defaultdict, deque
-from ..valuers import Valuer
+from ..valuers import ContextRunner
+
 
 class KeyMatcher(object):
     def __init__(self, matcher, valuer):
@@ -36,6 +37,7 @@ class KeyMatcher(object):
 
     def add_key_event(self, event):
         self.key_events.append(event)
+
 
 class Loader(object):
     def __init__(self, primary_keys, valuer_type=0, **kwargs):
@@ -108,8 +110,8 @@ class Loader(object):
             while datas:
                 data, odata = datas.popleft(), {}
                 for name, valuer in self.schema.items():
-                    if name not in data or not isinstance(data[name], Valuer):
-                        odata[name] = valuer.reinit().fill(data).get()
+                    if name not in data or not isinstance(data[name], ContextRunner):
+                        odata[name] = valuer.fill(data).get()
                     else:
                         odata[name] = data[name].get()
                 if self.intercepts and self.check_intercepts(odata):
@@ -121,8 +123,8 @@ class Loader(object):
         while datas:
             data, odata, oyields, ofuncs = datas.popleft(), {}, {}, {}
             for name, valuer in self.schema.items():
-                if name not in data or not isinstance(data[name], Valuer):
-                    value = valuer.reinit().fill(data).get()
+                if name not in data or not isinstance(data[name], ContextRunner):
+                    value = valuer.fill(data).get()
                 else:
                     value = data[name].get()
                 if isinstance(value, types.FunctionType):
@@ -184,7 +186,7 @@ class Loader(object):
     def check_intercepts(self, data):
         intercept_stoped = False
         for intercept in self.intercepts:
-            intercept_result = intercept.reinit().fill(data).get()
+            intercept_result = intercept.fill(data).get()
             if intercept_result is not None and not intercept_result:
                 intercept_stoped = True
                 break

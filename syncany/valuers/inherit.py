@@ -5,19 +5,23 @@
 import weakref
 from .valuer import Valuer
 
-class InheritValuer(Valuer):
-    def __init__(self, value_valuer, *args, **kwargs):
-        self.child_valuer = InheritChildValuer(self, value_valuer, *args, **kwargs)
-        self.value_valuer = value_valuer
-        super(InheritValuer, self).__init__(*args, **kwargs)
 
-        self.filled = False
+class InheritValuer(Valuer):
+    filled = False
+
+    def __init__(self, value_valuer, *args, **kwargs):
+        if isinstance(self, ContextInheritValuer):
+            self.child_valuer = ContextInheritChildValuer(self, value_valuer, *args, **kwargs, contexter=self.contexter)
+        else:
+            self.child_valuer = InheritChildValuer(self, value_valuer, *args, **kwargs)
+        self.value_valuer = value_valuer
         self.cloned_child_valuer = None
+        super(InheritValuer, self).__init__(*args, **kwargs)
 
     def get_inherit_child_valuer(self):
         return self.child_valuer
 
-    def clone(self):
+    def clone(self, contexter=None):
         if self.filled:
             return self
 
@@ -26,14 +30,20 @@ class InheritValuer(Valuer):
             self.child_valuer.cloned_inherit_valuer = None
             return inherit_valuer
 
-        value_valuer = self.value_valuer.clone() if self.value_valuer else None
-        inherit_valuer = self.__class__(value_valuer, self.key, self.filter, from_valuer=self)
+        value_valuer = self.value_valuer.clone(contexter) if self.value_valuer else None
+        if contexter is not None:
+            inherit_valuer = ContextInheritValuer(value_valuer, self.key, self.filter, from_valuer=self,
+                                                  contexter=contexter)
+        elif isinstance(self, ContextInheritValuer):
+            inherit_valuer = ContextInheritValuer(value_valuer, self.key, self.filter, from_valuer=self,
+                                                  contexter=self.contexter)
+        else:
+            inherit_valuer = self.__class__(value_valuer, self.key, self.filter, from_valuer=self)
         self.cloned_child_valuer = inherit_valuer.get_inherit_child_valuer()
         return inherit_valuer
 
     def reinit(self):
         self.filled = False
-        self.cloned_child_valuer = None
         return super(InheritValuer, self).reinit()
 
     def fill(self, data):
@@ -61,15 +71,52 @@ class InheritValuer(Valuer):
         return None
 
 
+class ContextInheritValuer(InheritValuer):
+    def __init__(self, *args, **kwargs):
+        self.contexter = kwargs.pop("contexter")
+        self.value_context_id = (id(self), "value")
+        self.filled_context_id = (id(self), "filled")
+        super(ContextInheritValuer, self).__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        try:
+            return self.contexter.values[self.value_context_id]
+        except KeyError:
+            return None
+
+    @value.setter
+    def value(self, v):
+        if v is None:
+            if self.value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.value_context_id)
+            return
+        self.contexter.values[self.value_context_id] = v
+
+    @property
+    def filled(self):
+        try:
+            return self.contexter.values[self.filled_context_id]
+        except KeyError:
+            return False
+
+    @filled.setter
+    def filled(self, v):
+        if v is False:
+            if self.filled_context_id in self.contexter.values:
+                self.contexter.values.pop(self.filled_context_id)
+            return
+        self.contexter.values[self.filled_context_id] = v
+
+
 class InheritChildValuer(Valuer):
     def __init__(self, inherit_valuer, value_valuer, *args, **kwargs):
         self.inherit_valuer = weakref.proxy(inherit_valuer)
         self.value_valuer = value_valuer
+        self.cloned_inherit_valuer = None
         super(InheritChildValuer, self).__init__(*args, **kwargs)
 
-        self.cloned_inherit_valuer = None
-
-    def clone(self):
+    def clone(self, contexter=None):
         if self.inherit_valuer.filled:
             return self
 
@@ -78,13 +125,16 @@ class InheritChildValuer(Valuer):
             self.inherit_valuer.cloned_child_valuer = None
             return child_valuer
 
-        value_valuer = self.value_valuer.clone() if self.value_valuer else None
-        self.cloned_inherit_valuer = InheritValuer(value_valuer, self.key, self.filter, from_valuer=self)
+        value_valuer = self.value_valuer.clone(contexter) if self.value_valuer else None
+        if contexter is not None:
+            self.cloned_inherit_valuer = ContextInheritValuer(value_valuer, self.key, self.filter, from_valuer=self,
+                                                              contexter=contexter)
+        elif isinstance(self, ContextInheritChildValuer):
+            self.cloned_inherit_valuer = ContextInheritValuer(value_valuer, self.key, self.filter, from_valuer=self,
+                                                              contexter=self.contexter)
+        else:
+            self.cloned_inherit_valuer = InheritValuer(value_valuer, self.key, self.filter, from_valuer=self)
         return self.cloned_inherit_valuer.get_inherit_child_valuer()
-
-    def reinit(self):
-        self.cloned_inherit_valuer = None
-        return super(InheritChildValuer, self).reinit()
 
     def fill(self, data):
         return self
@@ -111,3 +161,25 @@ class InheritChildValuer(Valuer):
 
     def require_loaded(self):
         return False
+
+
+class ContextInheritChildValuer(InheritChildValuer):
+    def __init__(self, *args, **kwargs):
+        self.contexter = kwargs.pop("contexter")
+        self.value_context_id = (id(self), "value")
+        super(ContextInheritChildValuer, self).__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        try:
+            return self.contexter.values[self.value_context_id]
+        except KeyError:
+            return None
+
+    @value.setter
+    def value(self, v):
+        if v is None:
+            if self.value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.value_context_id)
+            return
+        self.contexter.values[self.value_context_id] = v

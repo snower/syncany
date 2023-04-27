@@ -19,14 +19,19 @@ class DBJoinMatcher(object):
 
     def fill(self, values):
         self.data = values
-        for valuer in self.valuers:
-            valuer.fill(self.data)
+        for valuer, contexter_values in self.valuers:
+            if contexter_values is not None:
+                valuer.contexter.values = contexter_values
+            valuer.fill(values)
 
     def add_valuer(self, valuer):
-        self.valuers.append(valuer)
+        self.valuers.append((valuer, valuer.contexter.values if hasattr(valuer, "contexter") else None))
 
     def get(self):
         return self.data
+
+    def get_matcher_type(self):
+        return 1
 
 class GroupDBJoinMatcher(object):
     def __init__(self, return_valuer):
@@ -35,19 +40,21 @@ class GroupDBJoinMatcher(object):
         self.datas = None
 
     def add_valuer(self, valuer):
-        self.valuers.append(valuer)
+        self.valuers.append((valuer, valuer.contexter.values if hasattr(valuer, "contexter") else None))
 
     def fill(self, valuer, data):
         if self.datas is not None:
             return self
-        for valuer in self.valuers:
+        for valuer, contexter_values in self.valuers:
             if valuer.loaded is False:
                 return self
 
         self.datas = []
-        for valuer in self.valuers:
+        for valuer, contexter_values in self.valuers:
             if valuer.loaded is not True:
                 continue
+            if contexter_values is not None:
+                valuer.contexter.values = contexter_values
             value = valuer.get()
             if isinstance(value, list):
                 self.datas.extend(value)
@@ -60,9 +67,11 @@ class GroupDBJoinMatcher(object):
             return self.datas
 
         self.datas = []
-        for valuer in self.valuers:
+        for valuer, contexter_values in self.valuers:
             if valuer.loaded is not True:
                 continue
+            if contexter_values is not None:
+                valuer.contexter.values = contexter_values
             value = valuer.get()
             if isinstance(value, list):
                 self.datas.extend(value)
@@ -70,6 +79,9 @@ class GroupDBJoinMatcher(object):
                 self.datas.append(value)
         self.return_valuer.fill(self.datas)
         return self.datas
+
+    def get_matcher_type(self):
+        return 2
 
 class DBJoinLoader(DBLoader):
     def __init__(self, *args, **kwargs):
@@ -161,7 +173,7 @@ class DBJoinLoader(DBLoader):
                 for i in range(len(datas)):
                     data = datas[i]
                     primary_key = self.get_data_primary_key(data)
-                    values = {key: field.reinit().fill(data).get() for key, field in self.schema.items()}
+                    values = {key: field.fill(data).get() for key, field in self.schema.items()}
 
                     if primary_key not in self.data_keys:
                         self.data_keys[primary_key] = [values]
@@ -174,13 +186,13 @@ class DBJoinLoader(DBLoader):
                     primary_key = self.get_data_primary_key(data)
                     for key, value in data.items():
                         if key in self.schema:
-                            values[key] = self.schema[key].reinit().fill(data).get()
+                            values[key] = self.schema[key].fill(data).get()
                         else:
                             for key_matcher in self.key_matchers:
                                 if key_matcher.match(key):
                                     valuer = key_matcher.create_key(key)
                                     self.schema[key] = valuer
-                                    values[key] = valuer.reinit().fill(data).get()
+                                    values[key] = valuer.fill(data).get()
 
                     if primary_key not in self.data_keys:
                         self.data_keys[primary_key] = [values]

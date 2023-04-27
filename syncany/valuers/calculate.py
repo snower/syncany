@@ -4,6 +4,7 @@
 
 from .valuer import Valuer
 
+
 class CalculateValuer(Valuer):
     def __init__(self, calculater, args_valuers, return_valuer, inherit_valuers, *args, **kwargs):
         self.calculater = calculater
@@ -31,12 +32,19 @@ class CalculateValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self):
+    def clone(self, contexter=None):
         args_valuers = []
         for valuer in self.args_valuers:
-            args_valuers.append(valuer.clone())
-        return_valuer = self.return_valuer.clone() if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+            args_valuers.append(valuer.clone(contexter))
+        return_valuer = self.return_valuer.clone(contexter) if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
+            if self.inherit_valuers else None
+        if contexter is not None:
+            return ContextCalculateValuer(self.calculater, args_valuers, return_valuer, inherit_valuers,
+                                          self.key, self.filter, from_valuer=self, contexter=contexter)
+        if isinstance(self, ContextCalculateValuer):
+            return ContextCalculateValuer(self.calculater, args_valuers, return_valuer, inherit_valuers,
+                                          self.key, self.filter, from_valuer=self, contexter=self.contexter)
         return self.__class__(self.calculater, args_valuers, return_valuer, inherit_valuers,
                               self.key, self.filter, from_valuer=self)
 
@@ -53,8 +61,10 @@ class CalculateValuer(Valuer):
             for valuer in self.args_valuers:
                 values.append(valuer.get())
 
-            self.do_filter(self.calculater.calculate(*values))
-            self.return_valuer.fill(self.value)
+            if self.return_valuer:
+                self.return_valuer.fill(self.do_filter(self.calculater.calculate(*values)))
+            else:
+                self.value = self.do_filter(self.calculater.calculate(*values))
         return self
 
     def get(self):
@@ -63,12 +73,13 @@ class CalculateValuer(Valuer):
             for valuer in self.args_valuers:
                 values.append(valuer.get())
 
-            self.do_filter(self.calculater.calculate(*values))
+            value = self.do_filter(self.calculater.calculate(*values))
             if self.return_valuer:
-                self.return_valuer.fill(self.value)
+                return self.return_valuer.fill(value).get()
+            return value
 
         if self.return_valuer:
-            self.value = self.return_valuer.get()
+            return self.return_valuer.get()
         return self.value
 
     def childs(self):
@@ -110,7 +121,27 @@ class CalculateValuer(Valuer):
 
             if final_filter is not None and final_filter.__class__ != filter.__class__:
                 return None
-
             final_filter = filter
-
         return final_filter
+
+
+class ContextCalculateValuer(CalculateValuer):
+    def __init__(self, *args, **kwargs):
+        self.contexter = kwargs.pop("contexter")
+        self.value_context_id = (id(self), "value")
+        super(ContextCalculateValuer, self).__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        try:
+            return self.contexter.values[self.value_context_id]
+        except KeyError:
+            return None
+
+    @value.setter
+    def value(self, v):
+        if v is None:
+            if self.value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.value_context_id)
+            return
+        self.contexter.values[self.value_context_id] = v

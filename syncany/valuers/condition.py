@@ -5,6 +5,7 @@
 
 from .valuer import Valuer
 
+
 class IfValuer(Valuer):
     def __init__(self, true_valuer, false_valuer, value_valuer, return_valuer, inherit_valuers, *args, **kwargs):
         self.true_valuer = true_valuer
@@ -27,12 +28,19 @@ class IfValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self):
-        true_valuer = self.true_valuer.clone()
-        false_valuer = self.false_valuer.clone() if self.false_valuer else None
-        value_valuer = self.value_valuer.clone() if self.value_valuer else None
-        return_valuer = self.return_valuer.clone() if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+    def clone(self, contexter=None):
+        true_valuer = self.true_valuer.clone(contexter)
+        false_valuer = self.false_valuer.clone(contexter) if self.false_valuer else None
+        value_valuer = self.value_valuer.clone(contexter) if self.value_valuer else None
+        return_valuer = self.return_valuer.clone(contexter) if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
+            if self.inherit_valuers else None
+        if contexter is not None:
+            return ContextIfValuer(true_valuer, false_valuer, value_valuer, return_valuer, inherit_valuers,
+                                   self.key, self.filter, from_valuer=self, contexter=contexter)
+        if isinstance(self, ContextIfValuer):
+            return ContextIfValuer(true_valuer, false_valuer, value_valuer, return_valuer, inherit_valuers,
+                                   self.key, self.filter, from_valuer=self, contexter=self.contexter)
         return self.__class__(true_valuer, false_valuer, value_valuer, return_valuer, inherit_valuers,
                               self.key, self.filter, from_valuer=self)
 
@@ -48,37 +56,44 @@ class IfValuer(Valuer):
                 if self.false_valuer:
                     self.false_valuer.fill(data)
                 return self
-            self.value = self.value_valuer.get()
+            value = self.value_valuer.get()
         else:
-            self.value = data
+            value = data
 
-        if self.value:
+        if value:
             self.true_valuer.fill(data)
         elif self.false_valuer:
             self.false_valuer.fill(data)
 
         if self.wait_loaded:
-            if self.value:
-                self.do_filter(self.true_valuer.get())
+            if value:
+                value = self.do_filter(self.true_valuer.get())
             elif self.false_valuer:
-                self.do_filter(self.false_valuer.get())
+                value = self.do_filter(self.false_valuer.get())
+            else:
+                value = None
+            self.return_valuer.fill(value)
+        else:
+            self.value = value
         return self
 
     def get(self):
         if self.value_valuer and self.value_wait_loaded:
-            self.value = self.value_valuer.get()
+            value = self.value_valuer.get()
         elif self.wait_loaded:
             return self.return_valuer.get()
+        else:
+            value = self.value
 
-        if self.value:
-            self.do_filter(self.true_valuer.get())
+        if value:
+            value = self.do_filter(self.true_valuer.get())
         elif self.false_valuer:
-            self.do_filter(self.false_valuer.get())
-
+            value = self.do_filter(self.false_valuer.get())
+        else:
+            value = None
         if self.return_valuer:
-            self.return_valuer.fill(self.value)
-            self.value = self.return_valuer.get()
-        return self.value
+            return self.return_valuer.fill(value).get()
+        return value
 
     def childs(self):
         childs = [self.true_valuer]
@@ -124,3 +139,25 @@ class IfValuer(Valuer):
             if false_filter is not None and true_filter.__class__ != false_filter.__class__:
                 return None
         return true_filter
+
+
+class ContextIfValuer(IfValuer):
+    def __init__(self, *args, **kwargs):
+        self.contexter = kwargs.pop("contexter")
+        self.value_context_id = (id(self), "value")
+        super(ContextIfValuer, self).__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        try:
+            return self.contexter.values[self.value_context_id]
+        except KeyError:
+            return None
+
+    @value.setter
+    def value(self, v):
+        if v is None:
+            if self.value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.value_context_id)
+            return
+        self.contexter.values[self.value_context_id] = v

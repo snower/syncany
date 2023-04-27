@@ -4,6 +4,7 @@
 
 from .loader import Loader
 
+
 class ConstLoader(Loader):
     def __init__(self, datas, *args, **kwargs):
         super(ConstLoader, self).__init__(*args, **kwargs)
@@ -26,11 +27,5 @@ class ConstLoader(Loader):
     def load(self, timeout=None):
         if self.loaded:
             return
-
-        for data in self.const_datas:
-            values = {}
-            for key, field in self.schema.items():
-                values[key] = field.clone().fill(data)
-            self.datas.append(values)
-
+        self.datas = self.const_datas[:]
         self.loaded = True

@@ -27,8 +27,11 @@ def dict_key(key, dot_keys=None):
             rdata, rindex = [], len(dot_keys)
             for value in data:
                 if not isinstance(value, dict):
-                    continue
-                value, vindex = get_key(value, key, dot_keys)
+                    if not hasattr(value, key):
+                        continue
+                    value, vindex = getattr(value, key), 1
+                else:
+                    value, vindex = get_key(value, key, dot_keys)
                 if value is None:
                     continue
                 rdata.append(value)
@@ -36,6 +39,8 @@ def dict_key(key, dot_keys=None):
             return rdata, rindex
         if isinstance(data, dict):
             return get_key(data, key, dot_keys)
+        if hasattr(data, key):
+            return getattr(data, key), 1
         return None, 1
     return _
 
@@ -71,13 +76,38 @@ def slice_key(key):
         return None, 1
     return _
 
+
+class ContextRunner(object):
+    def __init__(self, contexter, valuer, values=None):
+        self.contexter = contexter
+        self.valuer = valuer
+        self.values = {} if values is None else values
+
+    def fill(self, data):
+        self.contexter.values = self.values
+        self.valuer.fill(data)
+        return self
+
+    def get(self):
+        self.contexter.values = self.values
+        return self.valuer.get()
+
+
+class Contexter(object):
+    def __init__(self):
+        self.values = {}
+
+    def create_runner(self, valuer, values=None):
+        return ContextRunner(self, valuer, values)
+
+
 class Valuer(object):
     KEY_GETTER_CACHES = {}
+    value = None
 
     def __init__(self, key, filter=None, from_valuer=None):
         self.key = key
         self.filter = filter
-        self.value = None
         if from_valuer is None:
             self.new_init()
         else:
@@ -122,7 +152,11 @@ class Valuer(object):
                 self.KEY_GETTER_CACHES.pop(cache_key, None)
         self.KEY_GETTER_CACHES[self.key] = self.key_getters
 
-    def clone(self):
+    def clone(self, contexter=None):
+        if contexter is not None:
+            return ContextValuer(self.key, self.filter, from_valuer=self, contexter=contexter)
+        if isinstance(self, ContextValuer):
+            return ContextValuer(self.key, self.filter, from_valuer=self, contexter=self.contexter)
         return self.__class__(self.key, self.filter, from_valuer=self)
 
     def reinit(self):
@@ -133,15 +167,15 @@ class Valuer(object):
 
     def fill(self, data):
         if data is None or not self.key:
-            self.do_filter(None)
+            self.value = self.do_filter(None)
             return self
 
         if self.key == "*" or not isinstance(data, (dict, list)):
-            self.do_filter(data)
+            self.value = self.do_filter(data)
             return self
 
         if self.key in data:
-            self.do_filter(data[self.key])
+            self.value = self.do_filter(data[self.key])
             return self
 
         if not self.key_getters:
@@ -156,10 +190,9 @@ class Valuer(object):
                 if data is None:
                     break
                 key_getter_index += index
-            self.value = data
+            self.value = self.do_filter(data)
         except:
-            self.value = None
-        self.do_filter(self.value)
+            self.value = self.do_filter(None)
         return self
 
     def get(self):
@@ -172,13 +205,9 @@ class Valuer(object):
     def do_filter(self, value):
         if not self.filter:
             if isinstance(value, datetime.datetime):
-                self.value = ensure_timezone(value)
-            else:
-                self.value = value
-            return self.value
-
-        self.value = self.filter.filter(value)
-        return self.value
+                value = ensure_timezone(value)
+            return value
+        return self.filter.filter(value)
 
     def childs(self):
         return []
@@ -194,3 +223,25 @@ class Valuer(object):
             if child.require_loaded():
                 return True
         return False
+
+
+class ContextValuer(Valuer):
+    def __init__(self, *args, **kwargs):
+        self.contexter = kwargs.pop("contexter")
+        self.value_context_id = (id(self), "value")
+        super(ContextValuer, self).__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        try:
+            return self.contexter.values[self.value_context_id]
+        except KeyError:
+            return None
+
+    @value.setter
+    def value(self, v):
+        if v is None:
+            if self.value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.value_context_id)
+            return
+        self.contexter.values[self.value_context_id] = v

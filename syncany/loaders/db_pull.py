@@ -6,6 +6,7 @@ import time
 import threading
 from .db import DBLoader
 
+
 class DBPullLoader(DBLoader):
     def __init__(self, *args, **kwargs):
         super(DBPullLoader, self).__init__(*args, **kwargs)

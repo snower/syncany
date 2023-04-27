@@ -4,6 +4,7 @@
 
 from .valuer import Valuer
 
+
 class AssignValuer(Valuer):
     def __init__(self, global_value, calculate_valuer, return_valuer, inherit_valuers, *args, **kwargs):
         self.global_value = global_value
@@ -23,10 +24,17 @@ class AssignValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self):
-        calculate_valuer = self.calculate_valuer.clone() if self.calculate_valuer else None
-        return_valuer = self.return_valuer.clone() if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+    def clone(self, contexter=None):
+        calculate_valuer = self.calculate_valuer.clone(contexter) if self.calculate_valuer else None
+        return_valuer = self.return_valuer.clone(contexter) if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
+            if self.inherit_valuers else None
+        if contexter is not None:
+            return ContextAssignValuer(self.global_value, calculate_valuer, return_valuer, inherit_valuers,
+                                       self.key, self.filter, from_valuer=self, contexter=contexter)
+        if isinstance(self, ContextAssignValuer):
+            return self.__class__(self.global_value, calculate_valuer, return_valuer, inherit_valuers,
+                                  self.key, self.filter, from_valuer=self, contexter=self.contexter)
         return self.__class__(self.global_value, calculate_valuer, return_valuer, inherit_valuers,
                               self.key, self.filter, from_valuer=self)
 
@@ -38,30 +46,32 @@ class AssignValuer(Valuer):
         if self.calculate_valuer:
             self.calculate_valuer.fill(self.global_value)
             if not self.calculate_wait_loaded:
-                self.do_filter(self.calculate_valuer.get())
-                self.global_value[self.key] = self.value
+                value = self.do_filter(self.calculate_valuer.get())
+                self.global_value[self.key] = value
                 if self.return_valuer:
-                    self.return_valuer.fill(self.value)
+                    self.return_valuer.fill(value)
+                else:
+                    self.value = value
         elif self.return_valuer:
-            self.do_filter(self.global_value.get(self.key, None))
+            value = self.do_filter(self.global_value.get(self.key, None))
             final_filter = self.return_valuer.get_final_filter()
             if final_filter:
-                self.value = final_filter.filter(self.value)
-            self.return_valuer.fill(self.value)
+                value = final_filter.filter(value)
+            self.return_valuer.fill(value)
         else:
-            self.do_filter(self.global_value.get(self.key, None))
+            self.value = self.do_filter(self.global_value.get(self.key, None))
         return self
 
     def get(self):
         if self.calculate_valuer:
             if self.calculate_wait_loaded:
-                self.do_filter(self.calculate_valuer.get())
-                self.global_value[self.key] = self.value
+                value = self.do_filter(self.calculate_valuer.get())
+                self.global_value[self.key] = value
                 if self.return_valuer:
-                    self.return_valuer.fill(self.value)
-
+                    return self.return_valuer.fill(value).get()
+                return value
         if self.return_valuer:
-            self.value = self.return_valuer.get()
+            return self.return_valuer.get()
         return self.value
 
     def childs(self):
@@ -93,3 +103,25 @@ class AssignValuer(Valuer):
         if self.calculate_valuer:
             return self.calculate_valuer.get_final_filter()
         return None
+
+
+class ContextAssignValuer(AssignValuer):
+    def __init__(self, *args, **kwargs):
+        self.contexter = kwargs.pop("contexter")
+        self.value_context_id = (id(self), "value")
+        super(ContextAssignValuer, self).__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        try:
+            return self.contexter.values[self.value_context_id]
+        except KeyError:
+            return None
+
+    @value.setter
+    def value(self, v):
+        if v is None:
+            if self.value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.value_context_id)
+            return
+        self.contexter.values[self.value_context_id] = v

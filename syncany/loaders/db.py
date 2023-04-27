@@ -2,11 +2,11 @@
 # 18/8/6
 # create by: snower
 
-import types
 import copy
 from collections import defaultdict, deque
 from .loader import Loader
-from ..valuers.valuer import LoadAllFieldsException
+from ..valuers.valuer import Contexter, LoadAllFieldsException
+
 
 class DBLoader(Loader):
     def __init__(self, db, name, *args, **kwargs):
@@ -113,45 +113,49 @@ class DBLoader(Loader):
 
         if not self.compiled:
             if not self.key_matchers:
-                require_loaded_schema_items = [(key, field) for key, field in self.schema.items() if field.require_loaded()]
+                require_loaded_schema_items = [(key, field, field.contexter if hasattr(field, "contexter") else None)
+                                               for key, field in self.schema.items() if field.require_loaded()]
                 if not require_loaded_schema_items:
                     if not self.valuer_type:
                         return self.fast_get()
                     return super(DBLoader, self).get()
                 for i in range(len(self.datas)):
-                    values = {key: value for key, value in self.datas[i].items()}
-                    for key, field in require_loaded_schema_items:
-                        values[key] = field.clone().fill(self.datas[i])
-                    self.datas[i] = values
+                    data, contexter_values = {key: value for key, value in self.datas[i].items()}, {}
+                    for key, field, contexter in require_loaded_schema_items:
+                        if contexter is None:
+                            contexter = Contexter()
+                            field = field.clone(contexter)
+                        data[key] = contexter.create_runner(field, contexter_values).fill(data)
+                    self.datas[i] = data
             else:
                 for i in range(len(self.datas)):
-                    values = {}
+                    data = {}
                     for key, value in self.datas[i].items():
                         if key in self.schema:
-                            values[key] = self.schema[key].clone().fill(self.datas[i])
-                        else:
-                            for key_matcher in self.key_matchers:
-                                if key_matcher.match(key):
-                                    valuer = key_matcher.create_key(key)
-                                    self.schema[key] = valuer
-                                    values[key] = valuer.clone().fill(self.datas[i])
-                    self.datas[i] = values
+                            data[key] = value
+                            continue
+                        for key_matcher in self.key_matchers:
+                            if not key_matcher.match(key):
+                                continue
+                            self.schema[key] = key_matcher.create_key(key)
+                            data[key] = value
+                            break
+                    self.datas[i] = data
+
         return super(DBLoader, self).get()
 
     def fast_get(self):
         if not self.intercepts:
             for i in range(len(self.datas)):
                 data = self.datas[i]
-                self.datas[i] = {name: valuer.reinit().fill(data).get()
-                                 for name, valuer in self.schema.items()}
+                self.datas[i] = {name: valuer.fill(data).get() for name, valuer in self.schema.items()}
             self.geted = True
             return self.datas
 
         datas, self.datas = deque(self.datas), []
         while datas:
             data = datas.popleft()
-            odata = {name: valuer.reinit().fill(data).get()
-                     for name, valuer in self.schema.items()}
+            odata = {name: valuer.fill(data).get() for name, valuer in self.schema.items()}
             if self.check_intercepts(odata):
                 continue
             self.datas.append(odata)

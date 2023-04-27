@@ -4,15 +4,20 @@
 
 from .valuer import Valuer
 
+
 class SchemaValuer(Valuer):
     def __init__(self, schema_valuers, *args, **kwargs):
         self.schema_valuers = schema_valuers
         super(SchemaValuer, self).__init__(*args, **kwargs)
 
-    def clone(self):
+    def clone(self, contexter=None):
         schema_valuers = {}
         for name, valuer in self.schema_valuers.items():
-            schema_valuers[name] = valuer.clone()
+            schema_valuers[name] = valuer.clone(contexter)
+        if contexter is not None:
+            return ContextSchemaValuer(schema_valuers, self.key, self.filter, from_valuer=self, contexter=contexter)
+        if isinstance(self, ContextSchemaValuer):
+            return ContextSchemaValuer(schema_valuers, self.key, self.filter, from_valuer=self, contexter=self.contexter)
         return self.__class__(schema_valuers, self.key, self.filter, from_valuer=self)
 
     def fill(self, data):
@@ -42,3 +47,25 @@ class SchemaValuer(Valuer):
 
     def get_final_filter(self):
         return None
+
+
+class ContextSchemaValuer(SchemaValuer):
+    def __init__(self, *args, **kwargs):
+        self.contexter = kwargs.pop("contexter")
+        self.value_context_id = (id(self), "value")
+        super(ContextSchemaValuer, self).__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        try:
+            return self.contexter.values[self.value_context_id]
+        except KeyError:
+            return None
+
+    @value.setter
+    def value(self, v):
+        if v is None:
+            if self.value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.value_context_id)
+            return
+        self.contexter.values[self.value_context_id] = v

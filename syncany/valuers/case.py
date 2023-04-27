@@ -4,6 +4,7 @@
 
 from .valuer import Valuer
 
+
 class CaseValuer(Valuer):
     def __init__(self, case_valuers, default_case_valuer, value_valuer, return_valuer, inherit_valuers, *args, **kwargs):
         self.case_valuers = case_valuers
@@ -26,14 +27,21 @@ class CaseValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self):
+    def clone(self, contexter=None):
         case_valuers = {}
         for name, valuer in self.case_valuers.items():
-            case_valuers[name] = valuer.clone()
-        default_case_valuer = self.default_case_valuer.clone() if self.default_case_valuer else None
-        value_valuer = self.value_valuer.clone() if self.value_valuer else None
-        return_valuer = self.return_valuer.clone() if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone() for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+            case_valuers[name] = valuer.clone(contexter)
+        default_case_valuer = self.default_case_valuer.clone(contexter) if self.default_case_valuer else None
+        value_valuer = self.value_valuer.clone(contexter) if self.value_valuer else None
+        return_valuer = self.return_valuer.clone(contexter) if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
+            if self.inherit_valuers else None
+        if contexter is not None:
+            return ContextCaseValuer(case_valuers, default_case_valuer, value_valuer, return_valuer, inherit_valuers,
+                                     self.key, self.filter, from_valuer=self, contexter=contexter)
+        if isinstance(self, ContextCaseValuer):
+            return ContextCaseValuer(case_valuers, default_case_valuer, value_valuer, return_valuer, inherit_valuers,
+                                     self.key, self.filter, from_valuer=self, contexter=self.contexter)
         return self.__class__(case_valuers, default_case_valuer, value_valuer, return_valuer, inherit_valuers,
                               self.key, self.filter, from_valuer=self)
 
@@ -50,38 +58,42 @@ class CaseValuer(Valuer):
                 if self.default_case_valuer:
                     self.default_case_valuer.fill(data)
                 return self
-            self.value = self.value_valuer.get()
+            value = self.value_valuer.get()
         else:
-            self.value = data
+            value = data
 
-        if self.value in self.case_valuers:
-            self.case_valuers[self.value].fill(data)
+        if value in self.case_valuers:
+            self.case_valuers[value].fill(data)
         elif self.default_case_valuer:
             self.default_case_valuer.fill(data)
 
         if self.wait_loaded:
-            if self.value in self.case_valuers:
-                self.do_filter(self.case_valuers[self.value].get())
+            if value in self.case_valuers:
+                value = self.do_filter(self.case_valuers[value].get())
             elif self.default_case_valuer:
-                self.do_filter(self.default_case_valuer.get())
-            self.return_valuer.fill(self.value)
+                value = self.do_filter(self.default_case_valuer.get())
+            self.return_valuer.fill(value)
+        else:
+            self.value = value
         return self
 
     def get(self):
         if self.value_valuer and self.value_wait_loaded:
-            self.value = self.value_valuer.get()
+            value = self.value_valuer.get()
         elif self.wait_loaded:
             return self.return_valuer.get()
+        else:
+            value = self.value
 
-        if self.value in self.case_valuers:
-            self.do_filter(self.case_valuers[self.value].get())
+        if value in self.case_valuers:
+            value = self.do_filter(self.case_valuers[value].get())
         elif self.default_case_valuer:
-            self.do_filter(self.default_case_valuer.get())
+            value = self.do_filter(self.default_case_valuer.get())
 
         if self.return_valuer:
-            self.return_valuer.fill(self.value)
-            self.value = self.return_valuer.get()
-        return self.value
+            self.return_valuer.fill(value)
+            value = self.return_valuer.get()
+        return value
 
     def childs(self):
         childs = list(self.case_valuers.values())
@@ -137,3 +149,25 @@ class CaseValuer(Valuer):
             if final_filter is not None and final_filter.__class__ != filter.__class__:
                 return None
         return final_filter
+
+
+class ContextCaseValuer(CaseValuer):
+    def __init__(self, *args, **kwargs):
+        self.contexter = kwargs.pop("contexter")
+        self.value_context_id = (id(self), "value")
+        super(ContextCaseValuer, self).__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        try:
+            return self.contexter.values[self.value_context_id]
+        except KeyError:
+            return None
+
+    @value.setter
+    def value(self, v):
+        if v is None:
+            if self.value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.value_context_id)
+            return
+        self.contexter.values[self.value_context_id] = v
