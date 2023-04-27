@@ -66,12 +66,16 @@ class CaseValuer(Valuer):
             self.case_valuers[value].fill(data)
         elif self.default_case_valuer:
             self.default_case_valuer.fill(data)
+        else:
+            value = None
 
         if self.wait_loaded:
             if value in self.case_valuers:
                 value = self.do_filter(self.case_valuers[value].get())
             elif self.default_case_valuer:
                 value = self.do_filter(self.default_case_valuer.get())
+            else:
+                value = None
             self.return_valuer.fill(value)
         else:
             self.value = value
@@ -89,10 +93,10 @@ class CaseValuer(Valuer):
             value = self.do_filter(self.case_valuers[value].get())
         elif self.default_case_valuer:
             value = self.do_filter(self.default_case_valuer.get())
-
+        else:
+            value = None
         if self.return_valuer:
-            self.return_valuer.fill(value)
-            value = self.return_valuer.get()
+            return self.return_valuer.fill(value).get()
         return value
 
     def childs(self):

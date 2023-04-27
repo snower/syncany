@@ -6,6 +6,7 @@ import datetime
 from ..errors import SyncanyException
 from ..utils import ensure_timezone
 
+
 class LoadAllFieldsException(SyncanyException):
     pass
 
@@ -23,6 +24,8 @@ def get_key(data, key, dot_keys):
 
 def dict_key(key, dot_keys=None):
     def _(data):
+        if isinstance(data, dict):
+            return get_key(data, key, dot_keys)
         if isinstance(data, list):
             rdata, rindex = [], len(dot_keys)
             for value in data:
@@ -37,8 +40,6 @@ def dict_key(key, dot_keys=None):
                 rdata.append(value)
                 rindex = min(rindex, vindex)
             return rdata, rindex
-        if isinstance(data, dict):
-            return get_key(data, key, dot_keys)
         if hasattr(data, key):
             return getattr(data, key), 1
         return None, 1
@@ -46,6 +47,8 @@ def dict_key(key, dot_keys=None):
 
 def list_key(key):
     def _(data):
+        if isinstance(data, list) and key < len(data):
+            return data[key], 1
         if isinstance(data, dict):
             colon_key = ":%d" % key
             if colon_key in data:
@@ -53,13 +56,17 @@ def list_key(key):
             if key == 0:
                 return data, 1
             return None, 1
-        if isinstance(data, list) and key < len(data):
-            return data[key], 1
         return None, 1
     return _
 
 def slice_key(key):
     def _(data):
+        if isinstance(data, list):
+            if len(key) == 1:
+                return data[key[0]:], 1
+            if len(key) == 2:
+                return data[key[0]: key[1]], 1
+            return data[key[0]: key[1]: key[2]], 1
         if isinstance(data, dict):
             colon_key = ":" + ":".join([str(k) for k in key])
             if colon_key in data:
@@ -67,12 +74,6 @@ def slice_key(key):
             if key and key[0] == 0:
                 return data, 1
             return None, 1
-        if isinstance(data, list):
-            if len(key) == 1:
-                return data[key[0]:], 1
-            if len(key) == 2:
-                return data[key[0]: key[1]], 1
-            return data[key[0]: key[1]: key[2]], 1
         return None, 1
     return _
 
@@ -166,16 +167,14 @@ class Valuer(object):
         return self
 
     def fill(self, data):
+        if isinstance(data, dict) and self.key in data:
+            self.value = self.do_filter(data[self.key])
+            return self
         if data is None or not self.key:
             self.value = self.do_filter(None)
             return self
-
-        if self.key == "*" or not isinstance(data, (dict, list)):
+        if self.key == "*":
             self.value = self.do_filter(data)
-            return self
-
-        if self.key in data:
-            self.value = self.do_filter(data[self.key])
             return self
 
         if not self.key_getters:

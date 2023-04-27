@@ -46,12 +46,12 @@ class DataValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
-        if data is None or not self.key:
-            value = self.do_filter(None)
-        elif self.key == "*" or not isinstance(data, (dict, list)):
-            value = self.do_filter(data)
-        elif self.key in data:
+        if isinstance(data, dict) and self.key in data:
             value = self.do_filter(data[self.key])
+        elif data is None or not self.key:
+            value = self.do_filter(None)
+        elif self.key == "*":
+            value = self.do_filter(data)
         else:
             if not self.key_getters:
                 if self.key in self.KEY_GETTER_CACHES:

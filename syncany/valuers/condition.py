@@ -60,21 +60,21 @@ class IfValuer(Valuer):
         else:
             value = data
 
+        if self.wait_loaded:
+            if value:
+                value = self.do_filter(self.true_valuer.fill(data).get())
+            elif self.false_valuer:
+                value = self.do_filter(self.false_valuer.fill(data).get())
+            else:
+                value = None
+            self.return_valuer.fill(value)
+            return self
+
         if value:
             self.true_valuer.fill(data)
         elif self.false_valuer:
             self.false_valuer.fill(data)
-
-        if self.wait_loaded:
-            if value:
-                value = self.do_filter(self.true_valuer.get())
-            elif self.false_valuer:
-                value = self.do_filter(self.false_valuer.get())
-            else:
-                value = None
-            self.return_valuer.fill(value)
-        else:
-            self.value = value
+        self.value = value
         return self
 
     def get(self):

@@ -57,10 +57,7 @@ class CalculateValuer(Valuer):
             valuer.fill(data)
 
         if not self.wait_loaded:
-            values = []
-            for valuer in self.args_valuers:
-                values.append(valuer.get())
-
+            values = [valuer.get() for valuer in self.args_valuers]
             if self.return_valuer:
                 self.return_valuer.fill(self.do_filter(self.calculater.calculate(*values)))
             else:
@@ -69,15 +66,10 @@ class CalculateValuer(Valuer):
 
     def get(self):
         if self.wait_loaded:
-            values = []
-            for valuer in self.args_valuers:
-                values.append(valuer.get())
-
-            value = self.do_filter(self.calculater.calculate(*values))
+            values = [valuer.get() for valuer in self.args_valuers]
             if self.return_valuer:
-                return self.return_valuer.fill(value).get()
-            return value
-
+                return self.return_valuer.fill(self.do_filter(self.calculater.calculate(*values))).get()
+            return self.do_filter(self.calculater.calculate(*values))
         if self.return_valuer:
             return self.return_valuer.get()
         return self.value

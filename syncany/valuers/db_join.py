@@ -45,17 +45,30 @@ class DBJoinValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
+        join_values, max_value_size, has_join_value = [], 0, False
         if self.args_valuers:
-            join_values = []
             for args_valuer in self.args_valuers:
-                args_valuer.fill(data)
-                join_values.append(args_valuer.get())
+                join_value = args_valuer.fill(data).get()
+                if isinstance(join_value, list):
+                    if len(join_value) > max_value_size:
+                        max_value_size = len(join_value)
+                    has_join_value = True
+                else:
+                    max_value_size, has_join_value = max_value_size or 1, join_value is not None
+                join_values.append(join_value)
         else:
             if self.key:
                 super(DBJoinValuer, self).fill(data)
-            join_values = [self.value for _ in self.foreign_keys]
+            join_value = self.value
+            for _ in self.foreign_keys:
+                if isinstance(join_value, list):
+                    if len(join_value) > max_value_size:
+                        max_value_size = len(join_value)
+                    has_join_value = True
+                else:
+                    max_value_size, has_join_value = max_value_size or 1, join_value is not None
+                join_values.append(join_value)
 
-        max_value_size = max([len(join_value) if isinstance(join_value, list) else 1 for join_value in join_values])
         if max_value_size > 1:
             group_macther = self.loader.create_group_macther(self.return_valuer)
             for i in range(max_value_size):
@@ -74,7 +87,7 @@ class DBJoinValuer(Valuer):
                 matcher.add_valuer(return_valuer)
                 group_macther.add_valuer(return_valuer)
             self.matcher = group_macther
-        elif join_values and any([join_value is not None for join_value in join_values]):
+        elif has_join_value:
             matcher = self.loader.create_macther(self.foreign_keys, join_values)
             matcher.add_valuer(self.return_valuer)
             self.matcher = matcher
@@ -83,10 +96,8 @@ class DBJoinValuer(Valuer):
 
     def get(self):
         self.loader.load()
-
-        matcher = self.matcher
-        if matcher.get_matcher_type() == 2:
-            matcher.get()
+        if self.matcher.get_matcher_type() == 2:
+            self.matcher.get()
         return self.return_valuer.get()
 
     def childs(self):
@@ -176,6 +187,7 @@ class ContextDBJoinValuer(DBJoinValuer):
             finally:
                 self.contexter.values = contexter_values
         return self.return_valuer.get()
+
 
 class DBJoinGroupMatchValuer(Valuer):
     def __init__(self, matcher, *args, **kwargs):
