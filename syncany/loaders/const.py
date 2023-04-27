@@ -10,7 +10,7 @@ class ConstLoader(Loader):
         super(ConstLoader, self).__init__(*args, **kwargs)
 
         self.const_datas = datas
-        self.last_data = datas[-1]
+        self.last_data = datas[-1] if datas else None
 
     def clone(self):
         loader = self.__class__(self.const_datas, self.primary_keys, self.valuer_type)
