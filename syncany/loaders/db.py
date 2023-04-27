@@ -5,7 +5,7 @@
 import copy
 from collections import defaultdict, deque
 from .loader import Loader
-from ..valuers.valuer import Contexter, LoadAllFieldsException
+from ..valuers.valuer import Contexter, ContextRunner, LoadAllFieldsException
 
 
 class DBLoader(Loader):
@@ -125,7 +125,7 @@ class DBLoader(Loader):
                         if contexter is None:
                             contexter = Contexter()
                             field = field.clone(contexter)
-                        data[key] = contexter.create_runner(field, contexter_values).fill(data)
+                        data[key] = ContextRunner(contexter, field, contexter_values).fill(data)
                     self.datas[i] = data
             else:
                 for i in range(len(self.datas)):
