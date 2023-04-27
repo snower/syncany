@@ -33,8 +33,8 @@ class AssignValuer(Valuer):
             return ContextAssignValuer(self.global_value, calculate_valuer, return_valuer, inherit_valuers,
                                        self.key, self.filter, from_valuer=self, contexter=contexter)
         if isinstance(self, ContextAssignValuer):
-            return self.__class__(self.global_value, calculate_valuer, return_valuer, inherit_valuers,
-                                  self.key, self.filter, from_valuer=self, contexter=self.contexter)
+            return ContextAssignValuer(self.global_value, calculate_valuer, return_valuer, inherit_valuers,
+                                       self.key, self.filter, from_valuer=self, contexter=self.contexter)
         return self.__class__(self.global_value, calculate_valuer, return_valuer, inherit_valuers,
                               self.key, self.filter, from_valuer=self)
 

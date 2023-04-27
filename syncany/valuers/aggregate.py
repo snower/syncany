@@ -68,8 +68,8 @@ class AggregateValuer(Valuer):
             return ContextAggregateValuer(key_valuer, calculate_valuer, inherit_valuers, self.aggregate_manager, self.key,
                                           self.filter, from_valuer=self, contexter=contexter)
         if isinstance(self, ContextAggregateValuer):
-            return self.__class__(key_valuer, calculate_valuer, inherit_valuers, self.aggregate_manager, self.key,
-                                  self.filter, from_valuer=self, contexter=self.contexter)
+            return ContextAggregateValuer(key_valuer, calculate_valuer, inherit_valuers, self.aggregate_manager, self.key,
+                                          self.filter, from_valuer=self, contexter=self.contexter)
         return self.__class__(key_valuer, calculate_valuer, inherit_valuers, self.aggregate_manager, self.key,
                               self.filter, from_valuer=self)
 

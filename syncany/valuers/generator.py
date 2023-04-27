@@ -16,9 +16,6 @@ class YieldValuer(Valuer):
         self.inherit_valuers = inherit_valuers
         super(YieldValuer, self).__init__(*args, **kwargs)
 
-        self.iter_valuers = []
-        self.iter_datas = []
-
     def new_init(self):
         super(YieldValuer, self).new_init()
         self.wait_loaded = True if not self.return_valuer else False
