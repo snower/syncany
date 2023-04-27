@@ -120,7 +120,7 @@ class DBLoader(Loader):
                         return self.fast_get()
                     return super(DBLoader, self).get()
                 for i in range(len(self.datas)):
-                    data, contexter_values = {key: value for key, value in self.datas[i].items()}, {}
+                    data, contexter_values = copy.copy(self.datas[i]), {}
                     for key, field, contexter in require_loaded_schema_items:
                         if contexter is None:
                             contexter = Contexter()
