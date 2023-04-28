@@ -8,9 +8,19 @@ from ...errors import CacheUnknownException, ValuerUnknownException
 
 class LoaderJoinWarp(object):
     __loader = None
+    wait_try_load_count = 0
 
     def __init__(self, loader):
         self.__loader = loader
+        self.wait_try_load_count = 0
+        if hasattr(self.__loader, "create_group_macther"):
+            self.create_group_macther = self.__loader.create_group_macther
+        if hasattr(self.__loader, "create_macther"):
+            self.create_macther = self.__loader.create_macther
+        if hasattr(self.__loader, "try_load"):
+            self.try_load = self.__loader.try_load
+        if hasattr(self.__loader, "load"):
+            self.load = self.__loader.load
 
     def __getattr__(self, item):
         if self.__loader is None or item == "_LoaderJoinWarp__loader":
@@ -30,6 +40,23 @@ class LoaderJoinWarp(object):
 
     def clone(self):
         self.__loader = self.__loader.clone()
+        self.wait_try_load_count = 0
+        if hasattr(self.__loader, "create_group_macther"):
+            self.create_group_macther = self.__loader.create_group_macther
+        else:
+            self.create_group_macther = lambda *args, **kwargs: self.__loader.create_group_macther(*args, **kwargs)
+        if hasattr(self.__loader, "create_macther"):
+            self.create_macther = self.__loader.create_macther
+        else:
+            self.create_macther = lambda *args, **kwargs: self.__loader.create_macther(*args, **kwargs)
+        if hasattr(self.__loader, "try_load"):
+            self.try_load = self.__loader.try_load
+        else:
+            self.try_load = lambda *args, **kwargs: self.__loader.try_load(*args, **kwargs)
+        if hasattr(self.__loader, "load"):
+            self.load = self.__loader.load
+        else:
+            self.load = lambda *args, **kwargs: self.__loader.load(*args, **kwargs)
         return self
 
     def add_valuer(self, name, valuer):

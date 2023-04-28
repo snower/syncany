@@ -6,50 +6,36 @@ from collections import defaultdict
 from .db import DBLoader
 from ..valuers.valuer import LoadAllFieldsException
 
-class DBJoinMatcher(object):
-    def __init__(self, keys, values):
-        self.keys = keys
-        self.values = values
-        self.data = None
-        self.valuers = []
 
-    def clone(self):
-        matcher = self.__class__(self.keys, self.values)
-        return matcher
+class DBJoinMatcher(object):
+    valuer = None
+    contexter_values = None
 
     def fill(self, values):
-        self.data = values
-        for valuer, contexter_values in self.valuers:
-            if contexter_values is not None:
-                valuer.contexter.values = contexter_values
-            valuer.fill(values)
+        if self.contexter_values is not None:
+            self.valuer.contexter.values = self.contexter_values
+        self.valuer.fill(values)
 
     def add_valuer(self, valuer):
-        self.valuers.append((valuer, valuer.contexter.values if hasattr(valuer, "contexter") else None))
+        self.valuer = valuer
+        self.contexter_values = valuer.contexter.values if hasattr(valuer, "contexter") else None
 
-    def get(self):
-        return self.data
-
-    def get_matcher_type(self):
-        return 1
 
 class GroupDBJoinMatcher(object):
     def __init__(self, return_valuer):
         self.return_valuer = return_valuer
+        self.contexter_values = return_valuer.contexter.values if hasattr(return_valuer, "contexter") else None
         self.valuers = []
-        self.datas = None
 
     def add_valuer(self, valuer):
         self.valuers.append((valuer, valuer.contexter.values if hasattr(valuer, "contexter") else None))
 
     def fill(self, valuer, data):
-        if self.datas is not None:
-            return self
         for valuer, contexter_values in self.valuers:
             if valuer.loaded is False:
                 return self
 
-        self.datas = []
+        datas = []
         for valuer, contexter_values in self.valuers:
             if valuer.loaded is not True:
                 continue
@@ -57,31 +43,13 @@ class GroupDBJoinMatcher(object):
                 valuer.contexter.values = contexter_values
             value = valuer.get()
             if isinstance(value, list):
-                self.datas.extend(value)
+                datas.extend(value)
             else:
-                self.datas.append(value)
-        self.return_valuer.fill(self.datas)
+                datas.append(value)
+        if self.contexter_values is not None:
+            self.return_valuer.contexter.values = self.contexter_values
+        self.return_valuer.fill(datas)
 
-    def get(self):
-        if self.datas is not None:
-            return self.datas
-
-        self.datas = []
-        for valuer, contexter_values in self.valuers:
-            if valuer.loaded is not True:
-                continue
-            if contexter_values is not None:
-                valuer.contexter.values = contexter_values
-            value = valuer.get()
-            if isinstance(value, list):
-                self.datas.extend(value)
-            else:
-                self.datas.append(value)
-        self.return_valuer.fill(self.datas)
-        return self.datas
-
-    def get_matcher_type(self):
-        return 2
 
 class DBJoinLoader(DBLoader):
     def __init__(self, *args, **kwargs):
@@ -118,7 +86,7 @@ class DBJoinLoader(DBLoader):
         return GroupDBJoinMatcher(return_valuer)
 
     def create_macther(self, keys, values):
-        matcher = DBJoinMatcher(keys, values)
+        matcher = DBJoinMatcher()
         if len(self.primary_keys) == 1:
             self.matchers[values[0]].append(matcher)
             if values[0] not in self.data_keys:
