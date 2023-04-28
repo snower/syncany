@@ -931,7 +931,7 @@ class SortCalculater(Calculater):
         if not args:
             return None
 
-        if not isinstance(args[0], list):
+        if not isinstance(args[0], list) or not args[0]:
             return args[0]
         if len(args) == 2 and not isinstance(args[1], bool):
             return sorted_by_keys(args[0], keys=args[1], reverse=False)
@@ -965,114 +965,121 @@ class StringCalculater(Calculater):
 
 
 class ArrayCalculater(Calculater):
-    def to_map(self, args):
-        if len(args) == 2 and isinstance(args[0], list) and isinstance(args[1], str):
-            result = {}
-            for v in args[0]:
-                if not isinstance(v, dict) or args[1] not in v:
-                    continue
-                vk = v[args[1]]
-                if vk in result:
-                    if not isinstance(result[vk], list):
-                        result[vk] = [result[vk], v]
-                    else:
-                        result[vk].append(v)
+    def __init__(self, *args, **kwargs):
+        super(ArrayCalculater, self).__init__(*args, **kwargs)
+
+        func_name = self.name[7:]
+        if func_name == "map":
+            self.func = self.array_map
+        elif func_name == "flat":
+            self.func = self.array_flat
+        elif func_name == "contains":
+            self.func = lambda data, value: value in data
+        elif func_name == "sum":
+            self.func = lambda data: sum(data)
+        elif func_name == "max":
+            self.func = lambda data: max(data)
+        elif func_name == "min":
+            self.func = lambda data: max(data)
+        elif func_name == "avg":
+            self.func = lambda data: sum(data) / len(data)
+        elif func_name == "join":
+            self.func = lambda data, sep: str(sep).join([str(value) for value in data])
+        elif func_name == "first":
+            self.func = lambda data: data[0]
+        elif func_name == "last":
+            self.func = lambda data: data[-1]
+        elif func_name == "gt":
+            self.func = lambda data, value: [value for value in data if value is not None and value > value]
+        elif func_name == "gte":
+            self.func = lambda data, value: [value for value in data if value is not None and value >= value]
+        elif func_name == "lt":
+            self.func = lambda data, value: [value for value in data if value is not None and value < value]
+        elif func_name == "lte":
+            self.func = lambda data, value: [value for value in data if value is not None and value <= value]
+        elif func_name == "eq":
+            self.func = lambda data, value: [value for value in data if value is not None and value == value]
+        elif func_name == "neq":
+            self.func = lambda data, value: [value for value in data if value is not None and value != value]
+        elif func_name == "slice":
+            self.func = self.array_slice
+        else:
+            if hasattr([], func_name):
+                def ary_func(data, *data_args):
+                    try:
+                        if func_name in ("append", "clear", "extend", "insert", "reverse", "sort"):
+                            getattr(data, func_name)(*data_args)
+                            return data
+                        return getattr(data, func_name)(*data_args)
+                    except:
+                        return None
+                self.func = ary_func
+            else:
+                self.func = lambda data, *data_args: None
+
+    def array_slice(self, data, *args):
+        if not args:
+            return data[:]
+        if len(args) == 1:
+            return data[args[0]:]
+        if len(args) == 2:
+            return data[args[0]: args[1]]
+        return data[args[0]: args[1]: args[2]]
+
+    def array_map(self, data, *args):
+        if not args:
+            if len(data) == 1 and isinstance(data[0], dict):
+                return data[0]
+            return {"index" + str(i): data[i] for i in range(len(data))}
+
+        result = {}
+        for value in data:
+            if not isinstance(value, dict) or args[0] not in value:
+                continue
+            vk = value[args[0]]
+            vv = value.get(args[1]) if len(args) >= 2 else value
+            if vk in result:
+                if not isinstance(result[vk], list):
+                    result[vk] = [result[vk], vv]
                 else:
-                    result[vk] = v
+                    result[vk].append(vv)
+            else:
+                result[vk] = vv
+        return result
+
+    def array_flat(self, data, *args):
+        if not args:
+            result = []
+            for value in data:
+                if isinstance(value, list):
+                    result.extend(value)
+                else:
+                    result.append(value)
             return result
 
-        if len(args) == 1 and isinstance(args[0], list):
-            if len(args[0]) == 1 and isinstance(args[0][0], dict):
-                return args[0]
-            return {"index" + str(i): args[0][i] for i in range(len(args[0]))}
-
-        if isinstance(args[0], dict):
-            if len(args) == 2 and isinstance(args[1], str):
-                if args[1] in args[0]:
-                    return {args[0][args[1]]: args[0]}
-                return {}
-            return args[0]
-        return {}
-
-    def flat(self, args):
-        if len(args) == 1:
-            if isinstance(args[0], list):
-                result = []
-                for d in args[0]:
-                    if isinstance(d, list):
-                        result.extend(d)
-                    else:
-                        result.append(d)
-                return result
-            return [args[0]]
-
         result = []
-        for d in args:
-            if isinstance(d, list):
-                result.extend(d)
-            else:
-                result.append(d)
+        for key in args:
+            for value in data:
+                if not isinstance(value, dict) or key not in value:
+                    continue
+                value = data[key]
+                if isinstance(value, list):
+                    result.extend(value)
+                else:
+                    result.append(value)
+            data = result
         return result
 
     def calculate(self, *args):
         if not args:
             return None
-
-        func_name = self.name[7:]
-        if func_name == "map":
-            return self.to_map(args)
-        if func_name == "flat":
-            return self.flat(args)
         data = args[0] if isinstance(args[0], list) else [args[0]]
         if not data:
+            return []
+        try:
+            return self.func(data, *args[1:])
+        except:
             return None
-
-        if func_name == "contains":
-            return args[1] in data
-        if func_name == "sum":
-            return sum(data)
-        if func_name == "max":
-            return max(*tuple(data))
-        if func_name == "min":
-            return max(*tuple(data))
-        if func_name == "avg":
-            return sum(data) / len(data)
-        if func_name == "join":
-            return str(args[1]).join([str(value) for value in data])
-        if func_name == "first":
-            return data[0]
-        if func_name == "last":
-            return data[-1]
-        if func_name == "gt":
-            return [value for value in data if value is not None and value > args[1]]
-        if func_name == "gte":
-            return [value for value in data if value is not None and value >= args[1]]
-        if func_name == "lt":
-            return [value for value in data if value is not None and value < args[1]]
-        if func_name == "lte":
-            return [value for value in data if value is not None and value <= args[1]]
-        if func_name == "eq":
-            return [value for value in data if value is not None and value == args[1]]
-        if func_name == "neq":
-            return [value for value in data if value is not None and value != args[1]]
-        if func_name == "slice":
-            if len(args) == 1:
-                return data[:]
-            if len(args) == 2:
-                return data[args[1]:]
-            if len(args) == 3:
-                return data[args[1]: args[2]]
-            return data[args[1]: args[2]: args[3]]
-
-        if hasattr(data, func_name):
-            try:
-                result = getattr(data, func_name)(*tuple(args[1:]))
-                if func_name in ("append", "clear", "extend", "insert", "reverse", "sort"):
-                    return data
-                return result
-            except:
-                return None
-        return None
 
 
 class MapCalculater(Calculater):
