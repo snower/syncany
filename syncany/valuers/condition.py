@@ -66,7 +66,7 @@ class IfValuer(Valuer):
             elif self.false_valuer:
                 value = self.do_filter(self.false_valuer.fill(data).get())
             else:
-                value = None
+                value = self.do_filter(None)
             self.return_valuer.fill(value)
             return self
 
@@ -90,7 +90,7 @@ class IfValuer(Valuer):
         elif self.false_valuer:
             value = self.do_filter(self.false_valuer.get())
         else:
-            value = None
+            value = self.do_filter(None)
         if self.return_valuer:
             return self.return_valuer.fill(value).get()
         return value

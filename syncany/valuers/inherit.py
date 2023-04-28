@@ -75,7 +75,6 @@ class ContextInheritValuer(InheritValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
         self.value_context_id = (id(self), "value")
-        self.filled_context_id = (id(self), "filled")
         super(ContextInheritValuer, self).__init__(*args, **kwargs)
 
     @property
@@ -92,21 +91,6 @@ class ContextInheritValuer(InheritValuer):
                 self.contexter.values.pop(self.value_context_id)
             return
         self.contexter.values[self.value_context_id] = v
-
-    @property
-    def filled(self):
-        try:
-            return self.contexter.values[self.filled_context_id]
-        except KeyError:
-            return False
-
-    @filled.setter
-    def filled(self, v):
-        if v is False:
-            if self.filled_context_id in self.contexter.values:
-                self.contexter.values.pop(self.filled_context_id)
-            return
-        self.contexter.values[self.filled_context_id] = v
 
 
 class InheritChildValuer(Valuer):

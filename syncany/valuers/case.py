@@ -66,8 +66,6 @@ class CaseValuer(Valuer):
             self.case_valuers[value].fill(data)
         elif self.default_case_valuer:
             self.default_case_valuer.fill(data)
-        else:
-            value = None
 
         if self.wait_loaded:
             if value in self.case_valuers:
@@ -75,7 +73,7 @@ class CaseValuer(Valuer):
             elif self.default_case_valuer:
                 value = self.do_filter(self.default_case_valuer.get())
             else:
-                value = None
+                value = self.do_filter(None)
             self.return_valuer.fill(value)
         else:
             self.value = value
@@ -94,7 +92,7 @@ class CaseValuer(Valuer):
         elif self.default_case_valuer:
             value = self.do_filter(self.default_case_valuer.get())
         else:
-            value = None
+            value = self.do_filter(None)
         if self.return_valuer:
             return self.return_valuer.fill(value).get()
         return value

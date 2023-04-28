@@ -199,9 +199,11 @@ class MatchValuer(Valuer):
 
         if self.wait_loaded:
             if matched_value is not None:
-                self.value = self.do_filter(self.match_valuers[matched_value["match"]].get())
+                value = self.do_filter(self.match_valuers[matched_value["match"]].get())
             elif self.default_match_valuer:
-                self.value = self.do_filter(self.default_match_valuer.get())
+                value = self.do_filter(self.default_match_valuer.get())
+            else:
+                value = self.do_filter(None)
             if self.return_valuer:
                 self.return_valuer.fill(value)
             else:
@@ -226,9 +228,11 @@ class MatchValuer(Valuer):
             value = self.do_filter(self.match_valuers[matched_value["match"]].get())
         elif self.default_match_valuer:
             value = self.do_filter(self.default_match_valuer.get())
+        else:
+            value = self.do_filter(None)
 
         if self.return_valuer:
-            return self.return_valuer.fill(self.value).get()
+            return self.return_valuer.fill(value).get()
         return value
 
     def childs(self):
