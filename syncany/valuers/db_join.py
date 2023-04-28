@@ -6,8 +6,6 @@ from .data import Valuer
 
 
 class DBJoinValuer(Valuer):
-    matcher = None
-
     def __init__(self, loader, foreign_keys, foreign_filters, args_valuers, return_valuer, inherit_valuers, *args, **kwargs):
         self.loader = loader
         self.foreign_keys = foreign_keys
@@ -35,10 +33,6 @@ class DBJoinValuer(Valuer):
                                        from_valuer=self, contexter=self.contexter)
         return self.__class__(self.loader, self.foreign_keys, self.foreign_filters,
                               args_valuers, return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self)
-
-    def reinit(self):
-        self.matcher = None
-        return super(DBJoinValuer, self).reinit()
 
     def fill(self, data):
         if self.inherit_valuers:
@@ -86,11 +80,9 @@ class DBJoinValuer(Valuer):
                 return_valuer = DBJoinGroupMatchValuer(group_macther, "*")
                 matcher.add_valuer(return_valuer)
                 group_macther.add_valuer(return_valuer)
-            self.matcher = group_macther
         elif has_join_value:
             matcher = self.loader.create_macther(self.foreign_keys, join_values)
             matcher.valuer, matcher.contexter_values = self.return_valuer, None
-            self.matcher = matcher
 
         self.loader.wait_try_load_count += 1
         if self.loader.wait_try_load_count >= 64:
@@ -140,7 +132,6 @@ class ContextDBJoinValuer(DBJoinValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
         self.value_context_id = (id(self), "value")
-        self.matcher_context_id = (id(self), "matcher")
         super(ContextDBJoinValuer, self).__init__(*args, **kwargs)
 
     @property
@@ -157,21 +148,6 @@ class ContextDBJoinValuer(DBJoinValuer):
                 self.contexter.values.pop(self.value_context_id)
             return
         self.contexter.values[self.value_context_id] = v
-
-    @property
-    def matcher(self):
-        try:
-            return self.contexter.values[self.matcher_context_id]
-        except KeyError:
-            return None
-
-    @matcher.setter
-    def matcher(self, v):
-        if v is None:
-            if self.matcher_context_id in self.contexter.values:
-                self.contexter.values.pop(self.matcher_context_id)
-            return
-        self.contexter.values[self.matcher_context_id] = v
 
     def fill(self, data):
         if self.inherit_valuers:
@@ -219,11 +195,9 @@ class ContextDBJoinValuer(DBJoinValuer):
                 return_valuer = DBJoinGroupMatchValuer(group_macther, "*")
                 matcher.add_valuer(return_valuer)
                 group_macther.add_valuer(return_valuer)
-            self.matcher = group_macther
         elif has_join_value:
             matcher = self.loader.create_macther(self.foreign_keys, join_values)
             matcher.valuer, matcher.contexter_values = self.return_valuer, self.contexter.values
-            self.matcher = matcher
 
         self.loader.wait_try_load_count += 1
         if self.loader.wait_try_load_count >= 64:
