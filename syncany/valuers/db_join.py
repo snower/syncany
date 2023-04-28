@@ -87,6 +87,7 @@ class DBJoinValuer(Valuer):
         self.loader.wait_try_load_count += 1
         if self.loader.wait_try_load_count >= 64:
             self.loader.try_load()
+            self.loader.wait_try_load_count = 0
         return self
 
     def get(self):
@@ -206,6 +207,7 @@ class ContextDBJoinValuer(DBJoinValuer):
                 self.loader.try_load()
             finally:
                 self.contexter.values = contexter_values
+            self.loader.wait_try_load_count = 0
         return self
 
     def get(self):
