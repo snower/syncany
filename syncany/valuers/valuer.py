@@ -116,11 +116,9 @@ class Valuer(object):
 
     def new_init(self):
         self.key_getters = []
-        self.child_valuers = self.childs()
 
     def clone_init(self, from_valuer):
         self.key_getters = from_valuer.key_getters
-        self.child_valuers = from_valuer.child_valuers
 
     def parse_key(self):
         if self.key in self.KEY_GETTER_CACHES:
@@ -162,7 +160,7 @@ class Valuer(object):
 
     def reinit(self):
         self.value = None
-        for valuer in self.child_valuers:
+        for valuer in self.childs():
             valuer.reinit()
         return self
 
@@ -198,7 +196,7 @@ class Valuer(object):
         return self.value
 
     def reset(self):
-        for valuer in self.child_valuers:
+        for valuer in self.childs():
             valuer.reset()
 
     def do_filter(self, value):
@@ -218,7 +216,7 @@ class Valuer(object):
         return self.filter
 
     def require_loaded(self):
-        for child in self.child_valuers:
+        for child in self.childs():
             if child.require_loaded():
                 return True
         return False

@@ -7,8 +7,6 @@ from .valuer import Valuer
 
 
 class InheritValuer(Valuer):
-    filled = False
-
     def __init__(self, value_valuer, *args, **kwargs):
         if isinstance(self, ContextInheritValuer):
             self.child_valuer = ContextInheritChildValuer(self, value_valuer, *args, **kwargs, contexter=self.contexter)
@@ -22,9 +20,6 @@ class InheritValuer(Valuer):
         return self.child_valuer
 
     def clone(self, contexter=None):
-        if self.filled:
-            return self
-
         if self.child_valuer.cloned_inherit_valuer:
             inherit_valuer = self.child_valuer.cloned_inherit_valuer
             self.child_valuer.cloned_inherit_valuer = None
@@ -42,16 +37,11 @@ class InheritValuer(Valuer):
         self.cloned_child_valuer = inherit_valuer.get_inherit_child_valuer()
         return inherit_valuer
 
-    def reinit(self):
-        self.filled = False
-        return super(InheritValuer, self).reinit()
-
     def fill(self, data):
         if self.value_valuer:
             self.value_valuer.fill(self.do_filter(data))
         else:
             super(InheritValuer, self).fill(data)
-        self.filled = True
         return self
 
     def get(self):
@@ -101,9 +91,6 @@ class InheritChildValuer(Valuer):
         super(InheritChildValuer, self).__init__(*args, **kwargs)
 
     def clone(self, contexter=None):
-        if self.inherit_valuer.filled:
-            return self
-
         if self.inherit_valuer.cloned_child_valuer:
             child_valuer = self.inherit_valuer.cloned_child_valuer
             self.inherit_valuer.cloned_child_valuer = None
