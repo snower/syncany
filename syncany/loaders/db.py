@@ -133,19 +133,21 @@ class DBLoader(Loader):
 
                 if current_contexter:
                     for i in range(len(self.datas)):
-                        data, context_dataer = self.datas[i], ContextDataer(current_contexter).use_values()
+                        data, context_dataer = self.datas[i], ContextDataer(current_contexter)
+                        current_contexter.values = context_dataer.values
                         for key, field in self.schema.items():
                             field.fill(data)
                         self.datas[i] = context_dataer
-                else:
-                    for i in range(len(self.datas)):
-                        data, odata, contexter_values = self.datas[i], {}, {}
-                        for key, field, contexter in contexter_schema:
-                            if contexter is None:
-                                contexter = Contexter()
-                                field = field.clone(contexter)
-                            odata[key] = ContextRunner(contexter, field, contexter_values).fill(data)
-                        self.datas[i] = odata
+                    return super(DBLoader, self).get()
+
+                for i in range(len(self.datas)):
+                    data, odata, contexter_values = self.datas[i], {}, {}
+                    for key, field, contexter in contexter_schema:
+                        if contexter is None:
+                            contexter = Contexter()
+                            field = field.clone(contexter)
+                        odata[key] = ContextRunner(contexter, field, contexter_values).fill(data)
+                    self.datas[i] = odata
             else:
                 for i in range(len(self.datas)):
                     data = {}
