@@ -5,7 +5,7 @@
 import types
 import re
 from collections import defaultdict, deque
-from ..valuers import ContextRunner
+from ..valuers.valuer import ContextRunner
 
 
 class KeyMatcher(object):
@@ -184,13 +184,11 @@ class Loader(object):
         return self.datas
 
     def check_intercepts(self, data):
-        intercept_stoped = False
         for intercept in self.intercepts:
             intercept_result = intercept.fill(data).get()
             if intercept_result is not None and not intercept_result:
-                intercept_stoped = True
-                break
-        return intercept_stoped
+                return True
+        return False
 
     def add_filter(self, key, exp, value):
         self.filters.append([key, exp, value])

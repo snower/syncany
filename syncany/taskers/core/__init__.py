@@ -774,24 +774,29 @@ class CoreTasker(Tasker):
         self.loader = self.create_loader(loader_config, input_loader["foreign_key"])
 
         if isinstance(self.schema, dict):
-            aggregate_valuers = []
+            loader_schema, aggregate_valuers, require_loaded = {}, [], False
             for name, valuer in self.schema.items():
                 inherit_valuers, yield_valuers = [], []
                 valuer = self.create_valuer(valuer, schema_field_name=name, inherit_valuers=inherit_valuers,
                                             join_loaders=self.join_loaders, yield_valuers=yield_valuers,
                                             aggregate_valuers=aggregate_valuers, define_valuers={},
                                             global_variables=self.global_variables, global_states=self.states)
-                if valuer:
-                    if valuer.require_loaded():
-                        valuer = valuer.clone(Contexter())
-                    self.loader.add_valuer(name, valuer)
+                if not valuer:
+                    continue
+                if valuer.require_loaded():
+                    require_loaded = True
+                loader_schema[name] = valuer
                 if inherit_valuers:
                     raise OverflowError(name + " inherit out of range")
                 if yield_valuers:
                     loader_config["valuer_type"] |= 0x01
                 if aggregate_valuers:
                     loader_config["valuer_type"] |= 0x02
-                self.loader.valuer_type = loader_config["valuer_type"]
+            for name, valuer in loader_schema.items():
+                if require_loaded:
+                    valuer = valuer.clone(Contexter())
+                self.loader.add_valuer(name, valuer)
+            self.loader.valuer_type = loader_config["valuer_type"]
         elif self.schema == ".*":
             self.loader.add_key_matcher(".*", self.create_valuer(self.valuer_compiler.compile_data_valuer("", None)))
 

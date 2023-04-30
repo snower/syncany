@@ -113,20 +113,24 @@ class DBLoader(Loader):
 
         if not self.compiled:
             if not self.key_matchers:
-                require_loaded_schema_items = [(key, field, field.contexter if hasattr(field, "contexter") else None)
-                                               for key, field in self.schema.items() if field.require_loaded()]
-                if not require_loaded_schema_items:
+                require_loaded_schema, contexter_schema = False, []
+                for key, field in self.schema.items():
+                    if field.require_loaded():
+                        require_loaded_schema = True
+                    contexter_schema.append((key, field, field.contexter if hasattr(field, "contexter") else None))
+                if not require_loaded_schema:
                     if not self.valuer_type:
                         return self.fast_get()
                     return super(DBLoader, self).get()
+
                 for i in range(len(self.datas)):
-                    data, contexter_values = copy.copy(self.datas[i]), {}
-                    for key, field, contexter in require_loaded_schema_items:
+                    data, odata, contexter_values = self.datas[i], {}, {}
+                    for key, field, contexter in contexter_schema:
                         if contexter is None:
                             contexter = Contexter()
                             field = field.clone(contexter)
-                        data[key] = ContextRunner(contexter, field, contexter_values).fill(data)
-                    self.datas[i] = data
+                        odata[key] = ContextRunner(contexter, field, contexter_values).fill(data)
+                    self.datas[i] = odata
             else:
                 for i in range(len(self.datas)):
                     data = {}
