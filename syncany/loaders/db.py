@@ -5,7 +5,7 @@
 import copy
 from collections import defaultdict, deque
 from .loader import Loader
-from ..valuers.valuer import Contexter, ContextRunner, LoadAllFieldsException
+from ..valuers.valuer import Contexter, ContextRunner, ContextDataer, LoadAllFieldsException
 
 
 class DBLoader(Loader):
@@ -113,24 +113,39 @@ class DBLoader(Loader):
 
         if not self.compiled:
             if not self.key_matchers:
-                require_loaded_schema, contexter_schema = False, []
+                has_contexter, contexter_schema, current_contexter = False, [], None
                 for key, field in self.schema.items():
-                    if field.require_loaded():
-                        require_loaded_schema = True
-                    contexter_schema.append((key, field, field.contexter if hasattr(field, "contexter") else None))
-                if not require_loaded_schema:
+                    if hasattr(field, "contexter"):
+                        has_contexter = True
+                        contexter_schema.append((key, field, field.contexter))
+                        if current_contexter is None:
+                            current_contexter = field.contexter
+                        elif current_contexter is not field.contexter:
+                            current_contexter = False
+                    else:
+                        contexter_schema.append((key, field, None))
+                        if current_contexter is not None:
+                            current_contexter = False
+                if not has_contexter:
                     if not self.valuer_type:
                         return self.fast_get()
                     return super(DBLoader, self).get()
 
-                for i in range(len(self.datas)):
-                    data, odata, contexter_values = self.datas[i], {}, {}
-                    for key, field, contexter in contexter_schema:
-                        if contexter is None:
-                            contexter = Contexter()
-                            field = field.clone(contexter)
-                        odata[key] = ContextRunner(contexter, field, contexter_values).fill(data)
-                    self.datas[i] = odata
+                if current_contexter:
+                    for i in range(len(self.datas)):
+                        data, context_dataer = self.datas[i], ContextDataer(current_contexter).use_values()
+                        for key, field in self.schema.items():
+                            field.fill(data)
+                        self.datas[i] = context_dataer
+                else:
+                    for i in range(len(self.datas)):
+                        data, odata, contexter_values = self.datas[i], {}, {}
+                        for key, field, contexter in contexter_schema:
+                            if contexter is None:
+                                contexter = Contexter()
+                                field = field.clone(contexter)
+                            odata[key] = ContextRunner(contexter, field, contexter_values).fill(data)
+                        self.datas[i] = odata
             else:
                 for i in range(len(self.datas)):
                     data = {}

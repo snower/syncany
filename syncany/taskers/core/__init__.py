@@ -792,10 +792,13 @@ class CoreTasker(Tasker):
                     loader_config["valuer_type"] |= 0x01
                 if aggregate_valuers:
                     loader_config["valuer_type"] |= 0x02
-            for name, valuer in loader_schema.items():
-                if require_loaded:
-                    valuer = valuer.clone(Contexter())
-                self.loader.add_valuer(name, valuer)
+            if require_loaded:
+                contexter = Contexter()
+                for name, valuer in loader_schema.items():
+                    self.loader.add_valuer(name, valuer.clone(contexter))
+            else:
+                for name, valuer in loader_schema.items():
+                    self.loader.add_valuer(name, valuer)
             self.loader.valuer_type = loader_config["valuer_type"]
         elif self.schema == ".*":
             self.loader.add_key_matcher(".*", self.create_valuer(self.valuer_compiler.compile_data_valuer("", None)))

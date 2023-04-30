@@ -5,7 +5,7 @@
 import types
 import re
 from collections import defaultdict, deque
-from ..valuers.valuer import ContextRunner
+from ..valuers.valuer import ContextRunner, ContextDataer
 
 
 class KeyMatcher(object):
@@ -109,11 +109,16 @@ class Loader(object):
         if not self.valuer_type:
             while datas:
                 data, odata = datas.popleft(), {}
-                for name, valuer in self.schema.items():
-                    if name not in data or not isinstance(data[name], ContextRunner):
-                        odata[name] = valuer.fill(data).get()
-                    else:
-                        odata[name] = data[name].get()
+                if isinstance(data, ContextDataer):
+                    data.use_values()
+                    for name, valuer in self.schema.items():
+                        odata[name] = valuer.get()
+                else:
+                    for name, valuer in self.schema.items():
+                        if name not in data or not isinstance(data[name], ContextRunner):
+                            odata[name] = valuer.fill(data).get()
+                        else:
+                            odata[name] = data[name].get()
                 if self.intercepts and self.check_intercepts(odata):
                     continue
                 self.datas.append(odata)
@@ -122,20 +127,34 @@ class Loader(object):
 
         while datas:
             data, odata, oyields, ofuncs = datas.popleft(), {}, {}, {}
-            for name, valuer in self.schema.items():
-                if name not in data or not isinstance(data[name], ContextRunner):
-                    value = valuer.fill(data).get()
-                else:
-                    value = data[name].get()
-                if isinstance(value, types.FunctionType):
-                    ofuncs[name] = value
-                    odata[name] = None
-                    continue
-                if isinstance(value, types.GeneratorType):
-                    oyields[name] = value
-                    odata[name] = None
-                    continue
-                odata[name] = value
+            if isinstance(data, ContextDataer):
+                data.use_values()
+                for name, valuer in self.schema.items():
+                    value = valuer.get()
+                    if isinstance(value, types.FunctionType):
+                        ofuncs[name] = value
+                        odata[name] = None
+                        continue
+                    if isinstance(value, types.GeneratorType):
+                        oyields[name] = value
+                        odata[name] = None
+                        continue
+                    odata[name] = value
+            else:
+                for name, valuer in self.schema.items():
+                    if name not in data or not isinstance(data[name], ContextRunner):
+                        value = valuer.fill(data).get()
+                    else:
+                        value = data[name].get()
+                    if isinstance(value, types.FunctionType):
+                        ofuncs[name] = value
+                        odata[name] = None
+                        continue
+                    if isinstance(value, types.GeneratorType):
+                        oyields[name] = value
+                        odata[name] = None
+                        continue
+                    odata[name] = value
 
             if oyields:
                 while oyields:

@@ -94,6 +94,28 @@ class ContextRunner(object):
         return self.valuer.get()
 
 
+class ContextDataer(object):
+    def __init__(self, contexter):
+        self.contexter = contexter
+        self.values = {}
+
+    def fill(self, valuer, data):
+        return valuer.fill(data)
+
+    def get(self, valuer):
+        return valuer.get()
+
+    def use_values(self):
+        self.contexter.values = self.values
+        return self
+
+    def __enter__(self):
+        self.contexter.values = self.values
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
 class Contexter(object):
     def __init__(self):
         self.values = {}
