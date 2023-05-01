@@ -796,6 +796,8 @@ class CoreTasker(Tasker):
                 contexter = Contexter()
                 for name, valuer in loader_schema.items():
                     self.loader.add_valuer(name, valuer.clone(contexter))
+                if hasattr(self.loader, "contexter"):
+                    self.loader.contexter = contexter
             else:
                 for name, valuer in loader_schema.items():
                     self.loader.add_valuer(name, valuer)

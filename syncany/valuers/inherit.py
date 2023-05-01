@@ -64,8 +64,8 @@ class InheritValuer(Valuer):
 class ContextInheritValuer(InheritValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = (id(self), "value")
         super(ContextInheritValuer, self).__init__(*args, **kwargs)
+        self.value_context_id = (id(self.child_valuer), "value")
 
     @property
     def value(self):

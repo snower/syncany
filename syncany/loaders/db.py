@@ -14,11 +14,12 @@ class DBLoader(Loader):
 
         self.db = db
         self.name = name
-        self.compiled = False
+        self.contexter = False
         self.last_data = None
 
     def clone(self):
         loader = self.__class__(self.db, self.name, self.primary_keys, self.valuer_type)
+        loader.contexter = self.contexter
         schema = {}
         for key, valuer in self.schema.items():
             schema[key] = valuer.clone()
@@ -102,7 +103,6 @@ class DBLoader(Loader):
         self.last_data = copy.copy(self.datas[-1]) if self.datas else {}
         self.loader_state["query_count"] += 1
         self.loader_state["load_count"] += len(self.datas)
-        self.compiled = False
         self.loaded = True
 
     def get(self):
@@ -111,58 +111,47 @@ class DBLoader(Loader):
         if not self.loaded:
             self.load()
 
-        if not self.compiled:
-            if not self.key_matchers:
-                has_contexter, contexter_schema, current_contexter = False, [], None
-                for key, field in self.schema.items():
-                    if hasattr(field, "contexter"):
-                        has_contexter = True
-                        contexter_schema.append((key, field, field.contexter))
-                        if current_contexter is None:
-                            current_contexter = field.contexter
-                        elif current_contexter is not field.contexter:
-                            current_contexter = False
-                    else:
-                        contexter_schema.append((key, field, None))
-                        if current_contexter is not None:
-                            current_contexter = False
-                if not has_contexter:
-                    if not self.valuer_type:
-                        return self.fast_get()
-                    return super(DBLoader, self).get()
+        if not self.key_matchers:
+            loader_contexter = self.contexter
+            if loader_contexter is False:
+                if not self.valuer_type:
+                    return self.fast_get()
+                return super(DBLoader, self).get()
 
-                if current_contexter:
-                    for i in range(len(self.datas)):
-                        data, context_dataer = self.datas[i], ContextDataer(current_contexter)
-                        current_contexter.values = context_dataer.values
-                        for key, field in self.schema.items():
-                            field.fill(data)
-                        self.datas[i] = context_dataer
-                    return super(DBLoader, self).get()
-
+            if loader_contexter is not None:
                 for i in range(len(self.datas)):
-                    data, odata, contexter_values = self.datas[i], {}, {}
-                    for key, field, contexter in contexter_schema:
-                        if contexter is None:
-                            contexter = Contexter()
-                            field = field.clone(contexter)
-                        odata[key] = ContextRunner(contexter, field, contexter_values).fill(data)
-                    self.datas[i] = odata
-            else:
-                for i in range(len(self.datas)):
-                    data = {}
-                    for key, value in self.datas[i].items():
-                        if key in self.schema:
-                            data[key] = value
-                            continue
-                        for key_matcher in self.key_matchers:
-                            if not key_matcher.match(key):
-                                continue
-                            self.schema[key] = key_matcher.create_key(key)
-                            data[key] = value
-                            break
-                    self.datas[i] = data
+                    data, context_dataer = self.datas[i], ContextDataer(loader_contexter)
+                    loader_contexter.values = context_dataer.values
+                    for key, field in self.schema.items():
+                        field.fill(data)
+                    self.datas[i] = context_dataer
+                return super(DBLoader, self).get()
 
+            contexter_schema = [(key, field, field.contexter if hasattr(field, "contexter") else None)
+                                for key, field in self.schema.items()]
+            for i in range(len(self.datas)):
+                data, odata, contexter_values = self.datas[i], {}, {}
+                for key, field, contexter in contexter_schema:
+                    if contexter is None:
+                        contexter = Contexter()
+                        field = field.clone(contexter)
+                    odata[key] = ContextRunner(contexter, field, contexter_values).fill(data)
+                self.datas[i] = odata
+            return super(DBLoader, self).get()
+
+        for i in range(len(self.datas)):
+            data = {}
+            for key, value in self.datas[i].items():
+                if key in self.schema:
+                    data[key] = value
+                    continue
+                for key_matcher in self.key_matchers:
+                    if not key_matcher.match(key):
+                        continue
+                    self.schema[key] = key_matcher.create_key(key)
+                    data[key] = value
+                    break
+            self.datas[i] = data
         return super(DBLoader, self).get()
 
     def fast_get(self):
