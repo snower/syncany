@@ -158,16 +158,16 @@ def parse_date(value, fmt, tz):
 def parse_time(value, fmt, tz):
     try:
         dt = parse_datetime(value, fmt, tz)
+        if isinstance(dt, datetime.time):
+            return dt
         if isinstance(dt, datetime.datetime):
             if tz != dt.tzinfo:
                 dt = dt.astimezone(tz=tz)
-            return datetime.time(dt.hour, dt.minute, dt.second, dt.microsecond)
-        if isinstance(dt, datetime.time):
-            return datetime.date.today()
+            return datetime.time(dt.hour, dt.minute, dt.second, dt.microsecond, tzinfo=tz)
     except ParserError:
         pass
     dt = datetime.datetime.strptime("2000-01-01 " + value, "%Y-%m-%d " + (fmt or "%H:%M:%S"))
-    return datetime.time(dt.hour, dt.minute, dt.second, dt.microsecond)
+    return datetime.time(dt.hour, dt.minute, dt.second, dt.microsecond, tzinfo=tz)
 
 def get_rich():
     if os.environ.get("USE_RICH", 'true').lower() != "true":

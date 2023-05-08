@@ -7,7 +7,7 @@ import time
 import pickle
 import json
 from ..utils import human_repr_object, sorted_by_keys
-from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
+from .database import Cmper, QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
 
 
 class StringSerialize(object):
@@ -58,28 +58,28 @@ class BeanstalkQueryBuilder(QueryBuilder):
         self.limit = (0, self.db.bulk_size)
 
     def filter_gt(self, key, value):
-        self.query[(key, '>')] = (value, lambda a, b: a > b)
+        self.query[(key, '>')] = (value, Cmper.cmp_gt)
 
     def filter_gte(self, key, value):
-        self.query[(key, ">=")] = (value, lambda a, b: a >= b)
+        self.query[(key, ">=")] = (value, Cmper.cmp_gte)
 
     def filter_lt(self, key, value):
-        self.query[(key, "<")] = (value, lambda a, b: a < b)
+        self.query[(key, "<")] = (value, Cmper.cmp_lt)
 
     def filter_lte(self, key, value):
-        self.query[(key, "<=")] = (value, lambda a, b: a <= b)
+        self.query[(key, "<=")] = (value, Cmper.cmp_lte)
 
     def filter_eq(self, key, value):
-        self.query[(key, "==")] = (value, lambda a, b: a == b)
+        self.query[(key, "==")] = (value, Cmper.cmp_eq)
 
     def filter_ne(self, key, value):
-        self.query[(key, "!=")] = (value, lambda a, b: a != b)
+        self.query[(key, "!=")] = (value, Cmper.cmp_ne)
 
     def filter_in(self, key, value):
         try:
-            self.query[(key, "in")] = (set(value) if isinstance(value, list) else value, lambda a, b: a in b)
+            self.query[(key, "in")] = (set(value) if isinstance(value, list) else value, Cmper.cmp_in)
         except:
-            self.query[(key, "in")] = (value, lambda a, b: a in b)
+            self.query[(key, "in")] = (value, Cmper.cmp_in)
 
     def filter_limit(self, count, start=None):
         if not start:

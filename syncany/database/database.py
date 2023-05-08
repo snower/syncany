@@ -3,8 +3,139 @@
 # create by: snower
 
 import time
+import datetime
 from collections import deque
 import threading
+from ..utils import parse_datetime, parse_date, parse_time, get_timezone
+
+
+class Cmper(object):
+    @classmethod
+    def ensure_value_type(cls, a, b):
+        if isinstance(a, datetime.date):
+            if isinstance(a, datetime.datetime):
+                if isinstance(b, datetime.date):
+                    return a, datetime.datetime(b.year, b.month, b.day, tzinfo=get_timezone())
+                if isinstance(b, datetime.time):
+                    now = datetime.datetime.now()
+                    return a, datetime.datetime(now.year, now.month, now.day, b.hour, b.minute, b.second,
+                                                b.microsecond, tzinfo=get_timezone())
+                try:
+                    return a, parse_datetime(b, None, get_timezone())
+                except:
+                    return a, None
+            if isinstance(b, datetime.datetime):
+                return a, datetime.date(b.year, b.month, b.day)
+            try:
+                return a, parse_date(b, None, get_timezone())
+            except:
+                return a, None
+        if isinstance(a, datetime.time):
+            if isinstance(b, datetime.datetime):
+                return datetime.time(b.hour, b.minute, b.second, b.microsecond)
+            try:
+                return a, parse_time(b, None, get_timezone())
+            except:
+                return a, None
+        if isinstance(a, int):
+            try:
+                return a, int(b)
+            except ValueError:
+                return a, 0
+        if isinstance(a, float):
+            try:
+                return a, float(b)
+            except ValueError:
+                return a, 0.0
+        try:
+            return a, type(a)(b)
+        except:
+            return a, None
+
+    @classmethod
+    def cmp_gt(cls, a, b):
+        try:
+            return a > b
+        except TypeError:
+            if a is None:
+                return False
+            if b is None:
+                return True
+            a, b = cls.ensure_value_type(a, b)
+            if b is None:
+                return True
+            return a > b
+
+    @classmethod
+    def cmp_gte(cls, a, b):
+        try:
+            return a >= b
+        except TypeError:
+            if a is None:
+                return True if b is None else False
+            if b is None:
+                return True
+            a, b = cls.ensure_value_type(a, b)
+            if b is None:
+                return True
+            return a >= b
+
+    @classmethod
+    def cmp_lt(cls, a, b):
+        try:
+            return a < b
+        except TypeError:
+            if a is None:
+                return False if b is None else True
+            if b is None:
+                return False
+            a, b = cls.ensure_value_type(a, b)
+            if b is None:
+                return False
+            return a < b
+
+    @classmethod
+    def cmp_lte(cls, a, b):
+        try:
+            return a <= b
+        except TypeError:
+            if a is None:
+                return True
+            if b is None:
+                return True
+            a, b = cls.ensure_value_type(a, b)
+            if b is None:
+                return False
+            return a <= b
+
+    @classmethod
+    def cmp_eq(cls, a, b):
+        if a == b:
+            return True
+        if a is None or b is None:
+            return False
+        a, b = cls.ensure_value_type(a, b)
+        if b is None:
+            return False
+        return a == b
+
+    @classmethod
+    def cmp_ne(cls, a, b):
+        if a == b:
+            return False
+        if a is None or b is None:
+            return True
+        a, b = cls.ensure_value_type(a, b)
+        if b is None:
+            return True
+        return a != b
+
+    @classmethod
+    def cmp_in(cls, a, b):
+        if b is None:
+            return False
+        return a in b
+
 
 
 class QueryBuilder(object):
