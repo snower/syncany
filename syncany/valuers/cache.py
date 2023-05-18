@@ -18,8 +18,8 @@ class CacheValuer(Valuer):
 
     def new_init(self):
         super(CacheValuer, self).new_init()
-        self.key_wait_loaded = self.key_valuer and self.key_valuer.require_loaded()
-        self.calculate_wait_loaded = self.calculate_valuer and self.calculate_valuer.require_loaded()
+        self.key_wait_loaded = True if self.key_valuer and self.key_valuer.require_loaded() else False
+        self.calculate_wait_loaded = True if self.calculate_valuer and self.calculate_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(CacheValuer, self).clone_init(from_valuer)

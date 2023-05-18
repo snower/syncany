@@ -16,17 +16,11 @@ class LetValuer(Valuer):
 
     def new_init(self):
         super(LetValuer, self).new_init()
-        self.wait_loaded = True if not self.return_valuer else False
-        if self.return_valuer:
-            self.check_wait_loaded()
+        self.wait_loaded = True if self.key_valuer and self.key_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(LetValuer, self).clone_init(from_valuer)
         self.wait_loaded = from_valuer.wait_loaded
-
-    def check_wait_loaded(self):
-        if self.key_valuer.require_loaded():
-            self.wait_loaded = True
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)

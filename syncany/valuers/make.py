@@ -14,9 +14,7 @@ class MakeValuer(Valuer):
 
     def new_init(self):
         super(MakeValuer, self).new_init()
-        self.wait_loaded = True if not self.return_valuer else False
-        if not self.wait_loaded and self.return_valuer:
-            self.check_wait_loaded()
+        self.wait_loaded = self.check_wait_loaded()
 
     def clone_init(self, from_valuer):
         super(MakeValuer, self).clone_init(from_valuer)
@@ -26,20 +24,17 @@ class MakeValuer(Valuer):
         if isinstance(self.value_valuer, dict):
             for _, (key_valuer, value_valuer) in self.value_valuer.items():
                 if key_valuer.require_loaded():
-                    self.wait_loaded = True
-                    return
+                    return True
                 if value_valuer.require_loaded():
-                    self.wait_loaded = True
-                    return
+                    return True
         elif isinstance(self.value_valuer, list):
             for value_valuer in self.value_valuer:
                 if value_valuer.require_loaded():
-                    self.wait_loaded = True
-                    return
+                    return True
         elif isinstance(self.value_valuer, Valuer):
             if self.value_valuer.require_loaded():
-                self.wait_loaded = True
-                return
+                return True
+        return False
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)

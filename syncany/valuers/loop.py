@@ -3,7 +3,7 @@
 # create by: snower
 
 import types
-from .valuer import Valuer, LoadAllFieldsException
+from .valuer import Valuer, Contexter, LoadAllFieldsException
 from ..filters import ArrayFilter
 
 
@@ -91,79 +91,93 @@ class ForeachValuer(Valuer):
             value = data
 
         if not self.value_wait_loaded:
-            calculated_values = []
-            if isinstance(value, dict):
-                for k, v in value.items():
-                    calculate_valuer = self.calculate_valuer.clone()
-                    if isinstance(v, dict):
-                        calculate_valuer.fill(dict(_index_=k, **v))
-                    else:
-                        calculate_valuer.fill(dict(_index_=k, _value_=v))
-                    calculated_values.append(calculate_valuer)
-            elif isinstance(value, (list, types.GeneratorType)):
-                for i in range(len(value)):
-                    calculate_valuer = self.calculate_valuer.clone()
-                    if isinstance(value[i], dict):
-                        calculate_valuer.fill(dict(_index_=i, **value[i]))
-                    else:
-                        calculate_valuer.fill(dict(_index_=i, _value_=value[i]))
-                    calculated_values.append(calculate_valuer)
-            elif isinstance(value, range_type):
-                for i in value:
-                    calculate_valuer = self.calculate_valuer.clone()
-                    calculate_valuer.fill(dict(_index_=i))
-                    calculated_values.append(calculate_valuer)
-
-            if not self.calculate_wait_loaded:
-                values = []
-                for valuer in calculated_values:
-                    try:
-                        values.append(self.do_filter(valuer.get()))
-                    except ContinueReturn as e:
-                        if e.value != ContinueReturn.NULL:
-                            values.append(e.value)
-                        continue
-                    except BreakReturn as e:
-                        if e.value != BreakReturn.NULL:
-                            values.append(e.value)
-                        break
-                if self.return_valuer:
-                    self.return_valuer.fill(values)
+            if self.calculate_wait_loaded:
+                calculated_values = []
+                if isinstance(value, dict):
+                    for k, v in value.items():
+                        calculate_valuer = self.calculate_valuer.clone(Contexter())
+                        if isinstance(v, dict):
+                            calculate_valuer.fill(dict(_index_=k, **v))
+                        else:
+                            calculate_valuer.fill(dict(_index_=k, _value_=v))
+                        calculated_values.append(calculate_valuer)
+                elif isinstance(value, (list, types.GeneratorType)):
+                    for i in range(len(value)):
+                        calculate_valuer = self.calculate_valuer.clone(Contexter())
+                        if isinstance(value[i], dict):
+                            calculate_valuer.fill(dict(_index_=i, **value[i]))
+                        else:
+                            calculate_valuer.fill(dict(_index_=i, _value_=value[i]))
+                        calculated_values.append(calculate_valuer)
+                elif isinstance(value, range_type):
+                    for i in value:
+                        calculate_valuer = self.calculate_valuer.clone(Contexter())
+                        calculate_valuer.fill(dict(_index_=i))
+                        calculated_values.append(calculate_valuer)
                 else:
-                    self.value = values
-            else:
+                    calculate_valuer = self.calculate_valuer.clone(Contexter())
+                    calculate_valuer.fill(dict(_index_=0, _value_=value))
+                    calculated_values.append(calculate_valuer)
                 self.calculated_values = calculated_values
+                return self
+
+            if isinstance(value, dict):
+                datas = [dict(_index_=k, **v) if isinstance(v, dict) else dict(_index_=k, _value_=v)
+                         for k, v in value.items()]
+            elif isinstance(value, (list, types.GeneratorType)):
+                datas = [dict(_index_=i, **value[i]) if isinstance(value[i], dict) else dict(_index_=i, _value_=value[i])
+                         for i in range(len(value))]
+            elif isinstance(value, range_type):
+                datas = [dict(_index_=i) for i in value]
+            else:
+                datas = [dict(_index_=0, _value_=value)]
+
+            values = []
+            for value in datas:
+                try:
+                    values.append(self.do_filter(self.calculate_valuer.fill(value).get()))
+                except ContinueReturn as e:
+                    if e.value != ContinueReturn.NULL:
+                        values.append(e.value)
+                    continue
+                except BreakReturn as e:
+                    if e.value != BreakReturn.NULL:
+                        values.append(e.value)
+                    break
+            if self.return_valuer:
+                self.return_valuer.fill(values)
+            else:
+                self.value = values
         return self
 
     def get(self):
-        if self.value_valuer and self.value_wait_loaded:
-            value = self.value_valuer.get()
-        else:
-            value = self.value
-
         if self.value_wait_loaded:
-            calculated_values = self.calculated_values
+            value, values = self.value_valuer.get(), []
             if isinstance(value, dict):
-                for k, v in value.items():
-                    calculate_valuer = self.calculate_valuer.clone()
-                    if isinstance(v, dict):
-                        calculate_valuer.fill(dict(_index_=k, **v))
-                    else:
-                        calculate_valuer.fill(dict(_index_=k, _value_=v))
-                    calculated_values.append(calculate_valuer)
+                datas = [dict(_index_=k, **v) if isinstance(v, dict) else dict(_index_=k, _value_=v)
+                         for k, v in value.items()]
             elif isinstance(value, (list, types.GeneratorType)):
-                for i in range(len(value)):
-                    calculate_valuer = self.calculate_valuer.clone()
-                    if isinstance(value[i], dict):
-                        calculate_valuer.fill(dict(_index_=i, **value[i]))
-                    else:
-                        calculate_valuer.fill(dict(_index_=i, _value_=value[i]))
-                    calculated_values.append(calculate_valuer)
+                datas = [dict(_index_=i, **value[i]) if isinstance(value[i], dict) else dict(_index_=i, _value_=value[i])
+                    for i in range(len(value))]
             elif isinstance(value, range_type):
-                for i in value:
-                    calculate_valuer = self.calculate_valuer.clone()
-                    calculate_valuer.fill(dict(_index_=i))
-                    calculated_values.append(calculate_valuer)
+                datas = [dict(_index_=i) for i in value]
+            else:
+                datas = [dict(_index_=0, _value_=value)]
+
+            for value in datas:
+                try:
+                    values.append(self.do_filter(self.calculate_valuer.fill(value).get()))
+                except ContinueReturn as e:
+                    if e.value != ContinueReturn.NULL:
+                        values.append(e.value)
+                    continue
+                except BreakReturn as e:
+                    if e.value != BreakReturn.NULL:
+                        values.append(e.value)
+                    break
+            if self.return_valuer:
+                return self.return_valuer.fill(values)
+            return values
 
         if self.calculate_wait_loaded:
             calculated_values, values = self.calculated_values, []
@@ -179,7 +193,7 @@ class ForeachValuer(Valuer):
                         values.append(e.value)
                     break
             if self.return_valuer:
-                return self.return_valuer.fill(values).get()
+                return self.return_valuer.fill(values)
             return values
 
         if self.return_valuer:

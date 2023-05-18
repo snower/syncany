@@ -39,7 +39,7 @@ class InheritValuer(Valuer):
 
     def fill(self, data):
         if self.value_valuer:
-            self.value_valuer.fill(self.do_filter(data))
+            self.value_valuer.fill(data)
         else:
             super(InheritValuer, self).fill(data)
         return self

@@ -15,19 +15,15 @@ class CalculateValuer(Valuer):
 
     def new_init(self):
         super(CalculateValuer, self).new_init()
-        self.wait_loaded = True if not self.return_valuer else False
-        if self.return_valuer:
-            self.check_wait_loaded(self.args_valuers)
+        self.wait_loaded = False
+        for valuer in self.args_valuers:
+            if valuer.require_loaded():
+                self.wait_loaded = True
+                break
 
     def clone_init(self, from_valuer):
         super(CalculateValuer, self).clone_init(from_valuer)
         self.wait_loaded = from_valuer.wait_loaded
-
-    def check_wait_loaded(self, valuers):
-        for valuer in valuers:
-            if valuer.require_loaded():
-                self.wait_loaded = True
-                return
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)

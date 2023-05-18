@@ -3,7 +3,7 @@
 # create by: snower
 
 import types
-from .valuer import Valuer, LoadAllFieldsException
+from .valuer import Valuer, Contexter, LoadAllFieldsException
 
 
 class YieldValuer(Valuer):
@@ -18,17 +18,13 @@ class YieldValuer(Valuer):
 
     def new_init(self):
         super(YieldValuer, self).new_init()
-        self.wait_loaded = True if not self.return_valuer else False
-        if self.return_valuer:
-            self.check_wait_loaded()
+        self.value_wait_loaded = True if self.value_valuer and self.value_valuer.require_loaded() else False
+        self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(YieldValuer, self).clone_init(from_valuer)
+        self.value_wait_loaded = from_valuer.value_wait_loaded
         self.wait_loaded = from_valuer.wait_loaded
-
-    def check_wait_loaded(self):
-        if self.value_valuer and self.value_valuer.require_loaded():
-            self.wait_loaded = True
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
@@ -60,64 +56,48 @@ class YieldValuer(Valuer):
         if self.value_valuer:
             self.value_valuer.fill(data)
 
-        if self.return_valuer and not self.wait_loaded:
+        if not self.value_wait_loaded:
             if self.value_valuer:
                 data = self.value_valuer.get()
 
-            iter_valuers = []
-            if isinstance(data, list):
-                for d in data:
-                    return_valuer = self.return_valuer.clone()
-                    return_valuer.fill(self.do_filter(d))
-                    iter_valuers.append(return_valuer)
-            else:
-                return_valuer = self.return_valuer.clone()
-                return_valuer.fill(self.do_filter(data))
-                iter_valuers.append(return_valuer)
-            self.iter_valuers = iter_valuers
-            return self
+            if not self.return_valuer:
+                if isinstance(data, list):
+                    self.iter_datas = [self.do_filter(value) for value in data]
+                else:
+                    self.iter_datas = [self.do_filter(data)]
+                return self
 
-        if not self.value_valuer:
+            if not self.wait_loaded:
+                if isinstance(data, list):
+                    self.iter_datas = [self.return_valuer.fill(self.do_filter(value)).get() for value in data]
+                else:
+                    self.iter_datas = [self.return_valuer.fill(self.do_filter(data)).get()]
+                return self
+
             if isinstance(data, list):
-                self.iter_datas = [self.do_filter(d) for d in data]
+                self.iter_valuers = [self.return_valuer.clone(Contexter()).fill(self.do_filter(value))
+                                     for value in data]
             else:
-                self.iter_datas = [self.do_filter(data)]
+                self.iter_valuers = [self.return_valuer.clone(Contexter()).fill(self.do_filter(data))]
         return self
 
     def get(self):
-        if self.return_valuer:
-            if self.wait_loaded:
-                if self.value_valuer:
-                    data = self.value_valuer.get()
-                else:
-                    data = self.iter_datas
-
-                iter_valuers = []
+        if self.value_wait_loaded:
+            data = self.value_valuer.get()
+            if not self.return_valuer:
                 if isinstance(data, list):
-                    for d in data:
-                        return_valuer = self.return_valuer.clone()
-                        return_valuer.fill(self.do_filter(d))
-                        iter_valuers.append(return_valuer)
-                else:
-                    return_valuer = self.return_valuer.clone()
-                    return_valuer.fill(self.do_filter(data))
-                    iter_valuers.append(return_valuer)
-            else:
-                iter_valuers = self.iter_valuers
-
-            iter_datas = []
-            for valuer in iter_valuers:
-                iter_datas.append(valuer.get())
-        else:
-            if self.value_valuer:
-                iter_datas = []
-                data = self.value_valuer.get()
-                if isinstance(data, list):
-                    iter_datas = [self.do_filter(d) for d in data]
+                    iter_datas = [self.do_filter(value) for value in data]
                 else:
                     iter_datas = [self.do_filter(data)]
             else:
-                iter_datas = self.iter_datas
+                if isinstance(data, list):
+                    iter_datas = [self.return_valuer.fill(self.do_filter(value)).get() for value in data]
+                else:
+                    iter_datas = [self.return_valuer.fill(self.do_filter(data)).get()]
+        elif self.wait_loaded:
+            iter_datas = [iter_valuer.get() for iter_valuer in self.iter_valuers]
+        else:
+            iter_datas = self.iter_datas
 
         def gen_iter():
             gdata = yield None

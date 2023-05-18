@@ -10,9 +10,7 @@ class LambdaFunction(object):
         self.calculate_valuer = calculate_valuer
 
     def __call__(self, data):
-        calculate_valuer = self.calculate_valuer.clone()
-        calculate_valuer.fill(data)
-        return calculate_valuer.get()
+        return self.calculate_valuer.fill(data).get()
 
 
 class LambdaValuer(Valuer):
