@@ -525,41 +525,31 @@ class ValuerCreater(object):
             raise ValuerUnknownException(config["name"] + " is unknown")
         value_valuer = self.create_valuer(config["value_valuer"], inherit_valuers=inherit_valuers, **kwargs) \
             if "value_valuer" in config and config["value_valuer"] else None
-
-        calculate_inherit_valuers = []
-        calculate_valuer = self.create_valuer(config["calculate_valuer"], inherit_valuers=calculate_inherit_valuers,
+        calculate_valuer = self.create_valuer(config["calculate_valuer"], inherit_valuers=inherit_valuers,
                                               define_valuers=define_valuers, **kwargs) \
             if "calculate_valuer" in config and config["calculate_valuer"] else None
 
-        current_inherit_valuers = []
-        if not calculate_inherit_valuers:
-            if define_valuers and config["key"] in define_valuers:
-                calculate_valuer = define_valuers[config["key"]]
-            else:
-                define_valuers[config["key"]] = calculate_valuer
+        if define_valuers and config["key"] in define_valuers:
+            return_manager = define_valuers[config["key"]].get_manager()
         else:
-            for inherit_valuer in calculate_inherit_valuers:
-                inherit_valuer["reflen"] -= 1
-                if inherit_valuer["reflen"] == 0:
-                    current_inherit_valuers.append(inherit_valuer["valuer"])
-                elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
-                    inherit_valuer["reflen"] = 0xffffffff
-                    inherit_valuers.append(inherit_valuer)
+            define_valuers[config["key"]] = calculate_valuer
+            return_manager = None
 
         return_inherit_valuers = []
         return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers,
                                            define_valuers=define_valuers, **kwargs) \
             if "return_valuer" in config and config["return_valuer"] else None
 
+        current_inherit_valuers = []
         for inherit_valuer in return_inherit_valuers:
             inherit_valuer["reflen"] -= 1
             if inherit_valuer["reflen"] == 0:
                 current_inherit_valuers.append(inherit_valuer["valuer"])
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
-                inherit_valuer["reflen"] = 0xffffffff
                 inherit_valuers.append(inherit_valuer)
 
-        return valuer_cls(value_valuer, calculate_valuer, return_valuer, current_inherit_valuers, None, config['key'], None)
+        return valuer_cls(value_valuer, calculate_valuer, return_valuer, current_inherit_valuers,
+                          return_manager, config['key'], None)
 
     def create_assign_valuer(self, config, inherit_valuers=None, global_variables=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])

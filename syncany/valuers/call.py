@@ -12,7 +12,6 @@ class CallReturnManager(object):
     def loaded(self, key):
         if not isinstance(key, (int, float, str, bytes)):
             key = "@id_%s" % id(key)
-
         if key not in self.datas:
             return key, False
         return key, True
@@ -28,7 +27,6 @@ class CallReturnManager(object):
 
 class CallValuer(Valuer):
     calculated = False
-    calculated_key = None
 
     def __init__(self, value_valuer, calculate_valuer, return_valuer, inherit_valuers, return_manager, *args, **kwargs):
         self.value_valuer = value_valuer
@@ -41,9 +39,7 @@ class CallValuer(Valuer):
     def new_init(self):
         super(CallValuer, self).new_init()
         self.value_wait_loaded = False if not self.value_valuer else self.value_valuer.require_loaded()
-        self.calculate_wait_loaded = True if not self.value_wait_loaded or not self.return_valuer or \
-                                             (self.calculate_valuer and
-                                              self.calculate_valuer.require_loaded()) else False
+        self.calculate_wait_loaded = True if self.calculate_valuer and self.calculate_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(CallValuer, self).clone_init(from_valuer)
@@ -73,7 +69,6 @@ class CallValuer(Valuer):
 
     def reinit(self):
         self.calculated = False
-        self.calculated_key = None
         return super(CallValuer, self).reinit()
 
     def fill(self, data):
@@ -91,52 +86,60 @@ class CallValuer(Valuer):
             value = data
 
         if not self.value_wait_loaded:
-            self.calculated_key, self.calculated = self.return_manager.loaded(value)
-            if not self.calculated:
+            calculated_key, calculated = self.return_manager.loaded(value)
+            if not calculated:
                 self.calculate_valuer.fill(value)
-                if self.return_valuer and not self.calculate_wait_loaded:
+                if not self.calculate_wait_loaded:
                     value = self.do_filter(self.calculate_valuer.get())
-                    self.return_manager.set(self.calculated_key, value)
-                    self.return_valuer.fill(value)
+                    self.return_manager.set(calculated_key, value)
+                    if self.return_valuer:
+                        self.return_valuer.fill(value)
+                    else:
+                        self.value = value
+                    self.calculated = True
+                else:
+                    self.value = value
             else:
-                value = self.return_manager.get(self.calculated_key)
+                value = self.return_manager.get(calculated_key)
                 if self.return_valuer:
                     self.return_valuer.fill(value)
                 else:
                     self.value = value
+                self.calculated = True
         return self
 
     def get(self):
-        if self.return_valuer and self.value_wait_loaded:
-            value = self.value_valuer.get()
-        else:
-            value = self.value
-
-        if self.value_wait_loaded:
-            self.calculated_key, self.calculated = self.return_manager.loaded(value)
-            if not self.calculated:
-                self.calculate_valuer.fill(value)
-                if self.return_valuer and not self.calculate_wait_loaded:
-                    value = self.do_filter(self.calculate_valuer.get())
-                    self.return_manager.set(self.calculated_key, value)
-                    self.return_valuer.fill(value)
-            else:
-                value = self.return_manager.get(self.calculated_key)
-                if self.return_valuer:
-                    self.return_valuer.fill(value)
-
         if self.calculated:
             if self.return_valuer:
                 return self.return_valuer.get()
+            return self.value
+
+        if self.value_wait_loaded:
+            value = self.value_valuer.get()
+            calculated_key, calculated = self.return_manager.loaded(value)
+            if not calculated:
+                value = self.do_filter(self.calculate_valuer.fill(value).get())
+                self.return_manager.set(calculated_key, value)
+            else:
+                value = self.return_manager.get(calculated_key)
+            if self.return_valuer:
+                return self.return_valuer.fill(value).get()
             return value
 
         if self.calculate_wait_loaded:
-            value = self.do_filter(self.calculate_valuer.get())
-            self.return_manager.set(self.calculated_key, value)
+            calculated_key, calculated = self.return_manager.loaded(self.value)
+            if not calculated:
+                value = self.do_filter(self.calculate_valuer.get())
+                self.return_manager.set(calculated_key, value)
+            else:
+                value = self.return_manager.get(calculated_key)
             if self.return_valuer:
-                self.return_valuer.fill(value)
-                return self.return_valuer.get()
-        return value
+                return self.return_valuer.fill(value).get()
+            return value
+
+        if self.return_valuer:
+            return self.return_valuer.get()
+        return self.value
 
     def childs(self):
         childs = []
@@ -186,7 +189,6 @@ class ContextCallValuer(CallValuer):
         self.contexter = kwargs.pop("contexter")
         self.value_context_id = (id(self), "value")
         self.calculated_context_id = (id(self), "calculated")
-        self.calculated_key_context_id = (id(self), "calculated_key")
         super(ContextCallValuer, self).__init__(*args, **kwargs)
 
     @property
@@ -218,18 +220,3 @@ class ContextCallValuer(CallValuer):
                 self.contexter.values.pop(self.calculated_context_id)
             return
         self.contexter.values[self.calculated_context_id] = v
-
-    @property
-    def calculated_key(self):
-        try:
-            return self.contexter.values[self.calculated_key_context_id]
-        except KeyError:
-            return None
-
-    @calculated_key.setter
-    def calculated_key(self, v):
-        if v is None:
-            if self.calculated_context_id in self.contexter.values:
-                self.contexter.values.pop(self.calculated_context_id)
-            return
-        self.contexter.values[self.calculated_key_context_id] = v

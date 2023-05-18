@@ -83,7 +83,7 @@ class DBJoinValuer(Valuer):
                 if not has_value:
                     continue
                 matcher = self.loader.create_macther(self.foreign_keys, ds)
-                return_valuer = DBJoinGroupMatchValuer(group_macther, "*")
+                return_valuer = DBJoinGroupMatchValuer(group_macther, None, "*")
                 matcher.add_valuer(return_valuer)
                 group_macther.add_valuer(return_valuer)
         elif has_join_value:
@@ -208,7 +208,7 @@ class ContextDBJoinValuer(DBJoinValuer):
                 if not has_value:
                     continue
                 matcher = self.loader.create_macther(self.foreign_keys, ds)
-                return_valuer = DBJoinGroupMatchValuer(group_macther, "*")
+                return_valuer = DBJoinGroupMatchValuer(group_macther, self.contexter, "*")
                 matcher.add_valuer(return_valuer)
                 group_macther.add_valuer(return_valuer)
         elif has_join_value:
@@ -240,9 +240,9 @@ class ContextDBJoinValuer(DBJoinValuer):
 
 class DBJoinInterceptMatchValuer(Valuer):
     def __init__(self, intercept_valuer, return_valuer, contexter, *args, **kwargs):
-        self.contexter = contexter
         self.intercept_valuer = intercept_valuer
         self.return_valuer = return_valuer
+        self.contexter = contexter
         super(DBJoinInterceptMatchValuer, self).__init__(*args, **kwargs)
 
     def clone(self, contexter=None):
@@ -275,8 +275,9 @@ class DBJoinInterceptMatchValuer(Valuer):
 
 
 class DBJoinGroupMatchValuer(Valuer):
-    def __init__(self, matcher, *args, **kwargs):
+    def __init__(self, matcher, contexter, *args, **kwargs):
         self.matcher = matcher
+        self.contexter = contexter
         self.loaded = False
         super(DBJoinGroupMatchValuer, self).__init__(*args, **kwargs)
 

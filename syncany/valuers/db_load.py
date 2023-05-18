@@ -16,6 +16,14 @@ class DBLoadValuer(Valuer):
         self.foreign_filters = foreign_filters
         super(DBLoadValuer, self).__init__(*args, **kwargs)
 
+    def new_init(self):
+        super(DBLoadValuer, self).new_init()
+        self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
+
+    def clone_init(self, from_valuer):
+        super(DBLoadValuer, self).clone_init(from_valuer)
+        self.wait_loaded = from_valuer.wait_loaded
+
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
@@ -40,6 +48,9 @@ class DBLoadValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
+        if not self.wait_loaded:
+            return self
+
         if self.intercept_valuer:
             datas, result = self.loader.get(), []
             for data in datas:
@@ -57,7 +68,20 @@ class DBLoadValuer(Valuer):
         return self
 
     def get(self):
-        return self.return_valuer.get()
+        if self.wait_loaded:
+            return self.return_valuer.get()
+
+        if self.intercept_valuer:
+            datas, result = self.loader.get(), []
+            for data in datas:
+                intercept_result = self.intercept_valuer.fill(data).get()
+                if intercept_result is not None and not intercept_result:
+                    continue
+                result.append(data)
+            if len(result) == 1:
+                return self.return_valuer.fill(result[0]).get()
+            return self.return_valuer.fill(result or None).get()
+        return self.return_valuer.fill(self.loader.get()).get()
 
     def childs(self):
         valuers = []
