@@ -226,6 +226,9 @@ class ValuerCreater(object):
             raise ValuerUnknownException(config["name"] + " is unknown")
 
         loader = self.create_join_loader(config, join_loaders)
+        intercept_inherit_valuers = []
+        intercept_valuer = self.create_valuer(config["intercept_valuer"], inherit_valuers=intercept_inherit_valuers,
+                                           join_loaders=join_loaders, **kwargs) if config["intercept_valuer"] else None
         return_inherit_valuers = []
         return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, join_loaders=join_loaders, **kwargs)
         filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
@@ -238,6 +241,13 @@ class ValuerCreater(object):
                 loader.add_valuer(foreign_key, self.create_valuer(self.compile_data_valuer(foreign_key, None)))
 
         try:
+            if intercept_valuer:
+                for key in intercept_valuer.get_fields():
+                    if key not in loader.schema:
+                        if loader.loaded:
+                            loader = self.create_join_loader(config, join_loaders, True)
+                        loader.add_valuer(key, self.create_valuer(self.compile_data_valuer(key, None)))
+
             for key in return_valuer.get_fields():
                 if key not in loader.schema:
                     if loader.loaded:
@@ -250,6 +260,13 @@ class ValuerCreater(object):
             loader.add_key_matcher(".*", self.create_valuer(self.compile_data_valuer("", None)))
 
         current_inherit_valuers = []
+        for inherit_valuer in intercept_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
         for inherit_valuer in return_inherit_valuers:
             inherit_valuer["reflen"] -= 1
             if inherit_valuer["reflen"] == 0:
@@ -257,7 +274,7 @@ class ValuerCreater(object):
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
 
-        return valuer_cls(loader, config["foreign_keys"], config["foreign_filters"], return_valuer,
+        return valuer_cls(loader, config["foreign_keys"], config["foreign_filters"], intercept_valuer, return_valuer,
                           current_inherit_valuers, config["key"], filter)
 
     def create_db_join_valuer(self, config, inherit_valuers=None, join_loaders=None, **kwargs):
@@ -269,6 +286,9 @@ class ValuerCreater(object):
         args_valuers = [self.create_valuer(args_valuer, inherit_valuers=inherit_valuers,
                                            join_loaders=join_loaders, **kwargs) for args_valuer in config["args_valuers"]] \
             if config["args_valuers"] else None
+        intercept_inherit_valuers = []
+        intercept_valuer = self.create_valuer(config["intercept_valuer"], inherit_valuers=intercept_inherit_valuers,
+                                              join_loaders=join_loaders, **kwargs) if config["intercept_valuer"] else None
         return_inherit_valuers = []
         return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers, join_loaders=join_loaders, **kwargs)
         filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
@@ -281,6 +301,13 @@ class ValuerCreater(object):
                 loader.add_valuer(foreign_key, self.create_valuer(self.compile_data_valuer(foreign_key, None)))
 
         try:
+            if intercept_valuer:
+                for key in intercept_valuer.get_fields():
+                    if key not in loader.schema:
+                        if loader.loaded:
+                            loader = self.create_join_loader(config, join_loaders, True)
+                        loader.add_valuer(key, self.create_valuer(self.compile_data_valuer(key, None)))
+
             for key in return_valuer.get_fields():
                 if key not in loader.schema:
                     if loader.loaded:
@@ -293,6 +320,13 @@ class ValuerCreater(object):
             loader.add_key_matcher(".*", self.create_valuer(self.compile_data_valuer("", None)))
 
         current_inherit_valuers = []
+        for inherit_valuer in intercept_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
         for inherit_valuer in return_inherit_valuers:
             inherit_valuer["reflen"] -= 1
             if inherit_valuer["reflen"] == 0:
@@ -300,8 +334,8 @@ class ValuerCreater(object):
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
 
-        return valuer_cls(loader, config["foreign_keys"], config["foreign_filters"], args_valuers, return_valuer,
-                          current_inherit_valuers, config["key"], filter)
+        return valuer_cls(loader, config["foreign_keys"], config["foreign_filters"], args_valuers, intercept_valuer,
+                          return_valuer, current_inherit_valuers, config["key"], filter)
 
     def create_case_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])
@@ -509,6 +543,7 @@ class ValuerCreater(object):
                 if inherit_valuer["reflen"] == 0:
                     current_inherit_valuers.append(inherit_valuer["valuer"])
                 elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                    inherit_valuer["reflen"] = 0xffffffff
                     inherit_valuers.append(inherit_valuer)
 
         return_inherit_valuers = []
@@ -521,6 +556,7 @@ class ValuerCreater(object):
             if inherit_valuer["reflen"] == 0:
                 current_inherit_valuers.append(inherit_valuer["valuer"])
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuer["reflen"] = 0xffffffff
                 inherit_valuers.append(inherit_valuer)
 
         return valuer_cls(value_valuer, calculate_valuer, return_valuer, current_inherit_valuers, None, config['key'], None)

@@ -88,12 +88,14 @@ class ValuerCompiler(object):
             "value_valuer": self.compile_data_valuer(key, filter)
         }
 
-    def compile_db_load_valuer(self, key="", loader=None, foreign_keys=None, foreign_filters=None, filter=None, return_arg=None):
+    def compile_db_load_valuer(self, key="", loader=None, foreign_keys=None, foreign_filters=None, filter=None, intercept_arg=None, return_arg=None):
         load_return_arg, _ = self.parse_return_valuer(return_arg)
         if load_return_arg is not None:
             return_arg = load_return_arg
         else:
             return_arg = "$.*" if return_arg is None else return_arg
+
+        intercept_valuer = self.compile_valuer(intercept_arg) if intercept_arg else None
         return_valuer = self.compile_valuer(return_arg)
 
         return {
@@ -103,10 +105,11 @@ class ValuerCompiler(object):
             "loader": loader,
             "foreign_keys": foreign_keys,
             'foreign_filters': foreign_filters or [],
+            "intercept_valuer": intercept_valuer,
             "return_valuer": return_valuer,
         }
 
-    def compile_db_join_valuer(self, key="", loader=None, foreign_keys=None, foreign_filters=None, filter=None, args_args=None, return_arg=None):
+    def compile_db_join_valuer(self, key="", loader=None, foreign_keys=None, foreign_filters=None, filter=None, args_args=None, intercept_arg=None, return_arg=None):
         join_return_arg, _ = self.parse_return_valuer(return_arg)
         if join_return_arg is not None:
             return_arg = join_return_arg
@@ -114,6 +117,7 @@ class ValuerCompiler(object):
             return_arg = "$.*" if return_arg is None else return_arg
 
         args_valuers = [self.compile_valuer(args_arg) for args_arg in args_args] if args_args else None
+        intercept_valuer = self.compile_valuer(intercept_arg) if intercept_arg else None
         return_valuer = self.compile_valuer(return_arg)
 
         return {
@@ -124,6 +128,7 @@ class ValuerCompiler(object):
             "foreign_keys": foreign_keys,
             'foreign_filters': foreign_filters or [],
             "args_valuers": args_valuers,
+            "intercept_valuer": intercept_valuer,
             "return_valuer": return_valuer,
         }
 

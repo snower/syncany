@@ -477,15 +477,16 @@ class CoreTasker(Tasker):
             if not valuer:
                 return self.valuer_compiler.compile_const_valuer(valuer)
 
-            if len(valuer) == 2 and ((isinstance(valuer[0], str) and valuer[0][:1] == "&") or (isinstance(valuer[0], list) and valuer[0][0][:1] == "&")):
+            if len(valuer) in (2, 3) and ((isinstance(valuer[0], str) and valuer[0][:1] == "&") or (isinstance(valuer[0], list) and valuer[0][0][:1] == "&")):
                 foreign_key = self.compile_foreign_key(valuer[0])
                 if foreign_key is not None:
                     loader = {"name": "db_loader", "database": foreign_key["database"]}
                     return self.valuer_compiler.compile_db_load_valuer("", loader, foreign_key["foreign_key"], foreign_key["foreign_filters"],
-                                                                       None, valuer[1] if len(valuer) >= 2 else None)
+                                                                       None, valuer[1] if len(valuer) >= 3 else None,
+                                                                       valuer[2] if len(valuer) >= 3 else (valuer[1] if len(valuer) >= 2 else None))
 
             key = self.compile_key(valuer[0])
-            if (key["instance"] is None or key["instance"] == "$") and len(valuer) == 3:
+            if (key["instance"] is None or key["instance"] == "$") and len(valuer) in (3, 4):
                 foreign_key = self.compile_foreign_key(valuer[1])
                 if foreign_key is not None:
                     if isinstance(valuer[0], list) and len(foreign_key["foreign_key"]) >= 2 and len(valuer[0]) == len(foreign_key["foreign_key"]):
@@ -495,7 +496,8 @@ class CoreTasker(Tasker):
                     loader = {"name": "db_join_loader", "database": foreign_key["database"]}
                     return self.valuer_compiler.compile_db_join_valuer(key["key"] if key["instance"] == "$" else "",
                                                                        loader, foreign_key["foreign_key"], foreign_key["foreign_filters"],
-                                                                       None, join_args, valuer[2] if len(valuer) >= 3 else None)
+                                                                       None, join_args, valuer[2] if len(valuer) >= 4 else None,
+                                                                       valuer[3] if len(valuer) >= 4 else (valuer[2] if len(valuer) >= 3 else None))
 
             if key["instance"] is None:
                 return self.valuer_compiler.compile_const_valuer(valuer)
@@ -787,7 +789,12 @@ class CoreTasker(Tasker):
                     require_loaded = True
                 loader_schema[name] = valuer
                 if inherit_valuers:
-                    raise OverflowError(name + " inherit out of range")
+                    for inherit_valuer in inherit_valuers:
+                        if inherit_valuer["reflen"] == 0xffffffff:
+                            if hasattr(valuer, "add_inherit_valuer"):
+                                valuer.add_inherit_valuer(inherit_valuer)
+                            continue
+                        raise OverflowError(name + " inherit out of range")
                 if yield_valuers:
                     loader_config["valuer_type"] |= 0x01
                 if aggregate_valuers:
