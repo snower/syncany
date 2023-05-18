@@ -24,6 +24,9 @@ class CallReturnManager(object):
     def set(self, key, value):
         self.datas[key] = value
 
+    def reset(self):
+        self.datas.clear()
+
 
 class CallValuer(Valuer):
     calculated = False
@@ -140,6 +143,10 @@ class CallValuer(Valuer):
         if self.return_valuer:
             return self.return_valuer.get()
         return self.value
+
+    def reset(self):
+        self.return_manager.reset()
+        super(CallValuer, self).reset()
 
     def childs(self):
         childs = []
