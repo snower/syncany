@@ -116,6 +116,19 @@ class ConvertArrayCalculater(Calculater):
         return self.filter.filter(args[0])
 
 
+class ConvertSetCalculater(Calculater):
+    def __init__(self, *args, **kwargs):
+        super(ConvertSetCalculater, self).__init__(*args, **kwargs)
+
+        self.filter = SetFilter()
+
+    def calculate(self, *args):
+        if not args:
+            return []
+        self.filter.args = args[1] if len(args) >= 2 else None
+        return self.filter.filter(args[0])
+
+
 class ConvertMapCalculater(Calculater):
     def __init__(self, *args, **kwargs):
         super(ConvertMapCalculater, self).__init__(*args, **kwargs)

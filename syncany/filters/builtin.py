@@ -15,6 +15,7 @@ except ImportError:
 from ..utils import get_timezone, parse_datetime, parse_date, parse_time
 from .filter import Filter
 
+
 class IntFilter(Filter):
     def filter(self, value):
         if isinstance(value, int):
@@ -61,6 +62,7 @@ class IntFilter(Filter):
         except:
             return 0
 
+
 class FloatFilter(Filter):
     def filter(self, value):
         if isinstance(value, float):
@@ -106,6 +108,7 @@ class FloatFilter(Filter):
             return float(value)
         except:
             return 0.0
+
 
 class StringFilter(Filter):
     def filter(self, value):
@@ -182,6 +185,7 @@ class StringFilter(Filter):
         except:
             return ""
 
+
 class BytesFilter(Filter):
     def filter(self, value):
         if isinstance(value, bytes):
@@ -256,6 +260,7 @@ class BytesFilter(Filter):
         except:
             return b""
 
+
 class BooleanFilter(Filter):
     def filter(self, value):
         if value is True or value is False:
@@ -283,6 +288,7 @@ class BooleanFilter(Filter):
             return "true"
         return "true"
 
+
 class ArrayFilter(Filter):
     def filter(self, value):
         if isinstance(value, list):
@@ -295,6 +301,21 @@ class ArrayFilter(Filter):
             return []
 
         return [value]
+
+
+class SetFilter(Filter):
+    def filter(self, value):
+        if isinstance(value, set):
+            return value
+
+        if isinstance(value, (list, tuple)):
+            return set(value)
+
+        if value is None:
+            return set([])
+
+        return {value}
+
 
 class MapFilter(Filter):
     def filter(self, value):
@@ -344,6 +365,7 @@ class MapFilter(Filter):
             except:
                 return {}
 
+
 class ObjectIdFilter(Filter):
     def __init__(self, *args, **kwargs):
         if ObjectId is None:
@@ -390,6 +412,7 @@ class ObjectIdFilter(Filter):
             except:
                 return ObjectId("000000000000000000000000")
 
+
 class UUIDFilter(Filter):
     def filter(self, value):
         if isinstance(value, uuid.UUID):
@@ -428,6 +451,7 @@ class UUIDFilter(Filter):
             return uuid.UUID(value)
         except:
             return uuid.UUID("00000000-0000-0000-0000-000000000000")
+
 
 class DateTimeFilter(Filter):
     def __init__(self, *args, **kwargs):
@@ -508,6 +532,7 @@ class DateTimeFilter(Filter):
             return value.strftime(self.args or "%H:%M:%S")
         return str(value)
 
+
 class DateFilter(Filter):
     def filter(self, value):
         if value is None:
@@ -557,6 +582,7 @@ class DateFilter(Filter):
         if isinstance(value, datetime.time):
             return value.strftime(self.args or "%H:%M:%S")
         return str(value)
+
 
 class TimeFilter(Filter):
     def filter(self, value):

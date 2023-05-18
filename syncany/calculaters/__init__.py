@@ -36,6 +36,7 @@ CALCULATERS = {
     "convert_bytes": ConvertBytesCalculater,
     'convert_bool': ConvertBooleanCalculater,
     'convert_array': ConvertArrayCalculater,
+    'convert_set': ConvertSetCalculater,
     'convert_map': ConvertMapCalculater,
     "convert_objectid": ConvertObjectIdCalculater,
     "convert_uuid": ConvertUUIDCalculater,

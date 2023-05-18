@@ -14,6 +14,7 @@ FILTERS = {
     "bytes": BytesFilter,
     'bool': BooleanFilter,
     'array': ArrayFilter,
+    'set': SetFilter,
     'map': MapFilter,
     "objectid": ObjectIdFilter,
     "uuid": UUIDFilter,
