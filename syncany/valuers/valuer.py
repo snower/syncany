@@ -246,11 +246,8 @@ class Valuer(object):
             valuer.reset()
 
     def do_filter(self, value):
-        if not self.filter:
-            if isinstance(value, datetime.datetime):
-                value = ensure_timezone(value)
-            return value
-        return self.filter.filter(value)
+        self.do_filter = self.filter.filter if self.filter else lambda v: v
+        return self.filter.filter(value) if self.filter else value
 
     def childs(self):
         return []
