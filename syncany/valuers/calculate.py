@@ -52,7 +52,7 @@ class CalculateValuer(Valuer):
                 inherit_valuer.fill(data)
 
         if not self.args_wait_loaded:
-            values = [valuer.fill_get(data) for valuer in self.args_valuers]
+            values = (valuer.fill_get(data) for valuer in self.args_valuers)
             if self.return_valuer:
                 if not self.wait_loaded:
                     self.value = self.return_valuer.fill_get(self.do_filter(self.calculater.calculate(*values)))
@@ -68,7 +68,7 @@ class CalculateValuer(Valuer):
 
     def get(self):
         if self.args_wait_loaded:
-            values = [valuer.get() for valuer in self.args_valuers]
+            values = (valuer.get() for valuer in self.args_valuers)
             if self.return_valuer:
                 return self.return_valuer.fill_get(self.do_filter(self.calculater.calculate(*values)))
             return self.do_filter(self.calculater.calculate(*values))
@@ -83,7 +83,7 @@ class CalculateValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
-        values = [valuer.fill_get(data) for valuer in self.args_valuers]
+        values = (valuer.fill_get(data) for valuer in self.args_valuers)
         if self.return_valuer:
             return self.return_valuer.fill_get(self.do_filter(self.calculater.calculate(*values)))
         return self.do_filter(self.calculater.calculate(*values))

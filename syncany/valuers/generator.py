@@ -66,21 +66,31 @@ class YieldValuer(Valuer):
 
             if not self.wait_loaded:
                 if isinstance(data, list):
-                    self.iter_datas = [self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
-                                                                else None, inherited=True).fill_get(self.do_filter(value))
-                                       for value in data]
+                    if len(data) == 1:
+                        self.iter_datas = [self.return_valuer.fill_get(self.do_filter(data[0]))]
+                    else:
+                        iter_datas, return_valuer = [], self.return_valuer
+                        for value in data:
+                            value = return_valuer.fill_get(self.do_filter(value))
+                            iter_datas.append(value)
+                            if not isinstance(value, (types.FunctionType, types.GeneratorType)):
+                                continue
+                            return_valuer = self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
+                                                                     else None, inherited=True)
+                        self.iter_datas = iter_datas
                 else:
-                    self.iter_datas = [self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
-                                                                else None, inherited=True).fill_get(self.do_filter(data))]
+                    self.iter_datas = [self.return_valuer.fill_get(self.do_filter(data))]
                 return self
 
             if isinstance(data, list):
-                self.iter_valuers = [self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
-                                                              else None, inherited=True).fill(self.do_filter(value))
-                                     for value in data]
+                if len(data) == 1:
+                    self.iter_valuers = [self.return_valuer.fill(self.do_filter(data[0]))]
+                else:
+                    self.iter_valuers = [self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
+                                                                  else None, inherited=True).fill(self.do_filter(value))
+                                         for value in data]
             else:
-                self.iter_valuers = [self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
-                                                              else None, inherited=True).fill(self.do_filter(data))]
+                self.iter_valuers = [self.return_valuer.fill(self.do_filter(data))]
             return self
 
         if self.value_valuer:
@@ -97,7 +107,17 @@ class YieldValuer(Valuer):
                     iter_datas = [self.do_filter(data)]
             else:
                 if isinstance(data, list):
-                    iter_datas = [self.return_valuer.fill_get(self.do_filter(value)) for value in data]
+                    if len(data) == 1:
+                        iter_datas = [self.return_valuer.fill_get(self.do_filter(data[0]))]
+                    else:
+                        iter_datas, return_valuer = [], self.return_valuer
+                        for value in data:
+                            value = return_valuer.fill_get(self.do_filter(value))
+                            iter_datas.append(value)
+                            if not isinstance(value, (types.FunctionType, types.GeneratorType)):
+                                continue
+                            return_valuer = self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
+                                                                     else None, inherited=True)
                 else:
                     iter_datas = [self.return_valuer.fill_get(self.do_filter(data))]
         elif self.wait_loaded:
@@ -141,7 +161,17 @@ class YieldValuer(Valuer):
                 iter_datas = [self.do_filter(data)]
         else:
             if isinstance(data, list):
-                iter_datas = [self.return_valuer.fill_get(self.do_filter(value)) for value in data]
+                if len(data) == 1:
+                    iter_datas = [self.return_valuer.fill_get(self.do_filter(data[0]))]
+                else:
+                    iter_datas, return_valuer = [], self.return_valuer
+                    for value in data:
+                        value = return_valuer.fill_get(self.do_filter(value))
+                        iter_datas.append(value)
+                        if not isinstance(value, (types.FunctionType, types.GeneratorType)):
+                            continue
+                        return_valuer = self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
+                                                                 else None, inherited=True)
             else:
                 iter_datas = [self.return_valuer.fill_get(self.do_filter(data))]
 

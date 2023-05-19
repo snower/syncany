@@ -13,8 +13,8 @@ range_type = type(range(1))
 class BreakReturn(Exception):
     NULL = object()
 
-    def __init__(self, value=NULL, *args, **kwargs):
-        super(BreakReturn, self).__init__(*args, **kwargs)
+    def __init__(self, value=NULL, *args):
+        super(BreakReturn, self).__init__(*args)
         self.value = value
 
     def get(self):
@@ -24,8 +24,8 @@ class BreakReturn(Exception):
 class ContinueReturn(Exception):
     NULL = object()
 
-    def __init__(self, value=NULL, *args, **kwargs):
-        super(ContinueReturn, self).__init__(*args, **kwargs)
+    def __init__(self, value=NULL, *args):
+        super(ContinueReturn, self).__init__(*args)
         self.value = value
 
     def get(self):
@@ -100,31 +100,21 @@ class ForeachValuer(Valuer):
                         calculate_valuer = self.calculate_valuer.clone(Contexter()
                                                                        if isinstance(self, ContextForeachValuer)
                                                                        else None, inherited=True)
-                        if isinstance(v, dict):
-                            calculate_valuer.fill(dict(_index_=k, **v))
-                        else:
-                            calculate_valuer.fill(dict(_index_=k, _value_=v))
-                        calculated_values.append(calculate_valuer)
+                        calculated_values.append(calculate_valuer.fill(dict(_index_=k, **v) if isinstance(v, dict)
+                                                                       else dict(_index_=k, _value_=v)))
                 elif isinstance(value, (list, types.GeneratorType)):
                     for i in range(len(value)):
                         calculate_valuer = self.calculate_valuer.clone(Contexter() if isinstance(self, ContextForeachValuer)
                                                                        else None, inherited=True)
-                        if isinstance(value[i], dict):
-                            calculate_valuer.fill(dict(_index_=i, **value[i]))
-                        else:
-                            calculate_valuer.fill(dict(_index_=i, _value_=value[i]))
-                        calculated_values.append(calculate_valuer)
+                        calculated_values.append(calculate_valuer.fill(dict(_index_=i, **value[i]) if isinstance(value[i], dict)
+                                                                       else dict(_index_=i, _value_=value[i])))
                 elif isinstance(value, range_type):
                     for i in value:
                         calculate_valuer = self.calculate_valuer.clone(Contexter() if isinstance(self, ContextForeachValuer)
                                                                        else None, inherited=True)
-                        calculate_valuer.fill(dict(_index_=i))
-                        calculated_values.append(calculate_valuer)
+                        calculated_values.append(calculate_valuer.fill(dict(_index_=i)))
                 else:
-                    calculate_valuer = self.calculate_valuer.clone(Contexter() if isinstance(self, ContextForeachValuer)
-                                                                   else None, inherited=True)
-                    calculate_valuer.fill(dict(_index_=0, _value_=value))
-                    calculated_values.append(calculate_valuer)
+                    calculated_values.append(self.calculate_valuer.fill(dict(_index_=0, _value_=value)))
                 self.calculated_values = calculated_values
                 return self
 
