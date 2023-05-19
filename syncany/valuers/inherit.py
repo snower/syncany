@@ -19,13 +19,13 @@ class InheritValuer(Valuer):
     def get_inherit_child_valuer(self):
         return self.child_valuer
 
-    def clone(self, contexter=None):
+    def clone(self, contexter=None, **kwargs):
         if self.child_valuer.cloned_inherit_valuer:
             inherit_valuer = self.child_valuer.cloned_inherit_valuer
             self.child_valuer.cloned_inherit_valuer = None
             return inherit_valuer
 
-        value_valuer = self.value_valuer.clone(contexter) if self.value_valuer else None
+        value_valuer = self.value_valuer.clone(contexter, **kwargs) if self.value_valuer else None
         if contexter is not None:
             inherit_valuer = ContextInheritValuer(value_valuer, self.key, self.filter, from_valuer=self,
                                                   contexter=contexter)
@@ -90,13 +90,15 @@ class InheritChildValuer(Valuer):
         self.cloned_inherit_valuer = None
         super(InheritChildValuer, self).__init__(*args, **kwargs)
 
-    def clone(self, contexter=None):
+    def clone(self, contexter=None, **kwargs):
         if self.inherit_valuer.cloned_child_valuer:
             child_valuer = self.inherit_valuer.cloned_child_valuer
             self.inherit_valuer.cloned_child_valuer = None
             return child_valuer
+        if kwargs.get("inherited"):
+            return self
 
-        value_valuer = self.value_valuer.clone(contexter) if self.value_valuer else None
+        value_valuer = self.value_valuer.clone(contexter, **kwargs) if self.value_valuer else None
         if contexter is not None:
             self.cloned_inherit_valuer = ContextInheritValuer(value_valuer, self.key, self.filter, from_valuer=self,
                                                               contexter=contexter)

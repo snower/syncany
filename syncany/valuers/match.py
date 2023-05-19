@@ -151,15 +151,16 @@ class MatchValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self, contexter=None):
+    def clone(self, contexter=None, **kwargs):
         match_valuers = {}
         for name, valuer in self.match_valuers.items():
-            match_valuers[name] = valuer.clone(contexter)
-        default_match_valuer = self.default_match_valuer.clone(contexter) if self.default_match_valuer else None
-        value_valuer = self.value_valuer.clone(contexter) if self.value_valuer else None
-        return_valuer = self.return_valuer.clone(contexter) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
-            if self.inherit_valuers else None
+            match_valuers[name] = valuer.clone(contexter, **kwargs)
+        default_match_valuer = self.default_match_valuer.clone(contexter, **kwargs) \
+            if self.default_match_valuer else None
+        value_valuer = self.value_valuer.clone(contexter, **kwargs) if self.value_valuer else None
+        return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if contexter is not None:
             return ContextMatchValuer(match_valuers, default_match_valuer, value_valuer, return_valuer, inherit_valuers,
                                       self.key, self.filter, from_valuer=self, contexter=contexter)

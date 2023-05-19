@@ -11,7 +11,7 @@ class ConstValuer(Valuer):
 
         self.value = self.do_filter(value)
 
-    def clone(self, contexter=None):
+    def clone(self, contexter=None, **kwargs):
         return self.__class__(self.value, self.key, self.filter, from_valuer=self)
 
     def reinit(self):

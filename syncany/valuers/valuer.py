@@ -173,7 +173,7 @@ class Valuer(object):
                 self.KEY_GETTER_CACHES.pop(cache_key, None)
         self.KEY_GETTER_CACHES[self.key] = self.key_getters
 
-    def clone(self, contexter=None):
+    def clone(self, contexter=None, **kwargs):
         if contexter is not None:
             return ContextValuer(self.key, self.filter, from_valuer=self, contexter=contexter)
         if isinstance(self, ContextValuer):

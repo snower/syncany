@@ -10,10 +10,10 @@ class SchemaValuer(Valuer):
         self.schema_valuers = schema_valuers
         super(SchemaValuer, self).__init__(*args, **kwargs)
 
-    def clone(self, contexter=None):
+    def clone(self, contexter=None, **kwargs):
         schema_valuers = {}
         for name, valuer in self.schema_valuers.items():
-            schema_valuers[name] = valuer.clone(contexter)
+            schema_valuers[name] = valuer.clone(contexter, **kwargs)
         if contexter is not None:
             return ContextSchemaValuer(schema_valuers, self.key, self.filter, from_valuer=self, contexter=contexter)
         if isinstance(self, ContextSchemaValuer):

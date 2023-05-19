@@ -27,15 +27,15 @@ class CaseValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self, contexter=None):
+    def clone(self, contexter=None, **kwargs):
         case_valuers = {}
         for name, valuer in self.case_valuers.items():
-            case_valuers[name] = valuer.clone(contexter)
-        default_case_valuer = self.default_case_valuer.clone(contexter) if self.default_case_valuer else None
-        value_valuer = self.value_valuer.clone(contexter) if self.value_valuer else None
-        return_valuer = self.return_valuer.clone(contexter) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
-            if self.inherit_valuers else None
+            case_valuers[name] = valuer.clone(contexter, **kwargs)
+        default_case_valuer = self.default_case_valuer.clone(contexter, **kwargs) if self.default_case_valuer else None
+        value_valuer = self.value_valuer.clone(contexter, **kwargs) if self.value_valuer else None
+        return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if contexter is not None:
             return ContextCaseValuer(case_valuers, default_case_valuer, value_valuer, return_valuer, inherit_valuers,
                                      self.key, self.filter, from_valuer=self, contexter=contexter)

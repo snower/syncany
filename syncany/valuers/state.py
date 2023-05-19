@@ -25,12 +25,12 @@ class StateValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self, contexter=None):
-        calculate_valuer = self.calculate_valuer.clone(contexter) if self.calculate_valuer else None
-        default_valuer = self.default_valuer.clone(contexter) if self.default_valuer else None
-        return_valuer = self.return_valuer.clone(contexter) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
-            if self.inherit_valuers else None
+    def clone(self, contexter=None, **kwargs):
+        calculate_valuer = self.calculate_valuer.clone(contexter, **kwargs) if self.calculate_valuer else None
+        default_valuer = self.default_valuer.clone(contexter, **kwargs) if self.default_valuer else None
+        return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if contexter is not None:
             return ContextStateValuer(self.state_value, calculate_valuer, default_valuer, return_valuer, inherit_valuers,
                                       self.key, self.filter, from_valuer=self, contexter=contexter)

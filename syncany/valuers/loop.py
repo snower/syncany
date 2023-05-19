@@ -57,12 +57,12 @@ class ForeachValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self, contexter=None):
-        value_valuer = self.value_valuer.clone(contexter) if self.value_valuer else None
-        calculate_valuer = self.calculate_valuer.clone(contexter) if self.calculate_valuer else None
-        return_valuer = self.return_valuer.clone(contexter) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
-            if self.inherit_valuers else None
+    def clone(self, contexter=None, **kwargs):
+        value_valuer = self.value_valuer.clone(contexter, **kwargs) if self.value_valuer else None
+        calculate_valuer = self.calculate_valuer.clone(contexter, **kwargs) if self.calculate_valuer else None
+        return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if contexter is not None:
             return ContextForeachValuer(value_valuer, calculate_valuer, return_valuer, inherit_valuers,
                               self.key, self.filter, from_valuer=self, contexter=contexter)
@@ -95,7 +95,9 @@ class ForeachValuer(Valuer):
                 calculated_values = []
                 if isinstance(value, dict):
                     for k, v in value.items():
-                        calculate_valuer = self.calculate_valuer.clone(Contexter())
+                        calculate_valuer = self.calculate_valuer.clone(Contexter()
+                                                                       if isinstance(self, ContextForeachValuer)
+                                                                       else None, inherited=True)
                         if isinstance(v, dict):
                             calculate_valuer.fill(dict(_index_=k, **v))
                         else:
@@ -103,7 +105,8 @@ class ForeachValuer(Valuer):
                         calculated_values.append(calculate_valuer)
                 elif isinstance(value, (list, types.GeneratorType)):
                     for i in range(len(value)):
-                        calculate_valuer = self.calculate_valuer.clone(Contexter())
+                        calculate_valuer = self.calculate_valuer.clone(Contexter() if isinstance(self, ContextForeachValuer)
+                                                                       else None, inherited=True)
                         if isinstance(value[i], dict):
                             calculate_valuer.fill(dict(_index_=i, **value[i]))
                         else:
@@ -111,11 +114,13 @@ class ForeachValuer(Valuer):
                         calculated_values.append(calculate_valuer)
                 elif isinstance(value, range_type):
                     for i in value:
-                        calculate_valuer = self.calculate_valuer.clone(Contexter())
+                        calculate_valuer = self.calculate_valuer.clone(Contexter() if isinstance(self, ContextForeachValuer)
+                                                                       else None, inherited=True)
                         calculate_valuer.fill(dict(_index_=i))
                         calculated_values.append(calculate_valuer)
                 else:
-                    calculate_valuer = self.calculate_valuer.clone(Contexter())
+                    calculate_valuer = self.calculate_valuer.clone(Contexter() if isinstance(self, ContextForeachValuer)
+                                                                   else None, inherited=True)
                     calculate_valuer.fill(dict(_index_=0, _value_=value))
                     calculated_values.append(calculate_valuer)
                 self.calculated_values = calculated_values
@@ -285,9 +290,9 @@ class BreakValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self, contexter=None):
-        return_valuer = self.return_valuer.clone(contexter) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
+    def clone(self, contexter=None, **kwargs):
+        return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs) for inherit_valuer in self.inherit_valuers] \
             if self.inherit_valuers else None
         if contexter is not None:
             return ContextBreakValuer(return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self,
@@ -368,9 +373,9 @@ class ContinueValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self, contexter=None):
-        return_valuer = self.return_valuer.clone(contexter) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
+    def clone(self, contexter=None, **kwargs):
+        return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs) for inherit_valuer in self.inherit_valuers] \
             if self.inherit_valuers else None
         if contexter is not None:
             return ContextContinueValuer(return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self,

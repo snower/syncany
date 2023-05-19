@@ -28,13 +28,13 @@ class CalculateValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self, contexter=None):
+    def clone(self, contexter=None, **kwargs):
         args_valuers = []
         for valuer in self.args_valuers:
-            args_valuers.append(valuer.clone(contexter))
-        return_valuer = self.return_valuer.clone(contexter) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
-            if self.inherit_valuers else None
+            args_valuers.append(valuer.clone(contexter, **kwargs))
+        return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if contexter is not None:
             return ContextCalculateValuer(self.calculater, args_valuers, return_valuer, inherit_valuers,
                                           self.key, self.filter, from_valuer=self, contexter=contexter)

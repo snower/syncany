@@ -39,19 +39,19 @@ class MakeValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def clone(self, contexter=None):
+    def clone(self, contexter=None, **kwargs):
         if isinstance(self.value_valuer, dict):
-            value_valuer = {key: (key_valuer.clone(contexter), value_valuer.clone(contexter))
+            value_valuer = {key: (key_valuer.clone(contexter, **kwargs), value_valuer.clone(contexter, **kwargs))
                             for key, (key_valuer, value_valuer) in self.value_valuer.items()}
         elif isinstance(self.value_valuer, list):
-            value_valuer = [valuer.clone(contexter) for valuer in self.value_valuer]
+            value_valuer = [valuer.clone(contexter, **kwargs) for valuer in self.value_valuer]
         elif isinstance(self.value_valuer, Valuer):
-            value_valuer = self.value_valuer.clone(contexter)
+            value_valuer = self.value_valuer.clone(contexter, **kwargs)
         else:
             value_valuer = None
-        return_valuer = self.return_valuer.clone(contexter) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter) for inherit_valuer in self.inherit_valuers] \
-            if self.inherit_valuers else None
+        return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if contexter is not None:
             return ContextMakeValuer(value_valuer, return_valuer, inherit_valuers,
                                      self.key, self.filter, from_valuer=self, contexter=contexter)
