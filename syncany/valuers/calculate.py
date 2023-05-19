@@ -49,26 +49,37 @@ class CalculateValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
-        for valuer in self.args_valuers:
-            valuer.fill(data)
-
         if not self.wait_loaded:
-            values = [valuer.get() for valuer in self.args_valuers]
+            values = [valuer.fill_get(data) for valuer in self.args_valuers]
             if self.return_valuer:
                 self.return_valuer.fill(self.do_filter(self.calculater.calculate(*values)))
             else:
                 self.value = self.do_filter(self.calculater.calculate(*values))
+            return self
+
+        for valuer in self.args_valuers:
+            valuer.fill(data)
         return self
 
     def get(self):
         if self.wait_loaded:
             values = [valuer.get() for valuer in self.args_valuers]
             if self.return_valuer:
-                return self.return_valuer.fill(self.do_filter(self.calculater.calculate(*values))).get()
+                return self.return_valuer.fill_get(self.do_filter(self.calculater.calculate(*values)))
             return self.do_filter(self.calculater.calculate(*values))
         if self.return_valuer:
             return self.return_valuer.get()
         return self.value
+
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        values = [valuer.fill_get(data) for valuer in self.args_valuers]
+        if self.return_valuer:
+            return self.return_valuer.fill_get(self.do_filter(self.calculater.calculate(*values)))
+        return self.do_filter(self.calculater.calculate(*values))
 
     def childs(self):
         childs = []

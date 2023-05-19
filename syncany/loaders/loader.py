@@ -116,7 +116,7 @@ class Loader(object):
                 else:
                     for name, valuer in self.schema.items():
                         if name not in data or not isinstance(data[name], ContextRunner):
-                            odata[name] = valuer.fill(data).get()
+                            odata[name] = valuer.fill_get(data)
                         else:
                             odata[name] = data[name].get()
                 if self.intercepts and self.check_intercepts(odata):
@@ -143,7 +143,7 @@ class Loader(object):
             else:
                 for name, valuer in self.schema.items():
                     if name not in data or not isinstance(data[name], ContextRunner):
-                        value = valuer.fill(data).get()
+                        value = valuer.fill_get(data)
                     else:
                         value = data[name].get()
                     if isinstance(value, types.FunctionType):
@@ -204,7 +204,7 @@ class Loader(object):
 
     def check_intercepts(self, data):
         for intercept in self.intercepts:
-            intercept_result = intercept.fill(data).get()
+            intercept_result = intercept.fill_get(data)
             if intercept_result is not None and not intercept_result:
                 return True
         return False

@@ -233,8 +233,22 @@ class MatchValuer(Valuer):
             value = self.do_filter(None)
 
         if self.return_valuer:
-            return self.return_valuer.fill(value).get()
+            return self.return_valuer.fill_get(value)
         return value
+
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        value = self.value_valuer.fill_get(data) if self.value_valuer else data
+        for matcher in self.matchers:
+            matched_value = matcher.match(value)
+            if matched_value is not None:
+                return self.match_valuers[matcher.matcher].fill_get(matched_value)
+        if self.default_match_valuer:
+            return self.default_match_valuer.fill_get(data)
+        return self.do_filter(None)
 
     def childs(self):
         childs = list(self.match_valuers.values())

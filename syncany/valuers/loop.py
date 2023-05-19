@@ -140,7 +140,7 @@ class ForeachValuer(Valuer):
             values = []
             for value in datas:
                 try:
-                    values.append(self.do_filter(self.calculate_valuer.fill(value).get()))
+                    values.append(self.do_filter(self.calculate_valuer.fill_get(value)))
                 except ContinueReturn as e:
                     if e.value != ContinueReturn.NULL:
                         values.append(e.value)
@@ -171,7 +171,7 @@ class ForeachValuer(Valuer):
 
             for value in datas:
                 try:
-                    values.append(self.do_filter(self.calculate_valuer.fill(value).get()))
+                    values.append(self.do_filter(self.calculate_valuer.fill_get(value)))
                 except ContinueReturn as e:
                     if e.value != ContinueReturn.NULL:
                         values.append(e.value)
@@ -204,6 +204,39 @@ class ForeachValuer(Valuer):
         if self.return_valuer:
             return self.return_valuer.get()
         return self.value
+
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        value = self.value_valuer.fill_get(data) if self.value_valuer else data
+        if isinstance(value, dict):
+            datas = [dict(_index_=k, **v) if isinstance(v, dict) else dict(_index_=k, _value_=v)
+                     for k, v in value.items()]
+        elif isinstance(value, (list, types.GeneratorType)):
+            datas = [dict(_index_=i, **value[i]) if isinstance(value[i], dict) else dict(_index_=i, _value_=value[i])
+                     for i in range(len(value))]
+        elif isinstance(value, range_type):
+            datas = [dict(_index_=i) for i in value]
+        else:
+            datas = [dict(_index_=0, _value_=value)]
+
+        values = []
+        for value in datas:
+            try:
+                values.append(self.do_filter(self.calculate_valuer.fill_get(value)))
+            except ContinueReturn as e:
+                if e.value != ContinueReturn.NULL:
+                    values.append(e.value)
+                continue
+            except BreakReturn as e:
+                if e.value != BreakReturn.NULL:
+                    values.append(e.value)
+                break
+        if self.return_valuer:
+            return self.return_valuer.fill_get(values)
+        return values
 
     def childs(self):
         childs = []
@@ -316,6 +349,15 @@ class BreakValuer(Valuer):
             raise BreakReturn(self.return_valuer.get())
         raise BreakReturn()
 
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if self.return_valuer:
+            raise BreakReturn(self.return_valuer.fill_get(data))
+        raise BreakReturn()
+
     def childs(self):
         childs = []
         if self.return_valuer:
@@ -397,6 +439,15 @@ class ContinueValuer(Valuer):
     def get(self):
         if self.return_valuer:
             raise ContinueReturn(self.return_valuer.get())
+        raise ContinueReturn()
+
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if self.return_valuer:
+            raise ContinueReturn(self.return_valuer.fill_get(data))
         raise ContinueReturn()
 
     def childs(self):

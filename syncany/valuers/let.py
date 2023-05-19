@@ -65,9 +65,21 @@ class LetValuer(Valuer):
             super(LetValuer, self).fill(self.filled_data)
             self.filled_data = None
             if self.return_valuer:
-                self.return_valuer.fill(super(LetValuer, self).get())
-                return self.return_valuer.get()
+                return self.return_valuer.fill_get(super(LetValuer, self).get())
+            return super(LetValuer, self).get()
+        if self.return_valuer:
+            return self.return_valuer.get()
         return super(LetValuer, self).get()
+
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        self.key = self.key_valuer.fill_get(data)
+        if self.return_valuer:
+            return self.return_valuer.fill_get(super(LetValuer, self).fill_get(data))
+        return super(LetValuer, self).fill_get(data)
 
     def childs(self):
         childs = []

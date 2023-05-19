@@ -673,7 +673,7 @@ class CoreTasker(Tasker):
         return self.execute_valuer(valuer, data)
 
     def execute_valuer(self, valuer, data):
-        value = valuer.fill(data).get()
+        value = valuer.fill_get(data)
         if isinstance(value, types.GeneratorType):
             oyield = value
             while True:

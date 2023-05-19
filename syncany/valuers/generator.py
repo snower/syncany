@@ -69,9 +69,9 @@ class YieldValuer(Valuer):
 
             if not self.wait_loaded:
                 if isinstance(data, list):
-                    self.iter_datas = [self.return_valuer.fill(self.do_filter(value)).get() for value in data]
+                    self.iter_datas = [self.return_valuer.fill_get(self.do_filter(value)) for value in data]
                 else:
-                    self.iter_datas = [self.return_valuer.fill(self.do_filter(data)).get()]
+                    self.iter_datas = [self.return_valuer.fill_get(self.do_filter(data))]
                 return self
 
             if isinstance(data, list):
@@ -93,13 +93,53 @@ class YieldValuer(Valuer):
                     iter_datas = [self.do_filter(data)]
             else:
                 if isinstance(data, list):
-                    iter_datas = [self.return_valuer.fill(self.do_filter(value)).get() for value in data]
+                    iter_datas = [self.return_valuer.fill_get(self.do_filter(value)) for value in data]
                 else:
-                    iter_datas = [self.return_valuer.fill(self.do_filter(data)).get()]
+                    iter_datas = [self.return_valuer.fill_get(self.do_filter(data))]
         elif self.wait_loaded:
             iter_datas = [iter_valuer.get() for iter_valuer in self.iter_valuers]
         else:
             iter_datas = self.iter_datas
+
+        def gen_iter():
+            gdata = yield None
+            for data in iter_datas:
+                if isinstance(data, types.FunctionType):
+                    try:
+                        child_data = data(gdata)
+                        gdata = yield child_data
+                    except StopIteration:
+                        pass
+                elif isinstance(data, types.GeneratorType):
+                    while True:
+                        try:
+                            child_data = data.send(gdata)
+                            gdata = yield child_data
+                        except StopIteration:
+                            break
+                else:
+                    gdata = yield data
+        g = gen_iter()
+        g.send(None)
+        return g
+
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if self.value_valuer:
+            data = self.value_valuer.fill_get(data)
+        if not self.return_valuer:
+            if isinstance(data, list):
+                iter_datas = [self.do_filter(value) for value in data]
+            else:
+                iter_datas = [self.do_filter(data)]
+        else:
+            if isinstance(data, list):
+                iter_datas = [self.return_valuer.fill_get(self.do_filter(value)) for value in data]
+            else:
+                iter_datas = [self.return_valuer.fill_get(self.do_filter(data))]
 
         def gen_iter():
             gdata = yield None

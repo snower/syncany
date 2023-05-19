@@ -10,7 +10,7 @@ class LambdaFunction(object):
         self.calculate_valuer = calculate_valuer
 
     def __call__(self, data):
-        return self.calculate_valuer.fill(data).get()
+        return self.calculate_valuer.fill_get(data)
 
 
 class LambdaValuer(Valuer):
@@ -41,6 +41,12 @@ class LambdaValuer(Valuer):
         return self
 
     def get(self):
+        return LambdaFunction(self.calculate_valuer)
+
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
         return LambdaFunction(self.calculate_valuer)
 
     def childs(self):

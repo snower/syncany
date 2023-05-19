@@ -217,6 +217,30 @@ class Valuer(object):
     def get(self):
         return self.value
 
+    def fill_get(self, data):
+        if isinstance(data, dict) and self.key in data:
+            return self.do_filter(data[self.key])
+        if data is None or not self.key:
+            return self.do_filter(None)
+        if self.key == "*":
+            return self.do_filter(data)
+
+        if not self.key_getters:
+            if self.key in self.KEY_GETTER_CACHES:
+                self.key_getters = self.KEY_GETTER_CACHES[self.key]
+            else:
+                self.parse_key()
+        try:
+            key_getter_index, key_getter_len = 0, len(self.key_getters)
+            while key_getter_index < key_getter_len:
+                data, index = self.key_getters[key_getter_index](data)
+                if data is None:
+                    break
+                key_getter_index += index
+            return self.do_filter(data)
+        except:
+            return self.do_filter(None)
+
     def reset(self):
         for valuer in self.childs():
             valuer.reset()

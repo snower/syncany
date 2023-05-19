@@ -85,16 +85,36 @@ class AggregateValuer(Valuer):
     def get(self):
         key_value = self.key_valuer.get() if self.key_valuer else ""
 
-        def calculate_value(data):
+        def calculate_value(cdata):
             loader_loaded = self.aggregate_manager.loaded(key_value, self.key)
             if loader_loaded:
                 cdata = self.aggregate_manager.get(key_value)
-                value = self.do_filter(self.calculate_valuer.fill(cdata).get())
+                value = self.do_filter(self.calculate_valuer.fill_get(cdata))
                 self.aggregate_manager.set(key_value, self.key, value)
                 raise StopIteration
 
-            value = self.do_filter(self.calculate_valuer.fill(data).get())
-            self.aggregate_manager.add(key_value, self.key, data, value)
+            value = self.do_filter(self.calculate_valuer.fill_get(cdata))
+            self.aggregate_manager.add(key_value, self.key, cdata, value)
+            return value
+        return calculate_value
+
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        key_value = self.key_valuer.fill_get(data) if self.key_valuer else ""
+
+        def calculate_value(cdata):
+            loader_loaded = self.aggregate_manager.loaded(key_value, self.key)
+            if loader_loaded:
+                cdata = self.aggregate_manager.get(key_value)
+                value = self.do_filter(self.calculate_valuer.fill_get(cdata))
+                self.aggregate_manager.set(key_value, self.key, value)
+                raise StopIteration
+
+            value = self.do_filter(self.calculate_valuer.fill_get(cdata))
+            self.aggregate_manager.add(key_value, self.key, cdata, value)
             return value
         return calculate_value
 

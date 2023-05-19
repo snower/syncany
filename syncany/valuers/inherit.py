@@ -47,6 +47,13 @@ class InheritValuer(Valuer):
     def get(self):
         return None
 
+    def fill_get(self, data):
+        if self.value_valuer:
+            self.value_valuer.fill(data)
+        else:
+            super(InheritValuer, self).fill(data)
+        return self
+
     def childs(self):
         if not self.value_valuer:
             return []
@@ -113,6 +120,11 @@ class InheritChildValuer(Valuer):
         return self
 
     def get(self):
+        if self.value_valuer:
+            return self.value_valuer.get()
+        return self.value
+
+    def fill_get(self, data):
         if self.value_valuer:
             return self.value_valuer.get()
         return self.value

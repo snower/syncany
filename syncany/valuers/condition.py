@@ -62,9 +62,9 @@ class IfValuer(Valuer):
 
         if self.wait_loaded:
             if value:
-                value = self.do_filter(self.true_valuer.fill(data).get())
+                value = self.do_filter(self.true_valuer.fill_get(data))
             elif self.false_valuer:
-                value = self.do_filter(self.false_valuer.fill(data).get())
+                value = self.do_filter(self.false_valuer.fill_get(data))
             else:
                 value = self.do_filter(None)
             self.return_valuer.fill(value)
@@ -78,7 +78,7 @@ class IfValuer(Valuer):
         return self
 
     def get(self):
-        if self.value_valuer and self.value_wait_loaded:
+        if self.value_wait_loaded:
             value = self.value_valuer.get()
         elif self.wait_loaded:
             return self.return_valuer.get()
@@ -92,7 +92,23 @@ class IfValuer(Valuer):
         else:
             value = self.do_filter(None)
         if self.return_valuer:
-            return self.return_valuer.fill(value).get()
+            return self.return_valuer.fill_get(value)
+        return value
+
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        value = self.value_valuer.fill_get(data) if self.value_valuer else data
+        if value:
+            value = self.do_filter(self.true_valuer.fill_get(data))
+        elif self.false_valuer:
+            value = self.do_filter(self.false_valuer.fill_get(data))
+        else:
+            value = self.do_filter(None)
+        if self.return_valuer:
+            return self.return_valuer.fill_get(value)
         return value
 
     def childs(self):

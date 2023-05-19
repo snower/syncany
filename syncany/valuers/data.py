@@ -80,6 +80,38 @@ class DataValuer(Valuer):
             return self.return_valuer.get()
         return self.value
 
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if isinstance(data, dict) and self.key in data:
+            value = self.do_filter(data[self.key])
+        elif data is None or not self.key:
+            value = self.do_filter(None)
+        elif self.key == "*":
+            value = self.do_filter(data)
+        else:
+            if not self.key_getters:
+                if self.key in self.KEY_GETTER_CACHES:
+                    self.key_getters = self.KEY_GETTER_CACHES[self.key]
+                else:
+                    self.parse_key()
+            try:
+                key_getter_index, key_getter_len = 0, len(self.key_getters)
+                while key_getter_index < key_getter_len:
+                    data, index = self.key_getters[key_getter_index](data)
+                    if data is None:
+                        break
+                    key_getter_index += index
+                value = self.do_filter(data)
+            except:
+                value = self.do_filter(None)
+
+        if self.return_valuer:
+            return self.return_valuer.fill_get(value)
+        return value
+
     def do_filter(self, value):
         if not self.filter:
             if isinstance(value, datetime.datetime):

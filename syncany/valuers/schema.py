@@ -28,11 +28,18 @@ class SchemaValuer(Valuer):
         return self
 
     def get(self):
-        self.value = {}
+        value = {}
         for name, valuer in self.schema_valuers.items():
-            self.value[name] = valuer.get()
+            value[name] = valuer.get()
+        return value
 
-        return self.value
+    def fill_get(self, data):
+        super(SchemaValuer, self).fill(data)
+
+        value = {}
+        for name, valuer in self.schema_valuers.items():
+            value[name] = valuer.fill_get(data)
+        return value
 
     def childs(self):
         return list(self.schema_valuers.values())

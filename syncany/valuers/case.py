@@ -94,7 +94,23 @@ class CaseValuer(Valuer):
         else:
             value = self.do_filter(None)
         if self.return_valuer:
-            return self.return_valuer.fill(value).get()
+            return self.return_valuer.fill_get(value)
+        return value
+
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        value = self.value_valuer.fill_get(data) if self.value_valuer else data
+        if value in self.case_valuers:
+            value = self.do_filter(self.case_valuers[value].fill_get(data))
+        elif self.default_case_valuer:
+            value = self.do_filter(self.default_case_valuer.fill_get(data))
+        else:
+            value = self.do_filter(None)
+        if self.return_valuer:
+            return self.return_valuer.fill_get(value)
         return value
 
     def childs(self):

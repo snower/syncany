@@ -121,12 +121,12 @@ class CallValuer(Valuer):
             value = self.value_valuer.get()
             calculated_key, calculated = self.return_manager.loaded(value)
             if not calculated:
-                value = self.do_filter(self.calculate_valuer.fill(value).get())
+                value = self.do_filter(self.calculate_valuer.fill_get(value))
                 self.return_manager.set(calculated_key, value)
             else:
                 value = self.return_manager.get(calculated_key)
             if self.return_valuer:
-                return self.return_valuer.fill(value).get()
+                return self.return_valuer.fill_get(value)
             return value
 
         if self.calculate_wait_loaded:
@@ -137,12 +137,30 @@ class CallValuer(Valuer):
             else:
                 value = self.return_manager.get(calculated_key)
             if self.return_valuer:
-                return self.return_valuer.fill(value).get()
+                return self.return_valuer.fill_get(value)
             return value
 
         if self.return_valuer:
             return self.return_valuer.get()
         return self.value
+
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        value = self.value_valuer.fill_get(data) if self.value_valuer else data
+        calculated_key, calculated = self.return_manager.loaded(value)
+        if not calculated:
+            value = self.do_filter(self.calculate_valuer.fill_get(value))
+            self.return_manager.set(calculated_key, value)
+            if self.return_valuer:
+                return self.return_valuer.fill_get(value)
+            return value
+        value = self.return_manager.get(calculated_key)
+        if self.return_valuer:
+            return self.return_valuer.fill_get(value)
+        return value
 
     def reset(self):
         self.return_manager.reset()

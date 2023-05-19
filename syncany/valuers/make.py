@@ -68,14 +68,14 @@ class MakeValuer(Valuer):
 
         if not self.wait_loaded:
             if isinstance(self.value_valuer, dict):
-                value = {key_valuer.fill(data).get(): value_valuer.fill(data).get()
+                value = {key_valuer.fill_get(data): value_valuer.fill_get(data)
                          for key, (key_valuer, value_valuer) in self.value_valuer.items()}
             elif isinstance(self.value_valuer, list):
-                value = [value_valuer.fill(data).get() for value_valuer in self.value_valuer]
+                value = [value_valuer.fill_get(data) for value_valuer in self.value_valuer]
                 if len(value) == 1 and isinstance(value[0], list):
                     value = value[0]
             elif isinstance(self.value_valuer, Valuer):
-                value = self.do_filter(self.value_valuer.fill(data).get())
+                value = self.do_filter(self.value_valuer.fill_get(data))
             else:
                 value = self.do_filter(None)
             if self.return_valuer:
@@ -109,11 +109,31 @@ class MakeValuer(Valuer):
             else:
                 value = self.do_filter(None)
             if self.return_valuer:
-                return self.return_valuer.fill(value).get()
+                return self.return_valuer.fill_get(value)
             return value
         if self.return_valuer:
             return self.return_valuer.get()
         return self.value
+
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if isinstance(self.value_valuer, dict):
+            value = {key_valuer.fill_get(data): value_valuer.fill_get(data)
+                     for key, (key_valuer, value_valuer) in self.value_valuer.items()}
+        elif isinstance(self.value_valuer, list):
+            value = [value_valuer.fill_get(data) for value_valuer in self.value_valuer]
+            if len(value) == 1 and isinstance(value[0], list):
+                value = value[0]
+        elif isinstance(self.value_valuer, Valuer):
+            value = self.do_filter(self.value_valuer.fill_get(data))
+        else:
+            value = self.do_filter(None)
+        if self.return_valuer:
+            return self.return_valuer.fill_get(value)
+        return value
 
     def childs(self):
         childs = []

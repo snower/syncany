@@ -46,7 +46,7 @@ class DBJoinValuer(Valuer):
         join_values, max_value_size, has_join_value = [], 0, False
         if self.args_valuers:
             for args_valuer in self.args_valuers:
-                join_value = args_valuer.fill(data).get()
+                join_value = args_valuer.fill_get(data)
                 if isinstance(join_value, list):
                     if len(join_value) > max_value_size:
                         max_value_size = len(join_value)
@@ -103,6 +103,9 @@ class DBJoinValuer(Valuer):
     def get(self):
         self.loader.load()
         return self.return_valuer.get()
+
+    def fill_get(self, data):
+        return self.fill(data).get()
 
     def childs(self):
         valuers = []
@@ -171,7 +174,7 @@ class ContextDBJoinValuer(DBJoinValuer):
         join_values, max_value_size, has_join_value = [], 0, False
         if self.args_valuers:
             for args_valuer in self.args_valuers:
-                join_value = args_valuer.fill(data).get()
+                join_value = args_valuer.fill_get(data)
                 if isinstance(join_value, list):
                     if len(join_value) > max_value_size:
                         max_value_size = len(join_value)
@@ -237,6 +240,9 @@ class ContextDBJoinValuer(DBJoinValuer):
             self.contexter.values = contexter_values
         return self.return_valuer.get()
 
+    def fill_get(self, data):
+        return self.fill(data).get()
+
 
 class DBJoinInterceptMatchValuer(Valuer):
     def __init__(self, intercept_valuer, return_valuer, contexter, *args, **kwargs):
@@ -253,7 +259,7 @@ class DBJoinInterceptMatchValuer(Valuer):
         if isinstance(data, list):
             result = []
             for value in data:
-                intercept_result = self.intercept_valuer.fill(value).get()
+                intercept_result = self.intercept_valuer.fill_get(value)
                 if intercept_result is not None and not intercept_result:
                     continue
                 result.append(value)
@@ -263,7 +269,7 @@ class DBJoinInterceptMatchValuer(Valuer):
                 self.return_valuer.fill(result or None)
             return self
 
-        intercept_result = self.intercept_valuer.fill(data).get()
+        intercept_result = self.intercept_valuer.fill_get(data)
         if intercept_result is not None and not intercept_result:
             self.return_valuer.fill(None)
             return self
@@ -272,6 +278,9 @@ class DBJoinInterceptMatchValuer(Valuer):
 
     def get(self):
         return self.return_valuer.get()
+
+    def fill_get(self, data):
+        return self.fill(data).get()
 
 
 class DBJoinGroupMatchValuer(Valuer):
@@ -289,3 +298,6 @@ class DBJoinGroupMatchValuer(Valuer):
         self.loaded = None if data is None else True
         self.matcher.fill(self, data)
         return self
+
+    def fill_get(self, data):
+        return self.fill(data).get()

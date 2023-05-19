@@ -50,8 +50,7 @@ class StateValuer(Valuer):
             if not self.calculate_wait_loaded:
                 value = self.calculate_valuer.get()
                 if not value and self.default_valuer:
-                    self.default_valuer.fill(self.state_value)
-                    value = self.default_valuer.get()
+                    value = self.default_valuer.fill_get(self.state_value)
                 value = self.do_filter(value)
                 if self.return_valuer:
                     self.return_valuer.fill(value)
@@ -72,15 +71,35 @@ class StateValuer(Valuer):
             if self.calculate_wait_loaded:
                 value = self.calculate_valuer.get()
                 if not value and self.default_valuer:
-                    self.default_valuer.fill(self.state_value)
-                    value = self.default_valuer.get()
+                    value = self.default_valuer.fill_get(self.state_value)
                 value = self.do_filter(value)
                 if self.return_valuer:
-                    return self.return_valuer.fill(value).get()
+                    return self.return_valuer.fill_get(value)
                 return value
         if self.return_valuer:
             return self.return_valuer.get()
         return self.value
+
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if self.calculate_valuer:
+            value = self.calculate_valuer.fill_get(self.state_value)
+            if not value and self.default_valuer:
+                value = self.default_valuer.fill_get(self.state_value)
+            value = self.do_filter(value)
+            if self.return_valuer:
+                return self.return_valuer.fill_get(value)
+            return value
+        if self.return_valuer:
+            value = self.do_filter(self.state_value)
+            final_filter = self.return_valuer.get_final_filter()
+            if final_filter:
+                value = final_filter.filter(value)
+            return self.return_valuer.fill_get(value)
+        return self.do_filter(self.state_value)
 
     def childs(self):
         childs = []

@@ -54,7 +54,7 @@ class DBLoadValuer(Valuer):
         if self.intercept_valuer:
             datas, result = self.loader.get(), []
             for data in datas:
-                intercept_result = self.intercept_valuer.fill(data).get()
+                intercept_result = self.intercept_valuer.fill_get(data)
                 if intercept_result is not None and not intercept_result:
                     continue
                 result.append(data)
@@ -74,14 +74,17 @@ class DBLoadValuer(Valuer):
         if self.intercept_valuer:
             datas, result = self.loader.get(), []
             for data in datas:
-                intercept_result = self.intercept_valuer.fill(data).get()
+                intercept_result = self.intercept_valuer.fill_get(data)
                 if intercept_result is not None and not intercept_result:
                     continue
                 result.append(data)
             if len(result) == 1:
-                return self.return_valuer.fill(result[0]).get()
-            return self.return_valuer.fill(result or None).get()
-        return self.return_valuer.fill(self.loader.get()).get()
+                return self.return_valuer.fill_get(result[0])
+            return self.return_valuer.fill_get(result or None)
+        return self.return_valuer.fill_get(self.loader.get())
+
+    def fill_get(self, data):
+        return self.fill(data).get()
 
     def childs(self):
         valuers = []

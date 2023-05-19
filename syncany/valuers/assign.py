@@ -68,11 +68,30 @@ class AssignValuer(Valuer):
                 value = self.do_filter(self.calculate_valuer.get())
                 self.global_value[self.key] = value
                 if self.return_valuer:
-                    return self.return_valuer.fill(value).get()
+                    return self.return_valuer.fill_get(value)
                 return value
         if self.return_valuer:
             return self.return_valuer.get()
         return self.value
+
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if self.calculate_valuer:
+            value = self.do_filter(self.calculate_valuer.fill_get(self.global_value))
+            self.global_value[self.key] = value
+            if self.return_valuer:
+                return self.return_valuer.fill_get(value)
+            return value
+        if self.return_valuer:
+            value = self.do_filter(self.global_value.get(self.key, None))
+            final_filter = self.return_valuer.get_final_filter()
+            if final_filter:
+                value = final_filter.filter(value)
+            return self.return_valuer.fill_get(value)
+        return self.do_filter(self.global_value.get(self.key, None))
 
     def childs(self):
         childs = []

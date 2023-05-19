@@ -20,5 +20,8 @@ class ConstValuer(Valuer):
     def fill(self, data):
         return self
 
+    def fill_get(self, data):
+        return self.value
+
     def require_loaded(self):
         return False

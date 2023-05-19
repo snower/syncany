@@ -107,6 +107,27 @@ class CacheValuer(Valuer):
             value = self.do_filter(value)
         return value
 
+    def fill_get(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        self.cache_key = str(self.key_valuer.fill_get(data))
+        value = self.cache_loader.get(self.cache_key)
+        if value is not None:
+            return value
+
+        value = self.calculate_valuer.fill_get(data)
+        if value is not None:
+            self.cache_loader.set(self.cache_key, value)
+        if self.return_valuer:
+            value = self.do_filter(value)
+            final_filter = self.return_valuer.get_final_filter()
+            if final_filter:
+                value = final_filter.filter(value)
+            return self.return_valuer.fill_get(value)
+        return self.do_filter(value)
+
     def childs(self):
         childs = []
         if self.key_valuer:

@@ -348,7 +348,7 @@ class TransformUniqKVCalculater(TransformCalculater):
                 if not valuer:
                     data[key] = 0
                     continue
-                data[key] = valuer.fill(None).get()
+                data[key] = valuer.fill_get(None)
 
         for key in keys:
             if key in tasker.outputer.schema:

@@ -141,7 +141,7 @@ class DBJoinLoader(DBLoader):
                 for i in range(len(datas)):
                     data = datas[i]
                     primary_key = self.get_data_primary_key(data)
-                    values = {key: field.fill(data).get() for key, field in self.schema.items()}
+                    values = {key: field.fill_get(data) for key, field in self.schema.items()}
 
                     if primary_key not in self.data_keys:
                         self.data_keys[primary_key] = [values]
@@ -154,13 +154,13 @@ class DBJoinLoader(DBLoader):
                     primary_key = self.get_data_primary_key(data)
                     for key, value in data.items():
                         if key in self.schema:
-                            values[key] = self.schema[key].fill(data).get()
+                            values[key] = self.schema[key].fill_get(data)
                         else:
                             for key_matcher in self.key_matchers:
                                 if key_matcher.match(key):
                                     valuer = key_matcher.create_key(key)
                                     self.schema[key] = valuer
-                                    values[key] = valuer.fill(data).get()
+                                    values[key] = valuer.fill_get(data)
 
                     if primary_key not in self.data_keys:
                         self.data_keys[primary_key] = [values]
