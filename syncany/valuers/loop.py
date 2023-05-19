@@ -48,21 +48,23 @@ class ForeachValuer(Valuer):
         super(ForeachValuer, self).new_init()
         self.value_wait_loaded = False if not self.value_valuer else self.value_valuer.require_loaded()
         self.calculate_wait_loaded = True if self.calculate_valuer and self.calculate_valuer.require_loaded() else False
+        self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(ForeachValuer, self).clone_init(from_valuer)
         self.value_wait_loaded = from_valuer.value_wait_loaded
         self.calculate_wait_loaded = from_valuer.calculate_wait_loaded
+        self.wait_loaded = from_valuer.wait_loaded
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         value_valuer = self.value_valuer.clone(contexter, **kwargs) if self.value_valuer else None
         calculate_valuer = self.calculate_valuer.clone(contexter, **kwargs) if self.calculate_valuer else None
         return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
-                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if contexter is not None:
             return ContextForeachValuer(value_valuer, calculate_valuer, return_valuer, inherit_valuers,
                               self.key, self.filter, from_valuer=self, contexter=contexter)
@@ -82,10 +84,10 @@ class ForeachValuer(Valuer):
                 inherit_valuer.fill(data)
 
         if self.value_valuer:
-            self.value_valuer.fill(data)
             if not self.value_wait_loaded:
-                value = self.value_valuer.get()
+                value = self.value_valuer.fill_get(data)
             else:
+                self.value_valuer.fill(data)
                 value = data
         else:
             value = data
@@ -150,7 +152,10 @@ class ForeachValuer(Valuer):
                         values.append(e.value)
                     break
             if self.return_valuer:
-                self.return_valuer.fill(values)
+                if not self.wait_loaded:
+                    self.value = self.return_valuer.fill_get(values)
+                else:
+                    self.return_valuer.fill(values)
             else:
                 self.value = values
         return self
@@ -202,6 +207,8 @@ class ForeachValuer(Valuer):
             return values
 
         if self.return_valuer:
+            if not self.wait_loaded:
+                return self.value
             return self.return_valuer.get()
         return self.value
 
@@ -324,9 +331,9 @@ class BreakValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs) for inherit_valuer in self.inherit_valuers] \
-            if self.inherit_valuers else None
         if contexter is not None:
             return ContextBreakValuer(return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self,
                                       contexter=contexter)
@@ -416,9 +423,9 @@ class ContinueValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs) for inherit_valuer in self.inherit_valuers] \
-            if self.inherit_valuers else None
         if contexter is not None:
             return ContextContinueValuer(return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self,
                                          contexter=contexter)

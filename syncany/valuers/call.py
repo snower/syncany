@@ -43,11 +43,13 @@ class CallValuer(Valuer):
         super(CallValuer, self).new_init()
         self.value_wait_loaded = False if not self.value_valuer else self.value_valuer.require_loaded()
         self.calculate_wait_loaded = True if self.calculate_valuer and self.calculate_valuer.require_loaded() else False
+        self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(CallValuer, self).clone_init(from_valuer)
         self.value_wait_loaded = from_valuer.value_wait_loaded
         self.calculate_wait_loaded = from_valuer.calculate_wait_loaded
+        self.wait_loaded = from_valuer.wait_loaded
 
     def get_manager(self):
         return self.return_manager
@@ -56,11 +58,11 @@ class CallValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         value_valuer = self.value_valuer.clone(contexter, **kwargs)
         calculate_valuer = self.calculate_valuer.clone(contexter, **kwargs) if self.calculate_valuer else None
         return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
-                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if contexter is not None:
             return ContextCallValuer(value_valuer, calculate_valuer, return_valuer, inherit_valuers,
                                      self.return_manager, self.key, self.filter, from_valuer=self, contexter=contexter)
@@ -91,21 +93,27 @@ class CallValuer(Valuer):
         if not self.value_wait_loaded:
             calculated_key, calculated = self.return_manager.loaded(value)
             if not calculated:
-                self.calculate_valuer.fill(value)
                 if not self.calculate_wait_loaded:
-                    value = self.do_filter(self.calculate_valuer.get())
+                    value = self.do_filter(self.calculate_valuer.fill_get(value))
                     self.return_manager.set(calculated_key, value)
                     if self.return_valuer:
-                        self.return_valuer.fill(value)
+                        if not self.wait_loaded:
+                            self.value = self.return_valuer.fill_get(value)
+                        else:
+                            self.return_valuer.fill(value)
                     else:
                         self.value = value
                     self.calculated = True
                 else:
+                    self.calculate_valuer.fill(value)
                     self.value = value
             else:
                 value = self.return_manager.get(calculated_key)
                 if self.return_valuer:
-                    self.return_valuer.fill(value)
+                    if not self.wait_loaded:
+                        self.value = self.return_valuer.fill_get(value)
+                    else:
+                        self.return_valuer.fill(value)
                 else:
                     self.value = value
                 self.calculated = True
@@ -114,6 +122,8 @@ class CallValuer(Valuer):
     def get(self):
         if self.calculated:
             if self.return_valuer:
+                if not self.wait_loaded:
+                    return self.value
                 return self.return_valuer.get()
             return self.value
 
@@ -141,6 +151,8 @@ class CallValuer(Valuer):
             return value
 
         if self.return_valuer:
+            if not self.wait_loaded:
+                return self.value
             return self.return_valuer.get()
         return self.value
 

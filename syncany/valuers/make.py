@@ -14,10 +14,12 @@ class MakeValuer(Valuer):
 
     def new_init(self):
         super(MakeValuer, self).new_init()
-        self.wait_loaded = self.check_wait_loaded()
+        self.value_wait_loaded = self.check_wait_loaded()
+        self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(MakeValuer, self).clone_init(from_valuer)
+        self.value_wait_loaded = from_valuer.value_wait_loaded
         self.wait_loaded = from_valuer.wait_loaded
 
     def check_wait_loaded(self):
@@ -40,6 +42,8 @@ class MakeValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if isinstance(self.value_valuer, dict):
             value_valuer = {key: (key_valuer.clone(contexter, **kwargs), value_valuer.clone(contexter, **kwargs))
                             for key, (key_valuer, value_valuer) in self.value_valuer.items()}
@@ -50,8 +54,6 @@ class MakeValuer(Valuer):
         else:
             value_valuer = None
         return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
-                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if contexter is not None:
             return ContextMakeValuer(value_valuer, return_valuer, inherit_valuers,
                                      self.key, self.filter, from_valuer=self, contexter=contexter)
@@ -66,7 +68,7 @@ class MakeValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
-        if not self.wait_loaded:
+        if not self.value_wait_loaded:
             if isinstance(self.value_valuer, dict):
                 value = {key_valuer.fill_get(data): value_valuer.fill_get(data)
                          for key, (key_valuer, value_valuer) in self.value_valuer.items()}
@@ -79,7 +81,10 @@ class MakeValuer(Valuer):
             else:
                 value = self.do_filter(None)
             if self.return_valuer:
-                self.return_valuer.fill(value)
+                if not self.wait_loaded:
+                    self.value = self.return_valuer.fill_get(value)
+                else:
+                    self.return_valuer.fill(value)
             else:
                 self.value = value
             return self
@@ -96,7 +101,7 @@ class MakeValuer(Valuer):
         return self
 
     def get(self):
-        if self.wait_loaded:
+        if self.value_wait_loaded:
             if isinstance(self.value_valuer, dict):
                 value = {key_valuer.get(): value_valuer.get()
                          for key, (key_valuer, value_valuer) in self.value_valuer.items()}
@@ -112,6 +117,8 @@ class MakeValuer(Valuer):
                 return self.return_valuer.fill_get(value)
             return value
         if self.return_valuer:
+            if not self.wait_loaded:
+                return self.value
             return self.return_valuer.get()
         return self.value
 

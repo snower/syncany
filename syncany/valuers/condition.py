@@ -18,23 +18,32 @@ class IfValuer(Valuer):
     def new_init(self):
         super(IfValuer, self).new_init()
         self.value_wait_loaded = True if self.value_valuer and self.value_valuer.require_loaded() else False
+        self.condition_wait_loaded = self.check_wait_loaded()
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(IfValuer, self).clone_init(from_valuer)
         self.value_wait_loaded = from_valuer.value_wait_loaded
+        self.condition_wait_loaded = from_valuer.condition_wait_loaded
         self.wait_loaded = from_valuer.wait_loaded
+
+    def check_wait_loaded(self):
+        if self.true_valuer and self.true_valuer.require_loaded():
+            return True
+        if self.false_valuer and self.false_valuer.require_loaded():
+            return True
+        return False
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         true_valuer = self.true_valuer.clone(contexter, **kwargs)
         false_valuer = self.false_valuer.clone(contexter, **kwargs) if self.false_valuer else None
         value_valuer = self.value_valuer.clone(contexter, **kwargs) if self.value_valuer else None
         return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
-                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if contexter is not None:
             return ContextIfValuer(true_valuer, false_valuer, value_valuer, return_valuer, inherit_valuers,
                                    self.key, self.filter, from_valuer=self, contexter=contexter)
@@ -50,24 +59,30 @@ class IfValuer(Valuer):
                 inherit_valuer.fill(data)
 
         if self.value_valuer:
-            self.value_valuer.fill(data)
             if self.value_wait_loaded:
+                self.value_valuer.fill(data)
                 self.true_valuer.fill(data)
                 if self.false_valuer:
                     self.false_valuer.fill(data)
                 return self
-            value = self.value_valuer.get()
+            value = self.value_valuer.fill_get(data)
         else:
             value = data
 
-        if self.wait_loaded:
+        if not self.condition_wait_loaded or self.wait_loaded:
             if value:
                 value = self.do_filter(self.true_valuer.fill_get(data))
             elif self.false_valuer:
                 value = self.do_filter(self.false_valuer.fill_get(data))
             else:
                 value = self.do_filter(None)
-            self.return_valuer.fill(value)
+            if self.return_valuer:
+                if not self.wait_loaded:
+                    self.value = self.return_valuer.fill_get(value)
+                else:
+                    self.return_valuer.fill(value)
+            else:
+                self.value = value
             return self
 
         if value:
@@ -78,10 +93,14 @@ class IfValuer(Valuer):
         return self
 
     def get(self):
-        if self.value_wait_loaded:
+        if self.value_valuer and self.value_wait_loaded:
             value = self.value_valuer.get()
-        elif self.wait_loaded:
-            return self.return_valuer.get()
+        elif not self.condition_wait_loaded or self.wait_loaded:
+            if self.return_valuer:
+                if not self.wait_loaded:
+                    return self.value
+                return self.return_valuer.get()
+            return self.value
         else:
             value = self.value
 

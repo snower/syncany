@@ -28,10 +28,10 @@ class DBLoadValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
-        intercept_valuer = self.intercept_valuer.clone(contexter, **kwargs) if self.intercept_valuer else None
-        return_valuer = self.return_valuer.clone(contexter, **kwargs)
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
                            for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+        intercept_valuer = self.intercept_valuer.clone(contexter, **kwargs) if self.intercept_valuer else None
+        return_valuer = self.return_valuer.clone(contexter, **kwargs)
         if contexter is not None:
             return ContextDBLoadValuer(self.loader, self.foreign_keys, self.foreign_filters, intercept_valuer,
                                        return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self,

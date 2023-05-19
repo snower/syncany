@@ -23,9 +23,9 @@ class LambdaValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
-        calculate_valuer = self.calculate_valuer.clone(contexter, **kwargs) if self.calculate_valuer else None
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
                            for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+        calculate_valuer = self.calculate_valuer.clone(contexter, **kwargs) if self.calculate_valuer else None
         if contexter is not None:
             return ContextLambdaValuer(calculate_valuer, inherit_valuers, self.key, self.filter, from_valuer=self,
                                        contexter=contexter)

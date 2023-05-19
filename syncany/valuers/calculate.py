@@ -15,26 +15,28 @@ class CalculateValuer(Valuer):
 
     def new_init(self):
         super(CalculateValuer, self).new_init()
-        self.wait_loaded = False
+        self.args_wait_loaded = False
         for valuer in self.args_valuers:
             if valuer.require_loaded():
-                self.wait_loaded = True
+                self.args_wait_loaded = True
                 break
+        self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(CalculateValuer, self).clone_init(from_valuer)
+        self.args_wait_loaded = from_valuer.args_wait_loaded
         self.wait_loaded = from_valuer.wait_loaded
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         args_valuers = []
         for valuer in self.args_valuers:
             args_valuers.append(valuer.clone(contexter, **kwargs))
         return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
-                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if contexter is not None:
             return ContextCalculateValuer(self.calculater, args_valuers, return_valuer, inherit_valuers,
                                           self.key, self.filter, from_valuer=self, contexter=contexter)
@@ -49,9 +51,12 @@ class CalculateValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
-        if not self.wait_loaded:
+        if not self.args_wait_loaded:
             values = [valuer.fill_get(data) for valuer in self.args_valuers]
             if self.return_valuer:
+                if not self.wait_loaded:
+                    self.value = self.return_valuer.fill_get(self.do_filter(self.calculater.calculate(*values)))
+                    return self
                 self.return_valuer.fill(self.do_filter(self.calculater.calculate(*values)))
             else:
                 self.value = self.do_filter(self.calculater.calculate(*values))
@@ -62,12 +67,14 @@ class CalculateValuer(Valuer):
         return self
 
     def get(self):
-        if self.wait_loaded:
+        if self.args_wait_loaded:
             values = [valuer.get() for valuer in self.args_valuers]
             if self.return_valuer:
                 return self.return_valuer.fill_get(self.do_filter(self.calculater.calculate(*values)))
             return self.do_filter(self.calculater.calculate(*values))
         if self.return_valuer:
+            if not self.wait_loaded:
+                return self.value
             return self.return_valuer.get()
         return self.value
 

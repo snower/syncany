@@ -133,6 +133,7 @@ class MatchValuer(Valuer):
     def new_init(self):
         super(MatchValuer, self).new_init()
         self.value_wait_loaded = True if self.value_valuer and self.value_valuer.require_loaded() else False
+        self.match_wait_loaded = self.check_wait_loaded()
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
         self.matchers = []
 
@@ -145,13 +146,24 @@ class MatchValuer(Valuer):
     def clone_init(self, from_valuer):
         super(MatchValuer, self).clone_init(from_valuer)
         self.value_wait_loaded = from_valuer.value_wait_loaded
+        self.match_wait_loaded = from_valuer.match_wait_loaded
         self.wait_loaded = from_valuer.wait_loaded
         self.matchers = from_valuer.matchers
+
+    def check_wait_loaded(self):
+        for name, valuer in self.match_valuers.items():
+            if valuer.require_loaded():
+                return True
+        if self.default_match_valuer and self.default_match_valuer.require_loaded():
+            return True
+        return False
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         match_valuers = {}
         for name, valuer in self.match_valuers.items():
             match_valuers[name] = valuer.clone(contexter, **kwargs)
@@ -159,8 +171,6 @@ class MatchValuer(Valuer):
             if self.default_match_valuer else None
         value_valuer = self.value_valuer.clone(contexter, **kwargs) if self.value_valuer else None
         return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
-                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if contexter is not None:
             return ContextMatchValuer(match_valuers, default_match_valuer, value_valuer, return_valuer, inherit_valuers,
                                       self.key, self.filter, from_valuer=self, contexter=contexter)
@@ -180,12 +190,12 @@ class MatchValuer(Valuer):
                 inherit_valuer.fill(data)
 
         if self.value_valuer:
-            self.value_valuer.fill(data)
             if self.value_wait_loaded:
+                self.value_valuer.fill(data)
                 if self.default_match_valuer:
                     self.default_match_valuer.fill(data)
                 return self
-            value = self.value_valuer.get()
+            value = self.value_valuer.fill_get(data)
         else:
             value = data
 
@@ -198,7 +208,7 @@ class MatchValuer(Valuer):
         if matched_value is None and self.default_match_valuer:
             self.default_match_valuer.fill(data)
 
-        if self.wait_loaded:
+        if not self.match_wait_loaded or self.wait_loaded:
             if matched_value is not None:
                 value = self.do_filter(self.match_valuers[matched_value["match"]].get())
             elif self.default_match_valuer:
@@ -206,7 +216,10 @@ class MatchValuer(Valuer):
             else:
                 value = self.do_filter(None)
             if self.return_valuer:
-                self.return_valuer.fill(value)
+                if not self.wait_loaded:
+                    self.value = self.return_valuer.fill_get(value)
+                else:
+                    self.return_valuer.fill(value)
             else:
                 self.value = value
         self.matched_value = matched_value
@@ -220,8 +233,12 @@ class MatchValuer(Valuer):
                 if matched_value is not None:
                     self.match_valuers[matcher.matcher].fill(matched_value)
                     break
-        elif self.wait_loaded:
-            return self.return_valuer.get()
+        elif not self.match_wait_loaded or self.wait_loaded:
+            if self.return_valuer:
+                if not self.wait_loaded:
+                    return self.value
+                return self.return_valuer.get()
+            return self.value
         else:
             value, matched_value = self.value, self.matched_value
 

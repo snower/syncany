@@ -16,20 +16,22 @@ class LetValuer(Valuer):
 
     def new_init(self):
         super(LetValuer, self).new_init()
-        self.wait_loaded = True if self.key_valuer and self.key_valuer.require_loaded() else False
+        self.key_wait_loaded = True if self.key_valuer and self.key_valuer.require_loaded() else False
+        self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(LetValuer, self).clone_init(from_valuer)
+        self.key_wait_loaded = from_valuer.key_wait_loaded
         self.wait_loaded = from_valuer.wait_loaded
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
-        key_valuer = self.key_valuer.clone(contexter, **kwargs) if self.key_valuer else None
-        return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
                            for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+        key_valuer = self.key_valuer.clone(contexter, **kwargs) if self.key_valuer else None
+        return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
         if contexter is not None:
             return ContextLetValuer(key_valuer, return_valuer, inherit_valuers,
                                     self.key, self.filter, from_valuer=self, contexter=contexter)
@@ -48,19 +50,21 @@ class LetValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
-        self.key_valuer.fill(data)
-
-        if not self.wait_loaded:
-            self.key = self.key_valuer.get()
+        if not self.key_wait_loaded:
+            self.key = self.key_valuer.fill_get(data)
             super(LetValuer, self).fill(data)
             if self.return_valuer:
-                self.return_valuer.fill(super(LetValuer, self).get())
+                if not self.wait_loaded:
+                    self.value = self.return_valuer.fill_get(super(LetValuer, self).get())
+                else:
+                    self.return_valuer.fill(super(LetValuer, self).get())
         else:
+            self.key_valuer.fill(data)
             self.filled_data = data
         return self
 
     def get(self):
-        if self.wait_loaded:
+        if self.key_wait_loaded:
             self.key = self.key_valuer.get()
             super(LetValuer, self).fill(self.filled_data)
             self.filled_data = None
@@ -68,6 +72,8 @@ class LetValuer(Valuer):
                 return self.return_valuer.fill_get(super(LetValuer, self).get())
             return super(LetValuer, self).get()
         if self.return_valuer:
+            if not self.wait_loaded:
+                return self.value
             return self.return_valuer.get()
         return super(LetValuer, self).get()
 

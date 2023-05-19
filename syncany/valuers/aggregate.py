@@ -53,6 +53,14 @@ class AggregateValuer(Valuer):
         self.aggregate_manager = aggregate_manager or AggregateManager()
         super(AggregateValuer, self).__init__(*args, **kwargs)
 
+    def new_init(self):
+        super(AggregateValuer, self).new_init()
+        self.key_wait_loaded = self.key_valuer and self.key_valuer.require_loaded()
+
+    def clone_init(self, from_valuer):
+        super(AggregateValuer, self).clone_init(from_valuer)
+        self.key_wait_loaded = from_valuer.key_wait_loaded
+
     def get_manager(self):
         return self.aggregate_manager
 
@@ -60,10 +68,10 @@ class AggregateValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
-        key_valuer = self.key_valuer.clone(contexter, **kwargs) if self.key_valuer else None
-        calculate_valuer = self.calculate_valuer.clone(contexter, **kwargs) if self.calculate_valuer else None
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
                            for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+        key_valuer = self.key_valuer.clone(contexter, **kwargs) if self.key_valuer else None
+        calculate_valuer = self.calculate_valuer.clone(contexter, **kwargs) if self.calculate_valuer else None
         if contexter is not None:
             return ContextAggregateValuer(key_valuer, calculate_valuer, inherit_valuers, self.aggregate_manager, self.key,
                                           self.filter, from_valuer=self, contexter=contexter)
@@ -78,12 +86,19 @@ class AggregateValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
+        if not self.key_wait_loaded:
+            if self.key_valuer:
+                self.value = self.key_valuer.fill_get(data)
+            return self
         if self.key_valuer:
             self.key_valuer.fill(data)
         return self
 
     def get(self):
-        key_value = self.key_valuer.get() if self.key_valuer else ""
+        if not self.key_wait_loaded:
+            key_value = self.value if self.key_valuer else ""
+        else:
+            key_value = self.key_valuer.get() if self.key_valuer else ""
 
         def calculate_value(cdata):
             loader_loaded = self.aggregate_manager.loaded(key_value, self.key)

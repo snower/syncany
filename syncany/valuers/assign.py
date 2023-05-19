@@ -16,19 +16,21 @@ class AssignValuer(Valuer):
     def new_init(self):
         super(AssignValuer, self).new_init()
         self.calculate_wait_loaded = self.calculate_valuer and self.calculate_valuer.require_loaded()
+        self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(AssignValuer, self).clone_init(from_valuer)
         self.calculate_wait_loaded = from_valuer.calculate_wait_loaded
+        self.wait_loaded = from_valuer.wait_loaded
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
-        calculate_valuer = self.calculate_valuer.clone(contexter, **kwargs) if self.calculate_valuer else None
-        return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
                            for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+        calculate_valuer = self.calculate_valuer.clone(contexter, **kwargs) if self.calculate_valuer else None
+        return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
         if contexter is not None:
             return ContextAssignValuer(self.global_value, calculate_valuer, return_valuer, inherit_valuers,
                                        self.key, self.filter, from_valuer=self, contexter=contexter)
@@ -44,20 +46,27 @@ class AssignValuer(Valuer):
                 inherit_valuer.fill(data)
 
         if self.calculate_valuer:
-            self.calculate_valuer.fill(self.global_value)
             if not self.calculate_wait_loaded:
-                value = self.do_filter(self.calculate_valuer.get())
+                value = self.do_filter(self.calculate_valuer.fill_get(self.global_value))
                 self.global_value[self.key] = value
                 if self.return_valuer:
-                    self.return_valuer.fill(value)
+                    if not self.wait_loaded:
+                        self.value = self.return_valuer.fill_get(value)
+                    else:
+                        self.return_valuer.fill(value)
                 else:
                     self.value = value
+            else:
+                self.calculate_valuer.fill(self.global_value)
         elif self.return_valuer:
             value = self.do_filter(self.global_value.get(self.key, None))
             final_filter = self.return_valuer.get_final_filter()
             if final_filter:
                 value = final_filter.filter(value)
-            self.return_valuer.fill(value)
+            if not self.wait_loaded:
+                self.value = self.return_valuer.fill_get(value)
+            else:
+                self.return_valuer.fill(value)
         else:
             self.value = self.do_filter(self.global_value.get(self.key, None))
         return self
@@ -71,6 +80,8 @@ class AssignValuer(Valuer):
                     return self.return_valuer.fill_get(value)
                 return value
         if self.return_valuer:
+            if not self.wait_loaded:
+                return self.value
             return self.return_valuer.get()
         return self.value
 

@@ -20,21 +20,23 @@ class CacheValuer(Valuer):
         super(CacheValuer, self).new_init()
         self.key_wait_loaded = True if self.key_valuer and self.key_valuer.require_loaded() else False
         self.calculate_wait_loaded = True if self.calculate_valuer and self.calculate_valuer.require_loaded() else False
+        self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(CacheValuer, self).clone_init(from_valuer)
         self.key_wait_loaded = from_valuer.key_wait_loaded
         self.calculate_wait_loaded = from_valuer.calculate_wait_loaded
+        self.wait_loaded = from_valuer.wait_loaded
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         key_valuer = self.key_valuer.clone(contexter, **kwargs) if self.key_valuer else None
         calculate_valuer = self.calculate_valuer.clone(contexter, **kwargs) if self.calculate_valuer else None
         return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
-        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
-                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if contexter is not None:
             return ContextCacheValuer(self.cache_loader, key_valuer, calculate_valuer, return_valuer, inherit_valuers,
                                       self.key, self.filter, from_valuer=self, contexter=contexter)
@@ -63,10 +65,10 @@ class CacheValuer(Valuer):
             self.value = value
             return self
 
-        self.calculate_valuer.fill(data)
         if self.calculate_wait_loaded:
+            self.calculate_valuer.fill(data)
             return self
-        value = self.calculate_valuer.get()
+        value = self.calculate_valuer.fill_get(data)
         if value is not None:
             self.cache_loader.set(self.cache_key, value)
 
@@ -75,7 +77,10 @@ class CacheValuer(Valuer):
             final_filter = self.return_valuer.get_final_filter()
             if final_filter:
                 value = final_filter.filter(value)
-            self.return_valuer.fill(value)
+            if not self.wait_loaded:
+                self.value = self.return_valuer.fill_get(value)
+            else:
+                self.return_valuer.fill(value)
         else:
             self.value = self.do_filter(value)
         return self
@@ -84,6 +89,8 @@ class CacheValuer(Valuer):
         if not self.key_wait_loaded:
             if not self.calculate_wait_loaded:
                 if self.return_valuer:
+                    if not self.wait_loaded:
+                        return self.value
                     return self.return_valuer.get()
                 return self.value
             value = self.value

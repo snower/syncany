@@ -21,11 +21,11 @@ class DBJoinValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
+        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
+                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         args_valuers = [args_valuer.clone(contexter, **kwargs) for args_valuer in self.args_valuers] if self.args_valuers else None
         intercept_valuer = self.intercept_valuer.clone(contexter, **kwargs) if self.intercept_valuer else None
         return_valuer = self.return_valuer.clone(contexter, **kwargs)
-        inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
-                           for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
         if contexter is not None:
             return ContextDBJoinValuer(self.loader, self.foreign_keys, self.foreign_filters,
                                        args_valuers, intercept_valuer, return_valuer, inherit_valuers,

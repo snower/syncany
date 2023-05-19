@@ -30,10 +30,10 @@ class YieldValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def clone(self, contexter=None, **kwargs):
-        value_valuer = self.value_valuer.clone(contexter, **kwargs) if self.value_valuer else None
-        return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
                            for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
+        value_valuer = self.value_valuer.clone(contexter, **kwargs) if self.value_valuer else None
+        return_valuer = self.return_valuer.clone(contexter, **kwargs) if self.return_valuer else None
         if contexter is not None:
             return ContextYieldValuer(value_valuer, return_valuer, inherit_valuers,
                                       self.key, self.filter, from_valuer=self, contexter=contexter)
@@ -53,12 +53,9 @@ class YieldValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
-        if self.value_valuer:
-            self.value_valuer.fill(data)
-
         if not self.value_wait_loaded:
             if self.value_valuer:
-                data = self.value_valuer.get()
+                data = self.value_valuer.fill_get(data)
 
             if not self.return_valuer:
                 if isinstance(data, list):
@@ -69,9 +66,12 @@ class YieldValuer(Valuer):
 
             if not self.wait_loaded:
                 if isinstance(data, list):
-                    self.iter_datas = [self.return_valuer.fill_get(self.do_filter(value)) for value in data]
+                    self.iter_datas = [self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
+                                                                else None, inherited=True).fill_get(self.do_filter(value))
+                                       for value in data]
                 else:
-                    self.iter_datas = [self.return_valuer.fill_get(self.do_filter(data))]
+                    self.iter_datas = [self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
+                                                                else None, inherited=True).fill_get(self.do_filter(data))]
                 return self
 
             if isinstance(data, list):
@@ -81,6 +81,10 @@ class YieldValuer(Valuer):
             else:
                 self.iter_valuers = [self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
                                                               else None, inherited=True).fill(self.do_filter(data))]
+            return self
+
+        if self.value_valuer:
+            self.value_valuer.fill(data)
         return self
 
     def get(self):
