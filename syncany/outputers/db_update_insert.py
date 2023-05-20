@@ -3,7 +3,6 @@
 # create by: snower
 
 import math
-from collections import deque
 from .db import DBOutputer
 from ..valuers.valuer import LoadAllFieldsException
 
@@ -89,12 +88,12 @@ class DBUpdateInsertOutputer(DBOutputer):
 
     def store(self, datas):
         super(DBUpdateInsertOutputer, self).store(datas)
+        if not datas:
+            return
         self.load(datas)
 
-        datas = deque(datas)
         insert_datas = []
-        while datas:
-            data = datas.popleft()
+        for data in datas:
             primary_key = self.get_data_primary_key(data)
             if primary_key in self.load_data_keys:
                 self.update(data, self.load_data_keys[primary_key])

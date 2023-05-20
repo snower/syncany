@@ -3,7 +3,7 @@
 # create by: snower
 
 import copy
-from collections import defaultdict, deque
+from collections import defaultdict
 from .loader import Loader
 from ..valuers.valuer import Contexter, ContextRunner, ContextDataer, LoadAllFieldsException
 
@@ -162,9 +162,10 @@ class DBLoader(Loader):
             self.geted = True
             return self.datas
 
-        datas, self.datas = deque(self.datas), []
+        datas, self.datas = self.datas, []
+        datas.reverse()
         while datas:
-            data = datas.popleft()
+            data = datas.pop()
             odata = {name: valuer.fill_get(data) for name, valuer in self.schema.items()}
             if self.check_intercepts(odata):
                 continue

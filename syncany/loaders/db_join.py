@@ -144,9 +144,12 @@ class DBJoinLoader(DBLoader):
                     values = {key: field.fill_get(data) for key, field in self.schema.items()}
 
                     if primary_key not in self.data_keys:
-                        self.data_keys[primary_key] = [values]
+                        self.data_keys[primary_key] = values
                     elif primary_key in self.unload_primary_keys:
-                        self.data_keys[primary_key].append(values)
+                        if isinstance(self.data_keys[primary_key], list):
+                            self.data_keys[primary_key].append(values)
+                        else:
+                            self.data_keys[primary_key] = [self.data_keys[primary_key], values]
                     datas[i] = values
             else:
                 for i in range(len(datas)):
@@ -163,9 +166,12 @@ class DBJoinLoader(DBLoader):
                                     values[key] = valuer.fill_get(data)
 
                     if primary_key not in self.data_keys:
-                        self.data_keys[primary_key] = [values]
+                        self.data_keys[primary_key] = values
                     elif primary_key in self.unload_primary_keys:
-                        self.data_keys[primary_key].append(values)
+                        if isinstance(self.data_keys[primary_key], list):
+                            self.data_keys[primary_key].append(values)
+                        else:
+                            self.data_keys[primary_key] = [self.data_keys[primary_key], values]
                     datas[i] = values
 
             self.datas = datas
@@ -174,28 +180,20 @@ class DBJoinLoader(DBLoader):
 
         if self.matchers:
             for primary_key in self.load_primary_keys:
-                if primary_key not in self.matchers:
+                matchers = self.matchers.pop(primary_key, None)
+                if not matchers:
                     continue
                 values = self.data_keys.get(primary_key, None)
-                if values and len(values) == 1:
-                    for matcher in self.matchers[primary_key]:
-                        matcher.fill(values[0])
-                else:
-                    for matcher in self.matchers[primary_key]:
-                        matcher.fill(values)
-                self.matchers.pop(primary_key)
+                for matcher in matchers:
+                    matcher.fill(values)
 
             for primary_key in self.unload_primary_keys:
-                if primary_key not in self.matchers:
+                matchers = self.matchers.pop(primary_key, None)
+                if not matchers:
                     continue
                 values = self.data_keys.get(primary_key, None)
-                if values and len(values) == 1:
-                    for matcher in self.matchers[primary_key]:
-                        matcher.fill(values[0])
-                else:
-                    for matcher in self.matchers[primary_key]:
-                        matcher.fill(values)
-                self.matchers.pop(primary_key)
+                for matcher in matchers:
+                    matcher.fill(values)
 
         self.unload_primary_keys = set([])
         self.load_primary_keys = set([])
@@ -210,16 +208,12 @@ class DBJoinLoader(DBLoader):
             return
 
         for primary_key in self.load_primary_keys:
-            if primary_key not in self.matchers:
+            matchers = self.matchers.pop(primary_key, None)
+            if not matchers:
                 continue
             values = self.data_keys.get(primary_key, None)
-            if values and len(values) == 1:
-                for matcher in self.matchers[primary_key]:
-                    matcher.fill(values[0])
-            else:
-                for matcher in self.matchers[primary_key]:
-                    matcher.fill(values)
-            self.matchers.pop(primary_key)
+            for matcher in matchers:
+                matcher.fill(values)
 
         self.load_primary_keys.clear()
         if not self.unload_primary_keys:

@@ -4,7 +4,7 @@
 
 import types
 import re
-from collections import defaultdict, deque
+from collections import defaultdict
 from ..valuers.valuer import ContextRunner, ContextDataer
 
 
@@ -105,10 +105,11 @@ class Loader(object):
         if not self.loaded:
             self.load()
 
-        datas, self.datas = deque(self.datas), []
+        datas, self.datas = self.datas, []
+        datas.reverse()
         if not self.valuer_type:
             while datas:
-                data, odata = datas.popleft(), {}
+                data, odata = datas.pop(), {}
                 if isinstance(data, ContextDataer):
                     data.use_values()
                     for name, valuer in self.schema.items():
@@ -125,8 +126,9 @@ class Loader(object):
             self.geted = True
             return self.datas
 
+        oyields, ofuncs = {}, {}
         while datas:
-            data, odata, oyields, ofuncs = datas.popleft(), {}, {}, {}
+            data, odata,  = datas.pop(), {}
             if isinstance(data, ContextDataer):
                 data.use_values()
                 for name, valuer in self.schema.items():
@@ -182,8 +184,10 @@ class Loader(object):
                                     continue
                             if has_func_data:
                                 self.datas.append(oyield_data)
+                            ofuncs.clear()
                         else:
                             self.datas.append(oyield_data)
+                oyields.clear()
             else:
                 if self.intercepts and self.check_intercepts(odata):
                     continue
@@ -197,6 +201,7 @@ class Loader(object):
                             continue
                     if has_func_data:
                         self.datas.append(odata)
+                    ofuncs.clear()
                 else:
                     self.datas.append(odata)
         self.geted = True
