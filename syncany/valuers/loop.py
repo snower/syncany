@@ -46,7 +46,7 @@ class ForeachValuer(Valuer):
 
     def new_init(self):
         super(ForeachValuer, self).new_init()
-        self.value_wait_loaded = False if not self.value_valuer else self.value_valuer.require_loaded()
+        self.value_wait_loaded = True if self.value_valuer and self.value_valuer.require_loaded() else False
         self.calculate_wait_loaded = True if self.calculate_valuer and self.calculate_valuer.require_loaded() else False
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 

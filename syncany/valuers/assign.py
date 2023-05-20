@@ -15,7 +15,7 @@ class AssignValuer(Valuer):
 
     def new_init(self):
         super(AssignValuer, self).new_init()
-        self.calculate_wait_loaded = self.calculate_valuer and self.calculate_valuer.require_loaded()
+        self.calculate_wait_loaded = True if self.calculate_valuer and self.calculate_valuer.require_loaded() else False
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):

@@ -16,6 +16,14 @@ class InheritValuer(Valuer):
         self.cloned_child_valuer = None
         super(InheritValuer, self).__init__(*args, **kwargs)
 
+    def new_init(self):
+        super(InheritValuer, self).new_init()
+        self.value_wait_loaded = True if self.value_valuer and self.value_valuer.require_loaded() else False
+
+    def clone_init(self, from_valuer):
+        super(InheritValuer, self).clone_init(from_valuer)
+        self.value_wait_loaded = from_valuer.value_wait_loaded
+
     def get_inherit_child_valuer(self):
         return self.child_valuer
 
@@ -39,9 +47,12 @@ class InheritValuer(Valuer):
 
     def fill(self, data):
         if self.value_valuer:
-            self.value_valuer.fill(data)
+            if not self.value_wait_loaded:
+                self.child_valuer.value = self.value_valuer.fill_get(data)
+            else:
+                self.value_valuer.fill(data)
         else:
-            super(InheritValuer, self).fill(data)
+            self.child_valuer.value = super(InheritValuer, self).fill_get(data)
         return self
 
     def get(self):
@@ -49,9 +60,12 @@ class InheritValuer(Valuer):
 
     def fill_get(self, data):
         if self.value_valuer:
-            self.value_valuer.fill(data)
+            if not self.value_wait_loaded:
+                self.child_valuer.value = self.value_valuer.fill_get(data)
+            else:
+                self.value_valuer.fill(data)
         else:
-            super(InheritValuer, self).fill(data)
+            self.child_valuer.value = super(InheritValuer, self).fill_get(data)
         return self
 
     def childs(self):
@@ -89,6 +103,29 @@ class ContextInheritValuer(InheritValuer):
             return
         self.contexter.values[self.value_context_id] = v
 
+    def fill(self, data):
+        if self.value_valuer:
+            if not self.value_wait_loaded:
+                self.value = self.value_valuer.fill_get(data)
+            else:
+                self.value_valuer.fill(data)
+        else:
+            self.value = super(InheritValuer, self).fill_get(data)
+        return self
+
+    def get(self):
+        return None
+
+    def fill_get(self, data):
+        if self.value_valuer:
+            if not self.value_wait_loaded:
+                self.value = self.value_valuer.fill_get(data)
+            else:
+                self.value_valuer.fill(data)
+        else:
+            self.value = super(InheritValuer, self).fill_get(data)
+        return self
+
 
 class InheritChildValuer(Valuer):
     def __init__(self, inherit_valuer, value_valuer, *args, **kwargs):
@@ -96,6 +133,14 @@ class InheritChildValuer(Valuer):
         self.value_valuer = value_valuer
         self.cloned_inherit_valuer = None
         super(InheritChildValuer, self).__init__(*args, **kwargs)
+
+    def new_init(self):
+        super(InheritChildValuer, self).new_init()
+        self.value_wait_loaded = True if self.value_valuer and self.value_valuer.require_loaded() else False
+
+    def clone_init(self, from_valuer):
+        super(InheritChildValuer, self).clone_init(from_valuer)
+        self.value_wait_loaded = from_valuer.value_wait_loaded
 
     def clone(self, contexter=None, **kwargs):
         if self.inherit_valuer.cloned_child_valuer:
@@ -120,11 +165,15 @@ class InheritChildValuer(Valuer):
         return self
 
     def get(self):
+        if not self.value_wait_loaded:
+            return self.value
         if self.value_valuer:
             return self.value_valuer.get()
         return self.value
 
     def fill_get(self, data):
+        if not self.value_wait_loaded:
+            return self.value
         if self.value_valuer:
             return self.value_valuer.get()
         return self.value

@@ -55,7 +55,7 @@ class AggregateValuer(Valuer):
 
     def new_init(self):
         super(AggregateValuer, self).new_init()
-        self.key_wait_loaded = self.key_valuer and self.key_valuer.require_loaded()
+        self.key_wait_loaded = True if self.key_valuer and self.key_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(AggregateValuer, self).clone_init(from_valuer)
