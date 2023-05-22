@@ -163,7 +163,7 @@ class YieldValuer(Valuer):
         if not self.return_valuer:
             if isinstance(data, list):
                 if len(data) == 1:
-                    return self.do_filter(data)
+                    return self.do_filter(data[0])
                 iter_datas = [self.do_filter(value) for value in data]
             else:
                 return self.do_filter(data)
