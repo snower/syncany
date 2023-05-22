@@ -27,8 +27,10 @@ class TypeCalculater(TypingCalculater):
             return "bool"
         if isinstance(value, dict):
             return "map"
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, (list, tuple)):
             return "array"
+        if isinstance(value, set):
+            return "set"
         if isinstance(value, int):
             return "int"
         if isinstance(value, float):
@@ -166,6 +168,13 @@ class IsArrayCalculater(Calculater):
         if data is None:
             return False
         return isinstance(data, list)
+
+
+class IsSetCalculater(Calculater):
+    def calculate(self, data=None):
+        if data is None:
+            return False
+        return isinstance(data, set)
 
 
 class IsMapCalculater(Calculater):

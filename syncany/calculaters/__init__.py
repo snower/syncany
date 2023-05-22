@@ -23,6 +23,7 @@ CALCULATERS = {
     "is_bytes": IsBytesCalculater,
     'is_bool': IsBooleanCalculater,
     'is_array': IsArrayCalculater,
+    'is_set': IsSetCalculater,
     'is_map': IsMapCalculater,
     "is_objectid": IsObjectIdCalculater,
     "is_uuid": IsUUIDCalculater,
