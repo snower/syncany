@@ -2,10 +2,12 @@
 # 18/8/6
 # create by: snower
 
-from .data import Valuer
+from .valuer import Valuer
 
 
 class DBJoinValuer(Valuer):
+    matcher = None
+
     def __init__(self, loader, foreign_keys, foreign_filters, args_valuers, intercept_valuer, return_valuer,
                  inherit_valuers, *args, **kwargs):
         self.loader = loader
@@ -16,6 +18,16 @@ class DBJoinValuer(Valuer):
         self.inherit_valuers = inherit_valuers
         self.foreign_filters = foreign_filters
         super(DBJoinValuer, self).__init__(*args, **kwargs)
+
+    def new_init(self):
+        super(DBJoinValuer, self).new_init()
+        self.is_aggregate_return_valuer = True if self.return_valuer and self.return_valuer.is_aggregate() else False
+        self.is_yield_return_valuer = True if self.return_valuer and self.return_valuer.is_yield() else False
+
+    def clone_init(self, from_valuer):
+        super(DBJoinValuer, self).clone_init(from_valuer)
+        self.is_aggregate_return_valuer = from_valuer.is_aggregate_return_valuer
+        self.is_yield_return_valuer = from_valuer.is_yield_return_valuer
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
@@ -38,61 +50,58 @@ class DBJoinValuer(Valuer):
                               args_valuers, intercept_valuer, return_valuer, inherit_valuers,
                               self.key, self.filter, from_valuer=self)
 
+    def create_matcher(self, data):
+        if isinstance(data, list):
+            if len(data) > 1:
+                group_macther = self.loader.create_group_macther(self.is_aggregate_return_valuer, self.is_yield_return_valuer)
+                for value in data:
+                    group_macther.add_matcher(self.create_matcher(value))
+                return group_macther
+            data = data[0] if data else None
+
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.clone().fill(data)
+
+        if self.args_valuers:
+            join_values = [args_valuer.fill_get(data) for args_valuer in self.args_valuers]
+        else:
+            join_values = [super(DBJoinValuer, self).fill_get(data)]
+        matcher = self.loader.create_macther(self.foreign_keys, join_values)
+        if self.intercept_valuer:
+            matcher.valuer, matcher.contexter_values = DBJoinInterceptMatchValuer(self.intercept_valuer,
+                                                                                  self.return_valuer.clone(),
+                                                                                  None), None
+        else:
+            matcher.valuer, matcher.contexter_values = self.return_valuer.clone(), None
+        return matcher
+
     def fill(self, data):
+        if isinstance(data, list):
+            if len(data) > 1:
+                self.matcher = self.create_matcher(data)
+                self.loader.wait_try_load_count += 1
+                if self.loader.wait_try_load_count >= 64:
+                    self.loader.try_load()
+                    self.loader.wait_try_load_count = 0
+                return self
+            data = data[0] if data else None
+
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
-        join_values, max_value_size, has_join_value = [], 0, False
         if self.args_valuers:
-            for args_valuer in self.args_valuers:
-                join_value = args_valuer.fill_get(data)
-                if isinstance(join_value, list):
-                    if len(join_value) > max_value_size:
-                        max_value_size = len(join_value)
-                    has_join_value = True
-                else:
-                    max_value_size, has_join_value = max_value_size or 1, join_value is not None
-                join_values.append(join_value)
+            join_values = [args_valuer.fill_get(data) for args_valuer in self.args_valuers]
         else:
-            if self.key:
-                super(DBJoinValuer, self).fill(data)
-            join_value = self.value
-            for _ in self.foreign_keys:
-                if isinstance(join_value, list):
-                    if len(join_value) > max_value_size:
-                        max_value_size = len(join_value)
-                    has_join_value = True
-                else:
-                    max_value_size, has_join_value = max_value_size or 1, join_value is not None
-                join_values.append(join_value)
-
-        if max_value_size > 1:
-            group_macther = self.loader.create_group_macther(DBJoinInterceptMatchValuer(self.intercept_valuer,
-                                                                                        self.return_valuer, None)
-                                                             if self.intercept_valuer else self.return_valuer)
-            for i in range(max_value_size):
-                ds, has_value = [], False
-                for join_value in join_values:
-                    if not isinstance(join_value, list):
-                        ds.append(join_value)
-                        has_value = True if join_value is not None else has_value
-                    else:
-                        ds.append(join_value[i] if i < len(join_value) else None)
-                        has_value = True if i < len(join_value) else has_value
-                if not has_value:
-                    continue
-                matcher = self.loader.create_macther(self.foreign_keys, ds)
-                return_valuer = DBJoinGroupMatchValuer(group_macther, None, "*")
-                matcher.add_valuer(return_valuer)
-                group_macther.add_valuer(return_valuer)
-        elif has_join_value:
-            matcher = self.loader.create_macther(self.foreign_keys, join_values)
-            if self.intercept_valuer:
-                matcher.valuer, matcher.contexter_values = DBJoinInterceptMatchValuer(self.intercept_valuer,
-                                                                                      self.return_valuer, None, "*"), None
-            else:
-                matcher.valuer, matcher.contexter_values = self.return_valuer, None
+            join_values = [super(DBJoinValuer, self).fill_get(data)]
+        matcher = self.loader.create_macther(self.foreign_keys, join_values)
+        if self.intercept_valuer:
+            matcher.valuer, matcher.contexter_values = DBJoinInterceptMatchValuer(self.intercept_valuer,
+                                                                                  self.return_valuer, None), None
+        else:
+            matcher.valuer, matcher.contexter_values = self.return_valuer, None
+        self.matcher = matcher
 
         self.loader.wait_try_load_count += 1
         if self.loader.wait_try_load_count >= 64:
@@ -102,7 +111,7 @@ class DBJoinValuer(Valuer):
 
     def get(self):
         self.loader.load()
-        return self.return_valuer.get()
+        return self.matcher.get()
 
     def fill_get(self, data):
         return self.fill(data).get()
@@ -149,6 +158,7 @@ class ContextDBJoinValuer(DBJoinValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
         self.value_context_id = (id(self), "value")
+        self.matcher_context_id = (id(self), "matcher")
         super(ContextDBJoinValuer, self).__init__(*args, **kwargs)
 
     @property
@@ -166,61 +176,80 @@ class ContextDBJoinValuer(DBJoinValuer):
             return
         self.contexter.values[self.value_context_id] = v
 
-    def fill(self, data):
+    @property
+    def matcher(self):
+        try:
+            return self.contexter.values[self.matcher_context_id]
+        except KeyError:
+            return None
+
+    @matcher.setter
+    def matcher(self, v):
+        if v is None:
+            if self.matcher_context_id in self.contexter.values:
+                self.contexter.values.pop(self.matcher_context_id)
+            return
+        self.contexter.values[self.matcher_context_id] = v
+
+    def create_matcher(self, data):
+        if isinstance(data, list):
+            if len(data) > 1:
+                group_macther = self.loader.create_group_macther(self.is_aggregate_return_valuer, self.is_yield_return_valuer)
+                for value in data:
+                    group_macther.add_matcher(self.create_matcher(value))
+                return group_macther
+            data = data[0] if data else None
+
+        contexter_values, self.contexter.values = self.contexter.values, {key: value for key, value in self.contexter.values.items()}
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
-        join_values, max_value_size, has_join_value = [], 0, False
         if self.args_valuers:
-            for args_valuer in self.args_valuers:
-                join_value = args_valuer.fill_get(data)
-                if isinstance(join_value, list):
-                    if len(join_value) > max_value_size:
-                        max_value_size = len(join_value)
-                    has_join_value = True
-                else:
-                    max_value_size, has_join_value = max_value_size or 1, join_value is not None
-                join_values.append(join_value)
+            join_values = [args_valuer.fill_get(data) for args_valuer in self.args_valuers]
         else:
-            if self.key:
-                super(DBJoinValuer, self).fill(data)
-            join_value = self.value
-            for _ in self.foreign_keys:
-                if isinstance(join_value, list):
-                    if len(join_value) > max_value_size:
-                        max_value_size = len(join_value)
-                    has_join_value = True
-                else:
-                    max_value_size, has_join_value = max_value_size or 1, join_value is not None
-                join_values.append(join_value)
+            join_values = [super(DBJoinValuer, self).fill_get(data)]
+        matcher = self.loader.create_macther(self.foreign_keys, join_values)
+        if self.intercept_valuer:
+            matcher.valuer, matcher.contexter_values = DBJoinInterceptMatchValuer(self.intercept_valuer,
+                                                                                  self.return_valuer,
+                                                                                  self.contexter), self.contexter.values
+        else:
+            matcher.valuer, matcher.contexter_values = self.return_valuer, self.contexter.values
+        self.contexter.values = contexter_values
+        return matcher
 
-        if max_value_size > 1:
-            group_macther = self.loader.create_group_macther(DBJoinInterceptMatchValuer(self.intercept_valuer,
-                                                                                        self.return_valuer, self.contexter)
-                                                             if self.intercept_valuer else self.return_valuer)
-            for i in range(max_value_size):
-                ds, has_value = [], False
-                for join_value in join_values:
-                    if not isinstance(join_value, list):
-                        ds.append(join_value)
-                        has_value = True if join_value is not None else has_value
-                    else:
-                        ds.append(join_value[i] if i < len(join_value) else None)
-                        has_value = True if i < len(join_value) else has_value
-                if not has_value:
-                    continue
-                matcher = self.loader.create_macther(self.foreign_keys, ds)
-                return_valuer = DBJoinGroupMatchValuer(group_macther, self.contexter, "*")
-                matcher.add_valuer(return_valuer)
-                group_macther.add_valuer(return_valuer)
-        elif has_join_value:
-            matcher = self.loader.create_macther(self.foreign_keys, join_values)
-            if self.intercept_valuer:
-                matcher.valuer, matcher.contexter_values = DBJoinInterceptMatchValuer(self.intercept_valuer,
-                                                                                      self.return_valuer, self.contexter, "*"), self.contexter.values
-            else:
-                matcher.valuer, matcher.contexter_values = self.return_valuer, self.contexter.values
+    def fill(self, data):
+        if isinstance(data, list):
+            if len(data) > 1:
+                self.contexter.values[self.matcher_context_id] = self.create_matcher(data)
+                self.loader.wait_try_load_count += 1
+                if self.loader.wait_try_load_count >= 64:
+                    contexter_values = self.contexter.values
+                    try:
+                        self.loader.try_load()
+                    finally:
+                        self.contexter.values = contexter_values
+                    self.loader.wait_try_load_count = 0
+                return self
+            data = data[0] if data else None
+
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if self.args_valuers:
+            join_values = [args_valuer.fill_get(data) for args_valuer in self.args_valuers]
+        else:
+            join_values = [super(DBJoinValuer, self).fill_get(data)]
+        matcher = self.loader.create_macther(self.foreign_keys, join_values)
+        if self.intercept_valuer:
+            matcher.valuer, matcher.contexter_values = DBJoinInterceptMatchValuer(self.intercept_valuer,
+                                                                                  self.return_valuer,
+                                                                                  self.contexter), self.contexter.values
+        else:
+            matcher.valuer, matcher.contexter_values = self.return_valuer, self.contexter.values
+        self.contexter.values[self.matcher_context_id] = matcher
 
         self.loader.wait_try_load_count += 1
         if self.loader.wait_try_load_count >= 64:
@@ -236,9 +265,9 @@ class ContextDBJoinValuer(DBJoinValuer):
         contexter_values = self.contexter.values
         try:
             self.loader.load()
+            return contexter_values[self.matcher_context_id].get()
         finally:
             self.contexter.values = contexter_values
-        return self.return_valuer.get()
 
     def fill_get(self, data):
         return self.fill(data).get()
@@ -249,7 +278,7 @@ class DBJoinInterceptMatchValuer(Valuer):
         self.intercept_valuer = intercept_valuer
         self.return_valuer = return_valuer
         self.contexter = contexter
-        super(DBJoinInterceptMatchValuer, self).__init__(*args, **kwargs)
+        super(DBJoinInterceptMatchValuer, self).__init__("*", *args, **kwargs)
 
     def clone(self, contexter=None, **kwargs):
         return DBJoinInterceptMatchValuer(self.intercept_valuer, self.return_valuer, contexter or self.contexter,
@@ -278,26 +307,6 @@ class DBJoinInterceptMatchValuer(Valuer):
 
     def get(self):
         return self.return_valuer.get()
-
-    def fill_get(self, data):
-        return self.fill(data).get()
-
-
-class DBJoinGroupMatchValuer(Valuer):
-    def __init__(self, matcher, contexter, *args, **kwargs):
-        self.matcher = matcher
-        self.contexter = contexter
-        self.loaded = False
-        super(DBJoinGroupMatchValuer, self).__init__(*args, **kwargs)
-
-    def clone(self, contexter=None, **kwargs):
-        return self.__class__(self.matcher, self.key, self.filter)
-
-    def fill(self, data):
-        super(DBJoinGroupMatchValuer, self).fill(data)
-        self.loaded = None if data is None else True
-        self.matcher.fill(self, data)
-        return self
 
     def fill_get(self, data):
         return self.fill(data).get()

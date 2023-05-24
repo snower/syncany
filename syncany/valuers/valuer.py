@@ -262,6 +262,18 @@ class Valuer(object):
                 return True
         return False
 
+    def is_aggregate(self):
+        for child in self.childs():
+            if child.is_aggregate():
+                return True
+        return False
+
+    def is_yield(self):
+        for child in self.childs():
+            if child.is_yield():
+                return True
+        return False
+
 
 class ContextValuer(Valuer):
     def __init__(self, *args, **kwargs):

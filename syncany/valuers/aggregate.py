@@ -168,6 +168,9 @@ class AggregateValuer(Valuer):
             return self.calculate_valuer.get_final_filter()
         return None
 
+    def is_aggregate(self):
+        return True
+
 
 class ContextAggregateValuer(AggregateValuer):
     def __init__(self, *args, **kwargs):

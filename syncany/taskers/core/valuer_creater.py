@@ -83,8 +83,8 @@ class LoaderJoinWarp(object):
     def set_streaming(self, is_streaming=None):
         return self.__loader.set_streaming(is_streaming)
 
-    def create_group_macther(self, return_valuer):
-        return self.__loader.create_group_macther(return_valuer)
+    def create_group_macther(self, is_aggregate, is_yield):
+        return self.__loader.create_group_macther(is_aggregate, is_yield)
 
     def create_macther(self, keys, values):
         return self.__loader.create_macther(keys, values)
