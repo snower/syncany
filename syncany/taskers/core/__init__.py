@@ -21,6 +21,7 @@ from .valuer_creater import ValuerCreater
 from .loader_creater import LoaderCreater
 from .outputer_creater import OutputerCreater
 from ...loaders.cache import CacheLoader
+from ...loaders.db_join import DBJoinLoader
 from ...hook import PipelinesHooker
 from ...errors import LoaderUnknownException, OutputerUnknownException, \
     ValuerUnknownException, DatabaseUnknownException, CalculaterUnknownException, \
@@ -808,6 +809,11 @@ class CoreTasker(Tasker):
             else:
                 for name, valuer in loader_schema.items():
                     self.loader.add_valuer(name, valuer)
+            for join_loader in self.join_loaders.values():
+                join_loader.primary_loader = self.loader
+                if isinstance(join_loader, DBJoinLoader) or (hasattr(join_loader, "origin_loader"),
+                                                             isinstance(join_loader.origin_loader, DBJoinLoader)):
+                    loader_config["valuer_type"] |= 0x01
             self.loader.valuer_type = loader_config["valuer_type"]
         elif self.schema == ".*":
             self.loader.add_key_matcher(".*", self.create_valuer(self.valuer_compiler.compile_data_valuer("", None)))

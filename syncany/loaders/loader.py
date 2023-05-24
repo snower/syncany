@@ -41,6 +41,7 @@ class KeyMatcher(object):
 
 class Loader(object):
     def __init__(self, primary_keys, valuer_type=0, **kwargs):
+        self.primary_loader = None
         self.primary_keys = primary_keys
         self.valuer_type = valuer_type
         self.schema = {}

@@ -4,7 +4,7 @@
 
 import datetime
 import time
-
+import types
 import pytz
 import binascii
 import uuid
@@ -300,6 +300,14 @@ class ArrayFilter(Filter):
         if value is None:
             return []
 
+        if isinstance(value, types.GeneratorType):
+            values = []
+            while True:
+                try:
+                    values.append(value.send(None))
+                except StopIteration:
+                    break
+            return values
         return [value]
 
 

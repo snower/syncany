@@ -22,6 +22,10 @@ class LoaderJoinWarp(object):
         if hasattr(self.__loader, "load"):
             self.load = self.__loader.load
 
+    @property
+    def origin_loader(self):
+        return self.__loader
+
     def __getattr__(self, item):
         if self.__loader is None or item == "_LoaderJoinWarp__loader":
             return super(LoaderJoinWarp, self).__getattr__(item)
@@ -83,8 +87,8 @@ class LoaderJoinWarp(object):
     def set_streaming(self, is_streaming=None):
         return self.__loader.set_streaming(is_streaming)
 
-    def create_group_macther(self, is_aggregate, is_yield):
-        return self.__loader.create_group_macther(is_aggregate, is_yield)
+    def create_group_macther(self):
+        return self.__loader.create_group_macther()
 
     def create_macther(self, keys, values):
         return self.__loader.create_macther(keys, values)
