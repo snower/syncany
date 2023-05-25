@@ -109,17 +109,9 @@ class YieldValuer(Valuer):
                 if len(value) == 1:
                     self.iter_valuers = [self.return_valuer.fill(self.do_filter(value[0]))]
                 else:
-                    if isinstance(self, ContextYieldValuer):
-                        iter_valuers, contexter_values = [], self.contexter.values
-                        for v in value:
-                            self.return_valuer.contexter.values = self.contexter.create_inherit_values(contexter_values)
-                            self.return_valuer.fill(v)
-                            iter_valuers.append((self.return_valuer, self.return_valuer.contexter.values))
-                        self.iter_valuers = iter_valuers
-                        self.return_valuer.contexter.values = contexter_values
-                    else:
-                        self.iter_valuers = [(self.return_valuer.clone().fill(self.do_filter(v)), None)
-                                             for v in value]
+                    self.iter_valuers = [self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
+                                                                  else None, inherited=True).fill(self.do_filter(v))
+                                         for v in value]
             else:
                 self.iter_valuers = [self.return_valuer.fill(self.do_filter(value))]
             self.value = data
@@ -162,11 +154,7 @@ class YieldValuer(Valuer):
                         return value
                     iter_datas = None
         elif self.wait_loaded:
-            iter_datas = []
-            for iter_valuer, contexter_values in self.iter_valuers:
-                if contexter_values is not None:
-                    iter_valuer.contexter.values = contexter_values
-                iter_datas.append(iter_valuer.get())
+            iter_datas = [iter_valuer.get() for iter_valuer in self.iter_valuers]
             if len(iter_datas) == 1:
                 if self.value is not None or iter_datas[0] is not None:
                     return iter_datas[0]
