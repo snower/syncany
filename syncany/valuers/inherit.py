@@ -27,6 +27,10 @@ class InheritValuer(Valuer):
     def get_inherit_child_valuer(self):
         return self.child_valuer
 
+    def mount_loader(self, is_return_getter=True, **kwargs):
+        if self.value_valuer:
+            self.value_valuer.mount_loader(is_return_getter=False, **kwargs)
+
     def clone(self, contexter=None, **kwargs):
         if self.child_valuer.cloned_inherit_valuer:
             inherit_valuer = self.child_valuer.cloned_inherit_valuer
@@ -141,6 +145,9 @@ class InheritChildValuer(Valuer):
     def clone_init(self, from_valuer):
         super(InheritChildValuer, self).clone_init(from_valuer)
         self.value_wait_loaded = from_valuer.value_wait_loaded
+
+    def mount_loader(self, is_return_getter=True, **kwargs):
+        pass
 
     def clone(self, contexter=None, **kwargs):
         if self.inherit_valuer.cloned_child_valuer:

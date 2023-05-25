@@ -803,17 +803,20 @@ class CoreTasker(Tasker):
             if require_loaded:
                 contexter = Contexter()
                 for name, valuer in loader_schema.items():
-                    self.loader.add_valuer(name, valuer.clone(contexter))
+                    valuer = valuer.clone(contexter)
+                    self.loader.add_valuer(name, valuer)
+                    valuer.mount_loader(loader=self.loader, is_return_getter=True)
                 if hasattr(self.loader, "contexter"):
                     self.loader.contexter = contexter
             else:
                 for name, valuer in loader_schema.items():
                     self.loader.add_valuer(name, valuer)
+                    valuer.mount_loader(loader=self.loader, is_return_getter=True)
+
             for join_loader in self.join_loaders.values():
-                join_loader.primary_loader = self.loader
-                if isinstance(join_loader, DBJoinLoader) or (hasattr(join_loader, "origin_loader"),
-                                                             isinstance(join_loader.origin_loader, DBJoinLoader)):
+                if join_loader.primary_loader:
                     loader_config["valuer_type"] |= 0x01
+                    break
             self.loader.valuer_type = loader_config["valuer_type"]
         elif self.schema == ".*":
             self.loader.add_key_matcher(".*", self.create_valuer(self.valuer_compiler.compile_data_valuer("", None)))

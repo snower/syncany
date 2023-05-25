@@ -19,8 +19,35 @@ class DBJoinValuer(Valuer):
         self.foreign_filters = foreign_filters
         super(DBJoinValuer, self).__init__(*args, **kwargs)
 
+    def new_init(self):
+        super(DBJoinValuer, self).new_init()
+        self.require_yield_values = False
+
+    def clone_init(self, from_valuer):
+        super(DBJoinValuer, self).clone_init(from_valuer)
+        self.require_yield_values = from_valuer.require_yield_values
+
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
+
+    def mount_loader(self, is_return_getter=True, db_join_valuers=None, loader=None, **kwargs):
+        self.loader.primary_loader = loader
+        if is_return_getter:
+            self.require_yield_values = True
+        if db_join_valuers is None:
+            db_join_valuers = []
+        db_join_valuers.append(self)
+
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.mount_loader(is_return_getter=False, db_join_valuers=db_join_valuers, **kwargs)
+        if self.args_valuers:
+            for args_valuer in self.args_valuers:
+                args_valuer.mount_loader(is_return_getter=False, db_join_valuers=db_join_valuers, **kwargs)
+        if self.intercept_valuer:
+            self.intercept_valuer.mount_loader(is_return_getter=False, db_join_valuers=db_join_valuers, **kwargs)
+        if self.return_valuer:
+            self.return_valuer.mount_loader(is_return_getter=is_return_getter and True, db_join_valuers=db_join_valuers, **kwargs)
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
@@ -43,7 +70,11 @@ class DBJoinValuer(Valuer):
     def create_matcher(self, data):
         if isinstance(data, list):
             if len(data) > 1:
-                group_macther = self.loader.create_group_macther()
+                if self.require_yield_values:
+                    group_macther = self.loader.create_group_matcher(is_yield=True)
+                else:
+                    group_macther = self.loader.create_group_matcher(is_yield=False, return_valuer=self.return_valuer.clone(),
+                                                                     contexter_valuesself=None)
                 for value in data:
                     group_macther.add_matcher(self.create_matcher(value))
                 return group_macther
@@ -57,8 +88,14 @@ class DBJoinValuer(Valuer):
             join_values = [args_valuer.fill_get(data) for args_valuer in self.args_valuers]
         else:
             join_values = [super(DBJoinValuer, self).fill_get(data)]
-        matcher = self.loader.create_macther(self.foreign_keys, join_values)
-        matcher.valuer, matcher.intercept_valuer = self.return_valuer.clone(), self.intercept_valuer
+        if self.require_yield_values:
+            matcher = self.loader.create_matcher(self.foreign_keys, join_values,
+                                                 is_yield=True, intercept_valuer=self.intercept_valuer,
+                                                 valuer=self.return_valuer.clone(), contexter_values=None)
+        else:
+            matcher = self.loader.create_matcher(self.foreign_keys, join_values,
+                                                 is_yield=False, intercept_valuer=self.intercept_valuer,
+                                                 valuer=None, contexter_values=None)
         return matcher
 
     def create_group_matcher(self, join_values):
@@ -76,10 +113,21 @@ class DBJoinValuer(Valuer):
 
         list_indexs = [i for i in range(len(join_values)) if isinstance(join_values[i], list)]
         join_values = flat_join_values(join_values, list_indexs, 0)
-        group_macther = self.loader.create_group_macther()
+        if self.require_yield_values:
+            group_macther = self.loader.create_group_matcher(is_yield=True)
+        else:
+            group_macther = self.loader.create_group_matcher(is_yield=False, return_valuer=self.return_valuer.clone(),
+                                                             contexter_valuesself=None)
         for join_value in join_values:
-            matcher = self.loader.create_macther(self.foreign_keys, join_value)
-            matcher.valuer, matcher.intercept_valuer = self.return_valuer.clone(), self.intercept_valuer
+            if self.require_yield_values:
+                matcher = self.loader.create_matcher(self.foreign_keys, join_values,
+                                                     is_yield=True, intercept_valuer=self.intercept_valuer,
+                                                     valuer=self.return_valuer.clone(), contexter_values=None)
+            else:
+                matcher = self.loader.create_matcher(self.foreign_keys, join_values,
+                                                     is_yield=False, intercept_valuer=self.intercept_valuer,
+                                                     valuer=None, contexter_values=None)
+            self.loader.add_macther(matcher, self.foreign_keys, join_value)
             group_macther.add_matcher(matcher)
         return group_macther
 
@@ -119,8 +167,9 @@ class DBJoinValuer(Valuer):
         if has_list_args:
             matcher = self.create_group_matcher(join_values)
         else:
-            matcher = self.loader.create_macther(self.foreign_keys, join_values)
-            matcher.valuer, matcher.intercept_valuer = self.return_valuer, self.intercept_valuer
+            matcher = self.loader.create_matcher(self.foreign_keys, join_values,
+                                                 is_yield=self.require_yield_values, intercept_valuer=self.intercept_valuer,
+                                                 valuer=self.return_valuer, contexter_values=None)
         self.matcher = matcher
 
         self.loader.wait_try_load_count += 1
@@ -214,14 +263,24 @@ class ContextDBJoinValuer(DBJoinValuer):
     def create_matcher(self, data):
         if isinstance(data, list):
             if len(data) > 1:
-                group_macther = self.loader.create_group_macther()
+                if self.require_yield_values:
+                    group_macther = self.loader.create_group_matcher(is_yield=True)
+                    for value in data:
+                        group_macther.add_matcher(self.create_matcher(value))
+                    return group_macther
+
+                contexter_values = self.contexter.values
+                self.contexter.values = self.contexter.create_inherit_values(contexter_values)
+                group_macther = self.loader.create_group_matcher(is_yield=False, return_valuer=self.return_valuer,
+                                                                 contexter_values=self.contexter.values)
                 for value in data:
                     group_macther.add_matcher(self.create_matcher(value))
+                self.contexter.values = contexter_values
                 return group_macther
             data = data[0] if data else None
 
-        contexter_values, self.contexter.values = self.contexter.values, {key: value
-                                                                          for key, value in self.contexter.values.items()}
+        contexter_values = self.contexter.values
+        self.contexter.values = self.contexter.create_inherit_values(contexter_values)
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
@@ -230,9 +289,14 @@ class ContextDBJoinValuer(DBJoinValuer):
             join_values = [args_valuer.fill_get(data) for args_valuer in self.args_valuers]
         else:
             join_values = [super(DBJoinValuer, self).fill_get(data)]
-        matcher = self.loader.create_macther(self.foreign_keys, join_values)
-        matcher.valuer, matcher.intercept_valuer, matcher.contexter_values = self.return_valuer, \
-                                                                             self.intercept_valuer, self.contexter.values
+        if self.require_yield_values:
+            matcher = self.loader.create_matcher(self.foreign_keys, join_values,
+                                                 is_yield=True, intercept_valuer=self.intercept_valuer,
+                                                 valuer=self.return_valuer, contexter_values=self.contexter.values)
+        else:
+            matcher = self.loader.create_matcher(self.foreign_keys, join_values,
+                                                 is_yield=False, intercept_valuer=self.intercept_valuer,
+                                                 valuer=None, contexter_values=self.contexter.values)
         self.contexter.values = contexter_values
         return matcher
 
@@ -251,12 +315,23 @@ class ContextDBJoinValuer(DBJoinValuer):
 
         list_indexs = [i for i in range(len(join_values)) if isinstance(join_values[i], list)]
         join_values = flat_join_values(join_values, list_indexs, 0)
-        group_macther, contexter_values = self.loader.create_group_macther(), self.contexter.values
+        contexter_values = self.contexter.values
+        if self.require_yield_values:
+            group_macther = self.loader.create_group_matcher(is_yield=True)
+        else:
+            self.contexter.values = self.contexter.create_inherit_values(contexter_values)
+            group_macther = self.loader.create_group_matcher(is_yield=False, return_valuer=self.return_valuer,
+                                                             contexter_valuesself=self.contexter.values)
         for join_value in join_values:
-            self.contexter.values = {key: value for key, value in contexter_values.items()}
-            matcher = self.loader.create_macther(self.foreign_keys, join_value)
-            matcher.valuer, matcher.intercept_valuer, matcher.contexter_values = self.return_valuer, \
-                                                                                 self.intercept_valuer, self.contexter.values
+            if self.require_yield_values:
+                self.contexter.values = self.contexter.create_inherit_values(contexter_values)
+                matcher = self.loader.create_matcher(self.foreign_keys, join_value,
+                                                     is_yield=True, intercept_valuer=self.intercept_valuer,
+                                                     valuer=self.return_valuer, contexter_values=self.contexter.values)
+            else:
+                matcher = self.loader.create_matcher(self.foreign_keys, join_value,
+                                                     is_yield=False, intercept_valuer=self.intercept_valuer,
+                                                     valuer=None, contexter_values=self.contexter.values)
             group_macther.add_matcher(matcher)
         self.contexter.values = contexter_values
         return group_macther
@@ -301,9 +376,10 @@ class ContextDBJoinValuer(DBJoinValuer):
         if has_list_args:
             matcher = self.create_group_matcher(join_values)
         else:
-            matcher = self.loader.create_macther(self.foreign_keys, join_values)
-            matcher.valuer, matcher.intercept_valuer, matcher.contexter_values = self.return_valuer, \
-                                                                                 self.intercept_valuer, self.contexter.values
+            matcher = self.loader.create_matcher(self.foreign_keys, join_values,
+                                                 is_yield=self.require_yield_values,
+                                                 intercept_valuer=self.intercept_valuer,
+                                                 valuer=self.return_valuer, contexter_values=self.contexter.values)
         self.contexter.values[self.matcher_context_id] = matcher
 
         self.loader.wait_try_load_count += 1

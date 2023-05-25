@@ -160,6 +160,7 @@ class Loader(object):
                     odata[name] = value
 
             if oyields:
+                has_append_data = False
                 while True:
                     while oyields:
                         oyield_odata, oyield_oyields, oyield_ofuncs = {key: value for key, value in odata.items()}, {},\
@@ -194,7 +195,8 @@ class Loader(object):
                             oyield_generates.append((oyield_odata, oyield_oyields, oyield_ofuncs))
                             continue
 
-                        if has_oyield_data:
+                        if has_oyield_data or not has_append_data:
+                            has_append_data = True
                             if self.intercepts and self.check_intercepts(oyield_odata):
                                 continue
                             if oyield_ofuncs:

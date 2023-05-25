@@ -11,6 +11,9 @@ class ConstValuer(Valuer):
 
         self.value = self.do_filter(value)
 
+    def mount_loader(self, is_return_getter=False, **kwargs):
+        pass
+
     def clone(self, contexter=None, **kwargs):
         return self.__class__(self.value, self.key, self.filter, from_valuer=self)
 

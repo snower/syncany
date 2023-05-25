@@ -67,6 +67,19 @@ class AggregateValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
+    def mount_loader(self, is_return_getter=False, aggreagte_valuers=None, **kwargs):
+        if aggreagte_valuers is None:
+            aggreagte_valuers = []
+        aggreagte_valuers.append(self)
+
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.mount_loader(is_return_getter=False, aggreagte_valuers=aggreagte_valuers, **kwargs)
+        if self.key_valuer:
+            self.key_valuer.mount_loader(is_return_getter=False, aggreagte_valuers=aggreagte_valuers, **kwargs)
+        if self.calculate_valuer:
+            self.calculate_valuer.mount_loader(is_return_getter=False, aggreagte_valuers=aggreagte_valuers, **kwargs)
+
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
                            for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None

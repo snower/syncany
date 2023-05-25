@@ -18,14 +18,32 @@ class DBLoadValuer(Valuer):
 
     def new_init(self):
         super(DBLoadValuer, self).new_init()
+        self.require_yield_values = False
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(DBLoadValuer, self).clone_init(from_valuer)
+        self.require_yield_values = from_valuer.require_yield_values
         self.wait_loaded = from_valuer.wait_loaded
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
+
+    def mount_loader(self, is_return_getter=True, db_load_valuers=None, loader=None, **kwargs):
+        self.loader.primary_loader = loader
+        if is_return_getter:
+            self.require_yield_values = True
+        if db_load_valuers is None:
+            db_load_valuers = []
+        db_load_valuers.append(self)
+
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.mount_loader(is_return_getter=False, db_load_valuers=db_load_valuers, **kwargs)
+        if self.intercept_valuer:
+            self.intercept_valuer.mount_loader(is_return_getter=False, db_load_valuers=db_load_valuers, **kwargs)
+        if self.return_valuer:
+            self.return_valuer.mount_loader(is_return_getter=is_return_getter and True, db_load_valuers=db_load_valuers, **kwargs)
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
@@ -52,36 +70,54 @@ class DBLoadValuer(Valuer):
             return self
 
         if self.intercept_valuer:
-            datas, result = self.loader.get(), []
+            datas, values = self.loader.get(), []
             for data in datas:
                 intercept_result = self.intercept_valuer.fill_get(data)
                 if intercept_result is not None and not intercept_result:
                     continue
-                result.append(data)
-            if len(result) == 1:
-                self.return_valuer.fill(result[0])
-            else:
-                self.return_valuer.fill(result or None)
+                values.append(data)
+        else:
+            values = self.loader.get()
+        if not self.require_yield_values:
+            if len(values) == 1:
+                values = values[0] if values else None
+            self.return_valuer.fill(values)
             return self
-
-        self.return_valuer.fill(self.loader.get())
+        self.value = [self.return_valuer.clone().fill(value) for value in values]
         return self
 
     def get(self):
-        if self.wait_loaded:
-            return self.return_valuer.get()
+        if not self.wait_loaded:
+            if self.intercept_valuer:
+                datas, values = self.loader.get(), []
+                for data in datas:
+                    intercept_result = self.intercept_valuer.fill_get(data)
+                    if intercept_result is not None and not intercept_result:
+                        continue
+                    values.append(data)
+            else:
+                values = self.loader.get()
+            if not self.require_yield_values:
+                if len(values) == 1:
+                    values = values[0] if values else None
+                return self.return_valuer.fill_get(values)
+            values = [self.return_valuer.fill_get(value) for value in values]
+        else:
+            if not self.require_yield_values:
+                return self.return_valuer.get()
+            values = [valuer.get() for valuer in self.value]
+        if len(values) == 1 and values[0] is not None:
+            return values[0]
 
-        if self.intercept_valuer:
-            datas, result = self.loader.get(), []
-            for data in datas:
-                intercept_result = self.intercept_valuer.fill_get(data)
-                if intercept_result is not None and not intercept_result:
+        def gen_iter(iter_datas):
+            yield None
+            for value in iter_datas:
+                if value is None:
                     continue
-                result.append(data)
-            if len(result) == 1:
-                return self.return_valuer.fill_get(result[0])
-            return self.return_valuer.fill_get(result or None)
-        return self.return_valuer.fill_get(self.loader.get())
+                yield value
+        g = gen_iter(values)
+        g.send(None)
+        return g
 
     def fill_get(self, data):
         return self.fill(data).get()
@@ -137,3 +173,70 @@ class ContextDBLoadValuer(DBLoadValuer):
                 self.contexter.values.pop(self.value_context_id)
             return
         self.contexter.values[self.value_context_id] = v
+
+    def fill(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if not self.wait_loaded:
+            return self
+
+        if self.intercept_valuer:
+            datas, values = self.loader.get(), []
+            for data in datas:
+                intercept_result = self.intercept_valuer.fill_get(data)
+                if intercept_result is not None and not intercept_result:
+                    continue
+                values.append(data)
+        else:
+            values = self.loader.get()
+        if not self.require_yield_values:
+            if len(values) == 1:
+                values = values[0] if values else None
+            self.return_valuer.fill(values)
+            return self
+
+        contexter_values, value_valuers = self.contexter.values, []
+        for value in values:
+            self.return_valuer.contexter.values = self.contexter.create_inherit_values(contexter_values)
+            self.return_valuer.fill(value)
+            value_valuers.append((self.return_valuer, self.return_valuer.contexter.values))
+        self.value = value_valuers
+        return self
+
+    def get(self):
+        if not self.wait_loaded:
+            if self.intercept_valuer:
+                datas, values = self.loader.get(), []
+                for data in datas:
+                    intercept_result = self.intercept_valuer.fill_get(data)
+                    if intercept_result is not None and not intercept_result:
+                        continue
+                    values.append(data)
+            else:
+                values = self.loader.get()
+            if not self.require_yield_values:
+                if len(values) == 1:
+                    values = values[0] if values else None
+                return self.return_valuer.fill_get(values)
+            values = [self.return_valuer.fill_get(value) for value in values]
+        else:
+            if not self.require_yield_values:
+                return self.return_valuer.get()
+            value_valuers, values = self.value, []
+            for valuer, contexter_values in value_valuers:
+                valuer.contexter.values = contexter_values
+                values.append(valuer.get())
+        if len(values) == 1 and values[0] is not None:
+            return values[0]
+
+        def gen_iter(iter_datas):
+            yield None
+            for value in iter_datas:
+                if value is None:
+                    continue
+                yield value
+        g = gen_iter(values)
+        g.send(None)
+        return g

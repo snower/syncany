@@ -114,12 +114,27 @@ class ContextDataer(object):
         pass
 
 
+class ContexterInheritValues(dict):
+    def __init__(self, inherit_values, *args, **kwargs):
+        super(ContexterInheritValues, self).__init__(*args, **kwargs)
+        self.inherit_values = inherit_values
+
+    def __getitem__(self, item):
+        try:
+            return super(ContexterInheritValues, self).__getitem__(item)
+        except KeyError:
+            return self.inherit_values[item]
+
+
 class Contexter(object):
     def __init__(self):
         self.values = {}
 
     def create_runner(self, valuer, values=None):
         return ContextRunner(self, valuer, values)
+
+    def create_inherit_values(self, values):
+        return ContexterInheritValues(values)
 
 
 class Valuer(object):
@@ -170,6 +185,10 @@ class Valuer(object):
             for cache_key in cache_keys[:len(cache_keys) - 512]:
                 self.KEY_GETTER_CACHES.pop(cache_key, None)
         self.KEY_GETTER_CACHES[self.key] = self.key_getters
+
+    def mount_loader(self, is_return_getter=False, **kwargs):
+        for valuer in self.childs():
+            valuer.mount_loader(**kwargs)
 
     def clone(self, contexter=None, **kwargs):
         if contexter is not None:
