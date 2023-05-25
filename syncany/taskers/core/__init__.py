@@ -679,7 +679,7 @@ class CoreTasker(Tasker):
             oyield = value
             while True:
                 try:
-                    value = oyield.send({"value": value, "data": data})
+                    value = oyield.send(None)
                 except StopIteration:
                     return value
         return value

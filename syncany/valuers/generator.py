@@ -68,81 +68,99 @@ class YieldValuer(Valuer):
 
         if not self.value_wait_loaded:
             if self.value_valuer:
-                data = self.value_valuer.fill_get(data)
+                value = self.value_valuer.fill_get(data)
+            else:
+                value = data
 
             if not self.return_valuer:
-                if isinstance(data, list):
-                    self.iter_datas = [self.do_filter(value) for value in data]
+                if isinstance(value, list):
+                    self.iter_datas = [self.do_filter(v) for v in value]
                 else:
-                    self.iter_datas = [self.do_filter(data)]
+                    value = self.do_filter(value)
+                    if data is not None or value is not None:
+                        self.iter_datas = [value]
+                    else:
+                        self.iter_datas = None
                 return self
 
             if not self.wait_loaded:
-                if isinstance(data, list):
-                    if len(data) == 1:
-                        self.iter_datas = [self.return_valuer.fill_get(self.do_filter(data[0]))]
+                if isinstance(value, list):
+                    if len(value) == 1:
+                        self.iter_datas = [self.return_valuer.fill_get(self.do_filter(value[0]))]
                     else:
                         iter_datas, return_valuer = [], self.return_valuer
-                        for value in data:
-                            value = return_valuer.fill_get(self.do_filter(value))
-                            iter_datas.append(value)
-                            if not isinstance(value, (types.FunctionType, types.GeneratorType)):
+                        for v in value:
+                            v = return_valuer.fill_get(self.do_filter(v))
+                            iter_datas.append(v)
+                            if not isinstance(v, (types.FunctionType, types.GeneratorType)):
                                 continue
                             return_valuer = self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
                                                                      else None, inherited=True)
                         self.iter_datas = iter_datas
                 else:
-                    self.iter_datas = [self.return_valuer.fill_get(self.do_filter(data))]
+                    value = self.return_valuer.fill_get(self.do_filter(value))
+                    if data is not None or value is not None:
+                        self.iter_datas = [value]
+                    else:
+                        self.iter_datas = None
                 return self
 
-            if isinstance(data, list):
-                if len(data) == 1:
-                    self.iter_valuers = [self.return_valuer.fill(self.do_filter(data[0]))]
+            if isinstance(value, list):
+                if len(value) == 1:
+                    self.iter_valuers = [self.return_valuer.fill(self.do_filter(value[0]))]
                 else:
                     if isinstance(self, ContextYieldValuer):
                         iter_valuers, contexter_values = [], self.contexter.values
-                        for value in data:
+                        for v in value:
                             self.return_valuer.contexter.values = self.contexter.create_inherit_values(contexter_values)
-                            self.return_valuer.fill(value)
+                            self.return_valuer.fill(v)
                             iter_valuers.append((self.return_valuer, self.return_valuer.contexter.values))
                         self.iter_valuers = iter_valuers
                         self.return_valuer.contexter.values = contexter_values
                     else:
-                        self.iter_valuers = [(self.return_valuer.clone().fill(self.do_filter(value)), None)
-                                             for value in data]
+                        self.iter_valuers = [(self.return_valuer.clone().fill(self.do_filter(v)), None)
+                                             for v in value]
             else:
-                self.iter_valuers = [self.return_valuer.fill(self.do_filter(data))]
+                self.iter_valuers = [self.return_valuer.fill(self.do_filter(value))]
+            self.value = data
             return self
 
         if self.value_valuer:
             self.value_valuer.fill(data)
+        self.value = data
         return self
 
     def get(self):
         if self.value_wait_loaded:
-            data = self.value_valuer.get()
+            value = self.value_valuer.get()
             if not self.return_valuer:
-                if isinstance(data, list):
-                    if len(data) == 1:
-                        return self.do_filter(data[0])
-                    iter_datas = [self.do_filter(value) for value in data]
+                if isinstance(value, list):
+                    if len(value) == 1:
+                        return self.do_filter(value[0])
+                    iter_datas = [self.do_filter(v) for v in value]
                 else:
-                    return self.do_filter(data)
+                    value = self.do_filter(value)
+                    if self.value is not None or value is not None:
+                        return value
+                    iter_datas = None
             else:
-                if isinstance(data, list):
-                    if len(data) == 1:
-                        return self.return_valuer.fill_get(self.do_filter(data[0]))
+                if isinstance(value, list):
+                    if len(value) == 1:
+                        return self.return_valuer.fill_get(self.do_filter(value[0]))
                     else:
                         iter_datas, return_valuer = [], self.return_valuer
-                        for value in data:
-                            value = return_valuer.fill_get(self.do_filter(value))
-                            iter_datas.append(value)
-                            if not isinstance(value, (types.FunctionType, types.GeneratorType)):
+                        for v in value:
+                            v = return_valuer.fill_get(self.do_filter(v))
+                            iter_datas.append(v)
+                            if not isinstance(v, (types.FunctionType, types.GeneratorType)):
                                 continue
                             return_valuer = self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
                                                                      else None, inherited=True)
                 else:
-                    return self.return_valuer.fill_get(self.do_filter(data))
+                    value = self.return_valuer.fill_get(self.do_filter(value))
+                    if self.value is not None or value is not None:
+                        return value
+                    iter_datas = None
         elif self.wait_loaded:
             iter_datas = []
             for iter_valuer, contexter_values in self.iter_valuers:
@@ -150,26 +168,23 @@ class YieldValuer(Valuer):
                     iter_valuer.contexter.values = contexter_values
                 iter_datas.append(iter_valuer.get())
             if len(iter_datas) == 1:
-                return iter_datas[0]
+                if self.value is not None or iter_datas[0] is not None:
+                    return iter_datas[0]
+                iter_datas = None
         else:
             iter_datas = self.iter_datas
-            if len(iter_datas) == 1:
+            if iter_datas and len(iter_datas) == 1:
                 return iter_datas[0]
 
-        if not iter_datas:
+        if iter_datas is not None and not iter_datas:
             def skip_empty(cdata):
                 raise StopIteration
             return skip_empty
 
         def gen_iter(datas):
-            yield None
             for value in datas:
-                if value is None:
-                    continue
                 yield value
-        g = gen_iter(iter_datas)
-        g.send(None)
-        return g
+        return gen_iter(iter_datas or [])
 
     def fill_get(self, data):
         if self.inherit_valuers:
@@ -177,44 +192,47 @@ class YieldValuer(Valuer):
                 inherit_valuer.fill(data)
 
         if self.value_valuer:
-            data = self.value_valuer.fill_get(data)
-        if not self.return_valuer:
-            if isinstance(data, list):
-                if len(data) == 1:
-                    return self.do_filter(data[0])
-                iter_datas = [self.do_filter(value) for value in data]
-            else:
-                return self.do_filter(data)
+            value = self.value_valuer.fill_get(data)
         else:
-            if isinstance(data, list):
-                if len(data) == 1:
-                    return self.return_valuer.fill_get(self.do_filter(data[0]))
+            value = data
+        if not self.return_valuer:
+            if isinstance(value, list):
+                if len(value) == 1:
+                    return self.do_filter(value[0])
+                iter_datas = [self.do_filter(v) for v in value]
+            else:
+                value = self.do_filter(value)
+                if data is not None or value is not None:
+                    return value
+                iter_datas = None
+        else:
+            if isinstance(value, list):
+                if len(value) == 1:
+                    return self.return_valuer.fill_get(self.do_filter(value[0]))
                 else:
                     iter_datas, return_valuer = [], self.return_valuer
-                    for value in data:
-                        value = return_valuer.fill_get(self.do_filter(value))
-                        iter_datas.append(value)
-                        if not isinstance(value, (types.FunctionType, types.GeneratorType)):
+                    for v in value:
+                        v = return_valuer.fill_get(self.do_filter(v))
+                        iter_datas.append(v)
+                        if not isinstance(v, (types.FunctionType, types.GeneratorType)):
                             continue
                         return_valuer = self.return_valuer.clone(Contexter() if isinstance(self, ContextYieldValuer)
                                                                  else None, inherited=True)
             else:
-                return self.return_valuer.fill_get(self.do_filter(data))
+                value = self.return_valuer.fill_get(self.do_filter(value))
+                if data is not None or value is not None:
+                    return value
+                iter_datas = None
 
-        if not iter_datas:
+        if iter_datas is not None and not iter_datas:
             def skip_empty(cdata):
                 raise StopIteration
             return skip_empty
 
         def gen_iter(datas):
-            yield None
             for value in datas:
-                if value is None:
-                    continue
                 yield value
-        g = gen_iter(iter_datas)
-        g.send(None)
-        return g
+        return gen_iter(iter_datas or [])
 
     def childs(self):
         childs = []

@@ -127,6 +127,7 @@ class Loader(object):
             self.geted = True
             return self.datas
 
+        GeneratorFunctionTypes = (types.FunctionType, types.GeneratorType)
         oyield_generates, oyields, ofuncs = deque(), {}, {}
         while datas:
             data, odata,  = datas.pop(), {}
@@ -134,62 +135,48 @@ class Loader(object):
                 data.use_values()
                 for name, valuer in self.schema.items():
                     value = valuer.get()
-                    if isinstance(value, types.FunctionType):
-                        ofuncs[name] = value
+                    if isinstance(value, GeneratorFunctionTypes):
+                        if isinstance(value, types.GeneratorType):
+                            oyields[name] = value
+                        else:
+                            ofuncs[name] = value
                         odata[name] = None
-                        continue
-                    if isinstance(value, types.GeneratorType):
-                        oyields[name] = value
-                        odata[name] = None
-                        continue
-                    odata[name] = value
+                    else:
+                        odata[name] = value
             else:
                 for name, valuer in self.schema.items():
                     if name not in data or not isinstance(data[name], ContextRunner):
                         value = valuer.fill_get(data)
                     else:
                         value = data[name].get()
-                    if isinstance(value, types.FunctionType):
-                        ofuncs[name] = value
+                    if isinstance(value, GeneratorFunctionTypes):
+                        if isinstance(value, types.GeneratorType):
+                            oyields[name] = value
+                        else:
+                            ofuncs[name] = value
                         odata[name] = None
-                        continue
-                    if isinstance(value, types.GeneratorType):
-                        oyields[name] = value
-                        odata[name] = None
-                        continue
-                    odata[name] = value
+                    else:
+                        odata[name] = value
 
             if oyields:
                 has_append_data = False
                 while True:
                     while oyields:
-                        oyield_odata, oyield_oyields, oyield_ofuncs = {key: value for key, value in odata.items()}, {},\
-                                                                      {key: value for key, value in ofuncs.items()}
+                        oyield_odata, oyield_oyields, oyield_ofuncs = dict.copy(odata), {}, dict.copy(ofuncs)
                         has_oyield_data = False
                         for name, oyield in tuple(oyields.items()):
                             try:
-                                value = oyield.send(oyield_odata)
-                                if isinstance(value, types.FunctionType):
-                                    oyield_ofuncs[name] = value
-                                    oyield_odata[name] = None
-                                elif isinstance(value, types.GeneratorType):
-                                    oyield_oyields[name] = value
+                                value = oyield.send(None)
+                                if isinstance(value, GeneratorFunctionTypes):
+                                    if isinstance(value, types.GeneratorType):
+                                        oyield_oyields[name] = value
+                                    else:
+                                        oyield_ofuncs[name] = value
                                     oyield_odata[name] = None
                                 else:
                                     oyield_odata[name] = value
                                 has_oyield_data = True
-                            except StopIteration as e:
-                                if e.value is not None:
-                                    value = e.value
-                                    if isinstance(value, types.FunctionType):
-                                        oyield_ofuncs[name] = value
-                                        oyield_odata[name] = None
-                                    elif isinstance(value, types.GeneratorType):
-                                        oyield_oyields[name] = value
-                                        oyield_odata[name] = None
-                                    else:
-                                        oyield_odata[name] = value
-                                    has_oyield_data = True
+                            except StopIteration:
                                 oyields.pop(name)
                         if oyield_oyields:
                             oyield_generates.append((oyield_odata, oyield_oyields, oyield_ofuncs))

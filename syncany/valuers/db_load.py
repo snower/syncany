@@ -106,18 +106,13 @@ class DBLoadValuer(Valuer):
             if not self.require_yield_values:
                 return self.return_valuer.get()
             values = [valuer.get() for valuer in self.value]
-        if len(values) == 1 and values[0] is not None:
+        if len(values) == 1:
             return values[0]
 
         def gen_iter(iter_datas):
-            yield None
             for value in iter_datas:
-                if value is None:
-                    continue
                 yield value
-        g = gen_iter(values)
-        g.send(None)
-        return g
+        return gen_iter(values)
 
     def fill_get(self, data):
         return self.fill(data).get()
@@ -228,15 +223,10 @@ class ContextDBLoadValuer(DBLoadValuer):
             for valuer, contexter_values in value_valuers:
                 valuer.contexter.values = contexter_values
                 values.append(valuer.get())
-        if len(values) == 1 and values[0] is not None:
+        if len(values) == 1:
             return values[0]
 
         def gen_iter(iter_datas):
-            yield None
             for value in iter_datas:
-                if value is None:
-                    continue
                 yield value
-        g = gen_iter(values)
-        g.send(None)
-        return g
+        return gen_iter(values)

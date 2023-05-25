@@ -53,33 +53,30 @@ class DBJoinYieldMatcher(object):
             if self.contexter_values is not None:
                 self.valuer.contexter.values = self.contexter_values
             self.valuer.fill(values)
+            if values is None:
+                self.data_valuers = False
 
     def get(self):
-        if self.data_valuers is None:
+        if not self.data_valuers:
             if self.contexter_values is not None:
                 self.valuer.contexter.values = self.contexter_values
+            if self.data_valuers is None:
+                return self.valuer.get()
             value = self.valuer.get()
-            if value is not None:
-                return value
-            values = [value]
+            values = [] if value is None else [value]
         else:
             values = []
             for valuer, contexter_values in self.data_valuers:
                 if contexter_values is not None:
                     valuer.contexter.values = contexter_values
                 values.append(valuer.get())
-            if len(values) == 1 and values[0] is not None:
+            if len(values) == 1:
                 return values[0]
 
         def gen_iter(iter_datas):
-            yield None
             for value in iter_datas:
-                if value is None:
-                    continue
                 yield value
-        g = gen_iter(values)
-        g.send(None)
-        return g
+        return gen_iter(values)
 
 
 class DBJoinMatcher(object):
@@ -139,18 +136,13 @@ class GroupDBJoinYieldMatcher(object):
 
     def get(self):
         datas = [matcher.get() for matcher in self.matchers]
-        if len(datas) == 1 and datas[0] is not None:
+        if len(datas) == 1:
             return datas[0]
 
         def gen_iter(iter_datas):
-            yield None
             for value in iter_datas:
-                if value is None:
-                    continue
                 yield value
-        g = gen_iter(datas)
-        g.send(None)
-        return g
+        return gen_iter(datas)
 
 
 class GroupDBJoinMatcher(object):
