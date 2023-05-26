@@ -43,7 +43,8 @@ class DBLoadValuer(Valuer):
         if self.intercept_valuer:
             self.intercept_valuer.mount_loader(is_return_getter=False, db_load_valuers=db_load_valuers, **kwargs)
         if self.return_valuer:
-            self.return_valuer.mount_loader(is_return_getter=is_return_getter and True, db_load_valuers=db_load_valuers, **kwargs)
+            self.return_valuer.mount_loader(is_return_getter=is_return_getter and True, db_load_valuers=db_load_valuers,
+                                            **kwargs)
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
@@ -78,6 +79,7 @@ class DBLoadValuer(Valuer):
                 values.append(data)
         else:
             values = self.loader.get()
+
         if not self.require_yield_values:
             if len(values) == 1:
                 values = values[0] if values else None
@@ -97,6 +99,7 @@ class DBLoadValuer(Valuer):
                     values.append(data)
             else:
                 values = self.loader.get()
+
             if not self.require_yield_values:
                 if len(values) == 1:
                     values = values[0] if values else None
@@ -197,6 +200,7 @@ class ContextDBLoadValuer(DBLoadValuer):
             self.return_valuer.contexter.values = self.contexter.create_inherit_values(contexter_values)
             self.return_valuer.fill(value)
             value_valuers.append((self.return_valuer, self.return_valuer.contexter.values))
+        self.contexter.values = contexter_values
         self.value = value_valuers
         return self
 
@@ -211,6 +215,7 @@ class ContextDBLoadValuer(DBLoadValuer):
                     values.append(data)
             else:
                 values = self.loader.get()
+
             if not self.require_yield_values:
                 if len(values) == 1:
                     values = values[0] if values else None
@@ -218,11 +223,17 @@ class ContextDBLoadValuer(DBLoadValuer):
             values = [self.return_valuer.fill_get(value) for value in values]
         else:
             if not self.require_yield_values:
-                return self.return_valuer.get()
-            value_valuers, values = self.value, []
+                contexter_values = self.contexter.values
+                try:
+                    return self.return_valuer.get()
+                finally:
+                    self.contexter.values = contexter_values
+
+            contexter_values, value_valuers, values = self.contexter.values, self.value, []
             for valuer, contexter_values in value_valuers:
                 valuer.contexter.values = contexter_values
                 values.append(valuer.get())
+            self.contexter.values = contexter_values
         if len(values) == 1:
             return values[0]
 

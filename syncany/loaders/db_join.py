@@ -63,7 +63,9 @@ class DBJoinYieldMatcher(object):
             if self.data_valuers is None:
                 return self.valuer.get()
             value = self.valuer.get()
-            values = [] if value is None else [value]
+            if value is not None:
+                return value
+            values = []
         else:
             values = []
             for valuer, contexter_values in self.data_valuers:
@@ -111,13 +113,12 @@ class DBJoinMatcher(object):
                 if intercept_result is not None and not intercept_result:
                     values = None
 
-        if self.group_matcher:
-            group_matcher, self.group_matcher = self.group_matcher, None
-            group_matcher.fill(values)
-        elif self.valuer:
+        if self.valuer:
             if self.contexter_values is not None:
                 self.valuer.contexter.values = self.contexter_values
             self.valuer.fill(values)
+        elif self.group_matcher:
+            self.group_matcher.fill(values)
 
     def get(self):
         if not self.valuer:
@@ -149,16 +150,16 @@ class GroupDBJoinMatcher(object):
     def __init__(self, return_valuer, contexter_values):
         self.return_valuer = return_valuer
         self.contexter_values = contexter_values
-        self.matchers = []
+        self.matcher_count = 0
         self.values = []
 
     def add_matcher(self, matcher):
         matcher.group_matcher = self
-        self.matchers.append(matcher)
+        self.matcher_count += 1
 
     def fill(self, values):
         self.values.append(values)
-        if len(self.values) >= len(self.matchers):
+        if len(self.values) >= self.matcher_count:
             values = []
             for value in self.values:
                 if isinstance(value, list):
@@ -168,12 +169,11 @@ class GroupDBJoinMatcher(object):
             if self.contexter_values is not None:
                 self.return_valuer.contexter.values = self.contexter_values
             self.return_valuer.fill(values)
-            self.matchers = None
 
     def get(self):
         if self.contexter_values is not None:
             self.return_valuer.contexter.values = self.contexter_values
-        if self.matchers is not None:
+        if len(self.values) < self.matcher_count:
             values = []
             for value in self.values:
                 if isinstance(value, list):
@@ -181,7 +181,6 @@ class GroupDBJoinMatcher(object):
                 else:
                     values.extend(value)
             self.return_valuer.fill(values)
-            self.matchers = None
         return self.return_valuer.get()
 
 

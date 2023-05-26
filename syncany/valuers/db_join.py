@@ -47,7 +47,8 @@ class DBJoinValuer(Valuer):
         if self.intercept_valuer:
             self.intercept_valuer.mount_loader(is_return_getter=False, db_join_valuers=db_join_valuers, **kwargs)
         if self.return_valuer:
-            self.return_valuer.mount_loader(is_return_getter=is_return_getter and True, db_join_valuers=db_join_valuers, **kwargs)
+            self.return_valuer.mount_loader(is_return_getter=is_return_getter and True, db_join_valuers=db_join_valuers,
+                                            **kwargs)
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
@@ -67,13 +68,18 @@ class DBJoinValuer(Valuer):
                               args_valuers, intercept_valuer, return_valuer, inherit_valuers,
                               self.key, self.filter, from_valuer=self)
 
+    def reinit(self):
+        self.matcher = None
+        return super(DBJoinValuer, self).reinit()
+
     def create_matcher(self, data):
         if isinstance(data, list):
             if len(data) > 1:
                 if self.require_yield_values:
                     group_macther = self.loader.create_group_matcher(is_yield=True)
                 else:
-                    group_macther = self.loader.create_group_matcher(is_yield=False, return_valuer=self.return_valuer.clone(),
+                    group_macther = self.loader.create_group_matcher(is_yield=False,
+                                                                     return_valuer=self.return_valuer.clone(),
                                                                      contexter_valuesself=None)
                 for value in data:
                     group_macther.add_matcher(self.create_matcher(value))
@@ -165,12 +171,13 @@ class DBJoinValuer(Valuer):
                     has_list_args = True
             join_values.append(value)
         if has_list_args:
-            matcher = self.create_group_matcher(join_values)
+            self.matcher = self.create_group_matcher(join_values)
         else:
-            matcher = self.loader.create_matcher(self.foreign_keys, join_values,
-                                                 is_yield=self.require_yield_values, intercept_valuer=self.intercept_valuer,
-                                                 valuer=self.return_valuer, contexter_values=None)
-        self.matcher = matcher
+            self.matcher = self.loader.create_matcher(self.foreign_keys, join_values,
+                                                      is_yield=self.require_yield_values,
+                                                      intercept_valuer=self.intercept_valuer,
+                                                      valuer=self.return_valuer,
+                                                      contexter_values=None)
 
         self.loader.wait_try_load_count += 1
         if self.loader.wait_try_load_count >= 64:
@@ -374,13 +381,13 @@ class ContextDBJoinValuer(DBJoinValuer):
                     has_list_args = True
             join_values.append(value)
         if has_list_args:
-            matcher = self.create_group_matcher(join_values)
+            self.contexter.values[self.matcher_context_id] = self.create_group_matcher(join_values)
         else:
-            matcher = self.loader.create_matcher(self.foreign_keys, join_values,
-                                                 is_yield=self.require_yield_values,
-                                                 intercept_valuer=self.intercept_valuer,
-                                                 valuer=self.return_valuer, contexter_values=self.contexter.values)
-        self.contexter.values[self.matcher_context_id] = matcher
+            self.contexter.values[self.matcher_context_id] = self.loader.create_matcher(self.foreign_keys, join_values,
+                                                                                        is_yield=self.require_yield_values,
+                                                                                        intercept_valuer=self.intercept_valuer,
+                                                                                        valuer=self.return_valuer,
+                                                                                        contexter_values=self.contexter.values)
 
         self.loader.wait_try_load_count += 1
         if self.loader.wait_try_load_count >= 64:
