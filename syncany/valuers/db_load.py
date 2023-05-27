@@ -20,11 +20,13 @@ class DBLoadValuer(Valuer):
         super(DBLoadValuer, self).new_init()
         self.require_yield_values = False
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
+        self.intercept_wait_loaded = True if self.intercept_valuer and self.intercept_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(DBLoadValuer, self).clone_init(from_valuer)
         self.require_yield_values = from_valuer.require_yield_values
         self.wait_loaded = from_valuer.wait_loaded
+        self.intercept_wait_loaded = from_valuer.intercept_wait_loaded
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
@@ -72,11 +74,21 @@ class DBLoadValuer(Valuer):
 
         if self.intercept_valuer:
             datas, values = self.loader.get(), []
-            for data in datas:
-                intercept_result = self.intercept_valuer.fill_get(data)
-                if intercept_result is not None and not intercept_result:
-                    continue
-                values.append(data)
+            if self.intercept_wait_loaded:
+                intercept_valuers = []
+                for data in datas:
+                    intercept_valuers.append((data, self.intercept_valuer.clone().fill(data)))
+                for data, intercept_valuer in intercept_valuers:
+                    intercept_result = intercept_valuer.get(data)
+                    if intercept_result is not None and not intercept_result:
+                        continue
+                    values.append(data)
+            else:
+                for data in datas:
+                    intercept_result = self.intercept_valuer.fill_get(data)
+                    if intercept_result is not None and not intercept_result:
+                        continue
+                    values.append(data)
         else:
             values = self.loader.get()
 
@@ -92,11 +104,21 @@ class DBLoadValuer(Valuer):
         if not self.wait_loaded:
             if self.intercept_valuer:
                 datas, values = self.loader.get(), []
-                for data in datas:
-                    intercept_result = self.intercept_valuer.fill_get(data)
-                    if intercept_result is not None and not intercept_result:
-                        continue
-                    values.append(data)
+                if self.intercept_wait_loaded:
+                    intercept_valuers = []
+                    for data in datas:
+                        intercept_valuers.append((data, self.intercept_valuer.clone().fill(data)))
+                    for data, intercept_valuer in intercept_valuers:
+                        intercept_result = intercept_valuer.get(data)
+                        if intercept_result is not None and not intercept_result:
+                            continue
+                        values.append(data)
+                else:
+                    for data in datas:
+                        intercept_result = self.intercept_valuer.fill_get(data)
+                        if intercept_result is not None and not intercept_result:
+                            continue
+                        values.append(data)
             else:
                 values = self.loader.get()
 
@@ -182,11 +204,24 @@ class ContextDBLoadValuer(DBLoadValuer):
 
         if self.intercept_valuer:
             datas, values = self.loader.get(), []
-            for data in datas:
-                intercept_result = self.intercept_valuer.fill_get(data)
-                if intercept_result is not None and not intercept_result:
-                    continue
-                values.append(data)
+            if self.intercept_wait_loaded:
+                contexter_values, intercept_contexter_valueses = self.contexter.values, []
+                for data in datas:
+                    self.intercept_valuer.contexter.values = self.contexter.create_inherit_values(contexter_values)
+                    self.intercept_valuer.fill(data)
+                for data, intercept_contexter_values in intercept_contexter_valueses:
+                    self.intercept_valuer.contexter.values = intercept_contexter_values
+                    intercept_result = self.intercept_valuer.get(data)
+                    if intercept_result is not None and not intercept_result:
+                        continue
+                    values.append(data)
+                self.contexter.values = contexter_values
+            else:
+                for data in datas:
+                    intercept_result = self.intercept_valuer.fill_get(data)
+                    if intercept_result is not None and not intercept_result:
+                        continue
+                    values.append(data)
         else:
             values = self.loader.get()
         if not self.require_yield_values:
@@ -208,11 +243,24 @@ class ContextDBLoadValuer(DBLoadValuer):
         if not self.wait_loaded:
             if self.intercept_valuer:
                 datas, values = self.loader.get(), []
-                for data in datas:
-                    intercept_result = self.intercept_valuer.fill_get(data)
-                    if intercept_result is not None and not intercept_result:
-                        continue
-                    values.append(data)
+                if self.intercept_wait_loaded:
+                    contexter_values, intercept_contexter_valueses = self.contexter.values, []
+                    for data in datas:
+                        self.intercept_valuer.contexter.values = self.contexter.create_inherit_values(contexter_values)
+                        self.intercept_valuer.fill(data)
+                    for data, intercept_contexter_values in intercept_contexter_valueses:
+                        self.intercept_valuer.contexter.values = intercept_contexter_values
+                        intercept_result = self.intercept_valuer.get(data)
+                        if intercept_result is not None and not intercept_result:
+                            continue
+                        values.append(data)
+                    self.contexter.values = contexter_values
+                else:
+                    for data in datas:
+                        intercept_result = self.intercept_valuer.fill_get(data)
+                        if intercept_result is not None and not intercept_result:
+                            continue
+                        values.append(data)
             else:
                 values = self.loader.get()
 

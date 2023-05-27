@@ -22,10 +22,14 @@ class DBJoinValuer(Valuer):
     def new_init(self):
         super(DBJoinValuer, self).new_init()
         self.require_yield_values = False
+        if self.intercept_valuer:
+            setattr(self.intercept_valuer, "intercept_wait_loaded", self.intercept_valuer.require_loaded())
 
     def clone_init(self, from_valuer):
         super(DBJoinValuer, self).clone_init(from_valuer)
         self.require_yield_values = from_valuer.require_yield_values
+        if self.intercept_valuer:
+            self.intercept_valuer.intercept_wait_loaded = from_valuer.intercept_valuer.intercept_wait_loaded
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
@@ -90,10 +94,26 @@ class DBJoinValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.clone().fill(data)
 
+        join_values, has_list_args = [], False
         if self.args_valuers:
-            join_values = [args_valuer.fill_get(data) for args_valuer in self.args_valuers]
+            for args_valuer in self.args_valuers:
+                value = args_valuer.fill_get(data)
+                if isinstance(value, list):
+                    if len(value) == 1:
+                        value = value[0]
+                    else:
+                        has_list_args = True
+                join_values.append(value)
         else:
-            join_values = [super(DBJoinValuer, self).fill_get(data)]
+            value = super(DBJoinValuer, self).fill_get(data)
+            if isinstance(value, list):
+                if len(value) == 1:
+                    value = value[0]
+                else:
+                    has_list_args = True
+            join_values.append(value)
+        if has_list_args:
+            return self.create_group_matcher(join_values)
         if self.require_yield_values:
             matcher = self.loader.create_matcher(self.foreign_keys, join_values,
                                                  is_yield=True, intercept_valuer=self.intercept_valuer,
@@ -292,10 +312,26 @@ class ContextDBJoinValuer(DBJoinValuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
+        join_values, has_list_args = [], False
         if self.args_valuers:
-            join_values = [args_valuer.fill_get(data) for args_valuer in self.args_valuers]
+            for args_valuer in self.args_valuers:
+                value = args_valuer.fill_get(data)
+                if isinstance(value, list):
+                    if len(value) == 1:
+                        value = value[0]
+                    else:
+                        has_list_args = True
+                join_values.append(value)
         else:
-            join_values = [super(DBJoinValuer, self).fill_get(data)]
+            value = super(DBJoinValuer, self).fill_get(data)
+            if isinstance(value, list):
+                if len(value) == 1:
+                    value = value[0]
+                else:
+                    has_list_args = True
+            join_values.append(value)
+        if has_list_args:
+            return self.create_group_matcher(join_values)
         if self.require_yield_values:
             matcher = self.loader.create_matcher(self.foreign_keys, join_values,
                                                  is_yield=True, intercept_valuer=self.intercept_valuer,

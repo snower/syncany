@@ -22,18 +22,44 @@ class DBJoinYieldMatcher(object):
 
     def fill(self, values):
         if self.intercept_valuer:
-            if self.contexter_values is not None:
-                self.intercept_valuer.contexter.values = self.contexter_values
-
             if isinstance(values, list):
                 ovalues = []
-                for value in values:
-                    intercept_result = self.intercept_valuer.fill_get(value)
-                    if intercept_result is not None and not intercept_result:
-                        continue
-                    ovalues.append(value)
+                if self.intercept_valuer.intercept_wait_loaded:
+                    if self.contexter_values is not None:
+                        intercept_contexter_valueses = []
+                        for value in values:
+                            self.intercept_valuer.contexter.values = \
+                                self.intercept_valuer.contexter.create_inherit_values(self.contexter_values)
+                            self.intercept_valuer.fill(value)
+                            intercept_contexter_valueses.append((value, self.intercept_valuer.contexter.values))
+                        for value, intercept_contexter_values in intercept_contexter_valueses:
+                            self.intercept_valuer.contexter.values = intercept_contexter_values
+                            intercept_result = self.intercept_valuer.get()
+                            if intercept_result is not None and not intercept_result:
+                                continue
+                            values.append(value)
+                        self.intercept_valuer.contexter.values = self.contexter_values
+                    else:
+                        intercept_valuers = []
+                        for value in values:
+                            intercept_valuers.append((value, self.intercept_valuer.clone().fill(value)))
+                        for value, intercept_valuer in intercept_valuers:
+                            intercept_result = intercept_valuer.get()
+                            if intercept_result is not None and not intercept_result:
+                                continue
+                            values.append(value)
+                else:
+                    if self.contexter_values is not None:
+                        self.intercept_valuer.contexter.values = self.contexter_values
+                    for value in values:
+                        intercept_result = self.intercept_valuer.fill_get(value)
+                        if intercept_result is not None and not intercept_result:
+                            continue
+                        ovalues.append(value)
                 values = ovalues if len(values) > 1 else (ovalues[0] if ovalues else None)
             else:
+                if self.contexter_values is not None:
+                    self.intercept_valuer.contexter.values = self.contexter_values
                 intercept_result = self.intercept_valuer.fill_get(values)
                 if intercept_result is not None and not intercept_result:
                     values = None
