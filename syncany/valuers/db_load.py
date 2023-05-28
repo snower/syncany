@@ -77,7 +77,7 @@ class DBLoadValuer(Valuer):
             if self.intercept_wait_loaded:
                 intercept_valuers = []
                 for data in datas:
-                    intercept_valuers.append((data, self.intercept_valuer.clone().fill(data)))
+                    intercept_valuers.append((data, self.intercept_valuer.clone(inherited=True).fill(data)))
                 for data, intercept_valuer in intercept_valuers:
                     intercept_result = intercept_valuer.get(data)
                     if intercept_result is not None and not intercept_result:
@@ -97,7 +97,7 @@ class DBLoadValuer(Valuer):
                 values = values[0] if values else None
             self.return_valuer.fill(values)
             return self
-        self.value = [self.return_valuer.clone().fill(value) for value in values]
+        self.value = [self.return_valuer.clone(inherited=True).fill(value) for value in values]
         return self
 
     def get(self):
@@ -107,7 +107,7 @@ class DBLoadValuer(Valuer):
                 if self.intercept_wait_loaded:
                     intercept_valuers = []
                     for data in datas:
-                        intercept_valuers.append((data, self.intercept_valuer.clone().fill(data)))
+                        intercept_valuers.append((data, self.intercept_valuer.clone(inherited=True).fill(data)))
                     for data, intercept_valuer in intercept_valuers:
                         intercept_result = intercept_valuer.get(data)
                         if intercept_result is not None and not intercept_result:

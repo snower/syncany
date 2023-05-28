@@ -127,7 +127,50 @@ class Loader(object):
             self.geted = True
             return self.datas
 
-        GeneratorFunctionTypes = (types.FunctionType, types.GeneratorType)
+        if self.valuer_type == 0x02:
+            FunctionType, ofuncs = types.FunctionType, {}
+            while datas:
+                data, odata, = datas.pop(), {}
+                if isinstance(data, ContextDataer):
+                    data.use_values()
+                    for name, valuer in self.schema.items():
+                        value = valuer.get()
+                        if isinstance(value, FunctionType):
+                            ofuncs[name] = value
+                            odata[name] = None
+                        else:
+                            odata[name] = value
+                else:
+                    for name, valuer in self.schema.items():
+                        if name not in data or not isinstance(data[name], ContextRunner):
+                            value = valuer.fill_get(data)
+                        else:
+                            value = data[name].get()
+                        if isinstance(value, FunctionType):
+                            ofuncs[name] = value
+                            odata[name] = None
+                        else:
+                            odata[name] = value
+
+                if self.intercepts and self.check_intercepts(odata):
+                    continue
+                if ofuncs:
+                    has_func_data = False
+                    for name, ofunc in ofuncs.items():
+                        try:
+                            odata[name] = ofunc(odata)
+                            has_func_data = True
+                        except StopIteration:
+                            continue
+                    if has_func_data:
+                        self.datas.append(odata)
+                    ofuncs.clear()
+                else:
+                    self.datas.append(odata)
+            self.geted = True
+            return self.datas
+
+        GeneratorType, GeneratorFunctionTypes = types.GeneratorType, (types.FunctionType, types.GeneratorType)
         oyield_generates, oyields, ofuncs = deque(), {}, {}
         while datas:
             data, odata,  = datas.pop(), {}
@@ -136,7 +179,7 @@ class Loader(object):
                 for name, valuer in self.schema.items():
                     value = valuer.get()
                     if isinstance(value, GeneratorFunctionTypes):
-                        if isinstance(value, types.GeneratorType):
+                        if isinstance(value, GeneratorType):
                             oyields[name] = value
                         else:
                             ofuncs[name] = value
@@ -150,7 +193,7 @@ class Loader(object):
                     else:
                         value = data[name].get()
                     if isinstance(value, GeneratorFunctionTypes):
-                        if isinstance(value, types.GeneratorType):
+                        if isinstance(value, GeneratorType):
                             oyields[name] = value
                         else:
                             ofuncs[name] = value
@@ -168,7 +211,7 @@ class Loader(object):
                             try:
                                 value = oyield.send(None)
                                 if isinstance(value, GeneratorFunctionTypes):
-                                    if isinstance(value, types.GeneratorType):
+                                    if isinstance(value, GeneratorType):
                                         oyield_oyields[name] = value
                                     else:
                                         oyield_ofuncs[name] = value

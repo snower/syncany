@@ -83,7 +83,7 @@ class DBJoinValuer(Valuer):
                     group_macther = self.loader.create_group_matcher(is_yield=True)
                 else:
                     group_macther = self.loader.create_group_matcher(is_yield=False,
-                                                                     return_valuer=self.return_valuer.clone(),
+                                                                     return_valuer=self.return_valuer.clone(inherited=True),
                                                                      contexter_valuesself=None)
                 for value in data:
                     group_macther.add_matcher(self.create_matcher(value))
@@ -92,7 +92,7 @@ class DBJoinValuer(Valuer):
 
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
-                inherit_valuer.clone().fill(data)
+                inherit_valuer.clone(inherited=True).fill(data)
 
         join_values, has_list_args = [], False
         if self.args_valuers:
@@ -117,7 +117,7 @@ class DBJoinValuer(Valuer):
         if self.require_yield_values:
             matcher = self.loader.create_matcher(self.foreign_keys, join_values,
                                                  is_yield=True, intercept_valuer=self.intercept_valuer,
-                                                 valuer=self.return_valuer.clone(), contexter_values=None)
+                                                 valuer=self.return_valuer.clone(inherited=True), contexter_values=None)
         else:
             matcher = self.loader.create_matcher(self.foreign_keys, join_values,
                                                  is_yield=False, intercept_valuer=self.intercept_valuer,
@@ -142,13 +142,14 @@ class DBJoinValuer(Valuer):
         if self.require_yield_values:
             group_macther = self.loader.create_group_matcher(is_yield=True)
         else:
-            group_macther = self.loader.create_group_matcher(is_yield=False, return_valuer=self.return_valuer.clone(),
+            group_macther = self.loader.create_group_matcher(is_yield=False,
+                                                             return_valuer=self.return_valuer.clone(inherited=True),
                                                              contexter_valuesself=None)
         for join_value in join_values:
             if self.require_yield_values:
                 matcher = self.loader.create_matcher(self.foreign_keys, join_values,
                                                      is_yield=True, intercept_valuer=self.intercept_valuer,
-                                                     valuer=self.return_valuer.clone(), contexter_values=None)
+                                                     valuer=self.return_valuer.clone(inherited=True), contexter_values=None)
             else:
                 matcher = self.loader.create_matcher(self.foreign_keys, join_values,
                                                      is_yield=False, intercept_valuer=self.intercept_valuer,

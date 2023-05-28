@@ -42,7 +42,7 @@ class DBJoinYieldMatcher(object):
                     else:
                         intercept_valuers = []
                         for value in values:
-                            intercept_valuers.append((value, self.intercept_valuer.clone().fill(value)))
+                            intercept_valuers.append((value, self.intercept_valuer.clone(inherited=True).fill(value)))
                         for value, intercept_valuer in intercept_valuers:
                             intercept_result = intercept_valuer.get()
                             if intercept_result is not None and not intercept_result:
@@ -73,7 +73,7 @@ class DBJoinYieldMatcher(object):
                     self.data_valuers.append((self.valuer, self.valuer.contexter.values))
             else:
                 for value in values:
-                    valuer = self.valuer.clone().fill(value)
+                    valuer = self.valuer.clone(inherited=True).fill(value)
                     self.data_valuers.append((valuer, None))
         else:
             if self.contexter_values is not None:
