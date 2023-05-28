@@ -16,18 +16,56 @@ class CmpValue(object):
         self.value = value
         self.reverse = reverse
 
+    def format_value(self, other):
+        if isinstance(self.value, datetime.date):
+            if isinstance(self.value, datetime.datetime):
+                return parse_datetime(other.value, None, get_timezone())
+            return parse_date(other.value, None, get_timezone())
+        if isinstance(self.value, datetime.time):
+            return parse_time(other.value, None, get_timezone())
+        type_cls = type(self.value)
+        return type_cls(other.value)
+
     def __eq__(self, other):
         return self.value == other.value
 
     def __gt__(self, other):
-        if self.reverse:
-            return self.value < other.value
-        return self.value > other.value
+        try:
+            if self.reverse:
+                return self.value < other.value
+            return self.value > other.value
+        except:
+            if self.value is None:
+                if other.value is None:
+                    return False if self.reverse else True
+                return True if self.reverse else False
+            if other.value is None:
+                return False if self.reverse else True
+            try:
+                if self.reverse:
+                    return self.value < self.format_value(other)
+                return self.value > self.format_value(other)
+            except:
+                return False if self.reverse else True
 
     def __lt__(self, other):
-        if self.reverse:
-            return self.value > other.value
-        return self.value < other.value
+        try:
+            if self.reverse:
+                return self.value > other.value
+            return self.value < other.value
+        except:
+            if self.value is None:
+                if other.value is None:
+                    return True if self.reverse else False
+                return False if self.reverse else True
+            if other.value is None:
+                return True if self.reverse else False
+            try:
+                if self.reverse:
+                    return self.value > self.format_value(other)
+                return self.value < self.format_value(other)
+            except:
+                return True if self.reverse else False
 
     def __ne__(self, other):
         return self.value != other.value
@@ -55,8 +93,12 @@ def sorted_by_keys(iterable, keys=None, reverse=None):
     if len(sort_keys) == 1 and len(sort_keys[0][0]) == 1:
         sort_key = sort_keys[0][0][0]
         reverse = (not sort_keys[0][1]) if reverse else sort_keys[0][1]
-        return sorted(iterable, key=lambda x: x[sort_key], reverse=reverse)
-    def get_key(x):
+        try:
+            return sorted(iterable, key=lambda x: x[sort_key], reverse=reverse)
+        except:
+            return sorted(iterable, key=lambda x: CmpValue(x[sort_key]), reverse=reverse)
+
+    def get_cmp_key(x):
         key_values = []
         for ks, kr in sort_keys:
             key_value = None
@@ -67,7 +109,18 @@ def sorted_by_keys(iterable, keys=None, reverse=None):
             else:
                 key_values.append(-key_value if isinstance(key_value, (int, float)) else CmpValue(key_value, True))
         return tuple(key_values)
-    return sorted(iterable, key=get_key, reverse=reverse)
+    try:
+        return sorted(iterable, key=get_cmp_key, reverse=reverse)
+    except:
+        def get_format_cmp_key(x):
+            key_values = []
+            for ks, kr in sort_keys:
+                key_value = None
+                for k in ks:
+                    key_value = x[k]
+                key_values.append(CmpValue(key_value, False if not kr else True))
+            return tuple(key_values)
+        return sorted(iterable, key=get_format_cmp_key, reverse=reverse)
 
 _runner_index = 0
 def gen_runner_id():
