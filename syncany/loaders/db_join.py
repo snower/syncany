@@ -36,7 +36,7 @@ class DBJoinYieldMatcher(object):
                             self.intercept_valuer.contexter.values = intercept_contexter_values
                             if not self.intercept_valuer.get():
                                 continue
-                            values.append(value)
+                            ovalues.append(value)
                         self.intercept_valuer.contexter.values = self.contexter_values
                     else:
                         intercept_valuers = []
@@ -45,7 +45,7 @@ class DBJoinYieldMatcher(object):
                         for value, intercept_valuer in intercept_valuers:
                             if not intercept_valuer.get():
                                 continue
-                            values.append(value)
+                            ovalues.append(value)
                 else:
                     if self.contexter_values is not None:
                         self.intercept_valuer.contexter.values = self.contexter_values
