@@ -105,6 +105,14 @@ class Loader(object):
             return self.datas
         if not self.loaded:
             self.load()
+        if self.intercepts:
+            if len(self.intercepts) == 1:
+                intercept = self.intercepts[0]
+                check_intercepts = lambda cdata: not intercept.fill_get(cdata)
+            else:
+                check_intercepts = self.check_intercepts
+        else:
+            check_intercepts = None
 
         datas, self.datas = self.datas, []
         datas.reverse()
@@ -121,7 +129,7 @@ class Loader(object):
                             odata[name] = valuer.fill_get(data)
                         else:
                             odata[name] = data[name].get()
-                if self.intercepts and self.check_intercepts(odata):
+                if check_intercepts is not None and check_intercepts(odata):
                     continue
                 self.datas.append(odata)
             self.geted = True
@@ -152,7 +160,7 @@ class Loader(object):
                         else:
                             odata[name] = value
 
-                if self.intercepts and self.check_intercepts(odata):
+                if check_intercepts is not None and check_intercepts(odata):
                     continue
                 if ofuncs:
                     has_func_data = False
@@ -227,7 +235,7 @@ class Loader(object):
 
                         if has_oyield_data or not has_append_data:
                             has_append_data = True
-                            if self.intercepts and self.check_intercepts(oyield_odata):
+                            if check_intercepts is not None and check_intercepts(odata):
                                 continue
                             if oyield_ofuncs:
                                 has_func_data = False
@@ -249,7 +257,7 @@ class Loader(object):
                         break
                     odata, oyields, ofuncs = oyield_generates.popleft()
             else:
-                if self.intercepts and self.check_intercepts(odata):
+                if check_intercepts is not None and check_intercepts(odata):
                     continue
                 if ofuncs:
                     has_func_data = False
@@ -269,8 +277,7 @@ class Loader(object):
 
     def check_intercepts(self, data):
         for intercept in self.intercepts:
-            intercept_result = intercept.fill_get(data)
-            if intercept_result is not None and not intercept_result:
+            if not intercept.fill_get(data):
                 return True
         return False
 

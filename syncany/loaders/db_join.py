@@ -34,8 +34,7 @@ class DBJoinYieldMatcher(object):
                             intercept_contexter_valueses.append((value, self.intercept_valuer.contexter.values))
                         for value, intercept_contexter_values in intercept_contexter_valueses:
                             self.intercept_valuer.contexter.values = intercept_contexter_values
-                            intercept_result = self.intercept_valuer.get()
-                            if intercept_result is not None and not intercept_result:
+                            if not self.intercept_valuer.get():
                                 continue
                             values.append(value)
                         self.intercept_valuer.contexter.values = self.contexter_values
@@ -44,24 +43,21 @@ class DBJoinYieldMatcher(object):
                         for value in values:
                             intercept_valuers.append((value, self.intercept_valuer.clone(inherited=True).fill(value)))
                         for value, intercept_valuer in intercept_valuers:
-                            intercept_result = intercept_valuer.get()
-                            if intercept_result is not None and not intercept_result:
+                            if not intercept_valuer.get():
                                 continue
                             values.append(value)
                 else:
                     if self.contexter_values is not None:
                         self.intercept_valuer.contexter.values = self.contexter_values
                     for value in values:
-                        intercept_result = self.intercept_valuer.fill_get(value)
-                        if intercept_result is not None and not intercept_result:
+                        if not self.intercept_valuer.fill_get(value):
                             continue
                         ovalues.append(value)
                 values = ovalues if len(values) > 1 else (ovalues[0] if ovalues else None)
-            else:
+            elif values is not None:
                 if self.contexter_values is not None:
                     self.intercept_valuer.contexter.values = self.contexter_values
-                intercept_result = self.intercept_valuer.fill_get(values)
-                if intercept_result is not None and not intercept_result:
+                if not self.intercept_valuer.fill_get(values):
                     values = None
 
         if isinstance(values, list):
@@ -129,14 +125,12 @@ class DBJoinMatcher(object):
             if isinstance(values, list):
                 ovalues = []
                 for value in values:
-                    intercept_result = self.intercept_valuer.fill_get(value)
-                    if intercept_result is not None and not intercept_result:
+                    if not self.intercept_valuer.fill_get(value):
                         continue
                     ovalues.append(value)
                 values = ovalues if len(values) > 1 else (ovalues[0] if ovalues else None)
-            else:
-                intercept_result = self.intercept_valuer.fill_get(values)
-                if intercept_result is not None and not intercept_result:
+            elif values is not None:
+                if not self.intercept_valuer.fill_get(values):
                     values = None
 
         if self.valuer:

@@ -79,14 +79,12 @@ class DBLoadValuer(Valuer):
                 for data in datas:
                     intercept_valuers.append((data, self.intercept_valuer.clone(inherited=True).fill(data)))
                 for data, intercept_valuer in intercept_valuers:
-                    intercept_result = intercept_valuer.get(data)
-                    if intercept_result is not None and not intercept_result:
+                    if not intercept_valuer.get(data):
                         continue
                     values.append(data)
             else:
                 for data in datas:
-                    intercept_result = self.intercept_valuer.fill_get(data)
-                    if intercept_result is not None and not intercept_result:
+                    if not self.intercept_valuer.fill_get(data):
                         continue
                     values.append(data)
         else:
@@ -109,14 +107,12 @@ class DBLoadValuer(Valuer):
                     for data in datas:
                         intercept_valuers.append((data, self.intercept_valuer.clone(inherited=True).fill(data)))
                     for data, intercept_valuer in intercept_valuers:
-                        intercept_result = intercept_valuer.get(data)
-                        if intercept_result is not None and not intercept_result:
+                        if not intercept_valuer.get(data):
                             continue
                         values.append(data)
                 else:
                     for data in datas:
-                        intercept_result = self.intercept_valuer.fill_get(data)
-                        if intercept_result is not None and not intercept_result:
+                        if not self.intercept_valuer.fill_get(data):
                             continue
                         values.append(data)
             else:
@@ -211,15 +207,13 @@ class ContextDBLoadValuer(DBLoadValuer):
                     self.intercept_valuer.fill(data)
                 for data, intercept_contexter_values in intercept_contexter_valueses:
                     self.intercept_valuer.contexter.values = intercept_contexter_values
-                    intercept_result = self.intercept_valuer.get(data)
-                    if intercept_result is not None and not intercept_result:
+                    if not self.intercept_valuer.get(data):
                         continue
                     values.append(data)
                 self.contexter.values = contexter_values
             else:
                 for data in datas:
-                    intercept_result = self.intercept_valuer.fill_get(data)
-                    if intercept_result is not None and not intercept_result:
+                    if not self.intercept_valuer.fill_get(data):
                         continue
                     values.append(data)
         else:
@@ -250,15 +244,13 @@ class ContextDBLoadValuer(DBLoadValuer):
                         self.intercept_valuer.fill(data)
                     for data, intercept_contexter_values in intercept_contexter_valueses:
                         self.intercept_valuer.contexter.values = intercept_contexter_values
-                        intercept_result = self.intercept_valuer.get(data)
-                        if intercept_result is not None and not intercept_result:
+                        if not self.intercept_valuer.get(data):
                             continue
                         values.append(data)
                     self.contexter.values = contexter_values
                 else:
                     for data in datas:
-                        intercept_result = self.intercept_valuer.fill_get(data)
-                        if intercept_result is not None and not intercept_result:
+                        if not self.intercept_valuer.fill_get(data):
                             continue
                         values.append(data)
             else:
