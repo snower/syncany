@@ -90,8 +90,6 @@ class MakeValuer(Valuer):
                          for key, (key_valuer, value_valuer) in self.value_valuer.items()}
             elif isinstance(self.value_valuer, list):
                 value = [value_valuer.fill_get(data) for value_valuer in self.value_valuer]
-                if len(value) == 1 and isinstance(value[0], list):
-                    value = value[0]
             elif isinstance(self.value_valuer, Valuer):
                 value = self.do_filter(self.value_valuer.fill_get(data))
             else:
@@ -123,8 +121,6 @@ class MakeValuer(Valuer):
                          for key, (key_valuer, value_valuer) in self.value_valuer.items()}
             elif isinstance(self.value_valuer, list):
                 value = [value_valuer.get() for value_valuer in self.value_valuer]
-                if len(value) == 1 and isinstance(value[0], list):
-                    value = value[0]
             elif isinstance(self.value_valuer, Valuer):
                 value = self.do_filter(self.value_valuer.get())
             else:
@@ -148,8 +144,6 @@ class MakeValuer(Valuer):
                      for key, (key_valuer, value_valuer) in self.value_valuer.items()}
         elif isinstance(self.value_valuer, list):
             value = [value_valuer.fill_get(data) for value_valuer in self.value_valuer]
-            if len(value) == 1 and isinstance(value[0], list):
-                value = value[0]
         elif isinstance(self.value_valuer, Valuer):
             value = self.do_filter(self.value_valuer.fill_get(data))
         else:
