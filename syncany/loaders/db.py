@@ -165,12 +165,17 @@ class DBLoader(Loader):
             self.geted = True
             return self.datas
 
+        if len(self.intercepts) == 1:
+            intercept = self.intercepts[0]
+            check_intercepts = lambda cdata: not intercept.fill_get(cdata)
+        else:
+            check_intercepts = self.check_intercepts
         datas, self.datas = self.datas, []
         datas.reverse()
         while datas:
             data = datas.pop()
             odata = {name: valuer.fill_get(data) for name, valuer in self.schema.items()}
-            if self.check_intercepts(odata):
+            if check_intercepts(odata):
                 continue
             self.datas.append(odata)
         self.geted = True
@@ -208,6 +213,11 @@ class DBLoader(Loader):
             self.geted = True
             return self.datas
 
+        if len(self.intercepts) == 1:
+            intercept = self.intercepts[0]
+            check_intercepts = lambda cdata: not intercept.fill_get(cdata)
+        else:
+            check_intercepts = self.check_intercepts
         while datas:
             data, odata, = datas.pop(), {}
             for name, valuer in self.schema.items():
@@ -218,7 +228,7 @@ class DBLoader(Loader):
                 else:
                     odata[name] = value
 
-            if self.check_intercepts(odata):
+            if check_intercepts(odata):
                 continue
             if ofuncs:
                 has_func_data = False
