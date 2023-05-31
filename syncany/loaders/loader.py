@@ -235,7 +235,7 @@ class Loader(object):
 
                         if has_oyield_data or not has_append_data:
                             has_append_data = True
-                            if check_intercepts is not None and check_intercepts(odata):
+                            if check_intercepts is not None and check_intercepts(oyield_odata):
                                 continue
                             if oyield_ofuncs:
                                 has_func_data = False
