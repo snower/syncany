@@ -3,6 +3,7 @@
 # create by: snower
 
 import copy
+import types
 from collections import defaultdict
 from .loader import Loader
 from ..valuers.valuer import Contexter, ContextRunner, ContextDataer, LoadAllFieldsException
@@ -116,6 +117,8 @@ class DBLoader(Loader):
             if loader_contexter is False:
                 if not self.valuer_type:
                     return self.fast_get()
+                if self.valuer_type == 0x02:
+                    return self.fast_aggregate_get()
                 return super(DBLoader, self).get()
 
             if loader_contexter is not None:
@@ -170,6 +173,66 @@ class DBLoader(Loader):
             if self.check_intercepts(odata):
                 continue
             self.datas.append(odata)
+        self.geted = True
+        return self.datas
+
+    def fast_aggregate_get(self):
+        datas, self.datas = self.datas, []
+        datas.reverse()
+        FunctionType, ofuncs = types.FunctionType, {}
+
+        if not self.intercepts:
+            while datas:
+                data, odata, = datas.pop(), {}
+                for name, valuer in self.schema.items():
+                    value = valuer.fill_get(data)
+                    if isinstance(value, FunctionType):
+                        ofuncs[name] = value
+                        odata[name] = None
+                    else:
+                        odata[name] = value
+
+                if ofuncs:
+                    has_func_data = False
+                    for name, ofunc in ofuncs.items():
+                        try:
+                            odata[name] = ofunc(odata)
+                            has_func_data = True
+                        except StopIteration:
+                            continue
+                    if has_func_data:
+                        self.datas.append(odata)
+                    ofuncs.clear()
+                else:
+                    self.datas.append(odata)
+            self.geted = True
+            return self.datas
+
+        while datas:
+            data, odata, = datas.pop(), {}
+            for name, valuer in self.schema.items():
+                value = valuer.fill_get(data)
+                if isinstance(value, FunctionType):
+                    ofuncs[name] = value
+                    odata[name] = None
+                else:
+                    odata[name] = value
+
+            if self.check_intercepts(odata):
+                continue
+            if ofuncs:
+                has_func_data = False
+                for name, ofunc in ofuncs.items():
+                    try:
+                        odata[name] = ofunc(odata)
+                        has_func_data = True
+                    except StopIteration:
+                        continue
+                if has_func_data:
+                    self.datas.append(odata)
+                ofuncs.clear()
+            else:
+                self.datas.append(odata)
         self.geted = True
         return self.datas
 
