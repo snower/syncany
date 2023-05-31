@@ -937,7 +937,7 @@ class CoreTasker(Tasker):
                     continue
                 valuer = self.create_query_valuer(query, query_exp)
 
-                def add_outputer_filter(query_name, exp_name, query_valuer):
+                def add_outputer_filter(query_name, exp_name, query_valuer, value_filter):
                     def _():
                         value = self.execute_valuer(query_valuer, self.arguments)
                         getattr(self.outputer, "filter_%s" % exp_name)(query_name,
@@ -945,7 +945,7 @@ class CoreTasker(Tasker):
                                                                        if exp_name == "in" and isinstance(value, list)
                                                                        else value_filter(value))
                     return _
-                self.add_init_executer(add_outputer_filter(query_name, query_exp["exp_name"], valuer))
+                self.add_init_executer(add_outputer_filter(query_name, query_exp["exp_name"], valuer, value_filter))
 
         order_keys = set([])
         if self.config["orders"]:

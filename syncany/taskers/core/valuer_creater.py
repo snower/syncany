@@ -163,7 +163,7 @@ class ValuerCreater(object):
                                             global_variables=dict(**self.tasker.config["variables"]),
                                             global_states=self.tasker.states)
 
-                def add_foreign_filter(name, exp, valuer):
+                def add_foreign_filter(name, exp, valuer, filter_cls, filter_args):
                     def _():
                         value = self.tasker.execute_valuer(valuer, self.tasker.arguments)
                         if filter_cls:
@@ -176,7 +176,7 @@ class ValuerCreater(object):
                         else:
                             getattr(loader, "filter_" + exp)(name, value)
                     return _
-                self.tasker.add_init_executer(add_foreign_filter(name, exp, valuer))
+                self.tasker.add_init_executer(add_foreign_filter(name, exp, valuer, filter_cls, filter_args))
         loader = LoaderJoinWarp(loader)
         if loader_cache_key is not None:
             if loader_cache_key in join_loaders:
