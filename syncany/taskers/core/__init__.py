@@ -543,6 +543,10 @@ class CoreTasker(Tasker):
                 if key["key"] == "aggregate" and len(valuer) in (2, 3):
                     return self.valuer_compiler.compile_aggregate_valuer(key["key"], key["filter"], valuer[1],
                                                                          valuer[2] if len(valuer) >= 3 else None)
+                if key["key"] == "partition" and len(valuer) in (5, 6):
+                    return self.valuer_compiler.compile_partition_valuer(key["key"], key["filter"], valuer[1],
+                                                                         valuer[2], valuer[3], valuer[4],
+                                                                         valuer[5] if len(valuer) >= 6 else None)
                 if key["key"] == "call" and len(valuer) in (2, 3, 4) and valuer[1] in self.config["defines"]:
                     return self.valuer_compiler.compile_call_valuer(valuer[1], key["filter"],
                                                                     valuer[2] if len(valuer) >= 3 else None,
@@ -601,10 +605,10 @@ class CoreTasker(Tasker):
             return
 
         for intercept in self.config["intercepts"]:
-            inherit_valuers, yield_valuers, aggregate_valuers = [], [], []
+            inherit_valuers, yield_valuers, aggregate_valuers, partition_managers = [], [], [], {}
             valuer = self.create_valuer(self.compile_valuer(intercept), schema_field_name="", inherit_valuers=inherit_valuers,
                                     join_loaders=self.join_loaders, yield_valuers=yield_valuers,
-                                    aggregate_valuers=aggregate_valuers, define_valuers={},
+                                    aggregate_valuers=aggregate_valuers, partition_managers=partition_managers, define_valuers={},
                                     global_variables=dict(**self.config["variables"]), global_states=self.states)
             self.intercepts.append(valuer)
 
@@ -646,10 +650,10 @@ class CoreTasker(Tasker):
                 if not pipeline:
                     continue
 
-            inherit_valuers, yield_valuers, aggregate_valuers = [], [], []
+            inherit_valuers, yield_valuers, aggregate_valuers, partition_managers = [], [], [], {}
             valuer = self.create_valuer(self.compile_valuer(pipeline), schema_field_name="", inherit_valuers=inherit_valuers,
                                     join_loaders=self.join_loaders, yield_valuers=yield_valuers,
-                                    aggregate_valuers=aggregate_valuers, define_valuers={},
+                                    aggregate_valuers=aggregate_valuers, partition_managers=partition_managers, define_valuers={},
                                     global_variables=dict(**self.config["variables"]), global_states=self.states)
             valuers[current_type].append(valuer)
 
@@ -664,10 +668,10 @@ class CoreTasker(Tasker):
         config_valuer = self.compile_valuer(config)
         if not config_valuer or config_valuer.get("name") == "const_valuer":
             return config
-        inherit_valuers, yield_valuers, aggregate_valuers = [], [], []
+        inherit_valuers, yield_valuers, aggregate_valuers, partition_managers = [], [], [], {}
         valuer = self.create_valuer(config_valuer, schema_field_name="", inherit_valuers=inherit_valuers,
                                     join_loaders=self.join_loaders, yield_valuers=yield_valuers,
-                                    aggregate_valuers=aggregate_valuers, define_valuers={},
+                                    aggregate_valuers=aggregate_valuers, partition_managers=partition_managers, define_valuers={},
                                     global_variables=dict(**self.config["variables"]), global_states=self.states)
         if not valuer:
             return config
@@ -736,10 +740,10 @@ class CoreTasker(Tasker):
             if not query_exp["valuer"]:
                 raise ValueError("%s %s value invaild" % (query["name"], query_exp["exp_name"]))
             valuer = query_exp["valuer"]
-        inherit_valuers, yield_valuers, aggregate_valuers = [], [], []
+        inherit_valuers, yield_valuers, aggregate_valuers, partition_managers = [], [], [], {}
         valuer = self.create_valuer(valuer, schema_field_name="",
-                                    inherit_valuers=inherit_valuers, join_loaders=self.join_loaders,
-                                    yield_valuers=yield_valuers, aggregate_valuers=aggregate_valuers, define_valuers={},
+                                    inherit_valuers=inherit_valuers, join_loaders=self.join_loaders, yield_valuers=yield_valuers,
+                                    aggregate_valuers=aggregate_valuers, partition_managers=partition_managers, define_valuers={},
                                     global_variables=dict(**self.config["variables"]), global_states=self.states)
         if not valuer:
             raise ValueError("%s %s value invaild" % (query["name"], query_exp["exp_name"]))
@@ -777,13 +781,13 @@ class CoreTasker(Tasker):
         self.loader = self.create_loader(loader_config, input_loader["foreign_key"])
 
         if isinstance(self.schema, dict):
-            loader_schema, aggregate_valuers, require_loaded = {}, [], False
+            loader_schema, aggregate_valuers, partition_managers, require_loaded = {}, [], {}, False
             for name, valuer in self.schema.items():
                 inherit_valuers, yield_valuers = [], []
                 valuer = self.create_valuer(valuer, schema_field_name=name, inherit_valuers=inherit_valuers,
                                             join_loaders=self.join_loaders, yield_valuers=yield_valuers,
-                                            aggregate_valuers=aggregate_valuers, define_valuers={},
-                                            global_variables=self.global_variables, global_states=self.states)
+                                            aggregate_valuers=aggregate_valuers, partition_managers=partition_managers,
+                                            define_valuers={}, global_variables=self.global_variables, global_states=self.states)
                 if not valuer:
                     continue
                 if valuer.require_loaded():
@@ -800,6 +804,8 @@ class CoreTasker(Tasker):
                     loader_config["valuer_type"] |= 0x01
                 if aggregate_valuers:
                     loader_config["valuer_type"] |= 0x02
+                if partition_managers:
+                    loader_config["valuer_type"] |= 0x04
             if require_loaded:
                 contexter = Contexter()
                 for name, valuer in loader_schema.items():

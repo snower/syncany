@@ -15,6 +15,7 @@ from .make import MakeValuer
 from .let import LetValuer
 from .generator import YieldValuer
 from .aggregate import AggregateValuer
+from .partition import PartitionValuer
 from .call import CallValuer
 from .assign import AssignValuer
 from .function import LambdaValuer
@@ -38,6 +39,7 @@ VALUERS = {
     "let_valuer": LetValuer,
     "yield_valuer": YieldValuer,
     "aggregate_valuer": AggregateValuer,
+    "partition_valuer": PartitionValuer,
     "call_valuer": CallValuer,
     "assign_valuer": AssignValuer,
     "lambda_valuer": LambdaValuer,

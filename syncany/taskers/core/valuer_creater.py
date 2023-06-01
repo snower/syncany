@@ -114,6 +114,17 @@ class ValuerCreater(object):
     def __init__(self, tasker):
         self.tasker = tasker
 
+    def format_value_cache_key(self, value):
+        if isinstance(value, dict):
+            return "{" + ", ".join(["%s: %s" % (self.format_value_cache_key(key), self.format_value_cache_key(value[key]))
+                                    for key in sorted(value.keys())]) + "}"
+        if isinstance(value, (tuple, list, set)):
+            try:
+                return "[" + ", ".join([self.format_value_cache_key(v) for v in sorted(list(value))]) + "]"
+            except:
+                return "[" + ", ".join([self.format_value_cache_key(v) for v in value]) + "]"
+        return str(value)
+
     def find_valuer_driver(self, *args, **kwargs):
         return self.tasker.find_valuer_driver(*args, **kwargs)
 
@@ -130,21 +141,12 @@ class ValuerCreater(object):
         return self.tasker.create_loader(*args, **kwargs)
 
     def create_join_loader(self, config, join_loaders, renew=False):
-        def format_value_cache_key(value):
-            if isinstance(value, dict):
-                return "{" + ", ".join(["%s: %s" % (format_value_cache_key(key), format_value_cache_key(value[key]))
-                                        for key in sorted(value.keys())]) + "}"
-            if isinstance(value, (tuple, list, set)):
-                try:
-                    return "[" + ", ".join([format_value_cache_key(v) for v in sorted(list(value))]) + "]"
-                except:
-                    return "[" + ", ".join([format_value_cache_key(v) for v in value]) + "]"
-            return str(value)
+
 
         loader_cache_key, loader_cache_foreign_filters = None, ""
         if join_loaders is not None:
             if config["foreign_filters"]:
-                loader_cache_foreign_filters = "&".join(sorted(["%s__%s=%s" % (name, exp, format_value_cache_key(valuer))
+                loader_cache_foreign_filters = "&".join(sorted(["%s__%s=%s" % (name, exp, self.format_value_cache_key(valuer))
                                                                 for name, exp, valuer, _, _ in config["foreign_filters"]]))
             loader_cache_key = "::".join([config["loader"]["name"], config["loader"]["database"],
                                           "+".join(sorted(config["foreign_keys"])),
@@ -530,6 +532,51 @@ class ValuerCreater(object):
         if aggregate_valuers is not None:
             aggregate_valuers.append(aggregate_valuer)
         return aggregate_valuer
+
+    def create_partition_valuer(self, config, inherit_valuers=None, partition_managers=None, **kwargs):
+        valuer_cls = self.find_valuer_driver(config["name"])
+        if not valuer_cls:
+            raise ValuerUnknownException(config["name"] + " is unknown")
+
+        key_valuer = self.create_valuer(config["key_valuer"], inherit_valuers=inherit_valuers,
+                                        partition_managers=partition_managers, **kwargs) \
+            if "key_valuer" in config and config["key_valuer"] else None
+        order_valuer = self.create_valuer(config["order_valuer"], inherit_valuers=inherit_valuers,
+                                          partition_managers=partition_managers, **kwargs) \
+            if "order_valuer" in config and config["order_valuer"] else None
+        value_valuer = self.create_valuer(config["value_valuer"], inherit_valuers=inherit_valuers,
+                                          partition_managers=partition_managers, **kwargs) \
+            if "value_valuer" in config and config["value_valuer"] else None
+
+        calculate_inherit_valuers = []
+        calculate_valuer = self.create_valuer(config["calculate_valuer"], inherit_valuers=calculate_inherit_valuers,
+                                              partition_managers=partition_managers, **kwargs) \
+            if "calculate_valuer" in config and config["calculate_valuer"] else None
+        return_inherit_valuers = []
+        return_valuer = self.create_valuer(config["return_valuer"], inherit_valuers=return_inherit_valuers,
+                                           partition_managers=partition_managers, **kwargs) \
+            if "return_valuer" in config and config["return_valuer"] else None
+
+        current_inherit_valuers = []
+        for inherit_valuer in calculate_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
+        for inherit_valuer in return_inherit_valuers:
+            inherit_valuer["reflen"] -= 1
+            if inherit_valuer["reflen"] == 0:
+                current_inherit_valuers.append(inherit_valuer["valuer"])
+            elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
+                inherit_valuers.append(inherit_valuer)
+
+        manager_key = self.format_value_cache_key([config.get("key_valuer"), config.get("order_valuer"), config.get("order_options")])
+        if manager_key not in partition_managers:
+            partition_managers[manager_key] = valuer_cls.create_manager(config.get("order_options", {}))
+        return valuer_cls(key_valuer, order_valuer, value_valuer, calculate_valuer, return_valuer, current_inherit_valuers,
+                          partition_managers[manager_key], config['key'], None)
 
     def create_call_valuer(self, config, inherit_valuers=None, define_valuers=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])

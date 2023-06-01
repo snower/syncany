@@ -253,6 +253,36 @@ class ValuerCompiler(object):
             "calculate_valuer": calculate_valuer,
         }
 
+    def compile_partition_valuer(self, key="", filter=None, key_arg=None, order_arg=None, value_arg=None, calculate_arg=None, return_arg=None):
+        calculated_return_arg, calculate_arg = self.parse_return_valuer(calculate_arg)
+        if return_arg:
+            return_arg, _ = self.parse_return_valuer(return_arg)
+        return_arg = return_arg or calculated_return_arg
+
+        key_valuer = self.compile_valuer(key_arg)
+        if order_arg:
+            if isinstance(order_arg, dict) and order_arg.get("valuer") and order_arg.get("orders"):
+                order_valuer, orders = self.compile_valuer(order_arg["valuer"]), order_arg.get("orders")
+            else:
+                order_valuer, orders = self.compile_valuer(order_arg), None
+        else:
+            order_valuer, orders = None, None
+        value_valuer = self.compile_valuer(value_arg) if value_arg else None
+        calculate_valuer = self.compile_valuer(calculate_arg) if calculate_arg else None
+        return_valuer = self.compile_valuer(return_arg) if return_arg else None
+
+        return {
+            "name": "partition_valuer",
+            "key": "",
+            "filter": filter,
+            "key_valuer": key_valuer,
+            "order_valuer": order_valuer,
+            "value_valuer": value_valuer,
+            "order_options": {"orders": orders},
+            "calculate_valuer": calculate_valuer,
+            "return_valuer": return_valuer,
+        }
+
     def compile_call_valuer(self, key="", filter=None, value_arg=None, calculate_arg=None, return_arg=None):
         return_arg, _ = self.parse_return_valuer(return_arg)
 

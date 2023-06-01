@@ -145,8 +145,10 @@ class Valuer(object):
         self.key = key
         self.filter = filter
         if from_valuer is None:
+            self.valuer_id = id(self)
             self.new_init()
         else:
+            self.valuer_id = from_valuer.valuer_id
             self.clone_init(from_valuer)
 
     def new_init(self):

@@ -178,8 +178,8 @@ class Loader(object):
             self.geted = True
             return self.datas
 
-        GeneratorType, GeneratorFunctionTypes = types.GeneratorType, (types.FunctionType, types.GeneratorType)
-        oyield_generates, oyields, ofuncs = deque(), {}, {}
+        GeneratorType, GeneratorFunctionTypes, FunctionType = types.GeneratorType, (types.FunctionType, types.GeneratorType), types.FunctionType
+        oyield_generates, oyields, ofuncs, getter_funcs = deque(), {}, {}, deque()
         while datas:
             data, odata,  = datas.pop(), {}
             if isinstance(data, ContextDataer):
@@ -241,7 +241,12 @@ class Loader(object):
                                 has_func_data = False
                                 for name, ofunc in oyield_ofuncs.items():
                                     try:
-                                        oyield_odata[name] = ofunc(oyield_odata)
+                                        value = ofunc(oyield_odata)
+                                        if isinstance(value, FunctionType):
+                                            getter_funcs.append((oyield_odata, name, value))
+                                            oyield_odata[name] = None
+                                        else:
+                                            oyield_odata[name] = value
                                         has_func_data = True
                                     except StopIteration:
                                         continue
@@ -263,7 +268,12 @@ class Loader(object):
                     has_func_data = False
                     for name, ofunc in ofuncs.items():
                         try:
-                            odata[name] = ofunc(odata)
+                            value = ofunc(odata)
+                            if isinstance(value, FunctionType):
+                                getter_funcs.append((odata, name, value))
+                                odata[name] = None
+                            else:
+                                odata[name] = value
                             has_func_data = True
                         except StopIteration:
                             continue
@@ -272,6 +282,11 @@ class Loader(object):
                     ofuncs.clear()
                 else:
                     self.datas.append(odata)
+
+        if getter_funcs:
+            while getter_funcs:
+                data, name, getter_func = getter_funcs.popleft()
+                data[name] = getter_func()
         self.geted = True
         return self.datas
 
