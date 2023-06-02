@@ -178,7 +178,7 @@ class Loader(object):
             self.geted = True
             return self.datas
 
-        if self.valuer_type & 0x03 != 0:
+        if self.valuer_type in (0x01, 0x03):
             GeneratorType, GeneratorFunctionTypes = types.GeneratorType, (types.FunctionType, types.GeneratorType)
             oyield_generates, oyields, ofuncs = deque(), {}, {}
             while datas:
