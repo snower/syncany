@@ -4,7 +4,7 @@
 
 import copy
 import types
-from collections import defaultdict
+from collections import defaultdict, deque
 from .loader import Loader
 from ..valuers.valuer import Contexter, ContextRunner, ContextDataer, LoadAllFieldsException
 
@@ -117,8 +117,10 @@ class DBLoader(Loader):
             if loader_contexter is False:
                 if not self.valuer_type:
                     return self.fast_get()
-                if self.valuer_type == 0x02:
-                    return self.fast_aggregate_get()
+                if self.valuer_type & 0x06 != 0:
+                    if self.valuer_type == 0x02:
+                        return self.fast_aggregate_get()
+                    return self.fast_patition_aggregate_get()
                 return super(DBLoader, self).get()
 
             if loader_contexter is not None:
@@ -243,6 +245,91 @@ class DBLoader(Loader):
                 ofuncs.clear()
             else:
                 self.datas.append(odata)
+        self.geted = True
+        return self.datas
+
+    def fast_patition_aggregate_get(self):
+        datas, self.datas = self.datas, []
+        datas.reverse()
+        FunctionType, ofuncs, getter_funcs = types.FunctionType, {}, deque()
+
+        if not self.intercepts:
+            while datas:
+                data, odata, = datas.pop(), {}
+                for name, valuer in self.schema.items():
+                    value = valuer.fill_get(data)
+                    if isinstance(value, FunctionType):
+                        ofuncs[name] = value
+                        odata[name] = None
+                    else:
+                        odata[name] = value
+
+                if ofuncs:
+                    has_func_data = False
+                    for name, ofunc in ofuncs.items():
+                        try:
+                            value = ofunc(odata)
+                            if isinstance(value, FunctionType):
+                                getter_funcs.append((odata, name, value))
+                                odata[name] = None
+                            else:
+                                odata[name] = value
+                            has_func_data = True
+                        except StopIteration:
+                            continue
+                    if has_func_data:
+                        self.datas.append(odata)
+                    ofuncs.clear()
+                else:
+                    self.datas.append(odata)
+
+            if getter_funcs:
+                while getter_funcs:
+                    data, name, getter_func = getter_funcs.popleft()
+                    data[name] = getter_func()
+            self.geted = True
+            return self.datas
+
+        if len(self.intercepts) == 1:
+            intercept = self.intercepts[0]
+            check_intercepts = lambda cdata: not intercept.fill_get(cdata)
+        else:
+            check_intercepts = self.check_intercepts
+        while datas:
+            data, odata, = datas.pop(), {}
+            for name, valuer in self.schema.items():
+                value = valuer.fill_get(data)
+                if isinstance(value, FunctionType):
+                    ofuncs[name] = value
+                    odata[name] = None
+                else:
+                    odata[name] = value
+
+            if check_intercepts(odata):
+                continue
+            if ofuncs:
+                has_func_data = False
+                for name, ofunc in ofuncs.items():
+                    try:
+                        value = ofunc(odata)
+                        if isinstance(value, FunctionType):
+                            getter_funcs.append((odata, name, value))
+                            odata[name] = None
+                        else:
+                            odata[name] = value
+                        has_func_data = True
+                    except StopIteration:
+                        continue
+                if has_func_data:
+                    self.datas.append(odata)
+                ofuncs.clear()
+            else:
+                self.datas.append(odata)
+
+        if getter_funcs:
+            while getter_funcs:
+                data, name, getter_func = getter_funcs.popleft()
+                data[name] = getter_func()
         self.geted = True
         return self.datas
 
