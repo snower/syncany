@@ -117,9 +117,9 @@ class DBLoader(Loader):
             if loader_contexter is False:
                 if not self.valuer_type:
                     return self.fast_get()
-                if self.valuer_type in (0x02, 0x04, 0x06):
-                    if self.valuer_type == 0x02:
-                        return self.fast_aggregate_get()
+                if self.valuer_type == 0x02:
+                    return self.fast_aggregate_get()
+                if self.valuer_type in (0x04, 0x06):
                     return self.fast_patition_aggregate_get()
                 return super(DBLoader, self).get()
 

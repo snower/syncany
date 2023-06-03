@@ -231,7 +231,8 @@ class Loader(object):
                                 except StopIteration:
                                     oyields.pop(name)
                             if oyield_oyields:
-                                oyield_generates.append((oyield_odata, oyield_oyields, oyield_ofuncs))
+                                oyield_generates.appendleft((odata, oyields, ofuncs))
+                                odata, oyields, ofuncs = oyield_odata, oyield_oyields, oyield_ofuncs
                                 continue
 
                             if has_oyield_data or not has_append_data:
@@ -328,7 +329,8 @@ class Loader(object):
                             except StopIteration:
                                 oyields.pop(name)
                         if oyield_oyields:
-                            oyield_generates.append((oyield_odata, oyield_oyields, oyield_ofuncs))
+                            oyield_generates.appendleft((odata, oyields, ofuncs))
+                            odata, oyields, ofuncs = oyield_odata, oyield_oyields, oyield_ofuncs
                             continue
 
                         if has_oyield_data or not has_append_data:
