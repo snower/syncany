@@ -18,12 +18,14 @@ class MakeValuer(Valuer):
         self.value_wait_loaded = self.check_wait_loaded()
         self.value_is_yield = True if self.value_wait_loaded else self.check_is_yield()
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
+        self.return_is_aggregate = True if self.return_valuer and self.return_valuer.is_aggregate() else False
 
     def clone_init(self, from_valuer):
         super(MakeValuer, self).clone_init(from_valuer)
         self.value_wait_loaded = from_valuer.value_wait_loaded
         self.value_is_yield = from_valuer.value_is_yield
         self.wait_loaded = from_valuer.wait_loaded
+        self.return_is_aggregate = from_valuer.return_is_aggregate
 
     def check_wait_loaded(self):
         if isinstance(self.value_valuer, dict):
@@ -250,7 +252,10 @@ class MakeValuer(Valuer):
                 if oyield_value:
                     yield self.get_yield(ovalue, oyield_value)
                 elif self.return_valuer:
-                    yield self.return_valuer.fill_get(ovalue)
+                    if self.return_is_aggregate:
+                        yield self.get_aggregate(ovalue)
+                    else:
+                        yield self.return_valuer.fill_get(ovalue)
                 else:
                     yield ovalue
         elif isinstance(yield_value, list):
@@ -277,7 +282,10 @@ class MakeValuer(Valuer):
                 if oyield_value:
                     yield self.get_yield(ovalue, oyield_value)
                 elif self.return_valuer:
-                    yield self.return_valuer.fill_get(ovalue)
+                    if self.return_is_aggregate:
+                        yield self.get_aggregate(ovalue)
+                    else:
+                        yield self.return_valuer.fill_get(ovalue)
                 else:
                     yield ovalue
         else:
@@ -288,7 +296,10 @@ class MakeValuer(Valuer):
                     if isinstance(ovalue, GeneratorType):
                         yield self.get_yield(None, ovalue)
                     elif self.return_valuer:
-                        yield self.return_valuer.fill_get(self.do_filter(ovalue))
+                        if self.return_is_aggregate:
+                            yield self.get_aggregate(self.do_filter(ovalue))
+                        else:
+                            yield self.return_valuer.fill_get(self.do_filter(ovalue))
                     else:
                         yield self.do_filter(ovalue)
                 except StopIteration:
@@ -298,6 +309,9 @@ class MakeValuer(Valuer):
                         else:
                             yield self.do_filter(value)
                     break
+
+    def get_aggregate(self, value):
+        return self.return_valuer.clone(inherited=True).fill_get(value)
 
     def childs(self):
         childs = []
@@ -371,3 +385,14 @@ class ContextMakeValuer(MakeValuer):
                 self.contexter.values.pop(self.value_context_id)
             return
         self.contexter.values[self.value_context_id] = v
+
+    def get_aggregate(self, value):
+        contexter_values = self.contexter.create_inherit_values(self.contexter.values)
+        self.return_valuer.contexter.values = contexter_values
+        aggregate_value = self.return_valuer.fill_get(value)
+        if isinstance(aggregate_value, types.FunctionType):
+            def calculate_value(cdata):
+                self.return_valuer.contexter.values = contexter_values
+                return aggregate_value(cdata)
+            return calculate_value
+        return aggregate_value
