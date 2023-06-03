@@ -2,6 +2,7 @@
 # 2020/6/29
 # create by: snower
 
+import types
 from .valuer import Valuer
 
 
@@ -15,11 +16,13 @@ class MakeValuer(Valuer):
     def new_init(self):
         super(MakeValuer, self).new_init()
         self.value_wait_loaded = self.check_wait_loaded()
+        self.value_is_yield = True if self.value_wait_loaded else self.check_is_yield()
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(MakeValuer, self).clone_init(from_valuer)
         self.value_wait_loaded = from_valuer.value_wait_loaded
+        self.value_is_yield = from_valuer.value_is_yield
         self.wait_loaded = from_valuer.wait_loaded
 
     def check_wait_loaded(self):
@@ -38,6 +41,20 @@ class MakeValuer(Valuer):
                 return True
         return False
 
+    def check_is_yield(self):
+        if isinstance(self.value_valuer, dict):
+            for _, (key_valuer, value_valuer) in self.value_valuer.items():
+                if value_valuer.is_yield():
+                    return True
+        elif isinstance(self.value_valuer, list):
+            for value_valuer in self.value_valuer:
+                if value_valuer.is_yield():
+                    return True
+        elif isinstance(self.value_valuer, Valuer):
+            if self.value_valuer.is_yield():
+                return True
+        return False
+
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
@@ -48,12 +65,12 @@ class MakeValuer(Valuer):
         if isinstance(self.value_valuer, dict):
             for key, (key_valuer, value_valuer) in self.value_valuer.items():
                 key_valuer.mount_loader(is_return_getter=False, **kwargs)
-                value_valuer.mount_loader(is_return_getter=False, **kwargs)
+                value_valuer.mount_loader(is_return_getter=is_return_getter and True, **kwargs)
         elif isinstance(self.value_valuer, list):
             for valuer in self.value_valuer:
-                valuer.mount_loader(is_return_getter=False, **kwargs)
+                valuer.mount_loader(is_return_getter=is_return_getter and True, **kwargs)
         elif isinstance(self.value_valuer, Valuer):
-            self.value_valuer.mount_loader(is_return_getter=False, **kwargs)
+            self.value_valuer.mount_loader(is_return_getter=is_return_getter and True, **kwargs)
         if self.return_valuer:
             self.return_valuer.mount_loader(is_return_getter=is_return_getter and True, **kwargs)
 
@@ -84,7 +101,7 @@ class MakeValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
 
-        if not self.value_wait_loaded:
+        if not self.value_wait_loaded and not self.value_is_yield:
             if isinstance(self.value_valuer, dict):
                 value = {key_valuer.fill_get(data): value_valuer.fill_get(data)
                          for key, (key_valuer, value_valuer) in self.value_valuer.items()}
@@ -115,19 +132,40 @@ class MakeValuer(Valuer):
         return self
 
     def get(self):
-        if self.value_wait_loaded:
+        if self.value_wait_loaded or self.value_is_yield:
+            GeneratorType = types.GeneratorType
             if isinstance(self.value_valuer, dict):
-                value = {key_valuer.get(): value_valuer.get()
-                         for key, (key_valuer, value_valuer) in self.value_valuer.items()}
+                value, yield_value = {}, {}
+                for key, (key_valuer, value_valuer) in self.value_valuer.items():
+                    key_value, value_value = key_valuer.get(), value_valuer.get()
+                    if isinstance(value_value, GeneratorType):
+                        yield_value[key] = (key_value, value_value)
+                        value[key_value] = None
+                    else:
+                        value[key_value] = value_value
             elif isinstance(self.value_valuer, list):
-                value = [value_valuer.get() for value_valuer in self.value_valuer]
+                value, yield_value = [], []
+                for i in range(len(self.value_valuer)):
+                    value_value = self.value_valuer[i].get()
+                    if isinstance(value_value, GeneratorType):
+                        yield_value.append((i, value_value))
+                        value.append(None)
+                    else:
+                        value.append(value_value)
             elif isinstance(self.value_valuer, Valuer):
-                value = self.do_filter(self.value_valuer.get())
+                value_value, yield_value = self.value_valuer.get(), None
+                if isinstance(value_value, GeneratorType):
+                    value, yield_value = None, value_value
+                else:
+                    value = self.do_filter(value_value)
             else:
-                value = self.do_filter(None)
+                value, yield_value = self.do_filter(None), None
+            if yield_value:
+                return self.get_yield(value, yield_value, False)
             if self.return_valuer:
                 return self.return_valuer.fill_get(value)
             return value
+
         if self.return_valuer:
             if not self.wait_loaded:
                 return self.value
@@ -138,6 +176,40 @@ class MakeValuer(Valuer):
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
+
+        if self.value_is_yield:
+            GeneratorType = types.GeneratorType
+            if isinstance(self.value_valuer, dict):
+                value, yield_value = {}, {}
+                for key, (key_valuer, value_valuer) in self.value_valuer.items():
+                    key_value, value_value = key_valuer.fill_get(data), value_valuer.fill_get(data)
+                    if isinstance(value_value, GeneratorType):
+                        yield_value[key] = (key_value, value_value)
+                        value[key_value] = None
+                    else:
+                        value[key_value] = value_value
+            elif isinstance(self.value_valuer, list):
+                value, yield_value = [], []
+                for i in range(len(self.value_valuer)):
+                    value_value = self.value_valuer[i].fill_get(data)
+                    if isinstance(value_value, GeneratorType):
+                        yield_value.append((i, value_value))
+                        value.append(None)
+                    else:
+                        value.append(value_value)
+            elif isinstance(self.value_valuer, Valuer):
+                value_value, yield_value = self.value_valuer.fill_get(data), None
+                if isinstance(value_value, GeneratorType):
+                    value, yield_value = None, value_value
+                else:
+                    value = self.do_filter(value_value)
+            else:
+                value, yield_value = self.do_filter(None), None
+            if yield_value:
+                return self.get_yield(value, yield_value, False)
+            if self.return_valuer:
+                return self.return_valuer.fill_get(value)
+            return value
 
         if isinstance(self.value_valuer, dict):
             value = {key_valuer.fill_get(data): value_valuer.fill_get(data)
@@ -151,6 +223,81 @@ class MakeValuer(Valuer):
         if self.return_valuer:
             return self.return_valuer.fill_get(value)
         return value
+
+    def get_yield(self, value, yield_value, has_yield_data=True):
+        GeneratorType = types.GeneratorType
+        if isinstance(value, dict):
+            while True:
+                has_value, ovalue, oyield_value = False, value.copy(), {}
+                for key, (key_value, value_value) in yield_value.items():
+                    try:
+                        value_value = value_value.send(None)
+                        if isinstance(value_value, GeneratorType):
+                            oyield_value[key] = (key_value, value_value)
+                        else:
+                            ovalue[key_value] = value_value
+                        has_value = True
+                    except StopIteration:
+                        ovalue[key_value] = None
+                if not has_value:
+                    if not has_yield_data:
+                        if self.return_valuer:
+                            yield self.return_valuer.fill_get(value)
+                        else:
+                            yield value
+                    break
+                has_yield_data = True
+                if oyield_value:
+                    yield self.get_yield(ovalue, oyield_value)
+                elif self.return_valuer:
+                    yield self.return_valuer.fill_get(ovalue)
+                else:
+                    yield ovalue
+        elif isinstance(yield_value, list):
+            while True:
+                has_value, ovalue, oyield_value = False, value[:], []
+                for i, value_value in yield_value:
+                    try:
+                        value_value = value_value.send(None)
+                        if isinstance(value_value, GeneratorType):
+                            oyield_value.append((i, value_value))
+                        else:
+                            ovalue[i] = value_value
+                        has_value = True
+                    except StopIteration:
+                        ovalue[i] = None
+                if not has_value:
+                    if not has_yield_data:
+                        if self.return_valuer:
+                            yield self.return_valuer.fill_get(value)
+                        else:
+                            yield value
+                    break
+                has_yield_data = True
+                if oyield_value:
+                    yield self.get_yield(ovalue, oyield_value)
+                elif self.return_valuer:
+                    yield self.return_valuer.fill_get(ovalue)
+                else:
+                    yield ovalue
+        else:
+            while True:
+                try:
+                    ovalue = yield_value.send(None)
+                    has_yield_data = True
+                    if isinstance(ovalue, GeneratorType):
+                        yield self.get_yield(None, ovalue)
+                    elif self.return_valuer:
+                        yield self.return_valuer.fill_get(self.do_filter(ovalue))
+                    else:
+                        yield self.do_filter(ovalue)
+                except StopIteration:
+                    if not has_yield_data:
+                        if self.return_valuer:
+                            yield self.return_valuer.fill_get(self.do_filter(value))
+                        else:
+                            yield self.do_filter(value)
+                    break
 
     def childs(self):
         childs = []
