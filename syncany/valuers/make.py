@@ -387,12 +387,19 @@ class ContextMakeValuer(MakeValuer):
         self.contexter.values[self.value_context_id] = v
 
     def get_aggregate(self, value):
-        contexter_values = self.contexter.create_inherit_values(self.contexter.values)
-        self.return_valuer.contexter.values = contexter_values
-        aggregate_value = self.return_valuer.fill_get(value)
-        if isinstance(aggregate_value, types.FunctionType):
-            def calculate_value(cdata):
-                self.return_valuer.contexter.values = contexter_values
-                return aggregate_value(cdata)
-            return calculate_value
-        return aggregate_value
+        contexter_values = self.contexter.values
+        return_contexter_values = self.contexter.create_inherit_values(contexter_values)
+        self.return_valuer.contexter.values = return_contexter_values
+        try:
+            aggregate_value = self.return_valuer.fill_get(value)
+            if isinstance(aggregate_value, types.FunctionType):
+                def calculate_value(cdata):
+                    self.return_valuer.contexter.values = return_contexter_values
+                    try:
+                        return aggregate_value(cdata)
+                    finally:
+                        self.contexter.values = contexter_values
+                return calculate_value
+            return aggregate_value
+        finally:
+            self.contexter.values = contexter_values
