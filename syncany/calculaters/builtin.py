@@ -5,13 +5,9 @@
 import struct
 import math
 import hashlib
-import datetime
-import uuid
-
-import pytz
 import json
 import re
-from ..utils import get_timezone, sorted_by_keys
+from ..utils import sorted_by_keys
 from .calculater import Calculater, TypeFormatCalculater, TypingCalculater, MathematicalCalculater
 from ..filters.builtin import *
 try:
