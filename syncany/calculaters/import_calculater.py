@@ -2,13 +2,65 @@
 # 2020/11/3
 # create by: snower
 
+import datetime
+import uuid
 import types
 import traceback
 from ..logger import get_logger
 from .calculater import Calculater
+from ..filters import IntFilter, FloatFilter, StringFilter, BytesFilter, BooleanFilter, ArrayFilter, SetFilter, \
+    MapFilter, ObjectIdFilter, UUIDFilter, DateTimeFilter, DateFilter, TimeFilter
+try:
+    from bson.objectid import ObjectId
+except ImportError:
+    ObjectId = None
 
 
 IMPORT_MODULES = {}
+
+
+def parse_final_filter(module_or_func):
+    if not callable(module_or_func):
+        return None
+    return_type = None
+    if isinstance(module_or_func, (types.FunctionType, types.BuiltinFunctionType, types.LambdaType)):
+        if hasattr(module_or_func, "__annotations__"):
+            return_type = module_or_func.__annotations__.get("return")
+    else:
+        if hasattr(module_or_func, "__call__") and hasattr(module_or_func.__call__, "__annotations__"):
+            return_type = module_or_func.__annotations__.get("return")
+    if return_type is None:
+        return None
+    if return_type is int or issubclass(return_type, int):
+        final_filter = IntFilter.default()
+    elif return_type is float or issubclass(return_type, float):
+        final_filter = FloatFilter.default()
+    elif return_type is str or issubclass(return_type, str):
+        final_filter = StringFilter.default()
+    elif return_type is bool or issubclass(return_type, bool):
+        final_filter = BooleanFilter.default()
+    elif return_type is datetime.datetime or issubclass(return_type, datetime.datetime):
+        final_filter = DateTimeFilter.default()
+    elif return_type is datetime.date or issubclass(return_type, datetime.date):
+        final_filter = DateFilter.default()
+    elif return_type is datetime.time or issubclass(return_type, datetime.time):
+        final_filter = TimeFilter.default()
+    elif return_type is bytes or issubclass(return_type, bytes):
+        final_filter = BytesFilter.default()
+    elif return_type is list or issubclass(return_type, list):
+        final_filter = ArrayFilter.default()
+    elif return_type is set or issubclass(return_type, set):
+        final_filter = SetFilter.default()
+    elif return_type is dict or issubclass(return_type, dict):
+        final_filter = MapFilter.default()
+    elif ObjectId is not None and return_type is ObjectId or issubclass(return_type, ObjectId):
+        final_filter = ObjectIdFilter.default()
+    elif return_type is uuid.UUID or issubclass(return_type, uuid.UUID):
+        final_filter = UUIDFilter.default()
+    else:
+        final_filter = None
+    setattr(module_or_func, "get_final_filter", lambda: final_filter)
+    return final_filter
 
 
 class ImportCalculater(Calculater):
@@ -52,7 +104,7 @@ class ImportCalculater(Calculater):
     def get_final_filter(self):
         if hasattr(self.module_or_func, "get_final_filter"):
             return self.module_or_func.get_final_filter()
-        return None
+        return parse_final_filter(self.module_or_func)
 
 
 def create_import_calculater(name, module_or_func):

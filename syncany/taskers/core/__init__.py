@@ -14,14 +14,14 @@ from ..config import load_config
 from .states import States
 from .option import DataValuerOutputerOption
 from ...calculaters.import_calculater import create_import_calculater
-from ...utils import get_expression_name, gen_runner_id
-from ...valuers import Contexter
+from ...utils import get_expression_name, gen_runner_id, ensure_timezone
+from ...filters import ArrayFilter
+from ...valuers import Contexter, DataValuer
 from .valuer_compiler import ValuerCompiler
 from .valuer_creater import ValuerCreater
 from .loader_creater import LoaderCreater
 from .outputer_creater import OutputerCreater
 from ...loaders.cache import CacheLoader
-from ...loaders.db_join import DBJoinLoader
 from ...hook import PipelinesHooker
 from ...errors import LoaderUnknownException, OutputerUnknownException, \
     ValuerUnknownException, DatabaseUnknownException, CalculaterUnknownException, \
@@ -30,6 +30,40 @@ from ...errors import LoaderUnknownException, OutputerUnknownException, \
 
 class ContinueTasker(Exception):
     pass
+
+
+class LoadOutputDataValuer(DataValuer):
+    def __init__(self, load_valuer, *args, **kwargs):
+        self.load_valuer = load_valuer
+        super(LoadOutputDataValuer, self).__init__(*args, **kwargs)
+
+    @property
+    def filter(self):
+        if hasattr(self, "_cached_loader_filter"):
+            return self._cached_loader_filter
+        final_filter = self.load_valuer.get_final_filter()
+        setattr(self, "_cached_loader_filter", final_filter)
+
+        def do_filter(value):
+            if not final_filter:
+                if isinstance(value, datetime.datetime):
+                    value = ensure_timezone(value)
+                return value
+
+            if isinstance(value, list):
+                if isinstance(final_filter, ArrayFilter):
+                    return value
+                return [final_filter.filter(v) for v in value]
+            return final_filter.filter(value)
+        self.do_filter = do_filter
+        return final_filter
+
+    def clone(self, contexter=None, **kwargs):
+        valuer = self.__class__(self.load_valuer, self.return_valuer, self.inherit_valuers, self.key,
+                                self._cached_loader_filter if hasattr(self, "_cached_loader_filter") else None,
+                                from_valuer=self)
+        valuer.option = self.option
+        return valuer
 
 
 class CoreTasker(Tasker):
@@ -898,11 +932,11 @@ class CoreTasker(Tasker):
             for name, valuer in self.schema.items():
                 if not name or (name.startswith("__") and name.endswith("__")):
                     continue
-                valuer = self.create_valuer(self.valuer_compiler.compile_data_valuer(name, None))
-                if not valuer:
-                    continue
                 if name in self.loader.schema:
-                    valuer.filter = self.loader.schema[name].get_final_filter()
+                    valuer = LoadOutputDataValuer(self.loader.schema[name], return_valuer=None,
+                                                  inherit_valuers=None, key=name)
+                else:
+                    valuer = DataValuer(return_valuer=None, inherit_valuers=None, key=name)
                 if name in self.config["options"]["schema"] and \
                         self.config["options"]["schema"][name].get("chaned_require_update"):
                     valuer.option = DataValuerOutputerOption(True)
@@ -916,6 +950,8 @@ class CoreTasker(Tasker):
                 self.outputer.add_valuer(name, valuer)
             for key_matcher in self.loader.key_matchers:
                 key_matcher.add_key_event(on_key_event)
+        if self.outputer.is_append():
+            return
 
         for query in self.config["querys"]:
             query_name = query["name"]

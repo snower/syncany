@@ -139,11 +139,15 @@ class Contexter(object):
 
 class Valuer(object):
     KEY_GETTER_CACHES = {}
+    key = None
+    filter = None
     value = None
 
     def __init__(self, key, filter=None, from_valuer=None):
-        self.key = key
-        self.filter = filter
+        if key is not None:
+            self.key = key
+        if filter is not None:
+            self.filter = filter
         if from_valuer is None:
             self.valuer_id = id(self)
             self.new_init()
@@ -278,21 +282,33 @@ class Valuer(object):
         return self.filter
 
     def require_loaded(self):
+        if hasattr(self, "_cached_require_loaded"):
+            return self._cached_require_loaded
         for child in self.childs():
             if child.require_loaded():
+                setattr(self, "_cached_require_loaded", True)
                 return True
+        setattr(self, "_cached_require_loaded", False)
         return False
 
     def is_aggregate(self):
+        if hasattr(self, "_cached_is_aggregate"):
+            return self._cached_is_aggregate
         for child in self.childs():
             if child.is_aggregate():
+                setattr(self, "_cached_is_aggregate", True)
                 return True
+        setattr(self, "_cached_is_aggregate", False)
         return False
 
     def is_yield(self):
+        if hasattr(self, "_cached_is_yield"):
+            return self._cached_is_yield
         for child in self.childs():
             if child.is_yield():
+                setattr(self, "_cached_is_yield", True)
                 return True
+        setattr(self, "_cached_is_yield", False)
         return False
 
 

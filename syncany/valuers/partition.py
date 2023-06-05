@@ -418,6 +418,9 @@ class PartitionValuer(Valuer):
     def is_aggregate(self):
         return True
 
+    def is_yield(self):
+        return False
+
 
 class ContextPartitionValuer(PartitionValuer):
     def __init__(self, *args, **kwargs):

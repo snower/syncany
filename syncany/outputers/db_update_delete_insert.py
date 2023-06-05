@@ -4,8 +4,9 @@
 
 import math
 from collections import defaultdict
-from .db import DBOutputer
+from .db import DBOutputer, LoadDataValue
 from ..valuers.valuer import LoadAllFieldsException
+
 
 class DBUpdateDeleteInsertOutputer(DBOutputer):
     def __init__(self, *args, **kwargs):
@@ -62,7 +63,7 @@ class DBUpdateDeleteInsertOutputer(DBOutputer):
             data, values = self.load_datas[i], {}
             primary_key = self.get_data_primary_key(data)
             for key, field in self.schema.items():
-                values[key] = field.clone().fill(data)
+                values[key] = LoadDataValue(field.fill_get(data))
                 setattr(values[key], "value_type_class", data.get(key).__class__)
 
             self.load_data_keys[primary_key] = values

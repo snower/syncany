@@ -6,6 +6,7 @@ import math
 from collections import defaultdict
 from .db import DBOutputer
 
+
 class DBDeleteInsertOutputer(DBOutputer):
     def remove(self):
         delete = self.db.delete(self.name, self.primary_keys)

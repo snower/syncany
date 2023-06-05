@@ -40,3 +40,9 @@ class ConstValuer(Valuer):
 
     def require_loaded(self):
         return False
+
+    def is_aggregate(self):
+        return False
+
+    def is_yield(self):
+        return False

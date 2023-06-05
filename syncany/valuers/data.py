@@ -153,6 +153,18 @@ class DataValuer(Valuer):
         return self.filter
 
     def require_loaded(self):
+        if self.return_valuer:
+            return self.return_valuer.require_loaded()
+        return False
+
+    def is_aggregate(self):
+        if self.return_valuer:
+            return self.return_valuer.is_aggregate()
+        return False
+
+    def is_yield(self):
+        if self.return_valuer:
+            return self.return_valuer.is_aggregate()
         return False
 
 

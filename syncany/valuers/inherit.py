@@ -85,6 +85,15 @@ class InheritValuer(Valuer):
     def get_final_filter(self):
         return None
 
+    def require_loaded(self):
+        return False
+
+    def is_aggregate(self):
+        return False
+
+    def is_yield(self):
+        return False
+
 
 class ContextInheritValuer(InheritValuer):
     def __init__(self, *args, **kwargs):
@@ -201,6 +210,12 @@ class InheritChildValuer(Valuer):
         return self.value_valuer.get_final_filter()
 
     def require_loaded(self):
+        return False
+
+    def is_aggregate(self):
+        return False
+
+    def is_yield(self):
         return False
 
 

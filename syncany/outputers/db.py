@@ -2,7 +2,8 @@
 # 18/8/8
 # create by: snower
 
-from .outputer import Outputer
+from .outputer import Outputer, LoadDataValue
+
 
 class DBOutputer(Outputer):
     def __init__(self, db, name, *args, **kwargs):

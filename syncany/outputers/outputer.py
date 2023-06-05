@@ -4,6 +4,15 @@
 
 from collections import defaultdict
 
+
+class LoadDataValue(object):
+    def __init__(self, value):
+        self.value = value
+
+    def get(self):
+        return self.value
+
+
 class Outputer(object):
     def __init__(self, primary_keys, **kwargs):
         self.primary_outputer = None
@@ -36,6 +45,9 @@ class Outputer(object):
 
     def store(self, datas):
         self.datas = datas
+
+    def is_append(self):
+        return False
 
     def is_dynamic_schema(self):
         return False

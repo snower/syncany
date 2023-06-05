@@ -5,6 +5,7 @@
 import math
 from .db import DBOutputer
 
+
 class DBInsertOutputer(DBOutputer):
     def insert(self, datas):
         if self.insert_batch > 0:
@@ -23,3 +24,6 @@ class DBInsertOutputer(DBOutputer):
         if not datas:
             return
         self.insert(datas)
+
+    def is_append(self):
+        return True
