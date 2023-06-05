@@ -13,6 +13,7 @@ import json
 import re
 from ..utils import get_timezone, sorted_by_keys
 from .calculater import Calculater, TypeFormatCalculater, TypingCalculater, MathematicalCalculater
+from ..filters.builtin import *
 try:
     from bson.objectid import ObjectId
 except ImportError:
@@ -48,6 +49,9 @@ class TypeCalculater(TypingCalculater):
         if isinstance(value, datetime.time):
             return "time"
         return type(value).__module__ + "." + type(value).__name__
+
+    def get_final_filter(self):
+        return StringFilter.default()
 
 
 class MakeCalculater(Calculater):
@@ -291,6 +295,9 @@ class RangeCalculater(Calculater):
     def calculate(self, *args):
         return range(*args)
 
+    def get_final_filter(self):
+        return ArrayFilter.default()
+
 
 class AddCalculater(MathematicalCalculater):
     def mathematical_calculate(self, left_value, right_value, args):
@@ -408,6 +415,9 @@ class SubstringCalculater(TypingCalculater):
             return value[args[1]: args[2]]
         return value[args[1]: args[2]: args[3]]
 
+    def get_final_filter(self):
+        return StringFilter.default()
+
 
 class SplitCalculater(TypingCalculater):
     def typing_calculate(self, value, args):
@@ -419,6 +429,9 @@ class SplitCalculater(TypingCalculater):
             return value.decode("utf-8").split(args[1])
         return str(value).split(args[1])
 
+    def get_final_filter(self):
+        return ArrayFilter.default()
+
 
 class JoinCalculater(Calculater):
     def calculate(self, *args):
@@ -427,6 +440,9 @@ class JoinCalculater(Calculater):
         if args[0] is None:
             return ""
         return str(args[1]).join([str(value) for value in args[0]])
+
+    def get_final_filter(self):
+        return StringFilter.default()
 
 
 class NowCalculater(Calculater):
@@ -473,6 +489,10 @@ class NowCalculater(Calculater):
                                  hour if hour is not None else dt.hour, minute if minute is not None else dt.minute,
                                  second if second is not None else dt.second, microsecond if microsecond is not None else dt.microsecond,
                                  tzinfo=dt.tzinfo)
+
+
+    def get_final_filter(self):
+        return DateTimeFilter.default()
 
 
 
@@ -948,6 +968,9 @@ class SortCalculater(Calculater):
         keys = args[2] if len(args) >= 3 else None
         return sorted_by_keys(args[0], keys=keys,
                               reverse=True if len(args) >= 2 and args[1] else False)
+
+    def get_final_filter(self):
+        return ArrayFilter.default()
 
 
 class StringCalculater(Calculater):

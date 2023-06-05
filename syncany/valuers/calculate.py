@@ -128,7 +128,9 @@ class CalculateValuer(Valuer):
         if self.filter:
             return self.filter
 
-        final_filter = None
+        final_filter = self.calculater.get_final_filter()
+        if final_filter is not None:
+            return final_filter
         for valuer in self.args_valuers:
             filter = valuer.get_final_filter()
             if filter is None:

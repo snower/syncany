@@ -49,6 +49,11 @@ class ImportCalculater(Calculater):
                                  traceback.format_exc())
             return None
 
+    def get_final_filter(self):
+        if hasattr(self.module_or_func, "get_final_filter"):
+            return self.module_or_func.get_final_filter()
+        return None
+
 
 def create_import_calculater(name, module_or_func):
     module_id = (name, id(module_or_func))

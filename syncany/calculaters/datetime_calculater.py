@@ -6,6 +6,7 @@ import datetime
 import pytz
 from ..utils import get_timezone, parse_datetime
 from .calculater import Calculater
+from ..filters.builtin import DateTimeFilter
 
 
 class TimeWindowCalculater(Calculater):
@@ -60,6 +61,9 @@ class TimeWindowCalculater(Calculater):
             return dt
         return None
 
+    def get_final_filter(self):
+        return DateTimeFilter.default()
+
 
 class DateTimeCalculater(Calculater):
     def calculate(self, *args):
@@ -96,3 +100,6 @@ class DateTimeCalculater(Calculater):
                                  hour if hour is not None else dt.hour, minute if minute is not None else dt.minute,
                                  second if second is not None else dt.second, microsecond if microsecond is not None else dt.microsecond,
                                  tzinfo=dt.tzinfo)
+
+    def get_final_filter(self):
+        return DateTimeFilter.default()

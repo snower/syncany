@@ -29,6 +29,9 @@ class ConvertIntCalculater(Calculater):
             return result if result else [0]
         return self.filter.filter(args[0])
 
+    def get_final_filter(self):
+        return self.filter
+
 
 class ConvertFloatCalculater(Calculater):
     def __init__(self, *args, **kwargs):
@@ -54,6 +57,9 @@ class ConvertFloatCalculater(Calculater):
             return result if result else [0.0]
         return self.filter.filter(args[0])
 
+    def get_final_filter(self):
+        return self.filter
+
 
 class ConvertStringCalculater(Calculater):
     def __init__(self, *args, **kwargs):
@@ -69,6 +75,9 @@ class ConvertStringCalculater(Calculater):
         if isinstance(args[0], list):
             return [self.filter.filter(data) for data in args[0]]
         return self.filter.filter(args[0])
+
+    def get_final_filter(self):
+        return self.filter
 
 
 class ConvertBytesCalculater(Calculater):
@@ -86,6 +95,9 @@ class ConvertBytesCalculater(Calculater):
             return [self.filter.filter(data) for data in args[0]]
         return self.filter.filter(args[0])
 
+    def get_final_filter(self):
+        return self.filter
+
 
 class ConvertBooleanCalculater(Calculater):
     def __init__(self, *args, **kwargs):
@@ -102,6 +114,9 @@ class ConvertBooleanCalculater(Calculater):
             return [self.filter.filter(data) for data in args[0]]
         return self.filter.filter(args[0])
 
+    def get_final_filter(self):
+        return self.filter
+
 
 class ConvertArrayCalculater(Calculater):
     def __init__(self, *args, **kwargs):
@@ -114,6 +129,9 @@ class ConvertArrayCalculater(Calculater):
             return []
         self.filter.args = args[1] if len(args) >= 2 else None
         return self.filter.filter(args[0])
+
+    def get_final_filter(self):
+        return self.filter
 
 
 class ConvertSetCalculater(Calculater):
@@ -128,6 +146,9 @@ class ConvertSetCalculater(Calculater):
         self.filter.args = args[1] if len(args) >= 2 else None
         return self.filter.filter(args[0])
 
+    def get_final_filter(self):
+        return self.filter
+
 
 class ConvertMapCalculater(Calculater):
     def __init__(self, *args, **kwargs):
@@ -140,6 +161,9 @@ class ConvertMapCalculater(Calculater):
             return {}
         self.filter.args = args[1] if len(args) >= 2 else None
         return self.filter.filter(args[0])
+
+    def get_final_filter(self):
+        return self.filter
 
 
 class ConvertObjectIdCalculater(Calculater):
@@ -169,6 +193,9 @@ class ConvertObjectIdCalculater(Calculater):
             return result if result else [default_value]
         return self.filter.filter(args[0])
 
+    def get_final_filter(self):
+        return self.filter
+
 
 class ConvertUUIDCalculater(Calculater):
     def __init__(self, *args, **kwargs):
@@ -195,6 +222,9 @@ class ConvertUUIDCalculater(Calculater):
             return result if result else [default_value]
         return self.filter.filter(args[0])
 
+    def get_final_filter(self):
+        return self.filter
+
 
 class ConvertDateTimeCalculater(Calculater):
     def __init__(self, *args, **kwargs):
@@ -216,6 +246,9 @@ class ConvertDateTimeCalculater(Calculater):
                 result.append(value)
             return result if result else [None]
         return self.filter.filter(args[0])
+
+    def get_final_filter(self):
+        return self.filter
 
 
 class ConvertDateCalculater(Calculater):
@@ -239,6 +272,9 @@ class ConvertDateCalculater(Calculater):
             return result if result else [None]
         return self.filter.filter(args[0])
 
+    def get_final_filter(self):
+        return self.filter
+
 
 class ConvertTimeCalculater(Calculater):
     def __init__(self, *args, **kwargs):
@@ -260,3 +296,6 @@ class ConvertTimeCalculater(Calculater):
                 result.append(value)
             return result if result else [None]
         return self.filter.filter(args[0])
+
+    def get_final_filter(self):
+        return self.filter

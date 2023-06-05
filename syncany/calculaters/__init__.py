@@ -2,14 +2,22 @@
 # 18/8/15
 # create by: snower
 
-import types
+import datetime
+import uuid
 from .calculater import Calculater, TypeFormatCalculater, TypingCalculater, MathematicalCalculater
+from ..filters import Filter, IntFilter, FloatFilter, StringFilter, BytesFilter, BooleanFilter, ArrayFilter, SetFilter, \
+    MapFilter, ObjectIdFilter, UUIDFilter, DateTimeFilter, DateFilter, TimeFilter
 from .builtin import *
 from .convert_calculater import *
 from .datetime_calculater import *
 from .transform_calculater import TransformCalculater, TransformVHKCalculater
 from .textline_calculater import TextLineCalculater
 from ..errors import CalculaterUnknownException
+try:
+    from bson.objectid import ObjectId
+except ImportError:
+    ObjectId = None
+
 
 CALCULATERS = {
     "": Calculater,
@@ -136,3 +144,44 @@ def register_calculater(name, calculater=None):
         raise TypeError("is not Calculater")
     CALCULATERS[name] = calculater
     return calculater
+
+def typing_filter(type_or_filter):
+    def _(cls_or_func):
+        def get_final_filter():
+            if issubclass(type_or_filter, Filter):
+                final_filter = type_or_filter.default()
+            elif isinstance(type_or_filter, Filter):
+                final_filter = type_or_filter
+            elif type_or_filter is int or issubclass(type_or_filter, int):
+                final_filter = IntFilter.default()
+            elif type_or_filter is float or issubclass(type_or_filter, float):
+                final_filter = FloatFilter.default()
+            elif type_or_filter is str or issubclass(type_or_filter, str):
+                final_filter = StringFilter.default()
+            elif type_or_filter is bool or issubclass(type_or_filter, bool):
+                final_filter = BooleanFilter.default()
+            elif type_or_filter is datetime.datetime or issubclass(type_or_filter, datetime.datetime):
+                final_filter = DateTimeFilter.default()
+            elif type_or_filter is datetime.date or issubclass(type_or_filter, datetime.date):
+                final_filter = DateFilter.default()
+            elif type_or_filter is datetime.time or issubclass(type_or_filter, datetime.time):
+                final_filter = TimeFilter.default()
+            elif type_or_filter is bytes or issubclass(type_or_filter, bytes):
+                final_filter = BytesFilter.default()
+            elif type_or_filter is list or issubclass(type_or_filter, list):
+                final_filter = ArrayFilter.default()
+            elif type_or_filter is set or issubclass(type_or_filter, set):
+                final_filter = SetFilter.default()
+            elif type_or_filter is dict or issubclass(type_or_filter, dict):
+                final_filter = MapFilter.default()
+            elif ObjectId is not None and type_or_filter is ObjectId or issubclass(type_or_filter, ObjectId):
+                final_filter = ObjectIdFilter.default()
+            elif type_or_filter is uuid.UUID or issubclass(type_or_filter, uuid.UUID):
+                final_filter = UUIDFilter.default()
+            else:
+                final_filter = None
+            setattr(cls_or_func, "get_final_filter", lambda: final_filter)
+            return final_filter
+        setattr(cls_or_func, "get_final_filter", get_final_filter)
+        return cls_or_func
+    return _

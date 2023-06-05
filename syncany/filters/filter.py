@@ -3,6 +3,14 @@
 # create by: snower
 
 class Filter(object):
+    _default_instance = None
+
+    @classmethod
+    def default(cls):
+        if cls._default_instance is None:
+            cls._default_instance = cls()
+        return cls._default_instance
+
     def __init__(self, args=None):
         self.args = args
 

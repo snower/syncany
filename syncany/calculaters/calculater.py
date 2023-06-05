@@ -26,6 +26,9 @@ class Calculater(object):
             return args[0]
         return args
 
+    def get_final_filter(self):
+        return None
+
 
 class TypeFormatCalculater(Calculater):
     def __init__(self, *args, **kwargs):
