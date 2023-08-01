@@ -72,9 +72,24 @@ class ImportCalculater(Calculater):
             attr_names = self.calculate_name.split(".")
             self.module_or_func = self._import_module
             for attr_name in attr_names:
-                if not hasattr(self.module_or_func, attr_name):
-                    raise NotImplementedError("%s not implemented %s" % (self._import_module, self.calculate_name))
-                self.module_or_func = getattr(self.module_or_func, attr_name)
+                if hasattr(self.module_or_func, attr_name):
+                    self.module_or_func = getattr(self.module_or_func, attr_name)
+                    continue
+                try:
+                    lower_attr_name = attr_name.lower()
+                    lower_camel_attr_name = "".join([n[:1].upper() + n[1:] for n in attr_name.split("_")]).lower()
+                    has_module_attr_value = False
+                    for module_attr_name, module_attr_value in self.module_or_func.__dict__.items():
+                        lower_module_attr_name = module_attr_name.lower()
+                        if lower_attr_name == lower_module_attr_name or lower_camel_attr_name == lower_module_attr_name:
+                            self.module_or_func = module_attr_value
+                            has_module_attr_value = True
+                            break
+                    if has_module_attr_value:
+                        continue
+                except AttributeError:
+                    pass
+                raise NotImplementedError("%s not implemented %s" % (self._import_module, self.calculate_name))
         else:
             self.calculate_name = self.name
             if not callable(self._import_module):
