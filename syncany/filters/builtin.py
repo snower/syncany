@@ -5,6 +5,7 @@
 import datetime
 import time
 import types
+from decimal import Decimal
 import pytz
 import binascii
 import uuid
@@ -108,6 +109,56 @@ class FloatFilter(Filter):
             return float(value)
         except:
             return 0.0
+
+
+class DecimalFilter(Filter):
+    def filter(self, value):
+        if isinstance(value, Decimal):
+            return value
+
+        if isinstance(value, float):
+            return Decimal(value)
+
+        if isinstance(value, int):
+            return Decimal(value)
+
+        if value is True:
+            return Decimal(1.0)
+
+        if value is None or value is False:
+            return Decimal(0.0)
+
+        if isinstance(value, datetime.datetime):
+            try:
+                return Decimal(value.timestamp())
+            except:
+                return Decimal(0)
+
+        if isinstance(value, datetime.date):
+            try:
+                return Decimal(datetime.datetime(value.year, value.month, value.day).timestamp())
+            except:
+                return Decimal(0)
+
+        if isinstance(value, datetime.timedelta):
+            return Decimal(value.total_seconds())
+
+        if isinstance(value, (list, tuple, set)):
+            result = []
+            for cv in value:
+                result.append(self.filter(cv))
+            return result
+
+        if isinstance(value, dict):
+            result = {}
+            for ck, cv in value.items():
+                result[ck] = self.filter(cv)
+            return result
+
+        try:
+            return Decimal(value)
+        except:
+            return Decimal(0)
 
 
 class StringFilter(Filter):

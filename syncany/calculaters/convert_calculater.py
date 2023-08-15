@@ -61,6 +61,34 @@ class ConvertFloatCalculater(Calculater):
         return self.filter
 
 
+class ConvertDecimalCalculater(Calculater):
+    def __init__(self, *args, **kwargs):
+        super(ConvertDecimalCalculater, self).__init__(*args, **kwargs)
+
+        self.filter = DecimalFilter()
+
+    def calculate(self, *args):
+        if not args:
+            return Decimal(0.0)
+
+        self.filter.args = args[1] if len(args) >= 2 else None
+        if isinstance(args[0], list):
+            result = []
+            for data in args[0]:
+                try:
+                    value = Decimal(data)
+                except:
+                    value = self.filter.filter(data)
+                    if value == 0:
+                        continue
+                result.append(value)
+            return result if result else [Decimal(0.0)]
+        return self.filter.filter(args[0])
+
+    def get_final_filter(self):
+        return self.filter
+
+
 class ConvertStringCalculater(Calculater):
     def __init__(self, *args, **kwargs):
         super(ConvertStringCalculater, self).__init__(*args, **kwargs)

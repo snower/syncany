@@ -32,6 +32,8 @@ class TypeCalculater(TypingCalculater):
             return "int"
         if isinstance(value, float):
             return "float"
+        if isinstance(value, Decimal):
+            return "decimal"
         if isinstance(value, str):
             return "str"
         if ObjectId and isinstance(value, ObjectId):
@@ -99,6 +101,22 @@ class IsFloatCalculater(Calculater):
         return isinstance(data, float)
 
 
+class IsDecimalCalculater(Calculater):
+    def calculate(self, data=None):
+        if data is None:
+            return False
+        if isinstance(data, list):
+            default_result = True
+            for value in data:
+                if value is None:
+                    default_result = False
+                    continue
+                if not isinstance(value, Decimal):
+                    return False
+            return default_result
+        return isinstance(data, Decimal)
+
+
 class IsNumberCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
@@ -109,10 +127,10 @@ class IsNumberCalculater(Calculater):
                 if value is None:
                     default_result = False
                     continue
-                if not isinstance(value, (int, float)):
+                if not isinstance(value, (int, float, Decimal)):
                     return False
             return default_result
-        return isinstance(data, (int, float))
+        return isinstance(data, (int, float, Decimal))
 
 
 class IsStringCalculater(Calculater):
@@ -383,7 +401,7 @@ class NegCalculater(TypingCalculater):
     def typing_calculate(self, value, args):
         if value is None:
             return None
-        if isinstance(value, (int, float)):
+        if isinstance(value, (int, float, Decimal)):
             return -value
         if isinstance(value, (str, bytes, list, tuple)):
             return value[::-1]
@@ -834,7 +852,7 @@ class LenCalculater(Calculater):
 
 class AbsCalculater(Calculater):
     def abs(self, arg):
-        if isinstance(arg, (int, float)):
+        if isinstance(arg, (int, float, Decimal)):
             return abs(arg)
         if isinstance(arg, str):
             try:

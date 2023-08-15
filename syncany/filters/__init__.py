@@ -2,7 +2,6 @@
 # 18/8/6
 # create by: snower
 
-import types
 from .filter import Filter
 from .builtin import *
 from ..errors import FilterUnknownException
@@ -10,6 +9,7 @@ from ..errors import FilterUnknownException
 FILTERS = {
     "int": IntFilter,
     "float": FloatFilter,
+    "decimal": DecimalFilter,
     "str": StringFilter,
     "bytes": BytesFilter,
     'bool': BooleanFilter,

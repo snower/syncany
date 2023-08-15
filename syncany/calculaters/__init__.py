@@ -2,8 +2,6 @@
 # 18/8/15
 # create by: snower
 
-import datetime
-import uuid
 from .calculater import Calculater, TypeFormatCalculater, TypingCalculater, MathematicalCalculater
 from ..filters import Filter, IntFilter, FloatFilter, StringFilter, BytesFilter, BooleanFilter, ArrayFilter, SetFilter, \
     MapFilter, ObjectIdFilter, UUIDFilter, DateTimeFilter, DateFilter, TimeFilter
@@ -26,6 +24,7 @@ CALCULATERS = {
     "is_null": IsNullCalculater,
     "is_int": IsIntCalculater,
     "is_float": IsFloatCalculater,
+    "is_decimal": IsDecimalCalculater,
     "is_number": IsNumberCalculater,
     "is_string": IsStringCalculater,
     "is_bytes": IsBytesCalculater,
@@ -41,6 +40,7 @@ CALCULATERS = {
     "is": IsCalculater,
     "convert_int": ConvertIntCalculater,
     "convert_float": ConvertFloatCalculater,
+    "convert_decimal": ConvertDecimalCalculater,
     "convert_string": ConvertStringCalculater,
     "convert_bytes": ConvertBytesCalculater,
     'convert_bool': ConvertBooleanCalculater,
