@@ -458,7 +458,7 @@ class ObjectIdFilter(Filter):
             return value
 
         if isinstance(value, (int, float)):
-            return ObjectId.from_datetime(datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC))
+            return ObjectId.from_datetime(datetime.datetime.fromtimestamp(int(value), pytz.timezone(self.args) if self.args else pytz.UTC))
 
         if isinstance(value, datetime.datetime):
             return ObjectId.from_datetime(value)
@@ -546,7 +546,7 @@ class DateTimeFilter(Filter):
             return value
 
         if isinstance(value, (int, float)):
-            value = datetime.datetime.fromtimestamp(value, pytz.timezone(self.tzname) if self.tzname else pytz.UTC)
+            value = datetime.datetime.fromtimestamp(int(value), pytz.timezone(self.tzname) if self.tzname else pytz.UTC)
             if localzone != value.tzinfo:
                 value = value.astimezone(tz=localzone)
             if self.dtformat:
@@ -611,7 +611,7 @@ class DateFilter(Filter):
             return datetime.date(dt.year, dt.month, dt.day) + value
 
         if isinstance(value, (int, float)):
-            dt = datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC).astimezone(tz=get_timezone())
+            dt = datetime.datetime.fromtimestamp(int(value), pytz.timezone(self.args) if self.args else pytz.UTC).astimezone(tz=get_timezone())
             return datetime.date(dt.year, dt.month, dt.day)
 
         if isinstance(value, (list, tuple, set)):
@@ -665,7 +665,7 @@ class TimeFilter(Filter):
             return datetime.time(dt.hour, dt.minute, dt.second)
 
         if isinstance(value, (int, float)):
-            dt = datetime.datetime.fromtimestamp(value, pytz.timezone(self.args) if self.args else pytz.UTC).astimezone(tz=get_timezone())
+            dt = datetime.datetime.fromtimestamp(int(value), pytz.timezone(self.args) if self.args else pytz.UTC).astimezone(tz=get_timezone())
             return datetime.time(dt.hour, dt.minute, dt.second)
 
         if isinstance(value, (list, tuple, set)):
