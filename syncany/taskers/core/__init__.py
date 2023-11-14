@@ -796,7 +796,7 @@ class CoreTasker(Tasker):
                 self.config["input"], self.config["loader"] = input_info[0].strip(), ("db_" + input_info[1] + "_loader").strip()
         input_loader = self.compile_foreign_key(self.config["input"])
         if not input_loader:
-            raise LoaderUnknownException(self.config["input"] + "is not define")
+            raise LoaderUnknownException(self.config["input"] + " is not define")
         db_name = input_loader["database"].split(".")[0]
 
         if "loader" in self.config and self.config["loader"][:2] == "<<" and "@loader" in self.arguments:
@@ -911,7 +911,7 @@ class CoreTasker(Tasker):
                 self.config["output"], self.config["outputer"] = output_info[0].strip(), ("db_" + output_info[1] + "_outputer").strip()
         output_outputer = self.compile_foreign_key(self.config["output"])
         if not output_outputer:
-            raise OutputerUnknownException(self.config["output"] + "is not define")
+            raise OutputerUnknownException(self.config["output"] + " is not define")
         db_name = output_outputer["database"].split(".")[0]
 
         if "outputer" in self.config and self.config["outputer"][:2] == ">>" and "@outputer" in self.arguments:
