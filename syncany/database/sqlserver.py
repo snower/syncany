@@ -154,7 +154,7 @@ class SqlServerQueryBuilder(QueryBuilder):
             connection.commit()
             self.db.release_connection()
             self.sql = (sql, query_values)
-        return datas
+        return datas if isinstance(datas, list) else list(datas)
 
     def verbose(self):
         if isinstance(self.sql, tuple):
