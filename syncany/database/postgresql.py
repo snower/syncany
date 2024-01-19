@@ -11,7 +11,6 @@ class PostgresqlQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
         super(PostgresqlQueryBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 
@@ -206,7 +205,6 @@ class PostgresqlUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
         super(PostgresqlUpdateBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 
@@ -271,7 +269,6 @@ class PostgresqlDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
         super(PostgresqlDeleteBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 

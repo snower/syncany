@@ -144,7 +144,7 @@ class QueryBuilder(object):
         self.name = name
         self.primary_keys = primary_keys or []
         self.fields = fields
-        self.query = {}
+        self.query = []
         self.orders = []
         self.limit = None
 
@@ -206,7 +206,7 @@ class UpdateBuilder(object):
         self.name = name
         self.primary_keys = primary_keys or []
         self.fields = fields
-        self.query = {}
+        self.query = []
         self.update = update
         self.diff_data = diff_data
 
@@ -243,7 +243,7 @@ class DeleteBuilder(object):
         self.db = db
         self.name = name
         self.primary_keys = primary_keys or []
-        self.query = {}
+        self.query = []
 
     def filter_gt(self, key, value):
         raise NotImplementedError()

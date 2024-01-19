@@ -51,7 +51,6 @@ class InfluxDBQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
         super(InfluxDBQueryBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 
@@ -273,7 +272,6 @@ class InfluxDBUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
         super(InfluxDBUpdateBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
 
     def filter_gt(self, key, value):
@@ -347,7 +345,6 @@ class InfluxDBDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
         super(InfluxDBDeleteBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 

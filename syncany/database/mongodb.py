@@ -23,37 +23,25 @@ class MongoQueryBuilder(QueryBuilder):
         self.bquery = None
 
     def filter_gt(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$gt"] = value
+        self.query.append({key: {"$gt": value}})
 
     def filter_gte(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$gte"] = value
+        self.query.append({key: {"$gte": value}})
 
     def filter_lt(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$lt"] = value
+        self.query.append({key: {"$lt": value}})
 
     def filter_lte(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$lte"] = value
+        self.query.append({key: {"$lte": value}})
 
     def filter_eq(self, key, value):
-        self.query[key] = value
+        self.query.append({key: value})
 
     def filter_ne(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$ne"] = value
+        self.query.append({key: {"$ne": value}})
 
     def filter_in(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$in"] = value
+        self.query.append({key: {"$in": value}})
 
     def filter_limit(self, count, start=None):
         if not start:
@@ -64,12 +52,10 @@ class MongoQueryBuilder(QueryBuilder):
     def filter_cursor(self, last_data, offset, count, primary_orders=None):
         if primary_orders and last_data and all([primary_key in last_data for primary_key in self.primary_keys]):
             for primary_key in self.primary_keys:
-                if primary_key not in self.query:
-                    self.query[primary_key] = {}
                 if primary_key in primary_orders and primary_orders[primary_key] < 0:
-                    self.query[primary_key]["$lt"] = last_data[primary_key]
+                    self.query.append({primary_key: {"$lt": last_data[primary_key]}})
                 else:
-                    self.query[primary_key]["$gt"] = last_data[primary_key]
+                    self.query.append({primary_key: {"$gt": last_data[primary_key]}})
         else:
             self.limit = (offset, count)
 
@@ -109,7 +95,7 @@ class MongoQueryBuilder(QueryBuilder):
         if not isinstance(virtual_collection, str):
             if not isinstance(virtual_collection, list):
                 virtual_collection = [virtual_collection]
-            return [{"$match": self.query}] + virtual_collection
+            return [{"$match": {"$and": (self.query if self.query else {})}}] + virtual_collection
 
         UUID, true, false, null = uuid.UUID, True, False, None
         def Datetime(*args):
@@ -121,14 +107,16 @@ class MongoQueryBuilder(QueryBuilder):
         virtual_values, matched_querys = [], []
         for arg in virtual_args:
             if isinstance(arg, str) or arg[1] == "==":
-                if arg in self.query and not isinstance(self.query[arg], dict):
-                    virtual_values.append(self.format_value(self.query[arg]))
+                arg_query = [kq for kq in self.query if arg in kq and not isinstance(kq[arg], dict)]
+                if arg_query:
+                    virtual_values.append(self.format_value(arg_query[0][arg]))
                     matched_querys.append(arg)
                 else:
                     virtual_values.append('""')
             else:
-                if arg[0] in self.query and arg[1] in exps and exps[arg[1]] in self.query[arg[0]]:
-                    virtual_values.append(self.format_value(self.query[arg[0]][exps[arg[1]]]))
+                arg_query = [kq for kq in self.query if arg[0] in kq and arg[1] in exps and exps[arg[1]] in kq[arg[0]]]
+                if arg_query:
+                    virtual_values.append(self.format_value(arg_query[0][arg[0]][exps[arg[1]]]))
                     matched_querys.append((arg[0], arg[1]))
                 else:
                     virtual_values.append('""')
@@ -137,18 +125,14 @@ class MongoQueryBuilder(QueryBuilder):
 
         for mq in matched_querys:
             if isinstance(mq, tuple):
-                if mq[0] not in self.query:
-                    continue
-                self.query[mq[0]].pop(exps[mq[1]], None)
-                if not self.query[mq[0]]:
-                    self.query.pop(mq[0], None)
+                self.query = [kq for kq in self.query if mq[0] not in kq or exps[mq[1]] not in kq[mq[0]]]
             else:
-                self.query.pop(mq, None)
+                self.query = [kq for kq in self.query if mq not in kq]
 
         virtual_collection = eval(virtual_collection)
         if not isinstance(virtual_collection, list):
             virtual_collection = [virtual_collection]
-        return [{"$match": self.query}] + virtual_collection
+        return [{"$match": {"$and": (self.query if self.query else {})}}] + virtual_collection
 
     def commit(self):
         virtual_collection, virtual_args = self.format_table()
@@ -166,14 +150,16 @@ class MongoQueryBuilder(QueryBuilder):
                 self.bquery = virtual_collection
             else:
                 fields = {field: 1 for field in self.fields} if self.fields else None
-                cursor = connection[self.db_name][self.collection_name].find(self.query, fields)
+                cursor = connection[self.db_name][self.collection_name].find({"$and": self.query} if self.query else {},
+                                                                             fields)
                 if self.limit:
                     if self.limit[0]:
                         cursor.skip(self.limit[0])
                     cursor.limit(self.limit[1])
                 if self.orders:
                     cursor.sort(self.orders)
-                self.bquery = (self.query, fields) if fields else self.query
+                self.bquery = ({"$and": self.query} if self.query else {}, fields) if fields else \
+                    ({"$and": self.query} if self.query else {})
             return list(cursor)
         finally:
             self.db.release_connection()
@@ -215,37 +201,25 @@ class MongoUpdateBuilder(UpdateBuilder):
         self.collection_name = ".".join(name[1:])
 
     def filter_gt(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$gt"] = value
+        self.query.append({key: {"$gt": value}})
 
     def filter_gte(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$gte"] = value
+        self.query.append({key: {"$gte": value}})
 
     def filter_lt(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$lt"] = value
+        self.query.append({key: {"$lt": value}})
 
     def filter_lte(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$lte"] = value
+        self.query.append({key: {"$lte": value}})
 
     def filter_eq(self, key, value):
-        self.query[key] = value
+        self.query.append({key: value})
 
     def filter_ne(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$ne"] = value
+        self.query.append({key: {"$ne": value}})
 
     def filter_in(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$in"] = value
+        self.query.append({key: {"$in": value}})
 
     def commit(self):
         connection = self.db.ensure_connection()
@@ -255,7 +229,8 @@ class MongoUpdateBuilder(UpdateBuilder):
                 continue
             update[key] = value
         try:
-            return connection[self.db_name][self.collection_name].update_one(self.query, {"$set": update})
+            return connection[self.db_name][self.collection_name].update_one({"$and": self.query} if self.query else {},
+                                                                             {"$set": update})
         finally:
             self.db.release_connection()
 
@@ -266,7 +241,7 @@ class MongoUpdateBuilder(UpdateBuilder):
                 continue
             update[key] = value
         return "collection: %s\nquery: %s\nupdateDatas: %s" % (
-            self.collection_name, human_repr_object(self.query), human_repr_object(update))
+            self.collection_name, human_repr_object({"$and": self.query} if self.query else {}), human_repr_object(update))
 
 
 class MongoDeleteBuilder(DeleteBuilder):
@@ -278,49 +253,38 @@ class MongoDeleteBuilder(DeleteBuilder):
         self.collection_name = ".".join(name[1:])
 
     def filter_gt(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$gt"] = value
+        self.query.append({key: {"$gt": value}})
 
     def filter_gte(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$gte"] = value
+        self.query.append({key: {"$gte": value}})
 
     def filter_lt(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$lt"] = value
+        self.query.append({key: {"$lt": value}})
 
     def filter_lte(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$lte"] = value
+        self.query.append({key: {"$lte": value}})
 
     def filter_eq(self, key, value):
-        self.query[key] = value
+        self.query.append({key: value})
 
     def filter_ne(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$ne"] = value
+        self.query.append({key: {"$ne": value}})
 
     def filter_in(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["$in"] = value
+        self.query.append({key: {"$in": value}})
 
     def commit(self):
         connection = self.db.ensure_connection()
         try:
             if not self.query and self.db.delete_all_drop_collection:
                 return connection[self.db_name][self.collection_name].drop()
-            return connection[self.db_name][self.collection_name].delete_many(self.query)
+            return connection[self.db_name][self.collection_name].delete_many({"$and": self.query})
         finally:
             self.db.release_connection()
 
     def verbose(self):
-        return "collection: %s\nquery: %s" % (self.collection_name, human_repr_object(self.query))
+        return "collection: %s\nquery: %s" % (self.collection_name,
+                                              human_repr_object({"$and": self.query} if self.query else {}))
 
 
 class MongoDBFactory(DatabaseFactory):

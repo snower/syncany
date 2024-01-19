@@ -11,7 +11,6 @@ class SqliteQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
         super(SqliteQueryBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 
@@ -206,7 +205,6 @@ class SqliteUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
         super(SqliteUpdateBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 
@@ -271,7 +269,6 @@ class SqliteDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
         super(SqliteDeleteBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 

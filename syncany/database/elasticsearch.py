@@ -17,39 +17,25 @@ class ElasticsearchQueryBuilder(QueryBuilder):
         self.equery = None
 
     def filter_gt(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["gt"] = value
+        self.query.append((key, "gt", value))
 
     def filter_gte(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["gte"] = value
+        self.query.append((key, "gte", value))
 
     def filter_lt(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["lt"] = value
+        self.query.append((key, "lt", value))
 
     def filter_lte(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["lte"] = value
+        self.query.append((key, "lte", value))
 
     def filter_eq(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["eq"] = value
+        self.query.append((key, "eq", value))
 
     def filter_ne(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["ne"] = value
+        self.query.append((key, "ne", value))
 
     def filter_in(self, key, value):
-        if key not in self.query:
-            self.query[key] = {}
-        self.query[key]["in"] = value
+        self.query.append((key, "in", value))
 
     def filter_limit(self, count, start=None):
         if not start:
@@ -106,14 +92,16 @@ class ElasticsearchQueryBuilder(QueryBuilder):
         virtual_values, matched_querys = [], []
         for arg in virtual_args:
             if isinstance(arg, str) or arg[1] == "==":
-                if arg in self.query and "eq" in self.query[arg]:
-                    virtual_values.append(self.format_value(self.query[arg]['eq']))
+                arg_query = [(k, q, v) for k, q, v in self.query if arg == k and q == "eq"]
+                if arg_query:
+                    virtual_values.append(self.format_value(arg_query[0]))
                     matched_querys.append((arg[0], 'eq'))
                 else:
                     virtual_values.append('""')
             else:
-                if arg[0] in self.query and arg[1] in exps and exps[arg[1]] in self.query[arg[0]]:
-                    virtual_values.append(self.format_value(self.query[arg[0]][exps[arg[1]]]))
+                arg_query = [(k, q, v) for k, q, v in self.query if arg[0] == k and arg[1] in exps and q == exps[arg[1]]]
+                if arg_query:
+                    virtual_values.append(self.format_value(arg_query[0]))
                     matched_querys.append((arg[0], arg[1]))
                 else:
                     virtual_values.append('""')
@@ -122,13 +110,9 @@ class ElasticsearchQueryBuilder(QueryBuilder):
 
         for mq in matched_querys:
             if isinstance(mq, tuple):
-                if mq[0] not in self.query:
-                    continue
-                self.query[mq[0]].pop(exps[mq[1]], None)
-                if not self.query[mq[0]]:
-                    self.query.pop(mq[0], None)
+                self.query = [(k, q, v) for k, q, v in self.query if mq[0] != k or q != exps[mq[1]]]
             else:
-                self.query.pop(mq, None)
+                self.query = [(k, q, v) for k, q, v in self.query if mq != k]
 
         virtual_query = json.loads(virtual_query)
         if not isinstance(virtual_query, str):
@@ -144,18 +128,17 @@ class ElasticsearchQueryBuilder(QueryBuilder):
             return {}
 
         query = {"bool": {"must": []}}
-        for key, qs in self.query.items():
-            for q, v in qs.items():
-                if q == "eq":
-                    query["bool"]["must"].append({"term": {key: v}})
-                elif q == "in":
-                    query["bool"]["must"].append({"terms": {key: v}})
-                elif q == "ne":
-                    if "must_not" not in query:
-                        query["bool"]["must_not"] = []
-                    query["bool"]["must_not"].append({"term": {key: v}})
-                else:
-                    query["bool"]["must"].append({"range": {key: v}})
+        for k, q, v in self.query:
+            if q == "eq":
+                query["bool"]["must"].append({"term": {k: v}})
+            elif q == "in":
+                query["bool"]["must"].append({"terms": {k: v}})
+            elif q == "ne":
+                if "must_not" not in query:
+                    query["bool"]["must_not"] = []
+                query["bool"]["must_not"].append({"term": {k: v}})
+            else:
+                query["bool"]["must"].append({"range": {k: v}})
         return query
 
     def commit(self):

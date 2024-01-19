@@ -16,6 +16,7 @@ class HttpQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
         super(HttpQueryBuilder, self).__init__(*args, **kwargs)
 
+        self.query = {}
         self.query_queues = {}
         db_name = self.name.split(".")
         if len(db_name) > 1:
@@ -136,6 +137,7 @@ class HttpUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
         super(HttpUpdateBuilder, self).__init__(*args, **kwargs)
 
+        self.query = {}
         db_name = self.name.split(".")
         if len(db_name) > 1:
             self.view_name = ".".join(db_name[1:])
@@ -185,6 +187,7 @@ class HttpDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
         super(HttpDeleteBuilder, self).__init__(*args, **kwargs)
 
+        self.query = {}
         db_name = self.name.split(".")
         if len(db_name) > 1:
             self.view_name = ".".join(db_name[1:])

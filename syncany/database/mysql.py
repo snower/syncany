@@ -11,7 +11,6 @@ class MysqlQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
         super(MysqlQueryBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 
@@ -207,7 +206,6 @@ class MysqlUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
         super(MysqlUpdateBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 
@@ -272,7 +270,6 @@ class MysqlDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
         super(MysqlDeleteBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 

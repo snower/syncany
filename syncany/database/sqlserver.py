@@ -11,7 +11,6 @@ class SqlServerQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
         super(SqlServerQueryBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 
@@ -226,7 +225,6 @@ class SqlServerUpdateBuilder(UpdateBuilder):
             self.dbo_name = "dbo"
             self.table_name = ".".join(db_name[1:]) if len(db_name) > 1 else db_name[0]
 
-        self.query = []
         self.query_values = []
         self.sql = None
 
@@ -298,7 +296,6 @@ class SqlServerDeleteBuilder(DeleteBuilder):
             self.dbo_name = "dbo"
             self.table_name = ".".join(db_name[1:]) if len(db_name) > 1 else db_name[0]
 
-        self.query = []
         self.query_values = []
         self.sql = None
 

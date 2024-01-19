@@ -11,7 +11,6 @@ class ClickhouseQueryBuilder(QueryBuilder):
     def __init__(self, *args, **kwargs):
         super(ClickhouseQueryBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 
@@ -206,7 +205,6 @@ class ClickhouseUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
         super(ClickhouseUpdateBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 
@@ -270,7 +268,6 @@ class ClickhouseDeleteBuilder(DeleteBuilder):
     def __init__(self, *args, **kwargs):
         super(ClickhouseDeleteBuilder, self).__init__(*args, **kwargs)
 
-        self.query = []
         self.query_values = []
         self.sql = None
 

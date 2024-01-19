@@ -312,12 +312,15 @@ class CoreTasker(Tasker):
                                    "valuer": self.compile_valuer(value) if not ref_argument_name else None,
                                    "ref_argument_name": ref_argument_name})
             elif isinstance(exps, list):
-                for exp in exps:
-                    try:
-                        exp_name = get_expression_name(exp)
-                    except KeyError:
-                        continue
-                    result.append({"exp": exp, "exp_name": exp_name, "valuer": None, "ref_argument_name": None})
+                for cexp in exps:
+                    if isinstance(cexp, dict):
+                        result.extend(parse_exps(cexp))
+                    else:
+                        try:
+                            exp_name = get_expression_name(cexp)
+                        except KeyError:
+                            continue
+                        result.append({"exp": cexp, "exp_name": exp_name, "valuer": None, "ref_argument_name": None})
             else:
                 ref_argument_name = exps[1:] if isinstance(exps, str) and exps[:1] == "?" else None
                 result.append({"exp": "==", "exp_name": "eq",
@@ -444,6 +447,19 @@ class CoreTasker(Tasker):
                             foreign_filters.append((keys[0], exp, valuer, filter_cls, filter_args))
                         except KeyError:
                             pass
+                elif isinstance(exps, list):
+                    for cexps in exps:
+                        if isinstance(cexps, dict):
+                            for exp, value in cexps.items():
+                                try:
+                                    exp = get_expression_name(exp)
+                                    valuer = self.compile_valuer(value)
+                                    foreign_filters.append((keys[0], exp, valuer, filter_cls, filter_args))
+                                except KeyError:
+                                    pass
+                        else:
+                            valuer = self.compile_valuer(cexps)
+                            foreign_filters.append((keys[0], 'eq', valuer, filter_cls, filter_args))
                 else:
                     valuer = self.compile_valuer(exps)
                     foreign_filters.append((keys[0], 'eq', valuer, filter_cls, filter_args))

@@ -97,28 +97,28 @@ class TextLineQueryBuilder(QueryBuilder):
         super(TextLineQueryBuilder, self).__init__(*args, **kwargs)
 
     def filter_gt(self, key, value):
-        self.query[(key, '>')] = (value, Cmper.cmp_gt)
+        self.query.append((key, '>', value, Cmper.cmp_gt))
 
     def filter_gte(self, key, value):
-        self.query[(key, ">=")] = (value, Cmper.cmp_gte)
+        self.query.append((key, ">=", value, Cmper.cmp_gte))
 
     def filter_lt(self, key, value):
-        self.query[(key, "<")] = (value, Cmper.cmp_lt)
+        self.query.append((key, "<", value, Cmper.cmp_lt))
 
     def filter_lte(self, key, value):
-        self.query[(key, "<=")] = (value, Cmper.cmp_lte)
+        self.query.append((key, "<=", value, Cmper.cmp_lte))
 
     def filter_eq(self, key, value):
-        self.query[(key, "==")] = (value, Cmper.cmp_eq)
+        self.query.append((key, "==", value, Cmper.cmp_eq))
 
     def filter_ne(self, key, value):
-        self.query[(key, "!=")] = (value, Cmper.cmp_ne)
+        self.query.append((key, "!=", value, Cmper.cmp_ne))
 
     def filter_in(self, key, value):
         try:
-            self.query[(key, "in")] = (set(value) if isinstance(value, list) else value, Cmper.cmp_in)
+            self.query.append((key, "in", set(value) if isinstance(value, list) else value, Cmper.cmp_in))
         except:
-            self.query[(key, "in")] = (value, Cmper.cmp_in)
+            self.query.append((key, "in", value, Cmper.cmp_in))
 
     def filter_limit(self, count, start=None):
         if not start:
@@ -241,7 +241,7 @@ class TextLineQueryBuilder(QueryBuilder):
             datas = []
             for data in rdatas:
                 succed = True
-                for (key, exp), (value, cmp) in self.query.items():
+                for key, exp, value, cmp in self.query:
                     if key not in data:
                         succed = False
                         break
@@ -260,7 +260,7 @@ class TextLineQueryBuilder(QueryBuilder):
 
     def verbose(self):
         return "filters: %s\nlimit: %s\norderBy: %s" % (
-            human_repr_object([(key, exp, value) for (key, exp), (value, cmp) in self.query.items()]),
+            human_repr_object([(key, exp, value) for key, exp, value, cmp in self.query]),
             self.limit,
             self.orders)
 
