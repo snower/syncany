@@ -6,14 +6,15 @@ from .data import Valuer
 
 
 class DBLoadValuer(Valuer):
-    def __init__(self, loader, foreign_keys, foreign_filters, intercept_valuer, return_valuer,
+    def __init__(self, loader, foreign_keys, foreign_key_filters, foreign_querys, intercept_valuer, return_valuer,
                  inherit_valuers, *args, **kwargs):
         self.loader = loader
         self.foreign_keys = foreign_keys
+        self.foreign_key_filters = foreign_key_filters
         self.intercept_valuer = intercept_valuer
         self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
-        self.foreign_filters = foreign_filters
+        self.foreign_querys = foreign_querys
         super(DBLoadValuer, self).__init__(*args, **kwargs)
 
     def new_init(self):
@@ -54,15 +55,15 @@ class DBLoadValuer(Valuer):
         intercept_valuer = self.intercept_valuer.clone(contexter, **kwargs) if self.intercept_valuer else None
         return_valuer = self.return_valuer.clone(contexter, **kwargs)
         if contexter is not None:
-            return ContextDBLoadValuer(self.loader, self.foreign_keys, self.foreign_filters, intercept_valuer,
-                                       return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self,
-                                       contexter=contexter)
+            return ContextDBLoadValuer(self.loader, self.foreign_keys, self.foreign_key_filters, self.foreign_querys,
+                                       intercept_valuer, return_valuer, inherit_valuers, self.key, self.filter,
+                                       from_valuer=self, contexter=contexter)
         if isinstance(self, ContextDBLoadValuer):
-            return ContextDBLoadValuer(self.loader, self.foreign_keys, self.foreign_filters, intercept_valuer,
-                                       return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self,
-                                       contexter=self.contexter)
-        return self.__class__(self.loader, self.foreign_keys, self.foreign_filters, intercept_valuer,
-                              return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self)
+            return ContextDBLoadValuer(self.loader, self.foreign_keys, self.foreign_key_filters, self.foreign_querys,
+                                       intercept_valuer, return_valuer, inherit_valuers, self.key, self.filter,
+                                       from_valuer=self, contexter=self.contexter)
+        return self.__class__(self.loader, self.foreign_keys, self.foreign_key_filters, self.foreign_querys,
+                              intercept_valuer, return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self)
 
     def fill(self, data):
         if self.inherit_valuers:

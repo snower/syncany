@@ -88,7 +88,8 @@ class ValuerCompiler(object):
             "value_valuer": self.compile_data_valuer(key, filter)
         }
 
-    def compile_db_load_valuer(self, key="", loader=None, foreign_keys=None, foreign_filters=None, filter=None, intercept_arg=None, return_arg=None):
+    def compile_db_load_valuer(self, key="", loader=None, foreign_keys=None, foreign_key_filters=None, foreign_querys=None,
+                               filter=None, intercept_arg=None, return_arg=None):
         load_return_arg, _ = self.parse_return_valuer(return_arg)
         if load_return_arg is not None:
             return_arg = load_return_arg
@@ -104,12 +105,14 @@ class ValuerCompiler(object):
             "filter": filter,
             "loader": loader,
             "foreign_keys": foreign_keys,
-            'foreign_filters': foreign_filters or [],
+            "foreign_key_filters": foreign_key_filters,
+            'foreign_querys': foreign_querys or [],
             "intercept_valuer": intercept_valuer,
             "return_valuer": return_valuer,
         }
 
-    def compile_db_join_valuer(self, key="", loader=None, foreign_keys=None, foreign_filters=None, filter=None, args_args=None, intercept_arg=None, return_arg=None):
+    def compile_db_join_valuer(self, key="", loader=None, foreign_keys=None, foreign_key_filters=None, foreign_querys=None,
+                               filter=None, args_args=None, intercept_arg=None, return_arg=None):
         join_return_arg, _ = self.parse_return_valuer(return_arg)
         if join_return_arg is not None:
             return_arg = join_return_arg
@@ -126,7 +129,8 @@ class ValuerCompiler(object):
             "filter": filter,
             "loader": loader,
             "foreign_keys": foreign_keys,
-            'foreign_filters': foreign_filters or [],
+            "foreign_key_filters": foreign_key_filters,
+            'foreign_querys': foreign_querys or [],
             "args_valuers": args_valuers,
             "intercept_valuer": intercept_valuer,
             "return_valuer": return_valuer,

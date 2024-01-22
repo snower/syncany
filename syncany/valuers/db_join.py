@@ -8,15 +8,16 @@ from .valuer import Valuer
 class DBJoinValuer(Valuer):
     matcher = None
 
-    def __init__(self, loader, foreign_keys, foreign_filters, args_valuers, intercept_valuer, return_valuer,
+    def __init__(self, loader, foreign_keys, foreign_key_filters, foreign_querys, args_valuers, intercept_valuer, return_valuer,
                  inherit_valuers, *args, **kwargs):
         self.loader = loader
         self.foreign_keys = foreign_keys
+        self.foreign_key_filters = foreign_key_filters
         self.args_valuers = args_valuers
         self.intercept_valuer = intercept_valuer
         self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
-        self.foreign_filters = foreign_filters
+        self.foreign_querys = foreign_querys
         super(DBJoinValuer, self).__init__(*args, **kwargs)
 
     def new_init(self):
@@ -61,14 +62,14 @@ class DBJoinValuer(Valuer):
         intercept_valuer = self.intercept_valuer.clone(contexter, **kwargs) if self.intercept_valuer else None
         return_valuer = self.return_valuer.clone(contexter, **kwargs)
         if contexter is not None:
-            return ContextDBJoinValuer(self.loader, self.foreign_keys, self.foreign_filters,
+            return ContextDBJoinValuer(self.loader, self.foreign_keys, self.foreign_key_filters, self.foreign_querys,
                                        args_valuers, intercept_valuer, return_valuer, inherit_valuers,
                                        self.key, self.filter, from_valuer=self, contexter=contexter)
         if isinstance(self, ContextDBJoinValuer):
-            return ContextDBJoinValuer(self.loader, self.foreign_keys, self.foreign_filters,
+            return ContextDBJoinValuer(self.loader, self.foreign_keys, self.foreign_key_filters, self.foreign_querys,
                                        args_valuers, intercept_valuer, return_valuer, inherit_valuers,
                                        self.key, self.filter, from_valuer=self, contexter=self.contexter)
-        return self.__class__(self.loader, self.foreign_keys, self.foreign_filters,
+        return self.__class__(self.loader, self.foreign_keys, self.foreign_key_filters, self.foreign_querys,
                               args_valuers, intercept_valuer, return_valuer, inherit_valuers,
                               self.key, self.filter, from_valuer=self)
 
@@ -114,6 +115,11 @@ class DBJoinValuer(Valuer):
             join_values.append(value)
         if has_list_args:
             return self.create_group_matcher(join_values)
+        if self.foreign_key_filters is not None:
+            for i in range(min(len(self.foreign_key_filters), len(join_values))):
+                foreign_key_filter = self.foreign_key_filters[i][1]
+                if foreign_key_filter:
+                    join_values[i] = foreign_key_filter.filter(join_values[i])
         if self.require_yield_values:
             matcher = self.loader.create_matcher(self.foreign_keys, join_values,
                                                  is_yield=True, intercept_valuer=self.intercept_valuer,
@@ -129,11 +135,13 @@ class DBJoinValuer(Valuer):
             if i >= len(list_indexs):
                 return join_values
             cjoin_values = flat_join_values(join_values, list_indexs, i + 1)
-            rjoin_values = []
-            for join_value in join_values[list_indexs[i]]:
+            j, rjoin_values = list_indexs[i], []
+            foreign_key_filter = self.foreign_key_filters[j] if self.foreign_key_filters is not None \
+                                                                and j < len(self.foreign_key_filters[j]) else None
+            for join_value in join_values[j]:
                 for cjoin_value in cjoin_values:
                     cjoin_value = cjoin_value[:]
-                    cjoin_value[list_indexs[i]] = join_value
+                    cjoin_value[j] = join_value if foreign_key_filter is None else foreign_key_filter.filter(join_value)
                     rjoin_values.append(cjoin_value)
             return rjoin_values
 
@@ -194,6 +202,11 @@ class DBJoinValuer(Valuer):
         if has_list_args:
             self.matcher = self.create_group_matcher(join_values)
         else:
+            if self.foreign_key_filters is not None:
+                for i in range(min(len(self.foreign_key_filters), len(join_values))):
+                    foreign_key_filter = self.foreign_key_filters[i][1]
+                    if foreign_key_filter:
+                        join_values[i] = foreign_key_filter.filter(join_values[i])
             self.matcher = self.loader.create_matcher(self.foreign_keys, join_values,
                                                       is_yield=self.require_yield_values,
                                                       intercept_valuer=self.intercept_valuer,
@@ -333,6 +346,11 @@ class ContextDBJoinValuer(DBJoinValuer):
             join_values.append(value)
         if has_list_args:
             return self.create_group_matcher(join_values)
+        if self.foreign_key_filters is not None:
+            for i in range(min(len(self.foreign_key_filters), len(join_values))):
+                foreign_key_filter = self.foreign_key_filters[i][1]
+                if foreign_key_filter:
+                    join_values[i] = foreign_key_filter.filter(join_values[i])
         if self.require_yield_values:
             matcher = self.loader.create_matcher(self.foreign_keys, join_values,
                                                  is_yield=True, intercept_valuer=self.intercept_valuer,
@@ -349,11 +367,13 @@ class ContextDBJoinValuer(DBJoinValuer):
             if i >= len(list_indexs):
                 return join_values
             cjoin_values = flat_join_values(join_values, list_indexs, i + 1)
-            rjoin_values = []
-            for join_value in join_values[list_indexs[i]]:
+            j, rjoin_values = list_indexs[i], []
+            foreign_key_filter = self.foreign_key_filters[j] if self.foreign_key_filters is not None \
+                                                                and j < len(self.foreign_key_filters[j]) else None
+            for join_value in join_values[j]:
                 for cjoin_value in cjoin_values:
                     cjoin_value = cjoin_value[:]
-                    cjoin_value[list_indexs[i]] = join_value
+                    cjoin_value[j] = join_value if foreign_key_filter is None else foreign_key_filter.filter(join_value)
                     rjoin_values.append(cjoin_value)
             return rjoin_values
 
@@ -420,6 +440,11 @@ class ContextDBJoinValuer(DBJoinValuer):
         if has_list_args:
             self.contexter.values[self.matcher_context_id] = self.create_group_matcher(join_values)
         else:
+            if self.foreign_key_filters is not None:
+                for i in range(min(len(self.foreign_key_filters), len(join_values))):
+                    foreign_key_filter = self.foreign_key_filters[i][1]
+                    if foreign_key_filter:
+                        join_values[i] = foreign_key_filter.filter(join_values[i])
             self.contexter.values[self.matcher_context_id] = self.loader.create_matcher(self.foreign_keys, join_values,
                                                                                         is_yield=self.require_yield_values,
                                                                                         intercept_valuer=self.intercept_valuer,

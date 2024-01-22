@@ -143,20 +143,29 @@ class ValuerCreater(object):
     def create_join_loader(self, config, join_loaders, renew=False):
 
 
-        loader_cache_key, loader_cache_foreign_filters = None, ""
+        loader_cache_key, loader_cache_foreign_querys = None, ""
         if join_loaders is not None:
-            if config["foreign_filters"]:
-                loader_cache_foreign_filters = "&".join(sorted(["%s__%s=%s" % (name, exp, self.format_value_cache_key(valuer))
-                                                                for name, exp, valuer, _, _ in config["foreign_filters"]]))
+            if config["foreign_querys"]:
+                loader_cache_foreign_querys = "&".join(sorted(["%s__%s=%s" % (name, exp, self.format_value_cache_key(valuer))
+                                                               for name, exp, valuer, _, _ in config["foreign_querys"]]))
+            foreign_keys = []
+            for i in range(len(config["foreign_keys"])):
+                if not config["foreign_key_filters"] or i >= len(config["foreign_key_filters"]) or not config["foreign_key_filters"][i]:
+                    foreign_keys.append(config["foreign_keys"][i])
+                    continue
+                foreign_key_filter = config["foreign_key_filters"][i]
+                if foreign_key_filter["args"]:
+                    foreign_keys.append("%s|%s %s" % (config["foreign_keys"][i], foreign_key_filter["name"], foreign_key_filter["args"]))
+                else:
+                    foreign_keys.append("%s|%s" % (config["foreign_keys"][i], foreign_key_filter["name"]))
             loader_cache_key = "::".join([config["loader"]["name"], config["loader"]["database"],
-                                          "+".join(sorted(config["foreign_keys"])),
-                                          loader_cache_foreign_filters])
+                                          "+".join(sorted(foreign_keys)), loader_cache_foreign_querys])
             if not renew and loader_cache_key in join_loaders:
                 return join_loaders[loader_cache_key]
 
         loader = self.create_loader(config["loader"], config["foreign_keys"])
-        if config["foreign_filters"]:
-            for name, exp, valuer, filter_cls, filter_args in config["foreign_filters"]:
+        if config["foreign_querys"]:
+            for name, exp, valuer, filter_cls, filter_args in config["foreign_querys"]:
                 inherit_valuers, yield_valuers, aggregate_valuers = [], [], []
                 valuer = self.create_valuer(valuer, schema_field_name="",
                                             inherit_valuers=inherit_valuers, join_loaders=self.tasker.join_loaders,
@@ -248,11 +257,21 @@ class ValuerCreater(object):
         filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
 
-        for foreign_key in config["foreign_keys"]:
+        has_foreign_key_filters, foreign_key_filters = False, []
+        for i in range(len(config["foreign_keys"])):
+            foreign_key = config["foreign_keys"][i]
+            foreign_key_filter = config["foreign_key_filters"][i] if config["foreign_key_filters"] and i < len(config["foreign_key_filters"]) else None
             if foreign_key not in loader.schema:
                 if loader.loaded:
                     loader = self.create_join_loader(config, join_loaders, True)
-                loader.add_valuer(foreign_key, self.create_valuer(self.compile_data_valuer(foreign_key, None)))
+                loader.add_valuer(foreign_key, self.create_valuer(self.compile_data_valuer(foreign_key, foreign_key_filter)))
+            filter_cls = self.find_filter_driver(foreign_key_filter["name"]) if foreign_key_filter else None
+            foreign_key_filter = filter_cls(foreign_key_filter["args"]) if foreign_key_filter else None
+            foreign_key_filters.append((foreign_key, foreign_key_filter))
+            if foreign_key_filter:
+                has_foreign_key_filters = True
+        if not has_foreign_key_filters:
+            foreign_key_filters = None
 
         try:
             if intercept_valuer:
@@ -288,8 +307,8 @@ class ValuerCreater(object):
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
 
-        return valuer_cls(loader, config["foreign_keys"], config["foreign_filters"], intercept_valuer, return_valuer,
-                          current_inherit_valuers, config["key"], filter)
+        return valuer_cls(loader, config["foreign_keys"], foreign_key_filters, config["foreign_querys"],
+                          intercept_valuer, return_valuer, current_inherit_valuers, config["key"], filter)
 
     def create_db_join_valuer(self, config, inherit_valuers=None, join_loaders=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])
@@ -308,11 +327,21 @@ class ValuerCreater(object):
         filter_cls = self.find_filter_driver(config["filter"]["name"]) if "filter" in config and config["filter"] else None
         filter = filter_cls(config["filter"]["args"]) if filter_cls else None
 
-        for foreign_key in config["foreign_keys"]:
+        has_foreign_key_filters, foreign_key_filters = False, []
+        for i in range(len(config["foreign_keys"])):
+            foreign_key = config["foreign_keys"][i]
+            foreign_key_filter = config["foreign_key_filters"][i] if config["foreign_key_filters"] and i < len(config["foreign_key_filters"]) else None
             if foreign_key not in loader.schema:
                 if loader.loaded:
                     loader = self.create_join_loader(config, join_loaders, True)
-                loader.add_valuer(foreign_key, self.create_valuer(self.compile_data_valuer(foreign_key, None)))
+                loader.add_valuer(foreign_key, self.create_valuer(self.compile_data_valuer(foreign_key, foreign_key_filter)))
+            filter_cls = self.find_filter_driver(foreign_key_filter["name"]) if foreign_key_filter else None
+            foreign_key_filter = filter_cls(foreign_key_filter["args"]) if foreign_key_filter else None
+            foreign_key_filters.append((foreign_key, foreign_key_filter))
+            if foreign_key_filter:
+                has_foreign_key_filters = True
+        if not has_foreign_key_filters:
+            foreign_key_filters = None
 
         try:
             if intercept_valuer:
@@ -348,8 +377,8 @@ class ValuerCreater(object):
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
 
-        return valuer_cls(loader, config["foreign_keys"], config["foreign_filters"], args_valuers, intercept_valuer,
-                          return_valuer, current_inherit_valuers, config["key"], filter)
+        return valuer_cls(loader, config["foreign_keys"], foreign_key_filters, config["foreign_querys"], args_valuers,
+                          intercept_valuer, return_valuer, current_inherit_valuers, config["key"], filter)
 
     def create_case_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])

@@ -400,10 +400,10 @@ class CoreTasker(Tasker):
         key_filters = key.split("|")
         key = key_filters[0]
 
-        filter, filter_args = None, None
+        filter_cls, filter_args = None, None
         if len(key_filters) >= 2:
             filters = key_filters[1].split(" ")
-            filter = filters[0]
+            filter_cls = filters[0]
             if len(filters) >= 2:
                 filter_args = " ".join(filters[1:]) + "|".join(key_filters[2:])
 
@@ -413,7 +413,7 @@ class CoreTasker(Tasker):
             "inherit_reflen": inherit_reflen,
             'value': None,
             "filter": {
-                "name": filter,
+                "name": filter_cls,
                 "args": filter_args
             },
         }
@@ -430,13 +430,27 @@ class CoreTasker(Tasker):
 
         foreign_key = ".".join(foreign_key.split(".")[1:])
         foreign_key = foreign_key.split("::")
+        database, foreign_keys = foreign_key[0], foreign_key[1].split("+")
+        foreign_key_filters = []
+        for foreign_key in foreign_keys:
+            keys = foreign_key.split("|")
+            filters = (keys[1] if len(keys) >= 2 else "").split(" ")
+            filter_cls = self.find_filter_driver(filters[0]) if filters[0] else None
+            if not filter_cls:
+                foreign_key_filters.append(None)
+            else:
+                filter_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
+                foreign_key_filters.append({
+                    "name": filter_cls,
+                    "args": filter_args
+                })
 
-        foreign_filters = []
+        foreign_querys = []
         if isinstance(foreign_filter_configs, dict):
             for key, exps in foreign_filter_configs.items():
                 keys = key.split("|")
                 filters = (keys[1] if len(keys) >= 2 else "").split(" ")
-                filter_cls = self.find_filter_driver(filters[0])
+                filter_cls = self.find_filter_driver(filters[0]) if filters[0] else None
                 filter_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
 
                 if isinstance(exps, dict):
@@ -444,7 +458,7 @@ class CoreTasker(Tasker):
                         try:
                             exp = get_expression_name(exp)
                             valuer = self.compile_valuer(value)
-                            foreign_filters.append((keys[0], exp, valuer, filter_cls, filter_args))
+                            foreign_querys.append((keys[0], exp, valuer, filter_cls, filter_args))
                         except KeyError:
                             pass
                 elif isinstance(exps, list):
@@ -454,20 +468,21 @@ class CoreTasker(Tasker):
                                 try:
                                     exp = get_expression_name(exp)
                                     valuer = self.compile_valuer(value)
-                                    foreign_filters.append((keys[0], exp, valuer, filter_cls, filter_args))
+                                    foreign_querys.append((keys[0], exp, valuer, filter_cls, filter_args))
                                 except KeyError:
                                     pass
                         else:
                             valuer = self.compile_valuer(cexps)
-                            foreign_filters.append((keys[0], 'eq', valuer, filter_cls, filter_args))
+                            foreign_querys.append((keys[0], 'eq', valuer, filter_cls, filter_args))
                 else:
                     valuer = self.compile_valuer(exps)
-                    foreign_filters.append((keys[0], 'eq', valuer, filter_cls, filter_args))
+                    foreign_querys.append((keys[0], 'eq', valuer, filter_cls, filter_args))
 
         return {
-            "database": foreign_key[0],
-            "foreign_key": foreign_key[1].split("+"),
-            "foreign_filters": foreign_filters,
+            "database": database,
+            "foreign_keys": foreign_keys,
+            "foreign_key_filters": foreign_key_filters,
+            "foreign_querys": foreign_querys,
         }
 
     def compile_schema(self):
@@ -532,22 +547,22 @@ class CoreTasker(Tasker):
                 foreign_key = self.compile_foreign_key(valuer[0])
                 if foreign_key is not None:
                     loader = {"name": "db_loader", "database": foreign_key["database"]}
-                    return self.valuer_compiler.compile_db_load_valuer("", loader, foreign_key["foreign_key"], foreign_key["foreign_filters"],
-                                                                       None, valuer[1] if len(valuer) >= 3 else None,
+                    return self.valuer_compiler.compile_db_load_valuer("", loader, foreign_key["foreign_keys"], foreign_key["foreign_key_filters"],
+                                                                       foreign_key["foreign_querys"], None, valuer[1] if len(valuer) >= 3 else None,
                                                                        valuer[2] if len(valuer) >= 3 else (valuer[1] if len(valuer) >= 2 else None))
 
             key = self.compile_key(valuer[0])
             if (key["instance"] is None or key["instance"] == "$") and len(valuer) in (3, 4):
                 foreign_key = self.compile_foreign_key(valuer[1])
                 if foreign_key is not None:
-                    if isinstance(valuer[0], list) and len(foreign_key["foreign_key"]) >= 2 and len(valuer[0]) == len(foreign_key["foreign_key"]):
+                    if isinstance(valuer[0], list) and len(foreign_key["foreign_keys"]) >= 2 and len(valuer[0]) == len(foreign_key["foreign_keys"]):
                         join_args = valuer[0]
                     else:
                         join_args = [valuer[0]]
                     loader = {"name": "db_join_loader", "database": foreign_key["database"]}
                     return self.valuer_compiler.compile_db_join_valuer(key["key"] if key["instance"] == "$" else "",
-                                                                       loader, foreign_key["foreign_key"], foreign_key["foreign_filters"],
-                                                                       None, join_args, valuer[2] if len(valuer) >= 4 else None,
+                                                                       loader, foreign_key["foreign_keys"], foreign_key["foreign_key_filters"],
+                                                                       foreign_key["foreign_querys"], None, join_args, valuer[2] if len(valuer) >= 4 else None,
                                                                        valuer[3] if len(valuer) >= 4 else (valuer[2] if len(valuer) >= 3 else None))
 
             if key["instance"] is None:
@@ -828,7 +843,7 @@ class CoreTasker(Tasker):
         })
         if "loader_arguments" in self.config and isinstance(self.config["loader_arguments"], dict):
             loader_config.update(self.config["loader_arguments"])
-        self.loader = self.create_loader(loader_config, input_loader["foreign_key"])
+        self.loader = self.create_loader(loader_config, input_loader["foreign_keys"])
 
         if isinstance(self.schema, dict):
             loader_schema, aggregate_valuers, partition_managers, require_loaded = {}, [], {}, False
@@ -942,7 +957,7 @@ class CoreTasker(Tasker):
         })
         if "outputer_arguments" in self.config and isinstance(self.config["outputer_arguments"], dict):
             outputer_config.update(self.config["outputer_arguments"])
-        self.outputer = self.create_outputer(outputer_config, output_outputer["foreign_key"])
+        self.outputer = self.create_outputer(outputer_config, output_outputer["foreign_keys"])
 
         if isinstance(self.schema, dict):
             for name, valuer in self.schema.items():
@@ -1340,7 +1355,7 @@ class CoreTasker(Tasker):
             for query_exp in query["exps"]:
                 if query_exp["ref_argument_name"]:
                     continue
-                filter_cls = self.find_filter_driver(query["type"])
+                filter_cls = self.find_filter_driver(query["type"]) if query["type"] else None
                 if filter_cls is None:
                     filter_cls = default_filter
                 exp_value = self.run_valuer(query_exp["valuer"], self.arguments) if query_exp["valuer"] else None
@@ -1380,7 +1395,7 @@ class CoreTasker(Tasker):
             name = config[1:]
             keys = name.split("|")
             filters = (keys[1] if len(keys) >= 2 else "").split(" ")
-            filter_cls = self.find_filter_driver(filters[0])
+            filter_cls = self.find_filter_driver(filters[0]) if filters[0] else None
             filter_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
             argument = {"name": keys[0], "type": filter_cls(filter_args) if filter_cls else str, "help": "%s" % keys[0]}
             if argument["name"] in arguments_names:
@@ -1394,7 +1409,7 @@ class CoreTasker(Tasker):
         for name, argument in self.config["arguments"].items():
             keys = name.split("|")
             filters = (keys[1] if len(keys) >= 2 else "").split(" ")
-            filter_cls = self.find_filter_driver(filters[0])
+            filter_cls = self.find_filter_driver(filters[0]) if filters[0] else None
             filter_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
 
             if isinstance(argument, dict):
