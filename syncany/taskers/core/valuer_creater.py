@@ -266,7 +266,7 @@ class ValuerCreater(object):
                     loader = self.create_join_loader(config, join_loaders, True)
                 loader.add_valuer(foreign_key, self.create_valuer(self.compile_data_valuer(foreign_key, foreign_key_filter)))
             filter_cls = self.find_filter_driver(foreign_key_filter["name"]) if foreign_key_filter else None
-            foreign_key_filter = filter_cls(foreign_key_filter["args"]) if foreign_key_filter else None
+            foreign_key_filter = filter_cls(foreign_key_filter["args"]) if filter_cls else None
             foreign_key_filters.append((foreign_key, foreign_key_filter))
             if foreign_key_filter:
                 has_foreign_key_filters = True
@@ -336,7 +336,7 @@ class ValuerCreater(object):
                     loader = self.create_join_loader(config, join_loaders, True)
                 loader.add_valuer(foreign_key, self.create_valuer(self.compile_data_valuer(foreign_key, foreign_key_filter)))
             filter_cls = self.find_filter_driver(foreign_key_filter["name"]) if foreign_key_filter else None
-            foreign_key_filter = filter_cls(foreign_key_filter["args"]) if foreign_key_filter else None
+            foreign_key_filter = filter_cls(foreign_key_filter["args"]) if filter_cls else None
             foreign_key_filters.append((foreign_key, foreign_key_filter))
             if foreign_key_filter:
                 has_foreign_key_filters = True

@@ -432,18 +432,17 @@ class CoreTasker(Tasker):
         foreign_key = foreign_key.split("::")
         database, foreign_keys = foreign_key[0], foreign_key[1].split("+")
         foreign_key_filters = []
-        for foreign_key in foreign_keys:
-            keys = foreign_key.split("|")
-            filters = (keys[1] if len(keys) >= 2 else "").split(" ")
-            filter_cls = self.find_filter_driver(filters[0]) if filters[0] else None
-            if not filter_cls:
-                foreign_key_filters.append(None)
-            else:
-                filter_args = (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
+        for i in range(len(foreign_keys)):
+            key_filters = foreign_keys[i].split("|")
+            if len(key_filters) >= 2:
+                foreign_keys[i] = key_filters[0]
+                filters = key_filters[1].split(" ")
                 foreign_key_filters.append({
-                    "name": filter_cls,
-                    "args": filter_args
+                    "name": filters[0],
+                    "args": " ".join(filters[1:]) + "|".join(key_filters[2:]) if len(filters) >= 2 else None
                 })
+            else:
+                foreign_key_filters.append(None)
 
         foreign_querys = []
         if isinstance(foreign_filter_configs, dict):
