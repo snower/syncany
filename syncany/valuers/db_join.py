@@ -117,7 +117,7 @@ class DBJoinValuer(Valuer):
             return self.create_group_matcher(join_values)
         if self.foreign_key_filters is not None:
             for i in range(min(len(self.foreign_key_filters), len(join_values))):
-                foreign_key_filter = self.foreign_key_filters[i][1]
+                foreign_key_filter = self.foreign_key_filters[i]
                 if foreign_key_filter:
                     join_values[i] = foreign_key_filter.filter(join_values[i])
         if self.require_yield_values:
@@ -204,7 +204,7 @@ class DBJoinValuer(Valuer):
         else:
             if self.foreign_key_filters is not None:
                 for i in range(min(len(self.foreign_key_filters), len(join_values))):
-                    foreign_key_filter = self.foreign_key_filters[i][1]
+                    foreign_key_filter = self.foreign_key_filters[i]
                     if foreign_key_filter:
                         join_values[i] = foreign_key_filter.filter(join_values[i])
             self.matcher = self.loader.create_matcher(self.foreign_keys, join_values,
@@ -348,7 +348,7 @@ class ContextDBJoinValuer(DBJoinValuer):
             return self.create_group_matcher(join_values)
         if self.foreign_key_filters is not None:
             for i in range(min(len(self.foreign_key_filters), len(join_values))):
-                foreign_key_filter = self.foreign_key_filters[i][1]
+                foreign_key_filter = self.foreign_key_filters[i]
                 if foreign_key_filter:
                     join_values[i] = foreign_key_filter.filter(join_values[i])
         if self.require_yield_values:
@@ -442,7 +442,7 @@ class ContextDBJoinValuer(DBJoinValuer):
         else:
             if self.foreign_key_filters is not None:
                 for i in range(min(len(self.foreign_key_filters), len(join_values))):
-                    foreign_key_filter = self.foreign_key_filters[i][1]
+                    foreign_key_filter = self.foreign_key_filters[i]
                     if foreign_key_filter:
                         join_values[i] = foreign_key_filter.filter(join_values[i])
             self.contexter.values[self.matcher_context_id] = self.loader.create_matcher(self.foreign_keys, join_values,
