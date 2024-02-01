@@ -1393,7 +1393,9 @@ class RandomCalculater(Calculater):
             size = len(string.printable) - 1
             return "".join([string.printable[random.randint(0, size)] for _ in range(args[0])])
         if self.name == "random::bytes":
-            return random.randbytes(*args)
+            if hasattr(random, "randbytes"):
+                return random.randbytes(*args)
+            return b''.join([struct.pack('B', random.randint(0, 255)) for _ in range(args[0])])
         if self.name == "random::seed":
             return random.seed(*args)
         if self.name == "random::choice":
