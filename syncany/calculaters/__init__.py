@@ -92,6 +92,9 @@ CALCULATERS = {
 
     "string": StringCalculater,
     "datetime": DateTimeCalculater,
+    "objectid": ObjectIdCalculater,
+    "uuid": UUIDCalculater,
+    "snowflakeid": SnowflakeIdCalculater,
     "array": ArrayCalculater,
     "map": MapCalculater,
     "math": MathCalculater,
@@ -99,6 +102,7 @@ CALCULATERS = {
     "json": JsonCalculater,
     "struct": StructCalculater,
     "re": ReCalculater,
+    "random": RandomCalculater,
     "transform": TransformVHKCalculater,
     "textline": TextLineCalculater
 }

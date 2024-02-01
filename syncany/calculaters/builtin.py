@@ -2,11 +2,15 @@
 # 18/8/15
 # create by: snower
 
+import os
 import struct
 import math
 import hashlib
 import json
 import re
+import random
+import string
+import threading
 from ..utils import sorted_by_keys
 from .calculater import Calculater, TypeFormatCalculater, TypingCalculater, MathematicalCalculater
 from ..filters.builtin import *
@@ -1010,6 +1014,100 @@ class StringCalculater(Calculater):
         return ''
 
 
+class ObjectIdCalculater(Calculater):
+    def __init__(self, *args, **kwargs):
+        if ObjectId is None:
+            raise ImportError(u"bson required")
+
+        super(ObjectIdCalculater, self).__init__(*args, **kwargs)
+
+    def calculate(self, *args):
+        if not args:
+            return ObjectId()
+        if isinstance(args[0], ObjectId):
+            func_name = self.name[10:]
+            if hasattr(args[0], func_name):
+                return getattr(args[0], func_name)(*tuple(args[1:]))
+            return None
+        return ObjectId(*args)
+
+
+class UUIDCalculater(Calculater):
+    def calculate(self, *args):
+        if not args:
+            return uuid.uuid4()
+        if isinstance(args[0], uuid.UUID):
+            func_name = self.name[10:]
+            if hasattr(args[0], func_name):
+                return getattr(args[0], func_name)(*tuple(args[1:]))
+            return None
+        if self.name:
+            func_name = self.name[10:]
+            if func_name == "uuid1":
+                return uuid.uuid1(*args)
+            if func_name == "uuid3":
+                return uuid.uuid3(*args)
+            if func_name == "uuid4":
+                return uuid.uuid4()
+            if func_name == "uuid5":
+                return uuid.uuid5(*args)
+        return uuid.UUID(*args)
+
+
+class SnowflakeIdCalculater(Calculater):
+    datacenter_id = None
+    worker_id = None
+    sequence = 0
+    last_timestamp = 0
+    inc_lock = None
+
+    def __init__(self, *args, **kwargs):
+        super(SnowflakeIdCalculater, self).__init__(*args, **kwargs)
+
+        if self.__class__.datacenter_id is None:
+            self.__class__.datacenter_id = random.randint(0, 0x1f)
+        if self.__class__.worker_id is None:
+            try:
+                self.__class__.worker_id = os.getpid() & 0x1f
+            except:
+                self.__class__.worker_id = random.randint(0, 0x1f)
+        if self.__class__.inc_lock is None:
+            self.__class__.inc_lock = threading.Lock()
+
+    @classmethod
+    def next_id(cls, twepoch=None, datacenter_id=None, worker_id=None):
+        if twepoch is None:
+            twepoch = 1288834974657
+        if datacenter_id is None:
+            datacenter_id = cls.datacenter_id
+        if worker_id is None:
+            worker_id = cls.worker_id
+
+        timestamp = int(time.time() * 1000)
+        if timestamp < cls.last_timestamp:
+            raise ValueError("Clock moved backwards. Refusing to generate id for %d milliseconds" %
+                             (cls.last_timestamp - timestamp))
+        if timestamp == cls.last_timestamp:
+            with cls.inc_lock:
+                cls.sequence = (cls.sequence + 1) & 4095
+                if cls.sequence == 0:
+                    timestamp = int(time.time() * 1000)
+                    while timestamp <= cls.last_timestamp:
+                        timestamp = int(time.time() * 1000)
+                sequence = cls.sequence
+        else:
+            sequence = cls.sequence = 0
+        cls.last_timestamp = timestamp
+        return ((timestamp - twepoch) << 22) | (datacenter_id << 17) | (worker_id << 12) | sequence
+
+    def calculate(self, *args):
+        if not args:
+            return self.next_id()
+        if len(args) <= 3:
+            return self.next_id(*args)
+        return self.next_id(args[:3])
+
+
 class ArrayCalculater(Calculater):
     def __init__(self, *args, **kwargs):
         super(ArrayCalculater, self).__init__(*args, **kwargs)
@@ -1272,3 +1370,43 @@ class ReCalculater(Calculater):
             return getattr(r, self.name[4:])(args[1], *tuple(args[2:]))
         except:
             return None
+
+
+class RandomCalculater(Calculater):
+    def calculate(self, *args):
+        if self.name == "random::int":
+            return random.randint(*args)
+        if self.name == "random::string":
+            digits_ascii_letters = string.digits + string.ascii_letters
+            size = len(digits_ascii_letters) - 1
+            return "".join([digits_ascii_letters[random.randint(0, size)] for _ in range(args[0])])
+        if self.name == "random::hexs":
+            size = len(string.hexdigits) - 1
+            return "".join([string.hexdigits[random.randint(0, size)] for _ in range(args[0])])
+        if self.name == "random::letters":
+            size = len(string.ascii_letters) - 1
+            return "".join([string.ascii_letters[random.randint(0, size)] for _ in range(args[0])])
+        if self.name == "random::digits":
+            size = len(string.digits) - 1
+            return "".join([string.digits[random.randint(0, size)] for _ in range(args[0])])
+        if self.name == "random::prints":
+            size = len(string.printable) - 1
+            return "".join([string.printable[random.randint(0, size)] for _ in range(args[0])])
+        if self.name == "random::bytes":
+            return random.randbytes(*args)
+        if self.name == "random::seed":
+            return random.seed(*args)
+        if self.name == "random::choice":
+            if args and isinstance(args[1], list):
+                return random.choice(*args)
+            return random.choice(args)
+        if self.name == "random::choices":
+            if args and isinstance(args[1], list):
+                return random.choices(*args)
+            return random.choices(args)
+        func_name = self.name[8:]
+        if hasattr(random, func_name):
+            return getattr(random, func_name, *args)
+        if not args:
+            return random.random()
+        return None
