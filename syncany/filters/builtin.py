@@ -533,24 +533,40 @@ class DateTimeFilter(Filter):
             return None
         localzone = get_timezone()
         if isinstance(value, datetime.datetime):
-            if localzone != value.tzinfo:
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=localzone)
+            elif localzone != value.tzinfo:
                 value = value.astimezone(tz=localzone)
             if self.dtformat:
-                return datetime.datetime.strptime(value.strftime(self.dtformat), self.dtformat).astimezone(tz=localzone)
+                value = datetime.datetime.strptime(value.strftime(self.dtformat), self.dtformat)
+                if value.tzinfo is None:
+                    value = value.replace(tzinfo=localzone)
+                elif localzone != value.tzinfo:
+                    value = value.astimezone(tz=localzone)
             return value
 
         if isinstance(value, datetime.timedelta):
             value = datetime.datetime.now(tz=localzone) + value
             if self.dtformat:
-                return datetime.datetime.strptime(value.strftime(self.dtformat), self.dtformat).astimezone(tz=localzone)
+                value = datetime.datetime.strptime(value.strftime(self.dtformat), self.dtformat)
+                if value.tzinfo is None:
+                    value = value.replace(tzinfo=localzone)
+                elif localzone != value.tzinfo:
+                    value = value.astimezone(tz=localzone)
             return value
 
         if isinstance(value, (int, float)):
             value = datetime.datetime.fromtimestamp(int(value), pytz.timezone(self.tzname) if self.tzname else pytz.UTC)
-            if localzone != value.tzinfo:
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=localzone)
+            elif localzone != value.tzinfo:
                 value = value.astimezone(tz=localzone)
             if self.dtformat:
-                return datetime.datetime.strptime(value.strftime(self.dtformat), self.dtformat).astimezone(tz=localzone)
+                value = datetime.datetime.strptime(value.strftime(self.dtformat), self.dtformat)
+                if value.tzinfo is None:
+                    value = value.replace(tzinfo=localzone)
+                elif localzone != value.tzinfo:
+                    value = value.astimezone(tz=localzone)
             return value
 
         if isinstance(value, (list, tuple, set)):
@@ -570,10 +586,16 @@ class DateTimeFilter(Filter):
 
         if isinstance(value, datetime.date):
             value = datetime.datetime(value.year, value.month, value.day, tzinfo=pytz.timezone(self.tzname) if self.tzname else localzone)
-            if localzone != value.tzinfo:
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=localzone)
+            elif localzone != value.tzinfo:
                 value = value.astimezone(tz=localzone)
             if self.dtformat:
-                return datetime.datetime.strptime(value.strftime(self.dtformat), self.dtformat).astimezone(tz=localzone)
+                value = datetime.datetime.strptime(value.strftime(self.dtformat), self.dtformat)
+                if value.tzinfo is None:
+                    return value.replace(tzinfo=localzone)
+                if value.tzinfo != localzone:
+                    return value.astimezone(tz=localzone)
             return value
 
         try:
@@ -600,7 +622,9 @@ class DateFilter(Filter):
         if isinstance(value, datetime.date):
             if isinstance(value, datetime.datetime):
                 localzone = get_timezone()
-                if localzone != value.tzinfo:
+                if value.tzinfo is None:
+                    value = value.replace(tzinfo=localzone)
+                elif localzone != value.tzinfo:
                     value = value.astimezone(tz=localzone)
                 return datetime.date(value.year, value.month, value.day)
             return value
@@ -611,8 +635,13 @@ class DateFilter(Filter):
             return datetime.date(dt.year, dt.month, dt.day) + value
 
         if isinstance(value, (int, float)):
-            dt = datetime.datetime.fromtimestamp(int(value), pytz.timezone(self.args) if self.args else pytz.UTC).astimezone(tz=get_timezone())
-            return datetime.date(dt.year, dt.month, dt.day)
+            localzone = get_timezone()
+            value = datetime.datetime.fromtimestamp(int(value), pytz.timezone(self.args) if self.args else pytz.UTC)
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=localzone)
+            elif localzone != value.tzinfo:
+                value = value.astimezone(tz=localzone)
+            return datetime.date(value.year, value.month, value.day)
 
         if isinstance(value, (list, tuple, set)):
             results = []
@@ -647,14 +676,15 @@ class TimeFilter(Filter):
     def filter(self, value):
         if value is None:
             return None
-
         if isinstance(value, datetime.time):
             return value
 
         if isinstance(value, datetime.date):
             if isinstance(value, datetime.datetime):
                 localzone = get_timezone()
-                if localzone != value.tzinfo:
+                if value.tzinfo is None:
+                    value = value.replace(tzinfo=localzone)
+                elif localzone != value.tzinfo:
                     value = value.astimezone(tz=localzone)
                 return datetime.time(value.hour, value.minute, value.second)
             return datetime.time(0, 0, 0)
@@ -665,8 +695,13 @@ class TimeFilter(Filter):
             return datetime.time(dt.hour, dt.minute, dt.second)
 
         if isinstance(value, (int, float)):
-            dt = datetime.datetime.fromtimestamp(int(value), pytz.timezone(self.args) if self.args else pytz.UTC).astimezone(tz=get_timezone())
-            return datetime.time(dt.hour, dt.minute, dt.second)
+            localzone = get_timezone()
+            value = datetime.datetime.fromtimestamp(int(value), pytz.timezone(self.args) if self.args else pytz.UTC)
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=localzone)
+            elif localzone != value.tzinfo:
+                value = value.astimezone(tz=localzone)
+            return datetime.time(value.hour, value.minute, value.second)
 
         if isinstance(value, (list, tuple, set)):
             results = []

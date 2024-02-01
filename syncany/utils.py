@@ -153,6 +153,8 @@ def set_timezone(timezone):
 def ensure_timezone(dt):
     tz = get_timezone() if not _timezone else _timezone
     try:
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=tz)
         if dt.tzinfo != tz:
             return dt.astimezone(tz=tz)
     except:
@@ -184,7 +186,9 @@ def parse_datetime(value, fmt, tz):
             return datetime.datetime.strptime(value, fmt or "%Y-%m-%d %H:%M:%S")
 
     if isinstance(dt, datetime.datetime):
-        if tz != dt.tzinfo:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=tz)
+        elif tz != dt.tzinfo:
             dt = dt.astimezone(tz=tz)
         return dt
     if isinstance(dt, datetime.date):
@@ -198,7 +202,9 @@ def parse_date(value, fmt, tz):
     try:
         dt = parse_datetime(value, fmt, tz)
         if isinstance(dt, datetime.datetime):
-            if tz != dt.tzinfo:
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=tz)
+            elif tz != dt.tzinfo:
                 dt = dt.astimezone(tz=tz)
             return datetime.date(dt.year, dt.month, dt.day)
         if isinstance(dt, datetime.date):
@@ -214,7 +220,9 @@ def parse_time(value, fmt, tz):
         if isinstance(dt, datetime.time):
             return dt
         if isinstance(dt, datetime.datetime):
-            if tz != dt.tzinfo:
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=tz)
+            elif tz != dt.tzinfo:
                 dt = dt.astimezone(tz=tz)
             return datetime.time(dt.hour, dt.minute, dt.second, dt.microsecond, tzinfo=tz)
     except ParserError:
