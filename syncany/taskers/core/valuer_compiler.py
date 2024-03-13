@@ -265,8 +265,8 @@ class ValuerCompiler(object):
 
         key_valuer = self.compile_valuer(key_arg)
         if order_arg:
-            if isinstance(order_arg, dict) and order_arg.get("valuer") and order_arg.get("orders"):
-                order_valuer, orders = self.compile_valuer(order_arg["valuer"]), order_arg.get("orders")
+            if isinstance(order_arg, dict) and "valuer" in order_arg and "orders" in order_arg:
+                order_valuer, orders = self.compile_valuer(order_arg["valuer"]), order_arg["orders"]
             else:
                 order_valuer, orders = self.compile_valuer(order_arg), None
         else:

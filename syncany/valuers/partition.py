@@ -28,6 +28,14 @@ class OrderPartitionCalculaterContext(PartitionCalculaterContext):
     def order_value(self):
         return self.datas[self.current_index][0]
 
+    @property
+    def partition_calculater(self):
+        return self.datas[self.current_index][2]
+
+    @property
+    def current_value(self):
+        return self.datas[self.current_index][2].value
+
     def update_index(self, current_index, start_index, end_index):
         self.current_index, self.start_index, self.end_index = current_index, start_index, end_index
 
@@ -58,6 +66,7 @@ class OrderPartitionCalculater(object):
     calculate_valuer = None
     return_valuer = None
     value = None
+    return_value = None
 
     def __init__(self, value, calculate_valuer, return_valuer):
         self.value = value
@@ -67,15 +76,15 @@ class OrderPartitionCalculater(object):
             self.return_valuer = return_valuer
 
     def calculate(self, data):
-        value = self.calculate_valuer.fill_get(data)
+        state_value = self.calculate_valuer.fill_get(data)
         if self.return_valuer:
-            self.value = self.return_valuer.fill_get(value)
+            self.return_value = self.return_valuer.fill_get(state_value)
         else:
-            self.value = value
-        return value
+            self.return_value = state_value
+        return state_value
 
     def get(self):
-        return self.value
+        return self.return_value
 
 
 class Partition(object):
@@ -122,7 +131,7 @@ class OrderPartition(object):
     def add_data(self, order_value, data, partition_calculater):
         data_id = id(data)
         if data_id not in self.calculates:
-            self.datas.append((order_value, data))
+            self.datas.append((order_value, data, partition_calculater))
         self.calculates[data_id].append(partition_calculater)
         if partition_calculater.calculate_valuer.valuer_id not in self.states:
             self.states[partition_calculater.calculate_valuer.valuer_id] = {
@@ -138,7 +147,7 @@ class OrderPartition(object):
         if self.options.get("orders"):
             datas, self.datas = self.sort_datas(self.datas, self.options["orders"]), []
         else:
-            datas, self.datas = sorted(self.datas, key=lambda x: x[0]), []
+            datas, self.datas = self.datas, []
         for state_data in self.states.values():
             state_data["context"].datas = datas
         for i in range(len(datas)):
