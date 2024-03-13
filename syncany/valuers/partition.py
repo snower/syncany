@@ -13,6 +13,7 @@ class PartitionCalculaterContext(object):
         self.current_index = 0
         self.start_index = 0
         self.end_index = -1
+        self.partition_calculater = None
 
     @property
     def current_data(self):
@@ -29,15 +30,12 @@ class OrderPartitionCalculaterContext(PartitionCalculaterContext):
         return self.datas[self.current_index][0]
 
     @property
-    def partition_calculater(self):
-        return self.datas[self.current_index][2]
-
-    @property
     def current_value(self):
-        return self.datas[self.current_index][2].value
+        return self.partition_calculater.value
 
-    def update_index(self, current_index, start_index, end_index):
-        self.current_index, self.start_index, self.end_index = current_index, start_index, end_index
+    def update(self, current_index, start_index, end_index, partition_calculater):
+        self.current_index, self.start_index, self.end_index, self.partition_calculater = \
+            current_index, start_index, end_index, partition_calculater
 
 
 class PartitionCalculater(object):
@@ -115,6 +113,7 @@ class Partition(object):
         for partition_calculaters in self.calculates.values():
             for partition_calculater in partition_calculaters:
                 state_data = self.states[partition_calculater.calculate_valuer.valuer_id]
+                state_data["context"].partition_calculater = partition_calculater
                 state_data["value"] = partition_calculater.value
                 state_data["state"] = partition_calculater.calculate(state_data)
         self.datas, self.calculates, self.states = [], defaultdict(list), {}
@@ -131,8 +130,11 @@ class OrderPartition(object):
     def add_data(self, order_value, data, partition_calculater):
         data_id = id(data)
         if data_id not in self.calculates:
-            self.datas.append((order_value, data, partition_calculater))
-        self.calculates[data_id].append(partition_calculater)
+            partition_calculaters = self.calculates[data_id]
+            partition_calculaters.append(partition_calculater)
+            self.datas.append((order_value, data, partition_calculaters))
+        else:
+            self.calculates[data_id].append(partition_calculater)
         if partition_calculater.calculate_valuer.valuer_id not in self.states:
             self.states[partition_calculater.calculate_valuer.valuer_id] = {
                 "value": None,
@@ -153,7 +155,7 @@ class OrderPartition(object):
         for i in range(len(datas)):
             for partition_calculater in self.calculates[id(datas[i][1])]:
                 state_data = self.states[partition_calculater.calculate_valuer.valuer_id]
-                state_data["context"].update_index(i, i, i + 1)
+                state_data["context"].update(i, i, i + 1, partition_calculater)
                 state_data["value"] = partition_calculater.value
                 state_data["state"] = partition_calculater.calculate(state_data)
         self.datas, self.calculates, self.states = [], defaultdict(list), {}
