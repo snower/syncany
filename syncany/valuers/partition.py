@@ -2,7 +2,6 @@
 # 2020/7/2
 # create by: snower
 
-from collections import defaultdict
 from ..utils import CmpValue
 from .valuer import Valuer
 
@@ -11,13 +10,18 @@ class PartitionCalculaterContext(object):
     def __init__(self):
         self.datas = None
         self.current_index = 0
-        self.start_index = 0
-        self.end_index = -1
         self.partition_calculater = None
 
     @property
     def current_data(self):
-        return self.datas[self.current_index]
+        return self.datas[self.current_index][0]
+
+    @property
+    def current_value(self):
+        return self.partition_calculater.value
+
+    def update(self, current_index, partition_calculater):
+        self.current_index, self.partition_calculater = current_index, partition_calculater
 
 
 class OrderPartitionCalculaterContext(PartitionCalculaterContext):
@@ -29,19 +33,13 @@ class OrderPartitionCalculaterContext(PartitionCalculaterContext):
     def order_value(self):
         return self.datas[self.current_index][0]
 
-    @property
-    def current_value(self):
-        return self.partition_calculater.value
-
-    def update(self, current_index, start_index, end_index, partition_calculater):
-        self.current_index, self.start_index, self.end_index, self.partition_calculater = \
-            current_index, start_index, end_index, partition_calculater
-
 
 class PartitionCalculater(object):
+    context_state = None
     calculate_valuer = None
     return_valuer = None
     value = None
+    return_value = None
 
     def __init__(self, value, calculate_valuer, return_valuer):
         self.value = value
@@ -51,16 +49,17 @@ class PartitionCalculater(object):
             self.return_valuer = return_valuer
 
     def calculate(self, data):
-        self.value = data
+        self.return_value = data
         return self.calculate_valuer.fill_get(data)
 
     def get(self):
         if self.return_valuer:
-            return self.return_valuer.fill_get(self.value["state"])
-        return self.value["state"]
+            return self.return_valuer.fill_get(self.return_value["state"])
+        return self.return_value["state"]
 
 
 class OrderPartitionCalculater(object):
+    context_state = None
     calculate_valuer = None
     return_valuer = None
     value = None
@@ -89,59 +88,72 @@ class Partition(object):
     def __init__(self, key, options):
         self.key = key
         self.options = options
-        self.calculates = defaultdict(list)
+        self.calculates = {}
         self.datas = []
         self.states = {}
 
     def add_data(self, data, partition_calculater):
         data_id = id(data)
-        if data_id not in self.calculates:
-            self.datas.append(data)
-        self.calculates[data_id].append(partition_calculater)
-        if partition_calculater.calculate_valuer.valuer_id not in self.states:
-            self.states[partition_calculater.calculate_valuer.valuer_id] = {
+        if data_id in self.calculates:
+            self.calculates[data_id].append(partition_calculater)
+        else:
+            partition_calculaters = [partition_calculater]
+            self.calculates[data_id] = partition_calculaters
+            self.datas.append((data, partition_calculaters))
+
+        partition_valuer_id = partition_calculater.calculate_valuer.valuer_id
+        if partition_valuer_id in self.states:
+            partition_calculater.context_state = self.states[partition_valuer_id]
+        else:
+            partition_calculater.context_state = {
                 "value": None,
                 "state": None,
                 "context": PartitionCalculaterContext()
             }
+            self.states[partition_valuer_id] = partition_calculater.context_state
 
     def calculate(self):
         if not self.datas:
             return
+        datas, self.datas = self.datas, []
         for state_data in self.states.values():
-            state_data["context"].datas = self.datas
-        for partition_calculaters in self.calculates.values():
-            for partition_calculater in partition_calculaters:
-                state_data = self.states[partition_calculater.calculate_valuer.valuer_id]
-                state_data["context"].partition_calculater = partition_calculater
+            state_data["context"].datas = datas
+        for i in range(len(datas)):
+            for partition_calculater in datas[i][1]:
+                state_data = partition_calculater.context_state
+                state_data["context"].update(i, partition_calculater)
                 state_data["value"] = partition_calculater.value
                 state_data["state"] = partition_calculater.calculate(state_data)
-        self.datas, self.calculates, self.states = [], defaultdict(list), {}
+        self.datas, self.calculates, self.states = [], {}, {}
 
 
 class OrderPartition(object):
     def __init__(self, key, options):
         self.key = key
         self.options = options
-        self.calculates = defaultdict(list)
+        self.calculates = {}
         self.datas = []
         self.states = {}
 
     def add_data(self, order_value, data, partition_calculater):
         data_id = id(data)
-        if data_id not in self.calculates:
-            partition_calculaters = self.calculates[data_id]
-            partition_calculaters.append(partition_calculater)
-            self.datas.append((order_value, data, partition_calculaters))
-        else:
+        if data_id in self.calculates:
             self.calculates[data_id].append(partition_calculater)
-        if partition_calculater.calculate_valuer.valuer_id not in self.states:
-            self.states[partition_calculater.calculate_valuer.valuer_id] = {
+        else:
+            partition_calculaters = [partition_calculater]
+            self.calculates[data_id] = partition_calculaters
+            self.datas.append((order_value, data, partition_calculaters))
+
+        partition_valuer_id = partition_calculater.calculate_valuer.valuer_id
+        if partition_valuer_id in self.states:
+            partition_calculater.context_state = self.states[partition_valuer_id]
+        else:
+            partition_calculater.context_state = {
                 "value": None,
                 "state": None,
                 "context": OrderPartitionCalculaterContext()
             }
-
+            self.states[partition_valuer_id] = partition_calculater.context_state
 
     def calculate(self):
         if not self.datas:
@@ -153,12 +165,12 @@ class OrderPartition(object):
         for state_data in self.states.values():
             state_data["context"].datas = datas
         for i in range(len(datas)):
-            for partition_calculater in self.calculates[id(datas[i][1])]:
-                state_data = self.states[partition_calculater.calculate_valuer.valuer_id]
-                state_data["context"].update(i, i, i + 1, partition_calculater)
+            for partition_calculater in datas[i][2]:
+                state_data = partition_calculater.context_state
+                state_data["context"].update(i, partition_calculater)
                 state_data["value"] = partition_calculater.value
                 state_data["state"] = partition_calculater.calculate(state_data)
-        self.datas, self.calculates, self.states = [], defaultdict(list), {}
+        self.datas, self.calculates, self.states = [], {}, {}
 
     def sort_datas(self, iterable, keys=None, reverse=None):
         if not keys:
