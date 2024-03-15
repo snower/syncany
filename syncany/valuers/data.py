@@ -157,6 +157,9 @@ class DataValuer(Valuer):
             return self.return_valuer.require_loaded()
         return False
 
+    def is_const(self):
+        return False
+
     def is_aggregate(self):
         if self.return_valuer:
             return self.return_valuer.is_aggregate()

@@ -184,6 +184,9 @@ class CacheValuer(Valuer):
             return self.calculate_valuer.get_final_filter()
         return None
 
+    def is_const(self):
+        return False
+
 
 class ContextCacheValuer(CacheValuer):
     def __init__(self, *args, **kwargs):

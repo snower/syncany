@@ -64,6 +64,9 @@ class TimeWindowCalculater(Calculater):
     def get_final_filter(self):
         return DateTimeFilter.default()
 
+    def is_realtime_calculater(self):
+        return True
+
 
 class DateTimeCalculater(Calculater):
     def calculate(self, *args):

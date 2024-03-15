@@ -29,6 +29,9 @@ class Calculater(object):
     def get_final_filter(self):
         return None
 
+    def is_realtime_calculater(self):
+        return False
+
 
 class TypeFormatCalculater(Calculater):
     def __init__(self, *args, **kwargs):

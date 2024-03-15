@@ -169,6 +169,9 @@ class DBLoadValuer(Valuer):
     def require_loaded(self):
         return True
 
+    def is_const(self):
+        return False
+
 
 class ContextDBLoadValuer(DBLoadValuer):
     def __init__(self, *args, **kwargs):

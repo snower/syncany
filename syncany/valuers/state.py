@@ -146,6 +146,9 @@ class StateValuer(Valuer):
             return self.default_valuer.get_final_filter()
         return None
 
+    def is_const(self):
+        return False
+
 
 class ContextStateValuer(StateValuer):
     def __init__(self, *args, **kwargs):

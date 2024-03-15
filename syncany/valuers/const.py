@@ -41,6 +41,9 @@ class ConstValuer(Valuer):
     def require_loaded(self):
         return False
 
+    def is_const(self):
+        return True
+
     def is_aggregate(self):
         return False
 

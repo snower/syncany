@@ -291,6 +291,16 @@ class Valuer(object):
         setattr(self, "_cached_require_loaded", False)
         return False
 
+    def is_const(self):
+        if hasattr(self, "_cached_is_const"):
+            return self._cached_is_const
+        for child in self.childs():
+            if not child.is_const():
+                setattr(self, "_cached_is_const", False)
+                return False
+        setattr(self, "_cached_is_const", True)
+        return True
+
     def is_aggregate(self):
         if hasattr(self, "_cached_is_aggregate"):
             return self._cached_is_aggregate

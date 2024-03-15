@@ -141,6 +141,14 @@ class CalculateValuer(Valuer):
             final_filter = filter
         return final_filter
 
+    def is_const(self):
+        if hasattr(self, "_cached_is_const"):
+            return self._cached_is_const
+        if self.calculater.is_realtime_calculater():
+            setattr(self, "_cached_is_const", False)
+            return False
+        return super(CalculateValuer, self).is_const()
+
 
 class ContextCalculateValuer(CalculateValuer):
     def __init__(self, *args, **kwargs):

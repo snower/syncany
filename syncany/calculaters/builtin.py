@@ -512,6 +512,9 @@ class NowCalculater(Calculater):
     def get_final_filter(self):
         return DateTimeFilter.default()
 
+    def is_realtime_calculater(self):
+        return True
+
 
 
 class EmptyCalculater(Calculater):
@@ -1031,6 +1034,9 @@ class ObjectIdCalculater(Calculater):
             return None
         return ObjectId(*args)
 
+    def is_realtime_calculater(self):
+        return True
+
 
 class UUIDCalculater(Calculater):
     def calculate(self, *args):
@@ -1052,6 +1058,9 @@ class UUIDCalculater(Calculater):
             if func_name == "uuid5":
                 return uuid.uuid5(*args)
         return uuid.UUID(*args)
+
+    def is_realtime_calculater(self):
+        return True
 
 
 class SnowflakeIdCalculater(Calculater):
@@ -1106,6 +1115,9 @@ class SnowflakeIdCalculater(Calculater):
         if len(args) <= 3:
             return self.next_id(*args)
         return self.next_id(args[:3])
+
+    def is_realtime_calculater(self):
+        return True
 
 
 class ArrayCalculater(Calculater):
@@ -1412,3 +1424,6 @@ class RandomCalculater(Calculater):
         if not args:
             return random.random()
         return None
+
+    def is_realtime_calculater(self):
+        return True

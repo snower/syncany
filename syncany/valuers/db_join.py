@@ -260,6 +260,9 @@ class DBJoinValuer(Valuer):
             return self.return_valuer.get_final_filter()
         return None
 
+    def is_const(self):
+        return False
+
     def require_loaded(self):
         return True
 
