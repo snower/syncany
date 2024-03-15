@@ -88,6 +88,9 @@ class InheritValuer(Valuer):
     def require_loaded(self):
         return False
 
+    def is_const(self):
+        return False
+
     def is_aggregate(self):
         return False
 
@@ -210,6 +213,9 @@ class InheritChildValuer(Valuer):
         return self.value_valuer.get_final_filter()
 
     def require_loaded(self):
+        return False
+
+    def is_const(self):
         return False
 
     def is_aggregate(self):
