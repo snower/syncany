@@ -19,6 +19,7 @@ class MakeValuer(Valuer):
         self.value_is_yield = True if self.value_wait_loaded else self.check_is_yield()
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
         self.return_is_aggregate = True if self.return_valuer and self.return_valuer.is_aggregate() else False
+        self.optimize_fast_make()
 
     def clone_init(self, from_valuer):
         super(MakeValuer, self).clone_init(from_valuer)
@@ -26,10 +27,25 @@ class MakeValuer(Valuer):
         self.value_is_yield = from_valuer.value_is_yield
         self.wait_loaded = from_valuer.wait_loaded
         self.return_is_aggregate = from_valuer.return_is_aggregate
+        self.optimize_fast_make()
+
+    def optimize_fast_make(self):
+        if self.value_wait_loaded or self.value_is_yield or self.wait_loaded:
+            return
+        if not isinstance(self.value_valuer, dict):
+            return
+        value_valuer_count = len(self.value_valuer)
+        if value_valuer_count == 0:
+            self.fill_get = self.fill_get_dict0
+        elif value_valuer_count == 1:
+            self.value_valuer_key0, self.value_valuer_value0 = list(self.value_valuer.values())[0]
+            self.fill_get = self.fill_get_dict1
+        else:
+            self.fill_get = self.fill_get_dict
 
     def check_wait_loaded(self):
         if isinstance(self.value_valuer, dict):
-            for _, (key_valuer, value_valuer) in self.value_valuer.items():
+            for key_valuer, value_valuer in self.value_valuer.values():
                 if key_valuer.require_loaded():
                     return True
                 if value_valuer.require_loaded():
@@ -45,7 +61,7 @@ class MakeValuer(Valuer):
 
     def check_is_yield(self):
         if isinstance(self.value_valuer, dict):
-            for _, (key_valuer, value_valuer) in self.value_valuer.items():
+            for key_valuer, value_valuer in self.value_valuer.values():
                 if value_valuer.is_yield():
                     return True
         elif isinstance(self.value_valuer, list):
@@ -65,7 +81,7 @@ class MakeValuer(Valuer):
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.mount_loader(is_return_getter=False, **kwargs)
         if isinstance(self.value_valuer, dict):
-            for key, (key_valuer, value_valuer) in self.value_valuer.items():
+            for key_valuer, value_valuer in self.value_valuer.values():
                 key_valuer.mount_loader(is_return_getter=False, **kwargs)
                 value_valuer.mount_loader(is_return_getter=is_return_getter and True, **kwargs)
         elif isinstance(self.value_valuer, list):
@@ -106,7 +122,7 @@ class MakeValuer(Valuer):
         if not self.value_wait_loaded and not self.value_is_yield:
             if isinstance(self.value_valuer, dict):
                 value = {key_valuer.fill_get(data): value_valuer.fill_get(data)
-                         for key, (key_valuer, value_valuer) in self.value_valuer.items()}
+                         for key_valuer, value_valuer in self.value_valuer.values()}
             elif isinstance(self.value_valuer, list):
                 value = [value_valuer.fill_get(data) for value_valuer in self.value_valuer]
             elif isinstance(self.value_valuer, Valuer):
@@ -123,7 +139,7 @@ class MakeValuer(Valuer):
             return self
 
         if isinstance(self.value_valuer, dict):
-            for _, (key_valuer, value_valuer) in self.value_valuer.items():
+            for key_valuer, value_valuer in self.value_valuer.values():
                 key_valuer.fill(data)
                 value_valuer.fill(data)
         elif isinstance(self.value_valuer, list):
@@ -215,7 +231,7 @@ class MakeValuer(Valuer):
 
         if isinstance(self.value_valuer, dict):
             value = {key_valuer.fill_get(data): value_valuer.fill_get(data)
-                     for key, (key_valuer, value_valuer) in self.value_valuer.items()}
+                     for key_valuer, value_valuer in self.value_valuer.values()}
         elif isinstance(self.value_valuer, list):
             value = [value_valuer.fill_get(data) for value_valuer in self.value_valuer]
         elif isinstance(self.value_valuer, Valuer):
@@ -225,6 +241,35 @@ class MakeValuer(Valuer):
         if self.return_valuer:
             return self.return_valuer.fill_get(value)
         return value
+
+    def fill_get_dict0(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if self.return_valuer:
+            return self.return_valuer.fill_get({})
+        return {}
+
+    def fill_get_dict1(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if self.return_valuer:
+            return self.return_valuer.fill_get({self.value_valuer_key0.fill_get(data): self.value_valuer_value0.fill_get(data)})
+        return {self.value_valuer_key0.fill_get(data): self.value_valuer_value0.fill_get(data)}
+
+    def fill_get_dict(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if self.return_valuer:
+            return self.return_valuer.fill_get({key_valuer.fill_get(data): value_valuer.fill_get(data)
+                                                for key_valuer, value_valuer in self.value_valuer.values()})
+        return {key_valuer.fill_get(data): value_valuer.fill_get(data)
+                for key_valuer, value_valuer in self.value_valuer.values()}
 
     def get_yield(self, value, yield_value, has_yield_data=True):
         GeneratorType = types.GeneratorType
@@ -316,7 +361,7 @@ class MakeValuer(Valuer):
     def childs(self):
         childs = []
         if isinstance(self.value_valuer, dict):
-            for _, (key_valuer, value_valuer) in self.value_valuer.items():
+            for key_valuer, value_valuer in self.value_valuer.values():
                 childs.append(key_valuer)
                 childs.append(value_valuer)
         elif isinstance(self.value_valuer, list):
@@ -333,7 +378,7 @@ class MakeValuer(Valuer):
     def get_fields(self):
         fields = []
         if isinstance(self.value_valuer, dict):
-            for _, (key_valuer, value_valuer) in self.value_valuer.items():
+            for key_valuer, value_valuer in self.value_valuer.values():
                 for field in key_valuer.get_fields():
                     fields.append(field)
                 for field in value_valuer.get_fields():
