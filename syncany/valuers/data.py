@@ -16,12 +16,35 @@ class DataValuer(Valuer):
 
         self.option = None
 
+    def update_key(self, key):
+        super(DataValuer, self).update_key(key)
+        self.optimize_fast_get_value()
+
     def new_init(self):
         super(DataValuer, self).new_init()
         if self.key in self.KEY_GETTER_CACHES:
             self.key_getters = self.KEY_GETTER_CACHES[self.key]
         else:
             self.parse_key()
+        self.optimize_fast_get_value()
+
+    def clone_init(self, from_valuer):
+        super(DataValuer, self).clone_init(from_valuer)
+        self.optimize_fast_get_value()
+
+    def optimize_fast_get_value(self):
+        if not self.key:
+            self.fill = self.fill_none
+            self.fill_get = self.fill_get_none
+        elif self.key == "*":
+            self.fill = self.fill_star
+            if not self.inherit_valuers and not self.return_valuer:
+                self.fill_get = self.do_filter
+            else:
+                self.fill_get = self.fill_get_star
+        elif not self.inherit_valuers and not self.return_valuer and "." not in self.key:
+            self.fill = self.fill_dict_key
+            self.fill_get = self.fill_get_dict_key
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
@@ -82,6 +105,62 @@ class DataValuer(Valuer):
             self.value = value
         return self
 
+    def fill_none(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if self.return_valuer:
+            self.return_valuer.fill(self.do_filter(None) if self.filter else None)
+        else:
+            self.value = self.do_filter(None) if self.filter else None
+        return self
+
+    def fill_star(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if self.return_valuer:
+            self.return_valuer.fill(self.do_filter(data))
+        else:
+            self.value = self.do_filter(data)
+        return self
+
+    def fill_dict_key(self, data):
+        try:
+            if self.filter:
+                self.value = self.do_filter(data[self.key])
+            else:
+                value = data[self.key]
+                if isinstance(value, datetime.datetime):
+                    self.value = ensure_timezone(value)
+                else:
+                    self.value = value
+        except (TypeError, KeyError):
+            if data is None or not self.key:
+                value = self.do_filter(None)
+            elif self.key == "*":
+                value = self.do_filter(data)
+            else:
+                if not self.key_getters:
+                    if self.key in self.KEY_GETTER_CACHES:
+                        self.key_getters = self.KEY_GETTER_CACHES[self.key]
+                    else:
+                        self.parse_key()
+                try:
+                    key_getter_index, key_getter_len = 0, len(self.key_getters)
+                    while key_getter_index < key_getter_len:
+                        data, index = self.key_getters[key_getter_index](data)
+                        if data is None:
+                            break
+                        key_getter_index += index
+                    value = self.do_filter(data)
+                except:
+                    value = self.do_filter(None)
+            self.value = value
+        return self
+
     def get(self):
         if self.return_valuer:
             return self.return_valuer.get()
@@ -117,6 +196,55 @@ class DataValuer(Valuer):
 
         if self.return_valuer:
             return self.return_valuer.fill_get(value)
+        return value
+
+    def fill_get_none(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if self.return_valuer:
+            return self.return_valuer.fill_get(self.do_filter(None) if self.filter else None)
+        return self.do_filter(None) if self.filter else None
+
+    def fill_get_star(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if self.return_valuer:
+            return self.return_valuer.fill_get(self.do_filter(data))
+        return self.do_filter(data)
+
+    def fill_get_dict_key(self, data):
+        try:
+            if self.filter:
+                value = self.do_filter(data[self.key])
+            else:
+                value = data[self.key]
+                if isinstance(value, datetime.datetime):
+                    value = ensure_timezone(value)
+        except (TypeError, KeyError):
+            if data is None or not self.key:
+                value = self.do_filter(None)
+            elif self.key == "*":
+                value = self.do_filter(data)
+            else:
+                if not self.key_getters:
+                    if self.key in self.KEY_GETTER_CACHES:
+                        self.key_getters = self.KEY_GETTER_CACHES[self.key]
+                    else:
+                        self.parse_key()
+                try:
+                    key_getter_index, key_getter_len = 0, len(self.key_getters)
+                    while key_getter_index < key_getter_len:
+                        data, index = self.key_getters[key_getter_index](data)
+                        if data is None:
+                            break
+                        key_getter_index += index
+                    value = self.do_filter(data)
+                except:
+                    value = self.do_filter(None)
         return value
 
     def do_filter(self, value):

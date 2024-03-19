@@ -22,25 +22,26 @@ class CalculateValuer(Valuer):
                 break
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
         if not self.args_wait_loaded and not self.wait_loaded and not self.filter:
-            self.optimize_fill_get_init()
+            self.optimize_fast_calculate()
 
     def clone_init(self, from_valuer):
         super(CalculateValuer, self).clone_init(from_valuer)
         self.args_wait_loaded = from_valuer.args_wait_loaded
         self.wait_loaded = from_valuer.wait_loaded
         if not self.args_wait_loaded and not self.wait_loaded and not self.filter:
-            self.optimize_fill_get_init()
+            self.optimize_fast_calculate()
 
-    def optimize_fill_get_init(self):
-        if not self.args_valuers:
+    def optimize_fast_calculate(self):
+        args_count = len(self.args_valuers)
+        if args_count == 0:
             self.fill_get = self.fill_get0
-        elif len(self.args_valuers) == 1:
+        elif args_count == 1:
             self.fill_get = self.fill_get1
-        elif len(self.args_valuers) == 2:
+        elif args_count == 2:
             self.fill_get = self.fill_get2
-        elif len(self.args_valuers) == 3:
+        elif args_count == 3:
             self.fill_get = self.fill_get3
-        elif len(self.args_valuers) == 4:
+        elif args_count == 4:
             self.fill_get = self.fill_get4
 
     def add_inherit_valuer(self, valuer):

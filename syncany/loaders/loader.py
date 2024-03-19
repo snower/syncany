@@ -30,7 +30,7 @@ class KeyMatcher(object):
 
     def create_key(self, key):
         valuer = self.clone_valuer()
-        valuer.key = key
+        valuer.update_key(key)
         for key_event in self.key_events:
             key_event(key, valuer)
         return valuer

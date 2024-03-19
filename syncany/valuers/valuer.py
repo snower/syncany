@@ -155,6 +155,11 @@ class Valuer(object):
             self.valuer_id = from_valuer.valuer_id
             self.clone_init(from_valuer)
 
+    def update_key(self, key):
+        if self.key is None and key is None:
+            return
+        self.key = key
+
     def new_init(self):
         self.key_getters = []
 
@@ -164,6 +169,8 @@ class Valuer(object):
     def parse_key(self):
         if self.key in self.KEY_GETTER_CACHES:
             self.key_getters = self.KEY_GETTER_CACHES[self.key]
+            return
+        if not self.key or self.key == "*":
             return
 
         keys = self.key.split(".")
