@@ -38,8 +38,17 @@ class MakeValuer(Valuer):
         if value_valuer_count == 0:
             self.fill_get = self.fill_get_dict0
         elif value_valuer_count == 1:
-            self.value_valuer_key0, self.value_valuer_value0 = list(self.value_valuer.values())[0]
+            value_valuer_values = list(self.value_valuer.values())
+            self.value_valuer_key0 = value_valuer_values[0][0].fill_get
+            self.value_valuer_value0 = value_valuer_values[0][1].fill_get
             self.fill_get = self.fill_get_dict1
+        elif value_valuer_count == 2:
+            value_valuer_values = list(self.value_valuer.values())
+            self.value_valuer_key0 = value_valuer_values[0][0].fill_get
+            self.value_valuer_value0 = value_valuer_values[0][1].fill_get
+            self.value_valuer_key1 = value_valuer_values[1][0].fill_get
+            self.value_valuer_value1 = value_valuer_values[1][1].fill_get
+            self.fill_get = self.fill_get_dict2
         else:
             self.fill_get = self.fill_get_dict
 
@@ -257,8 +266,19 @@ class MakeValuer(Valuer):
                 inherit_valuer.fill(data)
 
         if self.return_valuer:
-            return self.return_valuer.fill_get({self.value_valuer_key0.fill_get(data): self.value_valuer_value0.fill_get(data)})
-        return {self.value_valuer_key0.fill_get(data): self.value_valuer_value0.fill_get(data)}
+            return self.return_valuer.fill_get({self.value_valuer_key0(data): self.value_valuer_value0(data)})
+        return {self.value_valuer_key0(data): self.value_valuer_value0(data)}
+
+    def fill_get_dict2(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if self.return_valuer:
+            return self.return_valuer.fill_get({self.value_valuer_key0(data): self.value_valuer_value0(data),
+                                                self.value_valuer_key1(data): self.value_valuer_value1(data)})
+        return {self.value_valuer_key0(data): self.value_valuer_value0(data),
+                self.value_valuer_key1(data): self.value_valuer_value1(data)}
 
     def fill_get_dict(self, data):
         if self.inherit_valuers:

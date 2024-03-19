@@ -36,12 +36,22 @@ class CalculateValuer(Valuer):
         if args_count == 0:
             self.fill_get = self.fill_get0
         elif args_count == 1:
+            self.args_fill_get0 = self.args_valuers[0].fill_get
             self.fill_get = self.fill_get1
         elif args_count == 2:
+            self.args_fill_get0 = self.args_valuers[0].fill_get
+            self.args_fill_get1 = self.args_valuers[1].fill_get
             self.fill_get = self.fill_get2
         elif args_count == 3:
+            self.args_fill_get0 = self.args_valuers[0].fill_get
+            self.args_fill_get1 = self.args_valuers[1].fill_get
+            self.args_fill_get2 = self.args_valuers[2].fill_get
             self.fill_get = self.fill_get3
         elif args_count == 4:
+            self.args_fill_get0 = self.args_valuers[0].fill_get
+            self.args_fill_get1 = self.args_valuers[1].fill_get
+            self.args_fill_get2 = self.args_valuers[2].fill_get
+            self.args_fill_get3 = self.args_valuers[3].fill_get
             self.fill_get = self.fill_get4
 
     def add_inherit_valuer(self, valuer):
@@ -129,8 +139,8 @@ class CalculateValuer(Valuer):
                 inherit_valuer.fill(data)
 
         if self.return_valuer:
-            return self.return_valuer.fill_get(self.calculater.calculate(self.args_valuers[0].fill_get(data)))
-        return self.calculater.calculate(self.args_valuers[0].fill_get(data))
+            return self.return_valuer.fill_get(self.calculater.calculate(self.args_fill_get0(data)))
+        return self.calculater.calculate(self.args_fill_get0(data))
 
     def fill_get2(self, data):
         if self.inherit_valuers:
@@ -138,10 +148,10 @@ class CalculateValuer(Valuer):
                 inherit_valuer.fill(data)
 
         if self.return_valuer:
-            return self.return_valuer.fill_get(self.calculater.calculate(self.args_valuers[0].fill_get(data),
-                                                                         self.args_valuers[1].fill_get(data)))
-        return self.calculater.calculate(self.args_valuers[0].fill_get(data),
-                                         self.args_valuers[1].fill_get(data))
+            return self.return_valuer.fill_get(self.calculater.calculate(self.args_fill_get0(data),
+                                                                         self.args_fill_get1(data)))
+        return self.calculater.calculate(self.args_fill_get0(data),
+                                         self.args_fill_get1(data))
 
     def fill_get3(self, data):
         if self.inherit_valuers:
@@ -149,12 +159,12 @@ class CalculateValuer(Valuer):
                 inherit_valuer.fill(data)
 
         if self.return_valuer:
-            return self.return_valuer.fill_get(self.calculater.calculate(self.args_valuers[0].fill_get(data),
-                                                                         self.args_valuers[1].fill_get(data),
-                                                                         self.args_valuers[2].fill_get(data)))
-        return self.calculater.calculate(self.args_valuers[0].fill_get(data),
-                                         self.args_valuers[1].fill_get(data),
-                                         self.args_valuers[2].fill_get(data))
+            return self.return_valuer.fill_get(self.calculater.calculate(self.args_fill_get0(data),
+                                                                         self.args_fill_get1(data),
+                                                                         self.args_fill_get2(data)))
+        return self.calculater.calculate(self.args_fill_get0(data),
+                                         self.args_fill_get1(data),
+                                         self.args_fill_get2(data))
 
     def fill_get4(self, data):
         if self.inherit_valuers:
@@ -162,14 +172,14 @@ class CalculateValuer(Valuer):
                 inherit_valuer.fill(data)
 
         if self.return_valuer:
-            return self.return_valuer.fill_get(self.calculater.calculate(self.args_valuers[0].fill_get(data),
-                                                                         self.args_valuers[1].fill_get(data),
-                                                                         self.args_valuers[2].fill_get(data),
-                                                                         self.args_valuers[3].fill_get(data)))
-        return self.calculater.calculate(self.args_valuers[0].fill_get(data),
-                                         self.args_valuers[1].fill_get(data),
-                                         self.args_valuers[2].fill_get(data),
-                                         self.args_valuers[3].fill_get(data))
+            return self.return_valuer.fill_get(self.calculater.calculate(self.args_fill_get0(data),
+                                                                         self.args_fill_get1(data),
+                                                                         self.args_fill_get2(data),
+                                                                         self.args_fill_get3(data)))
+        return self.calculater.calculate(self.args_fill_get0(data),
+                                         self.args_fill_get1(data),
+                                         self.args_fill_get2(data),
+                                         self.args_fill_get3(data))
 
     def childs(self):
         childs = []
