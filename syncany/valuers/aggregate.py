@@ -25,7 +25,7 @@ class AggregateManager(object):
         aggregate_value.data[name] = value
 
     def reset(self):
-        self.datas = {}
+        self.datas.clear()
 
 
 class AggregateValuer(Valuer):
@@ -107,9 +107,9 @@ class AggregateValuer(Valuer):
                 return value
             if self.key not in aggregate_data.state:
                 if self.filter:
-                    value = self.do_filter()
+                    value = self.do_filter(self.calculate_valuer.fill_get(cdata))
                 else:
-                    value = self.calculate_valuer.fill_get(aggregate_data.data)
+                    value = self.calculate_valuer.fill_get(cdata)
                 aggregate_data.state[self.key] = True
                 aggregate_data.data[self.key] = value
                 return value
@@ -137,9 +137,9 @@ class AggregateValuer(Valuer):
                 return value
             if self.key not in aggregate_data.state:
                 if self.filter:
-                    value = self.do_filter()
+                    value = self.do_filter(self.calculate_valuer.fill_get(cdata))
                 else:
-                    value = self.calculate_valuer.fill_get(aggregate_data.data)
+                    value = self.calculate_valuer.fill_get(cdata)
                 aggregate_data.state[self.key] = True
                 aggregate_data.data[self.key] = value
                 return value
