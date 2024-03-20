@@ -13,7 +13,7 @@ try:
     from bson.objectid import ObjectId
 except ImportError:
     ObjectId = None
-from ..utils import get_timezone, parse_datetime, parse_date, parse_time
+from ..utils import NumberTypes, SequenceTypes, get_timezone, parse_datetime, parse_date, parse_time
 from .filter import Filter
 
 
@@ -46,7 +46,7 @@ class IntFilter(Filter):
         if isinstance(value, datetime.timedelta):
             return int(value.total_seconds())
 
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, SequenceTypes):
             result = []
             for cv in value:
                 result.append(self.filter(cv))
@@ -93,7 +93,7 @@ class FloatFilter(Filter):
         if isinstance(value, datetime.timedelta):
             return float(value.total_seconds())
 
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, SequenceTypes):
             result = []
             for cv in value:
                 result.append(self.filter(cv))
@@ -143,7 +143,7 @@ class DecimalFilter(Filter):
         if isinstance(value, datetime.timedelta):
             return Decimal(value.total_seconds())
 
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, SequenceTypes):
             result = []
             for cv in value:
                 result.append(self.filter(cv))
@@ -213,7 +213,7 @@ class StringFilter(Filter):
             except:
                 return ""
 
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, SequenceTypes):
             result = []
             for cv in value:
                 result.append(self.filter(cv))
@@ -289,7 +289,7 @@ class BytesFilter(Filter):
             except:
                 return b""
 
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, SequenceTypes):
             result = []
             for cv in value:
                 result.append(self.filter(cv))
@@ -317,7 +317,7 @@ class BooleanFilter(Filter):
         if value is True or value is False:
             return value
 
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, SequenceTypes):
             result = []
             for cv in value:
                 result.append(self.filter(cv))
@@ -345,7 +345,7 @@ class ArrayFilter(Filter):
         if isinstance(value, list):
             return value
 
-        if isinstance(value, (set, tuple)):
+        if isinstance(value, SequenceTypes):
             return list(value)
 
         if value is None:
@@ -367,7 +367,7 @@ class SetFilter(Filter):
         if isinstance(value, set):
             return value
 
-        if isinstance(value, (list, tuple)):
+        if isinstance(value, SequenceTypes):
             return set(value)
 
         if value is None:
@@ -386,7 +386,7 @@ class MapFilter(Filter):
                 return {value[self.args]: value} if self.args in value else {}
             return value
 
-        if isinstance(value, (set, list, tuple)):
+        if isinstance(value, SequenceTypes):
             if self.args:
                 result = {}
                 for v in value:
@@ -408,7 +408,7 @@ class MapFilter(Filter):
             if all([isinstance(v, dict) for v in value]):
                 return {"index" + str(i): value[i] for i in range(len(value))}
 
-            if all([isinstance(v, (list, tuple)) and len(v) == 2 for v in value]):
+            if all([isinstance(v, SequenceTypes) and len(v) == 2 for v in value]):
                 return {v[0]: v[1] for v in value}
 
             try:
@@ -445,7 +445,7 @@ class ObjectIdFilter(Filter):
         if value is False:
             return ObjectId("000000000000000000000000")
 
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, SequenceTypes):
             results = []
             for cv in value:
                 results.append(self.filter(cv))
@@ -457,7 +457,7 @@ class ObjectIdFilter(Filter):
                 results[ck] = self.filter(cv)
             return value
 
-        if isinstance(value, (int, float)):
+        if isinstance(value, NumberTypes):
             return ObjectId.from_datetime(datetime.datetime.fromtimestamp(int(value), pytz.timezone(self.args) if self.args else pytz.UTC))
 
         if isinstance(value, datetime.datetime):
@@ -486,7 +486,7 @@ class UUIDFilter(Filter):
         if value is False:
             return uuid.UUID("00000000-0000-0000-0000-000000000000")
 
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, SequenceTypes):
             results = []
             for cv in value:
                 results.append(self.filter(cv))
@@ -500,7 +500,7 @@ class UUIDFilter(Filter):
 
         if isinstance(value, datetime.datetime):
             value = value.timestamp()
-        if isinstance(value, (int, float)):
+        if isinstance(value, NumberTypes):
             if value <= 0xffffffff:
                 timestamp = int(time.time())
                 return uuid.UUID(fields=(timestamp & 0xffffffff, (timestamp >> 32) & 0xffff,
@@ -555,7 +555,7 @@ class DateTimeFilter(Filter):
                     value = value.astimezone(tz=localzone)
             return value
 
-        if isinstance(value, (int, float)):
+        if isinstance(value, NumberTypes):
             value = datetime.datetime.fromtimestamp(int(value), pytz.timezone(self.tzname) if self.tzname else pytz.UTC)
             if value.tzinfo is None:
                 value = value.replace(tzinfo=localzone)
@@ -569,7 +569,7 @@ class DateTimeFilter(Filter):
                     value = value.astimezone(tz=localzone)
             return value
 
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, SequenceTypes):
             results = []
             for cv in value:
                 results.append(self.filter(cv))
@@ -634,7 +634,7 @@ class DateFilter(Filter):
             dt = datetime.datetime.now(tz=localzone)
             return datetime.date(dt.year, dt.month, dt.day) + value
 
-        if isinstance(value, (int, float)):
+        if isinstance(value, NumberTypes):
             localzone = get_timezone()
             value = datetime.datetime.fromtimestamp(int(value), pytz.timezone(self.args) if self.args else pytz.UTC)
             if value.tzinfo is None:
@@ -643,7 +643,7 @@ class DateFilter(Filter):
                 value = value.astimezone(tz=localzone)
             return datetime.date(value.year, value.month, value.day)
 
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, SequenceTypes):
             results = []
             for cv in value:
                 results.append(self.filter(cv))
@@ -694,7 +694,7 @@ class TimeFilter(Filter):
             dt = datetime.datetime.now(tz=localzone) + value
             return datetime.time(dt.hour, dt.minute, dt.second)
 
-        if isinstance(value, (int, float)):
+        if isinstance(value, NumberTypes):
             localzone = get_timezone()
             value = datetime.datetime.fromtimestamp(int(value), pytz.timezone(self.args) if self.args else pytz.UTC)
             if value.tzinfo is None:
@@ -703,7 +703,7 @@ class TimeFilter(Filter):
                 value = value.astimezone(tz=localzone)
             return datetime.time(value.hour, value.minute, value.second)
 
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, SequenceTypes):
             results = []
             for cv in value:
                 results.append(self.filter(cv))

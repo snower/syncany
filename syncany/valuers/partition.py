@@ -2,7 +2,7 @@
 # 2020/7/2
 # create by: snower
 
-from ..utils import CmpValue
+from ..utils import NumberTypes, SequenceTypes, CmpValue
 from .valuer import Valuer
 
 
@@ -175,9 +175,9 @@ class OrderPartition(object):
     def sort_datas(self, iterable, keys=None, reverse=None):
         if not keys:
             return sorted(iterable, reverse=True if reverse else False)
-        if not isinstance(keys, (list, tuple, set)):
+        if not isinstance(keys, SequenceTypes):
             keys = [keys]
-        reverse_keys = [tuple(key) for key in keys if isinstance(key, (tuple, list, set)) and len(key) == 2
+        reverse_keys = [tuple(key) for key in keys if isinstance(key, SequenceTypes) and len(key) == 2
                         and isinstance(key[0], str) and key[1]]
         if reverse is None:
             reverse = True if len(reverse_keys) > len(keys) / 2 else False
@@ -187,7 +187,7 @@ class OrderPartition(object):
         for key in keys:
             if isinstance(key, str):
                 sort_key = (key.split("."), True if reverse else False)
-            elif isinstance(key, (tuple, list, set)) and len(key) == 2 and isinstance(key[0], str):
+            elif isinstance(key, SequenceTypes) and len(key) == 2 and isinstance(key[0], str):
                 sort_key = (key[0].split("."), (False if key[1] else True) if reverse else (True if key[1] else False))
             else:
                 raise TypeError("unknown keys type: " + str(keys))
@@ -206,7 +206,7 @@ class OrderPartition(object):
                 if not sort_keys[i][1]:
                     key_values.append(key_value)
                 else:
-                    key_values.append(-key_value if isinstance(key_value, (int, float)) else CmpValue(key_value, True))
+                    key_values.append(-key_value if isinstance(key_value, NumberTypes) else CmpValue(key_value, True))
             return tuple(key_values)
 
         try:

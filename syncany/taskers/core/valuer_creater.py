@@ -2,6 +2,7 @@
 # 18/8/15
 # create by: snower
 
+from ...utils import SequenceTypes
 from ...valuers.valuer import LoadAllFieldsException
 from ...errors import CacheUnknownException, ValuerUnknownException
 
@@ -118,7 +119,7 @@ class ValuerCreater(object):
         if isinstance(value, dict):
             return "{" + ", ".join(["%s: %s" % (self.format_value_cache_key(key), self.format_value_cache_key(value[key]))
                                     for key in sorted(value.keys())]) + "}"
-        if isinstance(value, (tuple, list, set)):
+        if isinstance(value, SequenceTypes):
             try:
                 return "[" + ", ".join([self.format_value_cache_key(v) for v in sorted(list(value))]) + "]"
             except:

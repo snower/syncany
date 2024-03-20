@@ -3,7 +3,7 @@
 # create by: snower
 
 import re
-from ..utils import human_repr_object
+from ..utils import SequenceTypes, human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
 
 
@@ -399,7 +399,7 @@ class ClickhouseDB(DataBase):
     def escape_args(self, args):
         if isinstance(args, set):
             return tuple(self.escape_param(list(arg)) for arg in args)
-        elif isinstance(args, (list, tuple)):
+        elif isinstance(args, SequenceTypes):
             return tuple(self.escape_param(arg) for arg in args)
         elif isinstance(args, dict):
             return {key: self.escape_param(val) for (key, val) in args.items()}

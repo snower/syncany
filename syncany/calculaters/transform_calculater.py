@@ -2,6 +2,7 @@
 # 2020/12/15
 # create by: snower
 
+from ..utils import NumberTypes
 from .calculater import Calculater
 
 
@@ -195,7 +196,7 @@ class TransformV2HCalculater(TransformCalculater):
             elif vvalue_key in data:
                 if data[vvalue_key] is None and vvalue in mdata[hvalue]:
                     continue
-                if isinstance(data[vvalue_key], (int, float)):
+                if isinstance(data[vvalue_key], NumberTypes):
                     if vvalue not in mdata[hvalue]:
                         mdata[hvalue][vvalue] = data[vvalue_key]
                     else:
@@ -328,7 +329,7 @@ class TransformUniqKVCalculater(TransformCalculater):
                 data_key = str(data[kkey])
                 if data[vkey] is None and data_key in uniq_data:
                     continue
-                if isinstance(data[vkey], (int, float)):
+                if isinstance(data[vkey], NumberTypes):
                     if data_key in uniq_data:
                         uniq_data[data_key] += data[vkey]
                     else:

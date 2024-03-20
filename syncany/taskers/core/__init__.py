@@ -14,7 +14,7 @@ from ..config import load_config
 from .states import States
 from .option import DataValuerOutputerOption
 from ...calculaters.import_calculater import create_import_calculater
-from ...utils import get_expression_name, gen_runner_id, ensure_timezone
+from ...utils import NumberTypes, get_expression_name, gen_runner_id, ensure_timezone
 from ...filters import ArrayFilter
 from ...valuers import Contexter, DataValuer
 from .valuer_compiler import ValuerCompiler
@@ -1049,7 +1049,7 @@ class CoreTasker(Tasker):
         for key, value in child_statistics.items():
             if key not in statistics:
                 statistics[key] = value
-            elif isinstance(value, (int, float)):
+            elif isinstance(value, NumberTypes):
                 statistics[key] += value
             else:
                 statistics[key] = value

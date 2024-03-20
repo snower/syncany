@@ -5,7 +5,7 @@
 import re
 import datetime
 import pytz
-from ..utils import human_repr_object
+from ..utils import SequenceTypes, human_repr_object
 from .database import QueryBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, DataBase, DatabaseFactory
 
 escape_chars_map = {
@@ -39,7 +39,7 @@ def escape_param(item):
 
 
 def escape_args(args):
-    if isinstance(args, (list, set, tuple)):
+    if isinstance(args, SequenceTypes):
         return tuple(escape_param(arg) for arg in args)
     elif isinstance(args, dict):
         return {key: escape_param(val) for (key, val) in args.items()}

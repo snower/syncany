@@ -11,6 +11,10 @@ from pendulum.parsing import parse as pendulum_parse
 from pendulum.parsing.exceptions import ParserError
 from tzlocal import get_localzone
 
+NumberTypes = (int, float)
+SequenceTypes = (tuple, list, set)
+
+
 class CmpValue(object):
     def __init__(self, value, reverse=False):
         self.value = value
@@ -73,9 +77,9 @@ class CmpValue(object):
 def sorted_by_keys(iterable, keys=None, reverse=None):
     if not keys:
         return sorted(iterable, reverse=True if reverse else False)
-    if not isinstance(keys, (list, tuple, set)):
+    if not isinstance(keys, SequenceTypes):
         keys = [keys]
-    reverse_keys = [key for key in keys if isinstance(key, (tuple, list, set)) and len(key) == 2
+    reverse_keys = [key for key in keys if isinstance(key, SequenceTypes) and len(key) == 2
                     and isinstance(key[0], str) and key[1]]
     if reverse is None:
         reverse = True if len(reverse_keys) > len(keys) / 2 else False
@@ -85,7 +89,7 @@ def sorted_by_keys(iterable, keys=None, reverse=None):
     for key in keys:
         if isinstance(key, str):
             sort_key = (key.split("."), True if reverse else False)
-        elif isinstance(key, (tuple, list, set)) and len(key) == 2 and isinstance(key[0], str):
+        elif isinstance(key, SequenceTypes) and len(key) == 2 and isinstance(key[0], str):
             sort_key = (key[0].split("."), (False if key[1] else True) if reverse else (True if key[1] else False))
         else:
             raise TypeError("unknown keys type: " + str(keys))
@@ -107,7 +111,7 @@ def sorted_by_keys(iterable, keys=None, reverse=None):
             if not kr:
                 key_values.append(key_value)
             else:
-                key_values.append(-key_value if isinstance(key_value, (int, float)) else CmpValue(key_value, True))
+                key_values.append(-key_value if isinstance(key_value, NumberTypes) else CmpValue(key_value, True))
         return tuple(key_values)
     try:
         return sorted(iterable, key=get_cmp_key, reverse=reverse)
@@ -254,14 +258,14 @@ def get_expression_name(expression):
 def check_simple_object(value):
     if isinstance(value, dict):
         for k, v in value.items():
-            if isinstance(k, (tuple, set, list, dict)):
+            if isinstance(k, SequenceTypes) or isinstance(k, dict):
                 return False
-            if isinstance(v, (tuple, set, list, dict)):
+            if isinstance(v, SequenceTypes) or isinstance(v, dict):
                 return False
         return True
-    if isinstance(value, (tuple, set, list)):
+    if isinstance(value, SequenceTypes):
         for v in value:
-            if isinstance(v, (tuple, set, list, dict)):
+            if isinstance(v, SequenceTypes) or isinstance(v, dict):
                 return False
         return True
     return True
@@ -285,7 +289,7 @@ def print_object(value, indent="    ", deep=1):
             print(indent * (deep - 1) + "}", end="")
         else:
             print("}", end="")
-    elif isinstance(value, (tuple, set, list)):
+    elif isinstance(value, SequenceTypes):
         next_deep = 1 if len(value) > 1 and not check_simple_object(value) else 0
         print("[", end="")
         for i in range(len(value)):
@@ -322,7 +326,7 @@ def human_format_object(value):
         for k, v in value.items():
             fvalues[k] = human_format_object(v)
         return fvalues
-    if isinstance(value, (tuple, set, list)):
+    if isinstance(value, SequenceTypes):
         fvalues = []
         for v in value:
             fvalues.append(human_format_object(v))
@@ -342,7 +346,7 @@ def human_repr_object(value):
         for k, v in value.items():
             fvalues.append("%s: %s" % (repr(k), human_repr_object(v)))
         return "{" + ", ".join(fvalues) + "}"
-    if isinstance(value, (tuple, set, list)):
+    if isinstance(value, SequenceTypes):
         fvalues, require_newline = [], any([isinstance(v, dict) for v in list(value)[:10]])
         for v in list(value)[:10]:
             fvalues.append(human_repr_object(v))

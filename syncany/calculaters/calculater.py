@@ -3,6 +3,7 @@
 # create by: snower
 
 import datetime
+from ..utils import NumberTypes, SequenceTypes
 from ..filters import DateTimeFilter, DateFilter, TimeFilter
 
 
@@ -44,7 +45,7 @@ class TypeFormatCalculater(Calculater):
             if self.type_cls:
                 if issubclass(self.type_cls, str):
                     return ""
-                if issubclass(self.type_cls, (int, float)):
+                if issubclass(self.type_cls, NumberTypes):
                     return 0
             return value
         if self.type_cls is None:
@@ -100,7 +101,7 @@ class MathematicalCalculater(TypeFormatCalculater):
         return None
 
     def get_mathematical_value(self, data, i):
-        if not isinstance(data, (list, tuple, set)):
+        if not isinstance(data, SequenceTypes):
             return self.format_type(data)
         if len(data) <= i:
             return None
@@ -114,7 +115,7 @@ class MathematicalCalculater(TypeFormatCalculater):
         left_datas, right_datas = self.get_left_datas(args), self.get_right_datas(args)
         if left_datas is None and right_datas is None:
             return self.get_default_value()
-        is_left_list, is_right_list = isinstance(left_datas, (list, tuple, set)), isinstance(right_datas, (list, tuple, set))
+        is_left_list, is_right_list = isinstance(left_datas, SequenceTypes), isinstance(right_datas, SequenceTypes)
         if not is_left_list and not is_right_list:
             result = self.mathematical_calculate(self.format_type(left_datas) if left_datas is not None else None,
                                                  self.format_type(right_datas) if right_datas is not None else None,

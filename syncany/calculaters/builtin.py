@@ -28,7 +28,9 @@ class TypeCalculater(TypingCalculater):
             return "bool"
         if isinstance(value, dict):
             return "map"
-        if isinstance(value, (list, tuple)):
+        if isinstance(value, list):
+            return "array"
+        if isinstance(value, tuple):
             return "array"
         if isinstance(value, set):
             return "set"
@@ -894,7 +896,7 @@ class IndexCalculater(Calculater):
                 elif data == args[1]:
                     return data
 
-            if isinstance(args[1], (int, float)):
+            if isinstance(args[1], NumberTypes):
                 return args[0][int(args[1])] if len(args[0]) < args[1] else None
 
         elif isinstance(args[0], dict):
@@ -941,7 +943,7 @@ class FilterCalculater(Calculater):
 
 class SumCalculater(Calculater):
     def add(self, v):
-        if isinstance(v, (int, float)):
+        if isinstance(v, NumberTypes):
             return v
         elif v is True:
             return 1
@@ -1271,14 +1273,14 @@ class MathCalculater(Calculater):
                 result = []
                 for value in args[0]:
                     try:
-                        result.append(getattr(math, func_name)(float(value) if not isinstance(args[0], (int, float)) else value,
+                        result.append(getattr(math, func_name)(float(value) if not isinstance(args[0], NumberTypes) else value,
                                                                *tuple(args[1:])))
                     except:
                         result.append(0)
                 return result
 
             try:
-                return getattr(math, func_name)(float(args[0]) if not isinstance(args[0], (int, float)) else args[0],
+                return getattr(math, func_name)(float(args[0]) if not isinstance(args[0], NumberTypes) else args[0],
                                                 *tuple(args[1:]))
             except:
                 return 0

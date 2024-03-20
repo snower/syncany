@@ -4,7 +4,7 @@
 
 import datetime
 import pytz
-from ..utils import get_timezone, parse_datetime
+from ..utils import NumberTypes, get_timezone, parse_datetime
 from .calculater import Calculater
 from ..filters.builtin import DateTimeFilter
 
@@ -27,8 +27,8 @@ class TimeWindowCalculater(Calculater):
                 dt = datetime.datetime.now(tz=get_timezone())
         else:
             dt = datetime.datetime.now(tz=get_timezone())
-        offset = args[1] if len(args) >= 2 and isinstance(args[1], (int, float)) else \
-            (args[2] if len(args) >= 3 and isinstance(args[2], (int, float)) else None)
+        offset = args[1] if len(args) >= 2 and isinstance(args[1], NumberTypes) else \
+            (args[2] if len(args) >= 3 and isinstance(args[2], NumberTypes) else None)
 
         if time_period[-1] == "d":
             dt = datetime.datetime(dt.year, dt.month, dt.day - dt.day % int(time_period[:-1]), tzinfo=dt.tzinfo)
@@ -54,7 +54,7 @@ class TimeWindowCalculater(Calculater):
             windex = int(dt.strftime("%W"))
             dt = datetime.datetime(dt.year, dt.month, dt.day, tzinfo=dt.tzinfo)
             dt = dt - datetime.timedelta(days=((windex % int(time_period[:-1])) + (int(time_period[:-1]) * offset if offset else 0)) * 7)
-            if len(args) >= 4 and isinstance(args[3], (int, float)) and 2 <= args[3] <= 7:
+            if len(args) >= 4 and isinstance(args[3], NumberTypes) and 2 <= args[3] <= 7:
                 dt = dt - datetime.timedelta(days=dt.weekday() - args[3] + 1)
             else:
                 dt = dt - datetime.timedelta(days=dt.weekday())

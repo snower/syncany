@@ -113,7 +113,14 @@ class ForeachValuer(Valuer):
                                                                        else None, inherited=True)
                         calculated_values.append(calculate_valuer.fill(dict(_index_=k, **v) if isinstance(v, dict)
                                                                        else dict(_index_=k, _value_=v)))
-                elif isinstance(value, (list, types.GeneratorType)):
+                elif isinstance(value, list):
+                    for i in range(len(value)):
+                        calculate_valuer = self.calculate_valuer.clone(Contexter() if isinstance(self, ContextForeachValuer)
+                                                                       else None, inherited=True)
+                        calculated_values.append(calculate_valuer.fill(dict(_index_=i, **value[i]) if isinstance(value[i], dict)
+                                                                       else dict(_index_=i, _value_=value[i])))
+                elif isinstance(value, types.GeneratorType):
+                    value = list(value)
                     for i in range(len(value)):
                         calculate_valuer = self.calculate_valuer.clone(Contexter() if isinstance(self, ContextForeachValuer)
                                                                        else None, inherited=True)
@@ -132,7 +139,11 @@ class ForeachValuer(Valuer):
             if isinstance(value, dict):
                 datas = [dict(_index_=k, **v) if isinstance(v, dict) else dict(_index_=k, _value_=v)
                          for k, v in value.items()]
-            elif isinstance(value, (list, types.GeneratorType)):
+            elif isinstance(value, list):
+                datas = [dict(_index_=i, **value[i]) if isinstance(value[i], dict) else dict(_index_=i, _value_=value[i])
+                         for i in range(len(value))]
+            elif isinstance(value, types.GeneratorType):
+                value = list(value)
                 datas = [dict(_index_=i, **value[i]) if isinstance(value[i], dict) else dict(_index_=i, _value_=value[i])
                          for i in range(len(value))]
             elif isinstance(value, range_type):
@@ -167,7 +178,11 @@ class ForeachValuer(Valuer):
             if isinstance(value, dict):
                 datas = [dict(_index_=k, **v) if isinstance(v, dict) else dict(_index_=k, _value_=v)
                          for k, v in value.items()]
-            elif isinstance(value, (list, types.GeneratorType)):
+            elif isinstance(value, list):
+                datas = [dict(_index_=i, **value[i]) if isinstance(value[i], dict) else dict(_index_=i, _value_=value[i])
+                    for i in range(len(value))]
+            elif isinstance(value, types.GeneratorType):
+                value = list(value)
                 datas = [dict(_index_=i, **value[i]) if isinstance(value[i], dict) else dict(_index_=i, _value_=value[i])
                     for i in range(len(value))]
             elif isinstance(value, range_type):
@@ -222,7 +237,11 @@ class ForeachValuer(Valuer):
         if isinstance(value, dict):
             datas = [dict(_index_=k, **v) if isinstance(v, dict) else dict(_index_=k, _value_=v)
                      for k, v in value.items()]
-        elif isinstance(value, (list, types.GeneratorType)):
+        elif isinstance(value, list):
+            datas = [dict(_index_=i, **value[i]) if isinstance(value[i], dict) else dict(_index_=i, _value_=value[i])
+                     for i in range(len(value))]
+        elif isinstance(value, types.GeneratorType):
+            value = list(value)
             datas = [dict(_index_=i, **value[i]) if isinstance(value[i], dict) else dict(_index_=i, _value_=value[i])
                      for i in range(len(value))]
         elif isinstance(value, range_type):
