@@ -15,30 +15,13 @@ class AggregateManager(object):
     def __init__(self):
         self.datas = {}
 
-    def loaded(self, key, name):
-        if key not in self.datas:
-            return False
-        if name not in self.datas[key].state:
-            return False
-        return True
+    def get_aggregate_data(self, key):
+        self.get_aggregate_data = self.datas.get
+        return self.datas.get(key)
 
-    def get(self, key):
-        if key not in self.datas:
-            return None
-        return self.datas[key].data
-
-    def set(self, key, name, value):
-        if key not in self.datas:
-            return None
-        self.datas[key].data[name] = value
-
-    def add(self, key, name, data, value):
-        if key in self.datas:
-            aggregate_value = self.datas[key]
-            aggregate_value.state[name] = True
-        else:
-            aggregate_value = AggregateData(data, {name: True})
-            self.datas[key] = aggregate_value
+    def add_aggregate_data(self, key, name, data, value):
+        aggregate_value = AggregateData(data, {name: True})
+        self.datas[key] = aggregate_value
         aggregate_value.data[name] = value
 
     def reset(self):
@@ -114,36 +97,57 @@ class AggregateValuer(Valuer):
             key_value = self.key_valuer.get() if self.key_valuer else ""
 
         def calculate_value(cdata):
-            loader_loaded = self.aggregate_manager.loaded(key_value, self.key)
-            if loader_loaded:
-                cdata = self.aggregate_manager.get(key_value)
-                value = self.do_filter(self.calculate_valuer.fill_get(cdata))
-                self.aggregate_manager.set(key_value, self.key, value)
-                raise StopIteration
-
-            value = self.do_filter(self.calculate_valuer.fill_get(cdata))
-            self.aggregate_manager.add(key_value, self.key, cdata, value)
-            return value
+            aggregate_data = self.aggregate_manager.get_aggregate_data(key_value)
+            if aggregate_data is None:
+                if self.filter:
+                    value = self.do_filter(self.calculate_valuer.fill_get(cdata))
+                else:
+                    value = self.calculate_valuer.fill_get(cdata)
+                self.aggregate_manager.add_aggregate_data(key_value, self.key, cdata, value)
+                return value
+            if self.key not in aggregate_data.state:
+                if self.filter:
+                    value = self.do_filter()
+                else:
+                    value = self.calculate_valuer.fill_get(aggregate_data.data)
+                aggregate_data.state[self.key] = True
+                aggregate_data.data[self.key] = value
+                return value
+            if self.filter:
+                aggregate_data.data[self.key] = self.do_filter(self.calculate_valuer.fill_get(aggregate_data.data))
+            else:
+                aggregate_data.data[self.key] = self.calculate_valuer.fill_get(aggregate_data.data)
+            raise StopIteration
         return calculate_value
 
     def fill_get(self, data):
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.fill(data)
-
         key_value = self.key_valuer.fill_get(data) if self.key_valuer else ""
 
         def calculate_value(cdata):
-            loader_loaded = self.aggregate_manager.loaded(key_value, self.key)
-            if loader_loaded:
-                cdata = self.aggregate_manager.get(key_value)
-                value = self.do_filter(self.calculate_valuer.fill_get(cdata))
-                self.aggregate_manager.set(key_value, self.key, value)
-                raise StopIteration
-
-            value = self.do_filter(self.calculate_valuer.fill_get(cdata))
-            self.aggregate_manager.add(key_value, self.key, cdata, value)
-            return value
+            aggregate_data = self.aggregate_manager.get_aggregate_data(key_value)
+            if aggregate_data is None:
+                if self.filter:
+                    value = self.do_filter(self.calculate_valuer.fill_get(cdata))
+                else:
+                    value = self.calculate_valuer.fill_get(cdata)
+                self.aggregate_manager.add_aggregate_data(key_value, self.key, cdata, value)
+                return value
+            if self.key not in aggregate_data.state:
+                if self.filter:
+                    value = self.do_filter()
+                else:
+                    value = self.calculate_valuer.fill_get(aggregate_data.data)
+                aggregate_data.state[self.key] = True
+                aggregate_data.data[self.key] = value
+                return value
+            if self.filter:
+                aggregate_data.data[self.key] = self.do_filter(self.calculate_valuer.fill_get(aggregate_data.data))
+            else:
+                aggregate_data.data[self.key] = self.calculate_valuer.fill_get(aggregate_data.data)
+            raise StopIteration
         return calculate_value
 
     def reset(self):
