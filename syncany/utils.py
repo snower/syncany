@@ -6,13 +6,15 @@ import os
 import datetime
 import random
 import string
+from decimal import Decimal
 import pytz
 from pendulum.parsing import parse as pendulum_parse
 from pendulum.parsing.exceptions import ParserError
 from tzlocal import get_localzone
 
 NumberTypes = (int, float)
-SequenceTypes = (tuple, list, set)
+NumberDecimalTypes = (int, float, Decimal)
+SequenceTypes = (tuple, list)
 
 
 class CmpValue(object):

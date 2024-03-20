@@ -11,7 +11,7 @@ import re
 import random
 import string
 import threading
-from ..utils import sorted_by_keys
+from ..utils import NumberDecimalTypes, sorted_by_keys
 from .calculater import Calculater, TypeFormatCalculater, TypingCalculater, MathematicalCalculater
 from ..filters.builtin import *
 try:
@@ -133,10 +133,10 @@ class IsNumberCalculater(Calculater):
                 if value is None:
                     default_result = False
                     continue
-                if not isinstance(value, (int, float, Decimal)):
+                if not isinstance(value, NumberDecimalTypes):
                     return False
             return default_result
-        return isinstance(data, (int, float, Decimal))
+        return isinstance(data, NumberDecimalTypes)
 
 
 class IsStringCalculater(Calculater):
@@ -407,7 +407,7 @@ class NegCalculater(TypingCalculater):
     def typing_calculate(self, value, args):
         if value is None:
             return None
-        if isinstance(value, (int, float, Decimal)):
+        if isinstance(value, NumberDecimalTypes):
             return -value
         if isinstance(value, (str, bytes, list, tuple)):
             return value[::-1]
@@ -861,7 +861,7 @@ class LenCalculater(Calculater):
 
 class AbsCalculater(Calculater):
     def abs(self, arg):
-        if isinstance(arg, (int, float, Decimal)):
+        if isinstance(arg, NumberDecimalTypes):
             return abs(arg)
         if isinstance(arg, str):
             try:
