@@ -52,6 +52,12 @@ class IntFilter(Filter):
                 result.append(self.filter(cv))
             return result
 
+        if isinstance(value, set):
+            result = set([])
+            for cv in value:
+                result.add(self.filter(cv))
+            return result
+
         if isinstance(value, dict):
             result = {}
             for ck, cv in value.items():
@@ -97,6 +103,12 @@ class FloatFilter(Filter):
             result = []
             for cv in value:
                 result.append(self.filter(cv))
+            return result
+
+        if isinstance(value, set):
+            result = set([])
+            for cv in value:
+                result.add(self.filter(cv))
             return result
 
         if isinstance(value, dict):
@@ -147,6 +159,12 @@ class DecimalFilter(Filter):
             result = []
             for cv in value:
                 result.append(self.filter(cv))
+            return result
+
+        if isinstance(value, set):
+            result = set([])
+            for cv in value:
+                result.add(self.filter(cv))
             return result
 
         if isinstance(value, dict):
@@ -217,6 +235,12 @@ class StringFilter(Filter):
             result = []
             for cv in value:
                 result.append(self.filter(cv))
+            return result
+
+        if isinstance(value, set):
+            result = set([])
+            for cv in value:
+                result.add(self.filter(cv))
             return result
 
         if isinstance(value, dict):
@@ -295,6 +319,12 @@ class BytesFilter(Filter):
                 result.append(self.filter(cv))
             return result
 
+        if isinstance(value, set):
+            result = set([])
+            for cv in value:
+                result.add(self.filter(cv))
+            return result
+
         if isinstance(value, dict):
             result = {}
             for ck, cv in value.items():
@@ -323,6 +353,12 @@ class BooleanFilter(Filter):
                 result.append(self.filter(cv))
             return result
 
+        if isinstance(value, set):
+            result = set([])
+            for cv in value:
+                result.add(self.filter(cv))
+            return result
+
         if isinstance(value, dict):
             result = {}
             for ck, cv in value.items():
@@ -345,7 +381,10 @@ class ArrayFilter(Filter):
         if isinstance(value, list):
             return value
 
-        if isinstance(value, SequenceTypes):
+        if isinstance(value, tuple):
+            return list(value)
+
+        if isinstance(value, set):
             return list(value)
 
         if value is None:
@@ -386,6 +425,8 @@ class MapFilter(Filter):
                 return {value[self.args]: value} if self.args in value else {}
             return value
 
+        if isinstance(value, set):
+            value = list(value)
         if isinstance(value, SequenceTypes):
             if self.args:
                 result = {}
@@ -451,6 +492,12 @@ class ObjectIdFilter(Filter):
                 results.append(self.filter(cv))
             return results
 
+        if isinstance(value, set):
+            results = set([])
+            for cv in value:
+                results.add(self.filter(cv))
+            return results
+
         if isinstance(value, dict):
             results = {}
             for ck, cv in value.items():
@@ -490,6 +537,12 @@ class UUIDFilter(Filter):
             results = []
             for cv in value:
                 results.append(self.filter(cv))
+            return results
+
+        if isinstance(value, set):
+            results = set([])
+            for cv in value:
+                results.add(self.filter(cv))
             return results
 
         if isinstance(value, dict):
@@ -575,6 +628,12 @@ class DateTimeFilter(Filter):
                 results.append(self.filter(cv))
             return results
 
+        if isinstance(value, set):
+            results = set([])
+            for cv in value:
+                results.add(self.filter(cv))
+            return results
+
         if isinstance(value, dict):
             results = {}
             for ck, cv in value.items():
@@ -649,6 +708,12 @@ class DateFilter(Filter):
                 results.append(self.filter(cv))
             return results
 
+        if isinstance(value, set):
+            results = set([])
+            for cv in value:
+                results.add(self.filter(cv))
+            return results
+
         if isinstance(value, dict):
             results = {}
             for ck, cv in value.items():
@@ -707,6 +772,12 @@ class TimeFilter(Filter):
             results = []
             for cv in value:
                 results.append(self.filter(cv))
+            return results
+
+        if isinstance(value, set):
+            results = set([])
+            for cv in value:
+                results.add(self.filter(cv))
             return results
 
         if isinstance(value, dict):
