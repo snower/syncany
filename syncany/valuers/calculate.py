@@ -34,25 +34,42 @@ class CalculateValuer(Valuer):
     def optimize_fast_calculate(self):
         args_count = len(self.args_valuers)
         if args_count == 0:
-            self.fill_get = self.fill_get0
+            if not self.inherit_valuers and not self.return_valuer:
+                self.fill_get = lambda _: self.calculater.calculate()
+            else:
+                self.fill_get = self.fill_get0
         elif args_count == 1:
             self.args_fill_get0 = self.args_valuers[0].fill_get
-            self.fill_get = self.fill_get1
+            if not self.inherit_valuers and not self.return_valuer:
+                self.fill_get = lambda data: self.calculater.calculate(self.args_fill_get0(data))
+            else:
+                self.fill_get = self.fill_get1
         elif args_count == 2:
             self.args_fill_get0 = self.args_valuers[0].fill_get
             self.args_fill_get1 = self.args_valuers[1].fill_get
-            self.fill_get = self.fill_get2
+            if not self.inherit_valuers and not self.return_valuer:
+                self.fill_get = lambda data: self.calculater.calculate(self.args_fill_get0(data), self.args_fill_get1(data))
+            else:
+                self.fill_get = self.fill_get2
         elif args_count == 3:
             self.args_fill_get0 = self.args_valuers[0].fill_get
             self.args_fill_get1 = self.args_valuers[1].fill_get
             self.args_fill_get2 = self.args_valuers[2].fill_get
-            self.fill_get = self.fill_get3
+            if not self.inherit_valuers and not self.return_valuer:
+                self.fill_get = lambda data: self.calculater.calculate(self.args_fill_get0(data), self.args_fill_get1(data),
+                                                                       self.args_fill_get2(data))
+            else:
+                self.fill_get = self.fill_get3
         elif args_count == 4:
             self.args_fill_get0 = self.args_valuers[0].fill_get
             self.args_fill_get1 = self.args_valuers[1].fill_get
             self.args_fill_get2 = self.args_valuers[2].fill_get
             self.args_fill_get3 = self.args_valuers[3].fill_get
-            self.fill_get = self.fill_get4
+            if not self.inherit_valuers and not self.return_valuer:
+                self.fill_get = lambda data: self.calculater.calculate(self.args_fill_get0(data), self.args_fill_get1(data),
+                                                                       self.args_fill_get2(data), self.args_fill_get3(data))
+            else:
+                self.fill_get = self.fill_get4
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
