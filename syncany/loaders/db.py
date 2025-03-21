@@ -200,12 +200,12 @@ class DBLoader(Loader):
                         odata[name] = value
 
                 if ofuncs:
-                    has_func_data = False
+                    has_func_data = True
                     for name, ofunc in ofuncs.items():
                         try:
                             odata[name] = ofunc(odata)
-                            has_func_data = True
                         except StopIteration:
+                            has_func_data = False
                             continue
                     if has_func_data:
                         self.datas.append(odata)
@@ -233,12 +233,12 @@ class DBLoader(Loader):
             if check_intercepts(odata):
                 continue
             if ofuncs:
-                has_func_data = False
+                has_func_data = True
                 for name, ofunc in ofuncs.items():
                     try:
                         odata[name] = ofunc(odata)
-                        has_func_data = True
                     except StopIteration:
+                        has_func_data = False
                         continue
                 if has_func_data:
                     self.datas.append(odata)
@@ -265,7 +265,7 @@ class DBLoader(Loader):
                         odata[name] = value
 
                 if ofuncs:
-                    has_func_data = False
+                    has_func_data = True
                     for name, ofunc in ofuncs.items():
                         try:
                             value = ofunc(odata)
@@ -274,8 +274,8 @@ class DBLoader(Loader):
                                 odata[name] = None
                             else:
                                 odata[name] = value
-                            has_func_data = True
                         except StopIteration:
+                            has_func_data = False
                             continue
                     if has_func_data:
                         self.datas.append(odata)
@@ -308,7 +308,7 @@ class DBLoader(Loader):
             if check_intercepts(odata):
                 continue
             if ofuncs:
-                has_func_data = False
+                has_func_data = True
                 for name, ofunc in ofuncs.items():
                     try:
                         value = ofunc(odata)
@@ -317,8 +317,8 @@ class DBLoader(Loader):
                             odata[name] = None
                         else:
                             odata[name] = value
-                        has_func_data = True
                     except StopIteration:
+                        has_func_data = False
                         continue
                 if has_func_data:
                     self.datas.append(odata)

@@ -163,12 +163,12 @@ class Loader(object):
                 if check_intercepts is not None and check_intercepts(odata):
                     continue
                 if ofuncs:
-                    has_func_data = False
+                    has_func_data = True
                     for name, ofunc in ofuncs.items():
                         try:
                             odata[name] = ofunc(odata)
-                            has_func_data = True
                         except StopIteration:
+                            has_func_data = False
                             continue
                     if has_func_data:
                         self.datas.append(odata)
@@ -240,12 +240,12 @@ class Loader(object):
                                 if check_intercepts is not None and check_intercepts(oyield_odata):
                                     continue
                                 if oyield_ofuncs:
-                                    has_func_data = False
+                                    has_func_data = True
                                     for name, ofunc in oyield_ofuncs.items():
                                         try:
                                             oyield_odata[name] = ofunc(oyield_odata)
-                                            has_func_data = True
                                         except StopIteration:
+                                            has_func_data = False
                                             continue
                                     if has_func_data:
                                         self.datas.append(oyield_odata)
@@ -262,12 +262,12 @@ class Loader(object):
                     if check_intercepts is not None and check_intercepts(odata):
                         continue
                     if ofuncs:
-                        has_func_data = False
+                        has_func_data = True
                         for name, ofunc in ofuncs.items():
                             try:
                                 odata[name] = ofunc(odata)
-                                has_func_data = True
                             except StopIteration:
+                                has_func_data = False
                                 continue
                         if has_func_data:
                             self.datas.append(odata)
@@ -338,7 +338,7 @@ class Loader(object):
                             if check_intercepts is not None and check_intercepts(oyield_odata):
                                 continue
                             if oyield_ofuncs:
-                                has_func_data = False
+                                has_func_data = True
                                 for name, ofunc in oyield_ofuncs.items():
                                     try:
                                         value = ofunc(oyield_odata)
@@ -347,8 +347,8 @@ class Loader(object):
                                             oyield_odata[name] = None
                                         else:
                                             oyield_odata[name] = value
-                                        has_func_data = True
                                     except StopIteration:
+                                        has_func_data = False
                                         continue
                                 if has_func_data:
                                     self.datas.append(oyield_odata)
@@ -365,7 +365,7 @@ class Loader(object):
                 if check_intercepts is not None and check_intercepts(odata):
                     continue
                 if ofuncs:
-                    has_func_data = False
+                    has_func_data = True
                     for name, ofunc in ofuncs.items():
                         try:
                             value = ofunc(odata)
@@ -374,8 +374,8 @@ class Loader(object):
                                 odata[name] = None
                             else:
                                 odata[name] = value
-                            has_func_data = True
                         except StopIteration:
+                            has_func_data = False
                             continue
                     if has_func_data:
                         self.datas.append(odata)
