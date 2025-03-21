@@ -265,12 +265,12 @@ class DBLoader(Loader):
                         odata[name] = value
 
                 if ofuncs:
-                    has_func_data = True
+                    has_func_data, ogetter_funcs = True, []
                     for name, ofunc in ofuncs.items():
                         try:
                             value = ofunc(odata)
                             if isinstance(value, FunctionType):
-                                getter_funcs.append((odata, name, value))
+                                ogetter_funcs.append((odata, name, value))
                                 odata[name] = None
                             else:
                                 odata[name] = value
@@ -279,6 +279,7 @@ class DBLoader(Loader):
                             continue
                     if has_func_data:
                         self.datas.append(odata)
+                        getter_funcs.extend(ogetter_funcs)
                     ofuncs.clear()
                 else:
                     self.datas.append(odata)
@@ -286,7 +287,11 @@ class DBLoader(Loader):
             if getter_funcs:
                 while getter_funcs:
                     data, name, getter_func = getter_funcs.popleft()
-                    data[name] = getter_func()
+                    value = getter_func()
+                    if isinstance(value, FunctionType):
+                        getter_funcs.append((data, name, value))
+                    else:
+                        data[name] = value
             self.geted = True
             return self.datas
 
@@ -308,12 +313,12 @@ class DBLoader(Loader):
             if check_intercepts(odata):
                 continue
             if ofuncs:
-                has_func_data = True
+                has_func_data, ogetter_funcs = True, []
                 for name, ofunc in ofuncs.items():
                     try:
                         value = ofunc(odata)
                         if isinstance(value, FunctionType):
-                            getter_funcs.append((odata, name, value))
+                            ogetter_funcs.append((odata, name, value))
                             odata[name] = None
                         else:
                             odata[name] = value
@@ -322,6 +327,7 @@ class DBLoader(Loader):
                         continue
                 if has_func_data:
                     self.datas.append(odata)
+                    getter_funcs.extend(ogetter_funcs)
                 ofuncs.clear()
             else:
                 self.datas.append(odata)
@@ -329,7 +335,11 @@ class DBLoader(Loader):
         if getter_funcs:
             while getter_funcs:
                 data, name, getter_func = getter_funcs.popleft()
-                data[name] = getter_func()
+                value = getter_func()
+                if isinstance(value, FunctionType):
+                    getter_funcs.append((data, name, value))
+                else:
+                    data[name] = value
         self.geted = True
         return self.datas
 

@@ -338,23 +338,25 @@ class PartitionValuer(Valuer):
             value = self.value_valuer.get() if self.value_valuer else None
 
         def calculate_value(cdata):
-            if self.order_valuer:
-                partition = self.partition_manager.get_partition(key_value)
-                if partition is None:
-                    partition = self.partition_manager.add_order_partition(key_value)
-                partition_calculater = OrderPartitionCalculater(value, self.calculate_valuer, self.return_valuer)
-                partition.add_data(order_value, cdata, partition_calculater)
-            else:
-                partition = self.partition_manager.get_partition(key_value)
-                if partition is None:
-                    partition = self.partition_manager.add_partition(key_value)
-                partition_calculater = PartitionCalculater(value, self.calculate_valuer, self.return_valuer)
-                partition.add_data(cdata, partition_calculater)
+            def calculate_partition_value():
+                if self.order_valuer:
+                    partition = self.partition_manager.get_partition(key_value)
+                    if partition is None:
+                        partition = self.partition_manager.add_order_partition(key_value)
+                    partition_calculater = OrderPartitionCalculater(value, self.calculate_valuer, self.return_valuer)
+                    partition.add_data(order_value, cdata, partition_calculater)
+                else:
+                    partition = self.partition_manager.get_partition(key_value)
+                    if partition is None:
+                        partition = self.partition_manager.add_partition(key_value)
+                    partition_calculater = PartitionCalculater(value, self.calculate_valuer, self.return_valuer)
+                    partition.add_data(cdata, partition_calculater)
 
-            def partition_value():
-                partition.calculate()
-                return partition_calculater.get()
-            return partition_value
+                def partition_value():
+                    partition.calculate()
+                    return partition_calculater.get()
+                return partition_value
+            return calculate_partition_value
         return calculate_value
 
     def fill_get(self, data):
@@ -367,23 +369,25 @@ class PartitionValuer(Valuer):
         value = self.value_valuer.fill_get(data) if self.value_valuer else None
 
         def calculate_value(cdata):
-            if self.order_valuer:
-                partition = self.partition_manager.get_partition(key_value)
-                if partition is None:
-                    partition = self.partition_manager.add_order_partition(key_value)
-                partition_calculater = OrderPartitionCalculater(value, self.calculate_valuer, self.return_valuer)
-                partition.add_data(order_value, cdata, partition_calculater)
-            else:
-                partition = self.partition_manager.get_partition(key_value)
-                if partition is None:
-                    partition = self.partition_manager.add_partition(key_value)
-                partition_calculater = PartitionCalculater(value, self.calculate_valuer, self.return_valuer)
-                partition.add_data(cdata, partition_calculater)
+            def calculate_partition_value():
+                if self.order_valuer:
+                    partition = self.partition_manager.get_partition(key_value)
+                    if partition is None:
+                        partition = self.partition_manager.add_order_partition(key_value)
+                    partition_calculater = OrderPartitionCalculater(value, self.calculate_valuer, self.return_valuer)
+                    partition.add_data(order_value, cdata, partition_calculater)
+                else:
+                    partition = self.partition_manager.get_partition(key_value)
+                    if partition is None:
+                        partition = self.partition_manager.add_partition(key_value)
+                    partition_calculater = PartitionCalculater(value, self.calculate_valuer, self.return_valuer)
+                    partition.add_data(cdata, partition_calculater)
 
-            def partition_value():
-                partition.calculate()
-                return partition_calculater.get()
-            return partition_value
+                def partition_value():
+                    partition.calculate()
+                    return partition_calculater.get()
+                return partition_value
+            return calculate_partition_value
         return calculate_value
 
     def reset(self):

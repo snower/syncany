@@ -338,12 +338,12 @@ class Loader(object):
                             if check_intercepts is not None and check_intercepts(oyield_odata):
                                 continue
                             if oyield_ofuncs:
-                                has_func_data = True
+                                has_func_data, ogetter_funcs = True, []
                                 for name, ofunc in oyield_ofuncs.items():
                                     try:
                                         value = ofunc(oyield_odata)
                                         if isinstance(value, FunctionType):
-                                            getter_funcs.append((oyield_odata, name, value))
+                                            ogetter_funcs.append((oyield_odata, name, value))
                                             oyield_odata[name] = None
                                         else:
                                             oyield_odata[name] = value
@@ -352,6 +352,7 @@ class Loader(object):
                                         continue
                                 if has_func_data:
                                     self.datas.append(oyield_odata)
+                                    getter_funcs.extend(ogetter_funcs)
                                 oyield_ofuncs.clear()
                             else:
                                 self.datas.append(oyield_odata)
@@ -365,12 +366,12 @@ class Loader(object):
                 if check_intercepts is not None and check_intercepts(odata):
                     continue
                 if ofuncs:
-                    has_func_data = True
+                    has_func_data, ogetter_funcs = True, []
                     for name, ofunc in ofuncs.items():
                         try:
                             value = ofunc(odata)
                             if isinstance(value, FunctionType):
-                                getter_funcs.append((odata, name, value))
+                                ogetter_funcs.append((odata, name, value))
                                 odata[name] = None
                             else:
                                 odata[name] = value
@@ -379,6 +380,7 @@ class Loader(object):
                             continue
                     if has_func_data:
                         self.datas.append(odata)
+                        getter_funcs.extend(ogetter_funcs)
                     ofuncs.clear()
                 else:
                     self.datas.append(odata)
@@ -386,7 +388,11 @@ class Loader(object):
         if getter_funcs:
             while getter_funcs:
                 data, name, getter_func = getter_funcs.popleft()
-                data[name] = getter_func()
+                value = getter_func()
+                if isinstance(value, FunctionType):
+                    getter_funcs.append((data, name, value))
+                else:
+                    data[name] = value
         self.geted = True
         return self.datas
 
