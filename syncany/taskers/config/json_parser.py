@@ -8,4 +8,4 @@ from .parser import Parser
 
 class JsonParser(Parser):
     def parse(self):
-        return json.loads(self.content)
+        return json.loads(self.parse_environment_variables(self.content))

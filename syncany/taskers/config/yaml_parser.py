@@ -126,6 +126,6 @@ class YamlParser(Parser):
 
     def parse(self):
         import yaml
-        config = yaml.load(StringIO(self.content), yaml.Loader)
+        config = yaml.load(StringIO(self.parse_environment_variables(self.content)), yaml.Loader)
         config = self.parse_config(config)
         return config
