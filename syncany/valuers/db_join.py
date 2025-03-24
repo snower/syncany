@@ -18,6 +18,7 @@ class DBJoinValuer(Valuer):
         self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
         self.foreign_querys = foreign_querys
+        self.is_in_depth_citation = kwargs.pop("is_in_depth_citation", False)
         super(DBJoinValuer, self).__init__(*args, **kwargs)
 
     def new_init(self):
@@ -25,12 +26,14 @@ class DBJoinValuer(Valuer):
         self.require_yield_values = False
         if self.intercept_valuer:
             setattr(self.intercept_valuer, "intercept_wait_loaded", self.intercept_valuer.require_loaded())
+        self.is_in_depth_citation = self.is_in_depth_citation if self.is_in_depth_citation is not None else False
 
     def clone_init(self, from_valuer):
         super(DBJoinValuer, self).clone_init(from_valuer)
         self.require_yield_values = from_valuer.require_yield_values
         if self.intercept_valuer:
             self.intercept_valuer.intercept_wait_loaded = from_valuer.intercept_valuer.intercept_wait_loaded
+        self.is_in_depth_citation = from_valuer.is_in_depth_citation
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
@@ -221,7 +224,7 @@ class DBJoinValuer(Valuer):
 
     def get(self):
         self.loader.load()
-        return self.matcher.get()
+        return self.matcher.get(is_in_depth_citation=self.is_in_depth_citation)
 
     def fill_get(self, data):
         return self.fill(data).get()
@@ -468,7 +471,7 @@ class ContextDBJoinValuer(DBJoinValuer):
         contexter_values = self.contexter.values
         try:
             self.loader.load()
-            return contexter_values[self.matcher_context_id].get()
+            return contexter_values[self.matcher_context_id].get(is_in_depth_citation=self.is_in_depth_citation)
         finally:
             self.contexter.values = contexter_values
 

@@ -7,6 +7,8 @@ from .const import ConstLoader
 from .db import DBLoader
 from .db_join import DBJoinLoader
 from .db_pull import DBPullLoader
+from .calculate_db import CalculaterDBLoader
+from .calculate_db_join import CalculaterDBJoinLoader
 from ..errors import LoaderUnknownException
 
 LOADERS = {
@@ -14,6 +16,8 @@ LOADERS = {
     "db_loader": DBLoader,
     "db_join_loader": DBJoinLoader,
     "db_pull_loader": DBPullLoader,
+    "calculate_db_loader": CalculaterDBLoader,
+    "calculate_db_join_loader": CalculaterDBJoinLoader,
 }
 
 def find_loader(name):

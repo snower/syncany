@@ -78,7 +78,7 @@ class DBJoinYieldMatcher(object):
             if values is None:
                 self.data_valuers = False
 
-    def get(self):
+    def get(self, is_in_depth_citation=True):
         if not self.data_valuers:
             if self.contexter_values is not None:
                 self.valuer.contexter.values = self.contexter_values
@@ -96,6 +96,8 @@ class DBJoinYieldMatcher(object):
                 values.append(valuer.get())
             if len(values) == 1:
                 return values[0]
+        if not is_in_depth_citation:
+            return values
 
         def gen_iter(iter_datas):
             for value in iter_datas:
@@ -140,7 +142,7 @@ class DBJoinMatcher(object):
         elif self.group_matcher:
             self.group_matcher.fill(values)
 
-    def get(self):
+    def get(self, is_in_depth_citation=True):
         if not self.valuer:
             return None
         if self.contexter_values is not None:
@@ -155,10 +157,12 @@ class GroupDBJoinYieldMatcher(object):
     def add_matcher(self, matcher):
         self.matchers.append(matcher)
 
-    def get(self):
+    def get(self, is_in_depth_citation=True):
         datas = [matcher.get() for matcher in self.matchers]
         if len(datas) == 1:
             return datas[0]
+        if not is_in_depth_citation:
+            return datas
 
         def gen_iter(iter_datas):
             for value in iter_datas:
@@ -190,7 +194,7 @@ class GroupDBJoinMatcher(object):
                 self.return_valuer.contexter.values = self.contexter_values
             self.return_valuer.fill(values)
 
-    def get(self):
+    def get(self, is_in_depth_citation=True):
         if self.contexter_values is not None:
             self.return_valuer.contexter.values = self.contexter_values
         if len(self.values) < self.matcher_count:

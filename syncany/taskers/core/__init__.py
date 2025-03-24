@@ -422,13 +422,15 @@ class CoreTasker(Tasker):
         if isinstance(foreign_key, list):
             if not foreign_key or foreign_key[0][0] != "&":
                 return None
-            foreign_key, foreign_filter_configs = foreign_key[0], (foreign_key[1] if len(foreign_key) >= 2 else {})
+            foreign_key, foreign_filter_configs, foreign_options = (foreign_key[0], (foreign_key[1] if len(foreign_key) >= 2 else {}),
+                                                                    (foreign_key[2] if len(foreign_key) >= 3 else {}))
         elif not foreign_key or foreign_key[0] != "&":
             return None
         else:
-            foreign_filter_configs = {}
+            foreign_filter_configs, foreign_options = {}, {}
 
-        foreign_key = ".".join(foreign_key.split(".")[1:])
+        foreign_key_info = foreign_key.split(".")
+        foreign_key = ".".join(foreign_key_info[1:])
         foreign_key = foreign_key.split("::")
         database, foreign_keys = foreign_key[0], foreign_key[1].split("+")
         foreign_key_filters = []
@@ -478,10 +480,12 @@ class CoreTasker(Tasker):
                     foreign_querys.append((keys[0], 'eq', valuer, filter_cls, filter_args))
 
         return {
+            "citation": foreign_key_info[0],
             "database": database,
             "foreign_keys": foreign_keys,
             "foreign_key_filters": foreign_key_filters,
             "foreign_querys": foreign_querys,
+            "foreign_options": foreign_options,
         }
 
     def compile_schema(self):
@@ -545,10 +549,16 @@ class CoreTasker(Tasker):
             if len(valuer) in (2, 3) and ((isinstance(valuer[0], str) and valuer[0][:1] == "&") or (isinstance(valuer[0], list) and valuer[0][0][:1] == "&")):
                 foreign_key = self.compile_foreign_key(valuer[0])
                 if foreign_key is not None:
-                    loader = {"name": "db_loader", "database": foreign_key["database"]}
+                    if foreign_key["database"].startswith(":=@"):
+                        loader = {"name": "calculate_db_loader", "calculater_name": foreign_key["database"][3:],
+                                  "calculater_kwargs": foreign_key["foreign_options"]}
+                    else:
+                        loader = {"name": "db_loader", "database": foreign_key["database"]}
+                    valuer_kwargs = {"is_in_depth_citation": True} if foreign_key["citation"] == "&&" else None
                     return self.valuer_compiler.compile_db_load_valuer("", loader, foreign_key["foreign_keys"], foreign_key["foreign_key_filters"],
                                                                        foreign_key["foreign_querys"], None, valuer[1] if len(valuer) >= 3 else None,
-                                                                       valuer[2] if len(valuer) >= 3 else (valuer[1] if len(valuer) >= 2 else None))
+                                                                       valuer[2] if len(valuer) >= 3 else (valuer[1] if len(valuer) >= 2 else None),
+                                                                       valuer_kwargs)
 
             key = self.compile_key(valuer[0])
             if (key["instance"] is None or key["instance"] == "$") and len(valuer) in (3, 4):
@@ -558,11 +568,17 @@ class CoreTasker(Tasker):
                         join_args = valuer[0]
                     else:
                         join_args = [valuer[0]]
-                    loader = {"name": "db_join_loader", "database": foreign_key["database"]}
+                    if foreign_key["database"].startswith(":=@"):
+                        loader = {"name": "calculate_db_join_loader", "calculater_name": foreign_key["database"][3:],
+                                  "calculater_kwargs": foreign_key["foreign_options"]}
+                    else:
+                        loader = {"name": "db_join_loader", "database": foreign_key["database"]}
+                    valuer_kwargs = {"is_in_depth_citation": True} if foreign_key["citation"] == "&&" else None
                     return self.valuer_compiler.compile_db_join_valuer(key["key"] if key["instance"] == "$" else "",
                                                                        loader, foreign_key["foreign_keys"], foreign_key["foreign_key_filters"],
                                                                        foreign_key["foreign_querys"], None, join_args, valuer[2] if len(valuer) >= 4 else None,
-                                                                       valuer[3] if len(valuer) >= 4 else (valuer[2] if len(valuer) >= 3 else None))
+                                                                       valuer[3] if len(valuer) >= 4 else (valuer[2] if len(valuer) >= 3 else None),
+                                                                       valuer_kwargs)
 
             if key["instance"] is None:
                 return self.valuer_compiler.compile_const_valuer(valuer)

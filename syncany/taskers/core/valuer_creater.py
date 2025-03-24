@@ -115,11 +115,13 @@ class ValuerCreater(object):
     def __init__(self, tasker):
         self.tasker = tasker
 
-    def format_value_cache_key(self, value):
+    def format_value_cache_key(self, value, sorted_sequence=True):
         if isinstance(value, dict):
             return "{" + ", ".join(["%s: %s" % (self.format_value_cache_key(key), self.format_value_cache_key(value[key]))
                                     for key in sorted(value.keys())]) + "}"
         if isinstance(value, SequenceTypes):
+            if not sorted_sequence:
+                return "[" + ", ".join([self.format_value_cache_key(v) for v in value]) + "]"
             try:
                 return "[" + ", ".join([self.format_value_cache_key(v) for v in sorted(list(value))]) + "]"
             except:
@@ -142,8 +144,6 @@ class ValuerCreater(object):
         return self.tasker.create_loader(*args, **kwargs)
 
     def create_join_loader(self, config, join_loaders, renew=False):
-
-
         loader_cache_key, loader_cache_foreign_querys = None, ""
         if join_loaders is not None:
             if config["foreign_querys"]:
@@ -159,8 +159,8 @@ class ValuerCreater(object):
                     foreign_keys.append("%s|%s %s" % (config["foreign_keys"][i], foreign_key_filter["name"], foreign_key_filter["args"]))
                 else:
                     foreign_keys.append("%s|%s" % (config["foreign_keys"][i], foreign_key_filter["name"]))
-            loader_cache_key = "::".join([config["loader"]["name"], config["loader"]["database"],
-                                          "+".join(sorted(foreign_keys)), loader_cache_foreign_querys])
+            loader_cache_key = "::".join([self.format_value_cache_key(config["loader"], False), "+".join(sorted(foreign_keys)),
+                                          loader_cache_foreign_querys])
             if not renew and loader_cache_key in join_loaders:
                 return join_loaders[loader_cache_key]
 
@@ -309,7 +309,8 @@ class ValuerCreater(object):
                 inherit_valuers.append(inherit_valuer)
 
         return valuer_cls(loader, config["foreign_keys"], foreign_key_filters, config["foreign_querys"],
-                          intercept_valuer, return_valuer, current_inherit_valuers, config["key"], filter)
+                          intercept_valuer, return_valuer, current_inherit_valuers, config["key"], filter,
+                          **(config.get("valuer_kwargs") or {}))
 
     def create_db_join_valuer(self, config, inherit_valuers=None, join_loaders=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])
@@ -379,7 +380,8 @@ class ValuerCreater(object):
                 inherit_valuers.append(inherit_valuer)
 
         return valuer_cls(loader, config["foreign_keys"], foreign_key_filters, config["foreign_querys"], args_valuers,
-                          intercept_valuer, return_valuer, current_inherit_valuers, config["key"], filter)
+                          intercept_valuer, return_valuer, current_inherit_valuers, config["key"], filter,
+                          **(config.get("valuer_kwargs") or {}))
 
     def create_case_valuer(self, config, inherit_valuers=None, **kwargs):
         valuer_cls = self.find_valuer_driver(config["name"])
@@ -602,7 +604,7 @@ class ValuerCreater(object):
             elif inherit_valuer["reflen"] > 0 and inherit_valuers is not None:
                 inherit_valuers.append(inherit_valuer)
 
-        manager_key = self.format_value_cache_key([config.get("key_valuer"), config.get("order_valuer"), config.get("order_options")])
+        manager_key = self.format_value_cache_key([config.get("key_valuer"), config.get("order_valuer"), config.get("order_options")], False)
         if manager_key not in partition_managers:
             partition_managers[manager_key] = valuer_cls.create_manager(config.get("order_options", {}))
         return valuer_cls(key_valuer, order_valuer, value_valuer, calculate_valuer, return_valuer, current_inherit_valuers,

@@ -89,7 +89,7 @@ class ValuerCompiler(object):
         }
 
     def compile_db_load_valuer(self, key="", loader=None, foreign_keys=None, foreign_key_filters=None, foreign_querys=None,
-                               filter=None, intercept_arg=None, return_arg=None):
+                               filter=None, intercept_arg=None, return_arg=None, valuer_kwargs=None):
         load_return_arg, _ = self.parse_return_valuer(return_arg)
         if load_return_arg is not None:
             return_arg = load_return_arg
@@ -109,10 +109,11 @@ class ValuerCompiler(object):
             'foreign_querys': foreign_querys or [],
             "intercept_valuer": intercept_valuer,
             "return_valuer": return_valuer,
+            "valuer_kwargs": valuer_kwargs or {},
         }
 
     def compile_db_join_valuer(self, key="", loader=None, foreign_keys=None, foreign_key_filters=None, foreign_querys=None,
-                               filter=None, args_args=None, intercept_arg=None, return_arg=None):
+                               filter=None, args_args=None, intercept_arg=None, return_arg=None, valuer_kwargs=None):
         join_return_arg, _ = self.parse_return_valuer(return_arg)
         if join_return_arg is not None:
             return_arg = join_return_arg
@@ -134,6 +135,7 @@ class ValuerCompiler(object):
             "args_valuers": args_valuers,
             "intercept_valuer": intercept_valuer,
             "return_valuer": return_valuer,
+            "valuer_kwargs": valuer_kwargs or {},
         }
 
     def compile_case_valuer(self, key="", filter=None, value_arg=None, cases_arg=None, default_arg=None, return_arg=None):

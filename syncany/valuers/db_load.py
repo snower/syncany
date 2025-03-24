@@ -15,6 +15,7 @@ class DBLoadValuer(Valuer):
         self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
         self.foreign_querys = foreign_querys
+        self.is_in_depth_citation = kwargs.pop("is_in_depth_citation", False)
         super(DBLoadValuer, self).__init__(*args, **kwargs)
 
     def new_init(self):
@@ -22,12 +23,14 @@ class DBLoadValuer(Valuer):
         self.require_yield_values = False
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
         self.intercept_wait_loaded = True if self.intercept_valuer and self.intercept_valuer.require_loaded() else False
+        self.is_in_depth_citation = self.is_in_depth_citation if self.is_in_depth_citation is not None else False
 
     def clone_init(self, from_valuer):
         super(DBLoadValuer, self).clone_init(from_valuer)
         self.require_yield_values = from_valuer.require_yield_values
         self.wait_loaded = from_valuer.wait_loaded
         self.intercept_wait_loaded = from_valuer.intercept_wait_loaded
+        self.is_in_depth_citation = from_valuer.is_in_depth_citation
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
@@ -57,13 +60,14 @@ class DBLoadValuer(Valuer):
         if contexter is not None:
             return ContextDBLoadValuer(self.loader, self.foreign_keys, self.foreign_key_filters, self.foreign_querys,
                                        intercept_valuer, return_valuer, inherit_valuers, self.key, self.filter,
-                                       from_valuer=self, contexter=contexter)
+                                       is_in_depth_citation=self.is_in_depth_citation, from_valuer=self, contexter=contexter)
         if isinstance(self, ContextDBLoadValuer):
             return ContextDBLoadValuer(self.loader, self.foreign_keys, self.foreign_key_filters, self.foreign_querys,
                                        intercept_valuer, return_valuer, inherit_valuers, self.key, self.filter,
-                                       from_valuer=self, contexter=self.contexter)
+                                       is_in_depth_citation=self.is_in_depth_citation, from_valuer=self, contexter=self.contexter)
         return self.__class__(self.loader, self.foreign_keys, self.foreign_key_filters, self.foreign_querys,
-                              intercept_valuer, return_valuer, inherit_valuers, self.key, self.filter, from_valuer=self)
+                              intercept_valuer, return_valuer, inherit_valuers, self.key, self.filter,
+                              is_in_depth_citation=self.is_in_depth_citation, from_valuer=self)
 
     def fill(self, data):
         if self.inherit_valuers:
@@ -130,6 +134,8 @@ class DBLoadValuer(Valuer):
             values = [valuer.get() for valuer in self.value]
         if len(values) == 1:
             return values[0]
+        if not self.is_in_depth_citation:
+            return values
 
         def gen_iter(iter_datas):
             for value in iter_datas:
@@ -280,6 +286,8 @@ class ContextDBLoadValuer(DBLoadValuer):
             self.contexter.values = contexter_values
         if len(values) == 1:
             return values[0]
+        if not self.is_in_depth_citation:
+            return values
 
         def gen_iter(iter_datas):
             for value in iter_datas:
