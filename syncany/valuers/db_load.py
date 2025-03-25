@@ -135,7 +135,7 @@ class DBLoadValuer(Valuer):
         if len(values) == 1:
             return values[0]
         if not self.is_in_depth_citation:
-            return values
+            return values or None
 
         def gen_iter(iter_datas):
             for value in iter_datas:
@@ -284,7 +284,7 @@ class ContextDBLoadValuer(DBLoadValuer):
         if len(values) == 1:
             return values[0]
         if not self.is_in_depth_citation:
-            return values
+            return values or None
 
         def gen_iter(iter_datas):
             for value in iter_datas:
