@@ -158,9 +158,6 @@ class DBLoadValuer(Valuer):
 
     def get_fields(self):
         fields = []
-        if self.intercept_valuer:
-            for field in self.intercept_valuer.get_fields():
-                fields.append(field)
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 for field in inherit_valuer.get_fields():

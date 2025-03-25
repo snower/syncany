@@ -249,9 +249,6 @@ class DBJoinValuer(Valuer):
             for args_valuer in self.args_valuers:
                 for field in args_valuer.get_fields():
                     fields.append(field)
-        if self.intercept_valuer:
-            for field in self.intercept_valuer.get_fields():
-                fields.append(field)
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 for field in inherit_valuer.get_fields():

@@ -4,9 +4,9 @@
 
 import copy
 from collections import defaultdict
-from syncany.loaders import Loader
-from syncany.loaders import DBLoader
-from syncany.valuers.valuer import LoadAllFieldsException
+from ..loaders import Loader
+from ..loaders import DBLoader
+from ..valuers.valuer import LoadAllFieldsException
 
 
 class CalculaterDBLoader(DBLoader):
@@ -58,7 +58,7 @@ class CalculaterDBLoader(DBLoader):
             except LoadAllFieldsException:
                 fields = []
 
-        query = {"fields": fields, "filters": {}, "orders": []}
+        query = {"fields": fields, "filters": defaultdict(list), "orders": []}
         in_exps = defaultdict(list)
         for key, exp, value in self.filters:
             if exp == "in":
@@ -77,9 +77,9 @@ class CalculaterDBLoader(DBLoader):
                     exp, value = "in", in_exps.pop(key)
 
             if key is None:
-                query["filters"][exp] = value
+                query["filters"][exp].append(value)
             else:
-                query["filters"][exp] = (key, value)
+                query["filters"][exp].append((key, value))
 
         primary_orders = {} if len(self.orders) >= len(self.primary_keys) else None
         for i in range(len(self.orders)):

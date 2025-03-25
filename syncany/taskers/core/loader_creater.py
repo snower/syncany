@@ -21,6 +21,9 @@ class LoaderCreater(object):
     def find_loader_driver(self, *args, **kwargs):
         return self.tasker.find_loader_driver(*args, **kwargs)
 
+    def find_calculater_driver(self, *args, **kwargs):
+        return self.tasker.find_calculater_driver(*args, **kwargs)
+
     def create_const_loader(self, config, primary_keys):
         loader_cls = self.find_loader_driver(config["name"])
         if not loader_cls:
@@ -51,7 +54,7 @@ class LoaderCreater(object):
             raise LoaderUnknownException(config["name"] + " is unknown")
 
         calculater = self.find_calculater_driver(config["calculater_name"])
-        return loader_cls(calculater, config["calculater_kwargs"] or {}, primary_keys,
+        return loader_cls(calculater.instance(config["calculater_name"]), config["calculater_kwargs"] or {}, primary_keys,
                           valuer_type=config.get("valuer_type", 0))
 
     def create_calculate_db_join_loader(self, config, primary_keys):
@@ -59,7 +62,7 @@ class LoaderCreater(object):
         if not loader_cls:
             raise LoaderUnknownException(config["name"] + " is unknown")
         calculater = self.find_calculater_driver(config["calculater_name"])
-        return loader_cls(calculater, config["calculater_kwargs"] or {}, primary_keys,
+        return loader_cls(calculater.instance(config["calculater_name"]), config["calculater_kwargs"] or {}, primary_keys,
                           valuer_type=config.get("valuer_type", 0),
                           join_batch=self.tasker.arguments.get("@join_batch", 1000))
 

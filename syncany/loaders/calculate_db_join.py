@@ -3,9 +3,9 @@
 # create by: snower
 
 from collections import defaultdict
-from syncany.loaders import Loader
-from syncany.loaders import DBJoinLoader
-from syncany.valuers.valuer import LoadAllFieldsException
+from ..loaders import Loader
+from ..loaders import DBJoinLoader
+from ..valuers.valuer import LoadAllFieldsException
 
 
 class CalculaterDBJoinLoader(DBJoinLoader):
@@ -40,19 +40,19 @@ class CalculaterDBJoinLoader(DBJoinLoader):
                 except LoadAllFieldsException:
                     fields = []
 
-            query = {"fields": fields, "filters": {}, "orders": []}
+            query = {"fields": fields, "filters": defaultdict(list), "orders": []}
             for key, exp, value in self.filters:
                 if key is None:
-                    query["filters"][exp] = value
+                    query["filters"][exp].append(value)
                 else:
-                    query["filters"][exp] = (key, value)
+                    query["filters"][exp].append((key, value))
 
             if len(self.primary_keys) == 1:
-                query["filters"]["in"] = (self.primary_keys[0], list(self.unload_primary_keys))
+                query["filters"]["in"].append((self.primary_keys[0], list(self.unload_primary_keys)))
             else:
                 for j in range(len(self.primary_keys)):
-                    query["filters"]["in"] = (self.primary_keys[j], list({primary_value[j] for primary_value
-                                                                          in self.unload_primary_keys}))
+                    query["filters"]["in"].append((self.primary_keys[j], list({primary_value[j] for primary_value
+                                                                          in self.unload_primary_keys})))
             datas, query = self.calculater.calculate(self.primary_keys, query, **self.calculater_kwargs), None
 
             if not self.key_matchers:
