@@ -97,7 +97,7 @@ class DBJoinYieldMatcher(object):
             if len(values) == 1:
                 return values[0]
         if not is_in_depth_citation:
-            return values
+            return values or None
 
         def gen_iter(iter_datas):
             for value in iter_datas:
@@ -162,7 +162,7 @@ class GroupDBJoinYieldMatcher(object):
         if len(datas) == 1:
             return datas[0]
         if not is_in_depth_citation:
-            return datas
+            return datas or None
 
         def gen_iter(iter_datas):
             for value in iter_datas:
