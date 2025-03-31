@@ -135,3 +135,8 @@ class MathematicalCalculater(TypeFormatCalculater):
 
     def mathematical_calculate(self, left_value, right_value, args):
         return left_value
+
+
+class LoaderCalculater(Calculater):
+    def start(self, tasker, loader, arguments, **kwargs):
+        pass

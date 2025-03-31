@@ -2,6 +2,7 @@
 # 18/8/15
 # create by: snower
 
+from ...calculaters.calculater import LoaderCalculater
 from ...errors import LoaderUnknownException
 
 class LoaderCreater(object):
@@ -53,18 +54,24 @@ class LoaderCreater(object):
         if not loader_cls:
             raise LoaderUnknownException(config["name"] + " is unknown")
 
-        calculater = self.find_calculater_driver(config["calculater_name"])
-        return loader_cls(calculater.instance(config["calculater_name"]), config["calculater_kwargs"] or {}, primary_keys,
-                          valuer_type=config.get("valuer_type", 0))
+        calculater_cls = self.find_calculater_driver(config["calculater_name"])
+        calculater = calculater_cls('')
+        loader = loader_cls(calculater, config["calculater_kwargs"] or {}, primary_keys, valuer_type=config.get("valuer_type", 0))
+        if isinstance(calculater, LoaderCalculater):
+            calculater.start(self.tasker, loader, self.tasker.arguments, **config["calculater_kwargs"])
+        return loader
 
     def create_calculate_db_join_loader(self, config, primary_keys):
         loader_cls = self.find_loader_driver(config["name"])
         if not loader_cls:
             raise LoaderUnknownException(config["name"] + " is unknown")
-        calculater = self.find_calculater_driver(config["calculater_name"])
-        return loader_cls(calculater.instance(config["calculater_name"]), config["calculater_kwargs"] or {}, primary_keys,
-                          valuer_type=config.get("valuer_type", 0),
+        calculater_cls = self.find_calculater_driver(config["calculater_name"])
+        calculater = calculater_cls('')
+        loader = loader_cls(calculater, config["calculater_kwargs"] or {}, primary_keys, valuer_type=config.get("valuer_type", 0),
                           join_batch=self.tasker.arguments.get("@join_batch", 1000))
+        if isinstance(calculater, LoaderCalculater):
+            calculater.start(self.tasker, loader, self.tasker.arguments, **config["calculater_kwargs"])
+        return loader
 
     def create_db_pull_loader(self, config, primary_keys):
         loader_cls = self.find_loader_driver(config["name"])
