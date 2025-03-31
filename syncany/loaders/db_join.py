@@ -53,7 +53,7 @@ class DBJoinYieldMatcher(object):
                         if not self.intercept_valuer.fill_get(value):
                             continue
                         ovalues.append(value)
-                values = ovalues if len(values) > 1 else (ovalues[0] if ovalues else None)
+                values = ovalues if len(ovalues) > 1 else (ovalues[0] if ovalues else None)
             elif values is not None:
                 if self.contexter_values is not None:
                     self.intercept_valuer.contexter.values = self.contexter_values
@@ -130,7 +130,7 @@ class DBJoinMatcher(object):
                     if not self.intercept_valuer.fill_get(value):
                         continue
                     ovalues.append(value)
-                values = ovalues if len(values) > 1 else (ovalues[0] if ovalues else None)
+                values = ovalues if len(ovalues) > 1 else (ovalues[0] if ovalues else None)
             elif values is not None:
                 if not self.intercept_valuer.fill_get(values):
                     values = None
