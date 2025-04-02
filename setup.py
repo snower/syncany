@@ -39,7 +39,7 @@ setup(
         "pytz>=2018.5",
         "tzlocal>=1.5.1",
         "pendulum>=2.1.2",
-        "pyyaml>=5.1.2"
+        "pyyaml>=6.0"
     ],
     extras_require={
         "pymongo": ['pymongo>=3.6.1'],
