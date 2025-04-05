@@ -27,6 +27,7 @@ class DBLoader(Loader):
         loader.schema = schema
         loader.filters = [filter for filter in self.filters]
         loader.orders = [order for order in self.orders]
+        loader.predicates = [predicate.clone() for predicate in self.predicates]
         loader.intercepts = [intercept.clone() for intercept in self.intercepts]
         loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
         return loader
@@ -127,21 +128,30 @@ class DBLoader(Loader):
                 for i in range(len(self.datas)):
                     data, context_dataer = self.datas[i], ContextDataer(loader_contexter)
                     loader_contexter.values = context_dataer.values
+                    for predicate in self.predicates:
+                        predicate.fill(data)
                     for key, field in self.schema.items():
                         field.fill(data)
                     self.datas[i] = context_dataer
                 return super(DBLoader, self).get()
 
+            contexter_predicates = [(predicate, predicate.contexter if hasattr(predicate, "contexter") else None)
+                                    for predicate in self.predicates]
             contexter_schema = [(key, field, field.contexter if hasattr(field, "contexter") else None)
                                 for key, field in self.schema.items()]
             for i in range(len(self.datas)):
-                data, odata, contexter_values = self.datas[i], {}, {}
+                data, opredicates, odata, contexter_values = self.datas[i], [], {}, {}
+                for predicate, contexter in contexter_predicates:
+                    if contexter is None:
+                        contexter = Contexter()
+                        predicate = predicate.clone(contexter)
+                    opredicates.append(ContextRunner(contexter, predicate, contexter_values).fill(data))
                 for key, field, contexter in contexter_schema:
                     if contexter is None:
                         contexter = Contexter()
                         field = field.clone(contexter)
                     odata[key] = ContextRunner(contexter, field, contexter_values).fill(data)
-                self.datas[i] = odata
+                self.datas[i] = (opredicates, odata)
             return super(DBLoader, self).get()
 
         for i in range(len(self.datas)):
@@ -160,24 +170,22 @@ class DBLoader(Loader):
         return super(DBLoader, self).get()
 
     def fast_get(self):
-        if not self.intercepts:
+        if not self.predicates and not self.intercepts:
             for i in range(len(self.datas)):
                 data = self.datas[i]
                 self.datas[i] = {name: valuer.fill_get(data) for name, valuer in self.schema.items()}
             self.geted = True
             return self.datas
 
-        if len(self.intercepts) == 1:
-            intercept = self.intercepts[0]
-            check_intercepts = lambda cdata: not intercept.fill_get(cdata)
-        else:
-            check_intercepts = self.check_intercepts
+        check_predicates, check_intercepts = self.create_check_predicates(), self.create_check_intercepts()
         datas, self.datas = self.datas, []
         datas.reverse()
         while datas:
             data = datas.pop()
+            if check_predicates is not None and check_predicates(data):
+                continue
             odata = {name: valuer.fill_get(data) for name, valuer in self.schema.items()}
-            if check_intercepts(odata):
+            if check_intercepts is not None and check_intercepts(odata):
                 continue
             self.datas.append(odata)
         self.geted = True
@@ -188,7 +196,7 @@ class DBLoader(Loader):
         datas.reverse()
         FunctionType, ofuncs = types.FunctionType, {}
 
-        if not self.intercepts:
+        if not self.predicates and not self.intercepts:
             while datas:
                 data, odata, = datas.pop(), {}
                 for name, valuer in self.schema.items():
@@ -215,13 +223,11 @@ class DBLoader(Loader):
             self.geted = True
             return self.datas
 
-        if len(self.intercepts) == 1:
-            intercept = self.intercepts[0]
-            check_intercepts = lambda cdata: not intercept.fill_get(cdata)
-        else:
-            check_intercepts = self.check_intercepts
+        check_predicates, check_intercepts = self.create_check_predicates(), self.create_check_intercepts()
         while datas:
             data, odata, = datas.pop(), {}
+            if check_predicates is not None and check_predicates(data):
+                continue
             for name, valuer in self.schema.items():
                 value = valuer.fill_get(data)
                 if isinstance(value, FunctionType):
@@ -230,8 +236,6 @@ class DBLoader(Loader):
                 else:
                     odata[name] = value
 
-            if check_intercepts(odata):
-                continue
             if ofuncs:
                 has_func_data = True
                 for name, ofunc in ofuncs.items():
@@ -241,9 +245,13 @@ class DBLoader(Loader):
                         has_func_data = False
                         continue
                 if has_func_data:
+                    if check_intercepts is not None and check_intercepts(odata):
+                        continue
                     self.datas.append(odata)
                 ofuncs.clear()
             else:
+                if check_intercepts is not None and check_intercepts(odata):
+                    continue
                 self.datas.append(odata)
         self.geted = True
         return self.datas
@@ -251,9 +259,9 @@ class DBLoader(Loader):
     def fast_patition_aggregate_get(self):
         datas, self.datas = self.datas, []
         datas.reverse()
-        FunctionType, ofuncs, getter_funcs = types.FunctionType, {}, deque()
+        FunctionType, ofuncs, getter_datas = types.FunctionType, {}, deque()
 
-        if not self.intercepts:
+        if not self.predicates and not self.intercepts:
             while datas:
                 data, odata, = datas.pop(), {}
                 for name, valuer in self.schema.items():
@@ -265,43 +273,51 @@ class DBLoader(Loader):
                         odata[name] = value
 
                 if ofuncs:
-                    has_func_data, ogetter_funcs = True, []
+                    has_func_data, ogetter_funcs = True, {}
                     for name, ofunc in ofuncs.items():
                         try:
                             value = ofunc(odata)
                             if isinstance(value, FunctionType):
-                                ogetter_funcs.append((odata, name, value))
-                                odata[name] = None
+                                ogetter_funcs[name] = value
                             else:
                                 odata[name] = value
                         except StopIteration:
                             has_func_data = False
                             continue
                     if has_func_data:
-                        self.datas.append(odata)
-                        getter_funcs.extend(ogetter_funcs)
+                        getter_datas.append((odata, ogetter_funcs))
                     ofuncs.clear()
                 else:
-                    self.datas.append(odata)
+                    getter_datas.append((odata, None))
 
-            if getter_funcs:
-                while getter_funcs:
-                    data, name, getter_func = getter_funcs.popleft()
-                    value = getter_func()
-                    if isinstance(value, FunctionType):
-                        getter_funcs.append((data, name, value))
-                    else:
-                        data[name] = value
+            final_getter_datas = deque()
+            while getter_datas:
+                odata, getter_funcs = getter_datas.popleft()
+                if getter_funcs:
+                    ogetter_funcs = {}
+                    for name, getter_func in getter_funcs.items():
+                        value = getter_func()
+                        if isinstance(value, FunctionType):
+                            ogetter_funcs[name] = value
+                        else:
+                            odata[name] = value
+                    final_getter_datas.append((odata, ogetter_funcs))
+                else:
+                    final_getter_datas.append((odata, None))
+            while final_getter_datas:
+                odata, getter_funcs = final_getter_datas.popleft()
+                if getter_funcs:
+                    for name, getter_func in getter_funcs.items():
+                        odata[name] = getter_func()
+                self.datas.append(odata)
             self.geted = True
             return self.datas
 
-        if len(self.intercepts) == 1:
-            intercept = self.intercepts[0]
-            check_intercepts = lambda cdata: not intercept.fill_get(cdata)
-        else:
-            check_intercepts = self.check_intercepts
+        check_predicates, check_intercepts = self.create_check_predicates(), self.create_check_intercepts()
         while datas:
             data, odata, = datas.pop(), {}
+            if check_predicates is not None and check_predicates(data):
+                continue
             for name, valuer in self.schema.items():
                 value = valuer.fill_get(data)
                 if isinstance(value, FunctionType):
@@ -310,36 +326,46 @@ class DBLoader(Loader):
                 else:
                     odata[name] = value
 
-            if check_intercepts(odata):
-                continue
             if ofuncs:
-                has_func_data, ogetter_funcs = True, []
+                has_func_data, ogetter_funcs = True, {}
                 for name, ofunc in ofuncs.items():
                     try:
                         value = ofunc(odata)
                         if isinstance(value, FunctionType):
-                            ogetter_funcs.append((odata, name, value))
-                            odata[name] = None
+                            ogetter_funcs[name] = value
                         else:
                             odata[name] = value
                     except StopIteration:
                         has_func_data = False
                         continue
                 if has_func_data:
-                    self.datas.append(odata)
-                    getter_funcs.extend(ogetter_funcs)
+                    getter_datas.append((odata, ogetter_funcs))
                 ofuncs.clear()
             else:
-                self.datas.append(odata)
+                getter_datas.append((odata, None))
 
-        if getter_funcs:
-            while getter_funcs:
-                data, name, getter_func = getter_funcs.popleft()
-                value = getter_func()
-                if isinstance(value, FunctionType):
-                    getter_funcs.append((data, name, value))
-                else:
-                    data[name] = value
+        final_getter_datas = deque()
+        while getter_datas:
+            odata, getter_funcs = getter_datas.popleft()
+            if getter_funcs:
+                ogetter_funcs = {}
+                for name, getter_func in getter_funcs.items():
+                    value = getter_func()
+                    if isinstance(value, FunctionType):
+                        ogetter_funcs[name] = value
+                    else:
+                        odata[name] = value
+                final_getter_datas.append((odata, ogetter_funcs))
+            else:
+                final_getter_datas.append((odata, None))
+        while final_getter_datas:
+            odata, getter_funcs = final_getter_datas.popleft()
+            if getter_funcs:
+                for name, getter_func in getter_funcs.items():
+                    odata[name] = getter_func()
+            if check_intercepts is not None and check_intercepts(odata):
+                continue
+            self.datas.append(odata)
         self.geted = True
         return self.datas
 

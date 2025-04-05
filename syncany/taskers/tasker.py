@@ -76,7 +76,6 @@ class Tasker(object):
         self.output = ""
         self.databases = DatabaseInstanceManager()
         self.caches = {}
-        self.intercepts = []
         self.schema = {}
         self.loader = None
         self.outputer = None

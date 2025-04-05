@@ -27,6 +27,7 @@ class CalculaterDBLoader(DBLoader):
         loader.schema = schema
         loader.filters = [filter for filter in self.filters]
         loader.orders = [order for order in self.orders]
+        loader.predicates = [predicate.clone() for predicate in self.predicates]
         loader.intercepts = [intercept.clone() for intercept in self.intercepts]
         loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
         return loader

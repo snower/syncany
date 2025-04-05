@@ -47,6 +47,7 @@ class Loader(object):
         self.schema = {}
         self.filters = []
         self.orders = []
+        self.predicates = []
         self.intercepts = []
         self.current_cursor = None
         self.key_matchers = []
@@ -63,12 +64,16 @@ class Loader(object):
         loader.schema = schema
         loader.filters = [filter for filter in self.filters]
         loader.orders = [order for order in self.orders]
+        loader.predicates = [predicate.clone() for predicate in self.predicates]
         loader.intercepts = [intercept.clone() for intercept in self.intercepts]
         loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
         return loader
 
     def add_valuer(self, name, valuer):
         self.schema[name] = valuer
+
+    def add_predicate(self, predicate):
+        self.predicates.append(predicate)
 
     def add_intercept(self, intercept):
         self.intercepts.append(intercept)
@@ -105,14 +110,7 @@ class Loader(object):
             return self.datas
         if not self.loaded:
             self.load()
-        if self.intercepts:
-            if len(self.intercepts) == 1:
-                intercept = self.intercepts[0]
-                check_intercepts = lambda cdata: not intercept.fill_get(cdata)
-            else:
-                check_intercepts = self.check_intercepts
-        else:
-            check_intercepts = None
+        get_check_predicates, check_predicates, check_intercepts = self.create_get_check_predicates, self.create_check_predicates(), self.create_check_intercepts()
 
         datas, self.datas = self.datas, []
         datas.reverse()
@@ -121,9 +119,18 @@ class Loader(object):
                 data, odata = datas.pop(), {}
                 if isinstance(data, ContextDataer):
                     data.use_values()
+                    if get_check_predicates is not None and get_check_predicates():
+                        continue
                     for name, valuer in self.schema.items():
                         odata[name] = valuer.get()
                 else:
+                    if isinstance(data, tuple):
+                        if self.check_current_predicates(data[0], data[1]):
+                            continue
+                        data = data[1]
+                    else:
+                        if self.check_current_predicates(None, data):
+                            continue
                     for name, valuer in self.schema.items():
                         if name not in data or not isinstance(data[name], ContextRunner):
                             odata[name] = valuer.fill_get(data)
@@ -141,6 +148,8 @@ class Loader(object):
                 data, odata, = datas.pop(), {}
                 if isinstance(data, ContextDataer):
                     data.use_values()
+                    if get_check_predicates is not None and get_check_predicates():
+                        continue
                     for name, valuer in self.schema.items():
                         value = valuer.get()
                         if isinstance(value, FunctionType):
@@ -149,6 +158,13 @@ class Loader(object):
                         else:
                             odata[name] = value
                 else:
+                    if isinstance(data, tuple):
+                        if self.check_current_predicates(data[0], data[1]):
+                            continue
+                        data = data[1]
+                    else:
+                        if self.check_current_predicates(None, data):
+                            continue
                     for name, valuer in self.schema.items():
                         if name not in data or not isinstance(data[name], ContextRunner):
                             value = valuer.fill_get(data)
@@ -160,8 +176,6 @@ class Loader(object):
                         else:
                             odata[name] = value
 
-                if check_intercepts is not None and check_intercepts(odata):
-                    continue
                 if ofuncs:
                     has_func_data = True
                     for name, ofunc in ofuncs.items():
@@ -171,9 +185,13 @@ class Loader(object):
                             has_func_data = False
                             continue
                     if has_func_data:
+                        if check_intercepts is not None and check_intercepts(odata):
+                            continue
                         self.datas.append(odata)
                     ofuncs.clear()
                 else:
+                    if check_intercepts is not None and check_intercepts(odata):
+                        continue
                     self.datas.append(odata)
             self.geted = True
             return self.datas
@@ -185,6 +203,8 @@ class Loader(object):
                 data, odata, = datas.pop(), {}
                 if isinstance(data, ContextDataer):
                     data.use_values()
+                    if get_check_predicates is not None and get_check_predicates():
+                        continue
                     for name, valuer in self.schema.items():
                         value = valuer.get()
                         if isinstance(value, GeneratorFunctionTypes):
@@ -196,6 +216,13 @@ class Loader(object):
                         else:
                             odata[name] = value
                 else:
+                    if isinstance(data, tuple):
+                        if self.check_current_predicates(data[0], data[1]):
+                            continue
+                        data = data[1]
+                    else:
+                        if self.check_current_predicates(None, data):
+                            continue
                     for name, valuer in self.schema.items():
                         if name not in data or not isinstance(data[name], ContextRunner):
                             value = valuer.fill_get(data)
@@ -237,8 +264,6 @@ class Loader(object):
 
                             if has_oyield_data or not has_append_data:
                                 has_append_data = True
-                                if check_intercepts is not None and check_intercepts(oyield_odata):
-                                    continue
                                 if oyield_ofuncs:
                                     has_func_data = True
                                     for name, ofunc in oyield_ofuncs.items():
@@ -248,9 +273,13 @@ class Loader(object):
                                             has_func_data = False
                                             continue
                                     if has_func_data:
+                                        if check_intercepts is not None and check_intercepts(odata):
+                                            continue
                                         self.datas.append(oyield_odata)
                                     oyield_ofuncs.clear()
                                 else:
+                                    if check_intercepts is not None and check_intercepts(odata):
+                                        continue
                                     self.datas.append(oyield_odata)
 
                         oyields.clear()
@@ -259,8 +288,6 @@ class Loader(object):
                             break
                         odata, oyields, ofuncs = oyield_generates.popleft()
                 else:
-                    if check_intercepts is not None and check_intercepts(odata):
-                        continue
                     if ofuncs:
                         has_func_data = True
                         for name, ofunc in ofuncs.items():
@@ -270,19 +297,25 @@ class Loader(object):
                                 has_func_data = False
                                 continue
                         if has_func_data:
+                            if check_intercepts is not None and check_intercepts(odata):
+                                continue
                             self.datas.append(odata)
                         ofuncs.clear()
                     else:
+                        if check_intercepts is not None and check_intercepts(odata):
+                            continue
                         self.datas.append(odata)
             self.geted = True
             return self.datas
 
         GeneratorType, GeneratorFunctionTypes, FunctionType = types.GeneratorType, (types.FunctionType, types.GeneratorType), types.FunctionType
-        oyield_generates, oyields, ofuncs, getter_funcs = deque(), {}, {}, deque()
+        oyield_generates, oyields, ofuncs, getter_datas = deque(), {}, {}, deque()
         while datas:
             data, odata,  = datas.pop(), {}
             if isinstance(data, ContextDataer):
                 data.use_values()
+                if get_check_predicates is not None and get_check_predicates():
+                    continue
                 for name, valuer in self.schema.items():
                     value = valuer.get()
                     if isinstance(value, GeneratorFunctionTypes):
@@ -294,6 +327,13 @@ class Loader(object):
                     else:
                         odata[name] = value
             else:
+                if isinstance(data, tuple):
+                    if self.check_current_predicates(data[0], data[1]):
+                        continue
+                    data = data[1]
+                else:
+                    if self.check_current_predicates(None, data):
+                        continue
                 for name, valuer in self.schema.items():
                     if name not in data or not isinstance(data[name], ContextRunner):
                         value = valuer.fill_get(data)
@@ -335,27 +375,23 @@ class Loader(object):
 
                         if has_oyield_data or not has_append_data:
                             has_append_data = True
-                            if check_intercepts is not None and check_intercepts(oyield_odata):
-                                continue
                             if oyield_ofuncs:
-                                has_func_data, ogetter_funcs = True, []
+                                has_func_data, ogetter_funcs = True, {}
                                 for name, ofunc in oyield_ofuncs.items():
                                     try:
                                         value = ofunc(oyield_odata)
                                         if isinstance(value, FunctionType):
-                                            ogetter_funcs.append((oyield_odata, name, value))
-                                            oyield_odata[name] = None
+                                            ogetter_funcs[name] = value
                                         else:
                                             oyield_odata[name] = value
                                     except StopIteration:
                                         has_func_data = False
                                         continue
                                 if has_func_data:
-                                    self.datas.append(oyield_odata)
-                                    getter_funcs.extend(ogetter_funcs)
+                                    getter_datas.append((oyield_odata, ogetter_funcs))
                                 oyield_ofuncs.clear()
                             else:
-                                self.datas.append(oyield_odata)
+                                getter_datas.append((oyield_odata, None))
 
                     oyields.clear()
                     ofuncs.clear()
@@ -363,44 +399,103 @@ class Loader(object):
                         break
                     odata, oyields, ofuncs = oyield_generates.popleft()
             else:
-                if check_intercepts is not None and check_intercepts(odata):
-                    continue
                 if ofuncs:
-                    has_func_data, ogetter_funcs = True, []
+                    has_func_data, ogetter_funcs = True, {}
                     for name, ofunc in ofuncs.items():
                         try:
                             value = ofunc(odata)
                             if isinstance(value, FunctionType):
-                                ogetter_funcs.append((odata, name, value))
-                                odata[name] = None
+                                ogetter_funcs[name] = value
                             else:
                                 odata[name] = value
                         except StopIteration:
                             has_func_data = False
                             continue
                     if has_func_data:
-                        self.datas.append(odata)
-                        getter_funcs.extend(ogetter_funcs)
+                        getter_datas.append((odata, ogetter_funcs))
                     ofuncs.clear()
                 else:
-                    self.datas.append(odata)
+                    self.datas.append((odata, None))
 
-        if getter_funcs:
-            while getter_funcs:
-                data, name, getter_func = getter_funcs.popleft()
-                value = getter_func()
-                if isinstance(value, FunctionType):
-                    getter_funcs.append((data, name, value))
-                else:
-                    data[name] = value
+        final_getter_datas = deque()
+        while getter_datas:
+            odata, getter_funcs = getter_datas.popleft()
+            if getter_funcs:
+                ogetter_funcs = {}
+                for name, getter_func in getter_funcs.items():
+                    value = getter_func()
+                    if isinstance(value, FunctionType):
+                        ogetter_funcs[name] = value
+                    else:
+                        odata[name] = value
+                final_getter_datas.append((odata, ogetter_funcs))
+            else:
+                final_getter_datas.append((odata, None))
+        while final_getter_datas:
+            odata, getter_funcs = final_getter_datas.popleft()
+            if getter_funcs:
+                for name, getter_func in getter_funcs.items():
+                    odata[name] = getter_func()
+            if check_intercepts is not None and check_intercepts(odata):
+                continue
+            self.datas.append(odata)
         self.geted = True
         return self.datas
 
-    def check_intercepts(self, data):
-        for intercept in self.intercepts:
-            if not intercept.fill_get(data):
-                return True
-        return False
+    def check_current_predicates(self, predicates, data):
+        if predicates is None:
+            for predicate in self.predicates:
+                if not predicate.fill_get(data):
+                    return True
+            return False
+        else:
+            for predicate in predicates:
+                if not isinstance(predicate, ContextRunner):
+                    if not predicate.fill_get(data):
+                        return True
+                else:
+                    if not predicate.get():
+                        return True
+            return False
+
+    def create_get_check_predicates(self):
+        if not self.predicates:
+            return None
+        if len(self.predicates) == 1:
+            current_predicate = self.predicates[0]
+            return current_predicate.get
+        def _():
+            for predicate in self.predicates:
+                if not predicate.get():
+                    return True
+            return False
+        return _
+
+    def create_check_predicates(self):
+        if not self.predicates:
+            return None
+        if len(self.predicates) == 1:
+            current_predicate = self.predicates[0]
+            return lambda data: not current_predicate.fill_get(data)
+        def _(data):
+            for predicate in self.predicates:
+                if not predicate.fill_get(data):
+                    return True
+            return False
+        return _
+
+    def create_check_intercepts(self):
+        if not self.intercepts:
+            return None
+        if len(self.intercepts) == 1:
+            current_intercept = self.intercepts[0]
+            return lambda data: not current_intercept.fill_get(data)
+        def _(data):
+            for intercept in self.intercepts:
+                if not intercept.fill_get(data):
+                    return True
+            return False
+        return _
 
     def add_filter(self, key, exp, value):
         self.filters.append([key, exp, value])

@@ -12,13 +12,17 @@ class DBJoinYieldMatcher(object):
     valuer = None
     contexter_values = None
     data_valuers = None
+    return_value_wait_loaded = True
+    values = None
 
-    def __init__(self, intercept_valuer, valuer, contexter_values):
+    def __init__(self, intercept_valuer, valuer, contexter_values, return_value_wait_loaded=True):
         if intercept_valuer is not None:
             self.intercept_valuer = intercept_valuer
         self.valuer = valuer
         if contexter_values is not None:
             self.contexter_values = contexter_values
+        if not return_value_wait_loaded:
+            self.return_value_wait_loaded = False
 
     def fill(self, values):
         if self.intercept_valuer:
@@ -60,25 +64,15 @@ class DBJoinYieldMatcher(object):
                 if not self.intercept_valuer.fill_get(values):
                     values = None
 
-        if isinstance(values, list):
-            self.data_valuers = []
-            if self.contexter_values is not None:
-                for value in values:
-                    self.valuer.contexter.values = self.valuer.contexter.create_inherit_values(self.contexter_values)
-                    self.valuer.fill(value)
-                    self.data_valuers.append((self.valuer, self.valuer.contexter.values))
-            else:
-                for value in values:
-                    valuer = self.valuer.clone(inherited=True).fill(value)
-                    self.data_valuers.append((valuer, None))
+        if self.return_value_wait_loaded:
+            self.fill_values(values)
         else:
-            if self.contexter_values is not None:
-                self.valuer.contexter.values = self.contexter_values
-            self.valuer.fill(values)
-            if values is None:
-                self.data_valuers = False
+            self.values = values
 
     def get(self, is_in_depth_citation=True):
+        if not self.return_value_wait_loaded:
+            self.values = self.fill_values(self.values)
+
         if not self.data_valuers:
             if self.contexter_values is not None:
                 self.valuer.contexter.values = self.contexter_values
@@ -104,20 +98,43 @@ class DBJoinYieldMatcher(object):
                 yield value
         return gen_iter(values)
 
+    def fill_values(self, values):
+        if isinstance(values, list):
+            self.data_valuers = []
+            if self.contexter_values is not None:
+                for value in values:
+                    self.valuer.contexter.values = self.valuer.contexter.create_inherit_values(self.contexter_values)
+                    self.valuer.fill(value)
+                    self.data_valuers.append((self.valuer, self.valuer.contexter.values))
+            else:
+                for value in values:
+                    valuer = self.valuer.clone(inherited=True).fill(value)
+                    self.data_valuers.append((valuer, None))
+        else:
+            if self.contexter_values is not None:
+                self.valuer.contexter.values = self.contexter_values
+            self.valuer.fill(values)
+            if values is None:
+                self.data_valuers = False
+
 
 class DBJoinMatcher(object):
     intercept_valuer = None
     valuer = None
     group_matcher = None
     contexter_values = None
+    return_value_wait_loaded = True
+    values = None
 
-    def __init__(self, intercept_valuer, valuer, contexter_values):
+    def __init__(self, intercept_valuer, valuer, contexter_values, return_value_wait_loaded=True):
         if intercept_valuer is not None:
             self.intercept_valuer = intercept_valuer
         if valuer is not None:
             self.valuer = valuer
         if contexter_values is not None:
             self.contexter_values = contexter_values
+        if not return_value_wait_loaded:
+            self.return_value_wait_loaded = False
 
     def fill(self, values):
         if self.intercept_valuer:
@@ -135,19 +152,28 @@ class DBJoinMatcher(object):
                 if not self.intercept_valuer.fill_get(values):
                     values = None
 
+        if self.return_value_wait_loaded:
+            self.fill_values(values)
+        else:
+            self.values = values
+
+    def get(self, is_in_depth_citation=True):
+        if not self.return_value_wait_loaded:
+            self.values = self.fill_values(self.values)
+
+        if not self.valuer:
+            return None
+        if self.contexter_values is not None:
+            self.valuer.contexter.values = self.contexter_values
+        return self.valuer.get()
+
+    def fill_values(self, values):
         if self.valuer:
             if self.contexter_values is not None:
                 self.valuer.contexter.values = self.contexter_values
             self.valuer.fill(values)
         elif self.group_matcher:
             self.group_matcher.fill(values)
-
-    def get(self, is_in_depth_citation=True):
-        if not self.valuer:
-            return None
-        if self.contexter_values is not None:
-            self.valuer.contexter.values = self.contexter_values
-        return self.valuer.get()
 
 
 class GroupDBJoinYieldMatcher(object):
@@ -171,9 +197,12 @@ class GroupDBJoinYieldMatcher(object):
 
 
 class GroupDBJoinMatcher(object):
-    def __init__(self, return_valuer, contexter_values):
+    return_value_wait_loaded = None
+
+    def __init__(self, return_valuer, contexter_values, return_value_wait_loaded=True):
         self.return_valuer = return_valuer
         self.contexter_values = contexter_values
+        self.return_value_wait_loaded = return_value_wait_loaded
         self.matcher_count = 0
         self.values = []
 
@@ -183,30 +212,26 @@ class GroupDBJoinMatcher(object):
 
     def fill(self, values):
         self.values.append(values)
-        if len(self.values) >= self.matcher_count:
-            values = []
-            for value in self.values:
-                if isinstance(value, list):
-                    values.extend(value)
-                else:
-                    values.append(value)
-            if self.contexter_values is not None:
-                self.return_valuer.contexter.values = self.contexter_values
-            self.return_valuer.fill(values)
+        if self.return_value_wait_loaded and len(self.values) >= self.matcher_count:
+            self.fill_values()
 
     def get(self, is_in_depth_citation=True):
-        if self.contexter_values is not None:
+        if not self.return_value_wait_loaded or len(self.values) < self.matcher_count:
+            self.fill_values()
+        elif self.contexter_values is not None:
             self.return_valuer.contexter.values = self.contexter_values
-        if len(self.values) < self.matcher_count:
-            values = []
-            for value in self.values:
-                if isinstance(value, list):
-                    values.extend(value)
-                else:
-                    values.extend(value)
-            self.return_valuer.fill(values)
         return self.return_valuer.get()
 
+    def fill_values(self):
+        values = []
+        for value in self.values:
+            if isinstance(value, list):
+                values.extend(value)
+            else:
+                values.append(value)
+        if self.contexter_values is not None:
+            self.return_valuer.contexter.values = self.contexter_values
+        self.return_valuer.fill(values)
 
 class DBJoinLoader(DBLoader):
     def __init__(self, *args, **kwargs):
