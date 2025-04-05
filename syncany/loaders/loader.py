@@ -258,7 +258,6 @@ class Loader(object):
                                             oyield_oyields[name] = value
                                         else:
                                             oyield_ofuncs[name] = value
-                                        oyield_odata[name] = None
                                     else:
                                         oyield_odata[name] = value
                                     has_oyield_data = True
@@ -329,7 +328,6 @@ class Loader(object):
                             oyields[name] = value
                         else:
                             ofuncs[name] = value
-                        odata[name] = None
                     else:
                         odata[name] = value
             else:
@@ -353,7 +351,6 @@ class Loader(object):
                             oyields[name] = value
                         else:
                             ofuncs[name] = value
-                        odata[name] = None
                     else:
                         odata[name] = value
 
@@ -370,7 +367,6 @@ class Loader(object):
                                         oyield_oyields[name] = value
                                     else:
                                         oyield_ofuncs[name] = value
-                                    oyield_odata[name] = None
                                 else:
                                     oyield_odata[name] = value
                                 has_oyield_data = True

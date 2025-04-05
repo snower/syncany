@@ -201,7 +201,7 @@ class DBLoader(Loader):
         datas.reverse()
         GeneratorType = types.GeneratorType
 
-        oyields = {}
+        oyield_generates, oyields = deque(), {}
         while datas:
             data, odata, = datas.pop(), {}
             if isinstance(data, ContextDataer):
@@ -238,20 +238,31 @@ class DBLoader(Loader):
                         odata[name] = value
 
             if oyields:
-                while oyields:
-                    oyield_odata = dict.copy(odata)
-                    has_oyield_data = False
-                    for name, oyield in tuple(oyields.items()):
-                        try:
-                            value = oyield.send(None)
-                            oyield_odata[name] = value
-                            has_oyield_data = True
-                        except StopIteration:
-                            oyields.pop(name)
-                    if has_oyield_data:
-                        if self.intercept is not None and self.intercept.fill_get(oyield_odata):
+                while True:
+                    while oyields:
+                        oyield_odata, oyield_oyields = dict.copy(odata), {}
+                        has_oyield_data = False
+                        for name, oyield in tuple(oyields.items()):
+                            try:
+                                value = oyield.send(None)
+                                if isinstance(value, GeneratorType):
+                                    oyield_oyields[name] = value
+                                else:
+                                    oyield_odata[name] = value
+                                has_oyield_data = True
+                            except StopIteration:
+                                oyields.pop(name)
+                        if oyield_oyields:
+                            oyield_generates.appendleft((odata, oyields))
+                            odata, oyields = oyield_odata, oyield_oyields
                             continue
-                        self.datas.append(oyield_odata)
+                        if has_oyield_data:
+                            if self.intercept is not None and self.intercept.fill_get(oyield_odata):
+                                continue
+                            self.datas.append(oyield_odata)
+                    if not oyield_generates:
+                        break
+                    odata, oyields = oyield_generates.popleft()
             else:
                 if self.intercept is not None and self.intercept.fill_get(odata):
                     continue
