@@ -79,9 +79,9 @@ class CoreTasker(Tasker):
         "sources": {},
         "defines": {},
         "variables": {},
-        "predicates": [],
+        "predicate": None,
         "schema": {},
-        "intercepts": [],
+        "intercept": None,
         "orders": [],
         "pipelines": [],
         "options": {},
@@ -849,32 +849,29 @@ class CoreTasker(Tasker):
             loader_config.update(self.config["loader_arguments"])
         self.loader = self.create_loader(loader_config, input_loader["foreign_keys"])
 
-        loader_predicates, loader_schema, aggregate_valuers, partition_managers, require_loaded = [], {}, [], {}, False
-        if self.config["predicates"]:
-            for predicate in self.config["predicates"]:
-                inherit_valuers, yield_valuers = [], []
-                valuer = self.create_valuer(self.compile_valuer(predicate), schema_field_name="",
-                                            inherit_valuers=inherit_valuers,
-                                            join_loaders=self.join_loaders, yield_valuers=yield_valuers,
-                                            aggregate_valuers=aggregate_valuers, partition_managers=partition_managers,
-                                            define_valuers={},
-                                            global_variables=dict(**self.config["variables"]), global_states=self.states)
-                if not valuer:
-                    continue
-                if valuer.require_loaded():
+        predicate_valuer, loader_schema, aggregate_valuers, partition_managers, require_loaded = None, {}, [], {}, False
+        if self.config["predicate"]:
+            inherit_valuers, yield_valuers = [], []
+            predicate_valuer = self.create_valuer(self.compile_valuer(self.config["predicate"]), schema_field_name="",
+                                        inherit_valuers=inherit_valuers,
+                                        join_loaders=self.join_loaders, yield_valuers=yield_valuers,
+                                        aggregate_valuers=aggregate_valuers, partition_managers=partition_managers,
+                                        define_valuers={},
+                                        global_variables=dict(**self.config["variables"]), global_states=self.states)
+            if predicate_valuer:
+                if predicate_valuer.require_loaded():
                     require_loaded = True
                 if inherit_valuers:
                     for inherit_valuer in inherit_valuers:
                         if inherit_valuer["reflen"] == 0xffffffff:
-                            if hasattr(valuer, "add_inherit_valuer"):
-                                valuer.add_inherit_valuer(inherit_valuer)
+                            if hasattr(predicate_valuer, "add_inherit_valuer"):
+                                predicate_valuer.add_inherit_valuer(inherit_valuer)
                             continue
                         raise OverflowError( " inherit out of range")
                 if yield_valuers:
                     loader_config["valuer_type"] |= 0x01
-                loader_predicates.append(valuer)
-            if require_loaded and self.schema == ".*":
-                raise SyncanyException("predicate unknown schema")
+        if require_loaded and self.schema == ".*":
+            raise SyncanyException("predicate unknown schema")
 
         if isinstance(self.schema, dict):
             for name, valuer in self.schema.items():
@@ -906,10 +903,10 @@ class CoreTasker(Tasker):
             loader_config["valuer_type"] |= 0x04
         if require_loaded:
             contexter = Contexter()
-            for valuer in loader_predicates:
-                valuer = valuer.clone(contexter)
-                self.loader.add_predicate(valuer)
-                valuer.mount_loader(loader=self.loader, is_return_getter=True)
+            if predicate_valuer is not None:
+                predicate_valuer = predicate_valuer.clone(contexter)
+                self.loader.update_predicate(predicate_valuer)
+                predicate_valuer.mount_loader(loader=self.loader, is_return_getter=True)
             for name, valuer in loader_schema.items():
                 valuer = valuer.clone(contexter)
                 self.loader.add_valuer(name, valuer)
@@ -917,9 +914,9 @@ class CoreTasker(Tasker):
             if hasattr(self.loader, "contexter"):
                 self.loader.contexter = contexter
         else:
-            for valuer in loader_predicates:
-                self.loader.add_predicate(valuer)
-                valuer.mount_loader(loader=self.loader, is_return_getter=True)
+            if predicate_valuer is not None:
+                self.loader.update_predicate(predicate_valuer)
+                predicate_valuer.mount_loader(loader=self.loader, is_return_getter=True)
             for name, valuer in loader_schema.items():
                 self.loader.add_valuer(name, valuer)
                 valuer.mount_loader(loader=self.loader, is_return_getter=True)
@@ -962,14 +959,13 @@ class CoreTasker(Tasker):
                     continue
                 self.loader.order_by(primary_key, 1)
 
-        if self.config["intercepts"]:
-            for intercept in self.config["intercepts"]:
-                inherit_valuers, yield_valuers = [], []
-                valuer = self.create_valuer(self.compile_valuer(intercept), schema_field_name="", inherit_valuers=inherit_valuers,
-                                        join_loaders=self.join_loaders, yield_valuers=yield_valuers,
-                                        aggregate_valuers=aggregate_valuers, partition_managers=partition_managers, define_valuers={},
-                                        global_variables=dict(**self.config["variables"]), global_states=self.states)
-                self.loader.add_intercept(valuer)
+        if self.config["intercept"]:
+            inherit_valuers, yield_valuers = [], []
+            intercept_valuer = self.create_valuer(self.compile_valuer(self.config["intercept"]), schema_field_name="", inherit_valuers=inherit_valuers,
+                                    join_loaders=self.join_loaders, yield_valuers=yield_valuers,
+                                    aggregate_valuers=aggregate_valuers, partition_managers=partition_managers, define_valuers={},
+                                    global_variables=dict(**self.config["variables"]), global_states=self.states)
+            self.loader.update_intercept(intercept_valuer)
 
     def compile_outputer(self):
         outputer_config = {}
@@ -1198,7 +1194,7 @@ class CoreTasker(Tasker):
             self.print_queryed_statistics(self.loader, self.status["statistics"]["loader"])
 
             if self.outputer.is_dynamic_schema() and self.schema == ".*" and not self.config["querys"] \
-                    and  not self.loader.predicates and not self.loader.intercepts and not self.hookers:
+                    and  not self.loader.predicate and not self.loader.intercept and not self.hookers:
                 datas = self.loader.datas
             else:
                 datas = self.loader.get()
@@ -1254,7 +1250,7 @@ class CoreTasker(Tasker):
         self.print_queryed_statistics(self.loader, self.status["statistics"]["loader"])
 
         if self.outputer.is_dynamic_schema() and self.schema == ".*" and not self.config["querys"] \
-                and not self.loader.predicates and not self.loader.intercepts and not self.hookers:
+                and not self.loader.predicate and not self.loader.intercept and not self.hookers:
             datas = self.loader.datas
         else:
             datas = self.loader.get()

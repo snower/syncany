@@ -27,8 +27,8 @@ class DBLoader(Loader):
         loader.schema = schema
         loader.filters = [filter for filter in self.filters]
         loader.orders = [order for order in self.orders]
-        loader.predicates = [predicate.clone() for predicate in self.predicates]
-        loader.intercepts = [intercept.clone() for intercept in self.intercepts]
+        loader.predicate = self.predicate
+        loader.intercept = self.intercept
         loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
         return loader
 
@@ -55,6 +55,9 @@ class DBLoader(Loader):
             return
 
         fields = set([])
+        if self.predicate is not None:
+            for field in self.predicate.get_fields():
+                fields.add(field)
         if not self.key_matchers:
             try:
                 for name, valuer in self.schema.items():
@@ -128,30 +131,31 @@ class DBLoader(Loader):
                 for i in range(len(self.datas)):
                     data, context_dataer = self.datas[i], ContextDataer(loader_contexter)
                     loader_contexter.values = context_dataer.values
-                    for predicate in self.predicates:
-                        predicate.fill(data)
+                    if self.predicate is not None:
+                        self.predicate.fill(data)
                     for key, field in self.schema.items():
                         field.fill(data)
                     self.datas[i] = context_dataer
                 return super(DBLoader, self).get()
 
-            contexter_predicates = [(predicate, predicate.contexter if hasattr(predicate, "contexter") else None)
-                                    for predicate in self.predicates]
             contexter_schema = [(key, field, field.contexter if hasattr(field, "contexter") else None)
                                 for key, field in self.schema.items()]
             for i in range(len(self.datas)):
-                data, opredicates, odata, contexter_values = self.datas[i], [], {}, {}
-                for predicate, contexter in contexter_predicates:
-                    if contexter is None:
+                data, predicate, odata, contexter_values = self.datas[i], None, {}, {}
+                if self.predicate is not None:
+                    if hasattr(self.predicate, "contexter"):
+                        contexter = self.predicate.contexter
+                        predicate = self.predicate
+                    else:
                         contexter = Contexter()
-                        predicate = predicate.clone(contexter)
-                    opredicates.append(ContextRunner(contexter, predicate, contexter_values).fill(data))
+                        predicate = self.predicate.clone(contexter)
+                    predicate = ContextRunner(contexter, predicate, contexter_values).fill(data)
                 for key, field, contexter in contexter_schema:
                     if contexter is None:
                         contexter = Contexter()
                         field = field.clone(contexter)
                     odata[key] = ContextRunner(contexter, field, contexter_values).fill(data)
-                self.datas[i] = (opredicates, odata)
+                self.datas[i] = (predicate, odata)
             return super(DBLoader, self).get()
 
         for i in range(len(self.datas)):
@@ -170,22 +174,21 @@ class DBLoader(Loader):
         return super(DBLoader, self).get()
 
     def fast_get(self):
-        if not self.predicates and not self.intercepts:
+        if self.predicate is None and self.intercept is None:
             for i in range(len(self.datas)):
                 data = self.datas[i]
                 self.datas[i] = {name: valuer.fill_get(data) for name, valuer in self.schema.items()}
             self.geted = True
             return self.datas
 
-        check_predicates, check_intercepts = self.create_check_predicates(), self.create_check_intercepts()
         datas, self.datas = self.datas, []
         datas.reverse()
         while datas:
             data = datas.pop()
-            if check_predicates is not None and check_predicates(data):
+            if self.predicate is not None and not self.predicate.fill_get(data):
                 continue
             odata = {name: valuer.fill_get(data) for name, valuer in self.schema.items()}
-            if check_intercepts is not None and check_intercepts(odata):
+            if self.intercept is not None and not self.intercept.fill_get(odata):
                 continue
             self.datas.append(odata)
         self.geted = True
@@ -196,7 +199,7 @@ class DBLoader(Loader):
         datas.reverse()
         FunctionType, ofuncs = types.FunctionType, {}
 
-        if not self.predicates and not self.intercepts:
+        if self.predicate is None and self.intercept is None:
             while datas:
                 data, odata, = datas.pop(), {}
                 for name, valuer in self.schema.items():
@@ -223,10 +226,9 @@ class DBLoader(Loader):
             self.geted = True
             return self.datas
 
-        check_predicates, check_intercepts = self.create_check_predicates(), self.create_check_intercepts()
         while datas:
             data, odata, = datas.pop(), {}
-            if check_predicates is not None and check_predicates(data):
+            if self.predicate is not None and not self.predicate.fill_get(data):
                 continue
             for name, valuer in self.schema.items():
                 value = valuer.fill_get(data)
@@ -245,12 +247,12 @@ class DBLoader(Loader):
                         has_func_data = False
                         continue
                 if has_func_data:
-                    if check_intercepts is not None and check_intercepts(odata):
+                    if self.intercept is not None and not self.intercept.fill_get(odata):
                         continue
                     self.datas.append(odata)
                 ofuncs.clear()
             else:
-                if check_intercepts is not None and check_intercepts(odata):
+                if self.intercept is not None and not self.intercept.fill_get(odata):
                     continue
                 self.datas.append(odata)
         self.geted = True
@@ -261,7 +263,7 @@ class DBLoader(Loader):
         datas.reverse()
         FunctionType, ofuncs, getter_datas = types.FunctionType, {}, deque()
 
-        if not self.predicates and not self.intercepts:
+        if self.predicate is None and self.intercept is None:
             while datas:
                 data, odata, = datas.pop(), {}
                 for name, valuer in self.schema.items():
@@ -313,10 +315,9 @@ class DBLoader(Loader):
             self.geted = True
             return self.datas
 
-        check_predicates, check_intercepts = self.create_check_predicates(), self.create_check_intercepts()
         while datas:
             data, odata, = datas.pop(), {}
-            if check_predicates is not None and check_predicates(data):
+            if self.predicate is not None and not self.predicate.fill_get(data):
                 continue
             for name, valuer in self.schema.items():
                 value = valuer.fill_get(data)
@@ -363,7 +364,7 @@ class DBLoader(Loader):
             if getter_funcs:
                 for name, getter_func in getter_funcs.items():
                     odata[name] = getter_func()
-            if check_intercepts is not None and check_intercepts(odata):
+            if self.intercept is not None and not self.intercept.fill_get(odata):
                 continue
             self.datas.append(odata)
         self.geted = True

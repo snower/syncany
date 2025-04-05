@@ -47,8 +47,8 @@ class Loader(object):
         self.schema = {}
         self.filters = []
         self.orders = []
-        self.predicates = []
-        self.intercepts = []
+        self.predicate = None
+        self.intercept = None
         self.current_cursor = None
         self.key_matchers = []
         self.datas = []
@@ -64,19 +64,19 @@ class Loader(object):
         loader.schema = schema
         loader.filters = [filter for filter in self.filters]
         loader.orders = [order for order in self.orders]
-        loader.predicates = [predicate.clone() for predicate in self.predicates]
-        loader.intercepts = [intercept.clone() for intercept in self.intercepts]
+        loader.predicate = self.predicate
+        loader.intercept = self.intercept
         loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
         return loader
 
     def add_valuer(self, name, valuer):
         self.schema[name] = valuer
 
-    def add_predicate(self, predicate):
-        self.predicates.append(predicate)
+    def update_predicate(self, predicate):
+        self.predicate = predicate
 
-    def add_intercept(self, intercept):
-        self.intercepts.append(intercept)
+    def update_intercept(self, intercept):
+        self.intercept = intercept
 
     def add_key_matcher(self, matcher, valuer):
         matcher = KeyMatcher(matcher, valuer)
@@ -110,7 +110,6 @@ class Loader(object):
             return self.datas
         if not self.loaded:
             self.load()
-        get_check_predicates, check_predicates, check_intercepts = self.create_get_check_predicates, self.create_check_predicates(), self.create_check_intercepts()
 
         datas, self.datas = self.datas, []
         datas.reverse()
@@ -119,24 +118,27 @@ class Loader(object):
                 data, odata = datas.pop(), {}
                 if isinstance(data, ContextDataer):
                     data.use_values()
-                    if get_check_predicates is not None and get_check_predicates():
+                    if self.predicate is not None and not self.predicate.get():
                         continue
                     for name, valuer in self.schema.items():
                         odata[name] = valuer.get()
                 else:
                     if isinstance(data, tuple):
-                        if self.check_current_predicates(data[0], data[1]):
+                        if isinstance(data[0], ContextRunner):
+                            if not data[0].get():
+                                continue
+                        elif self.predicate is not None and not self.predicate.fill_get(data[1]):
                             continue
                         data = data[1]
                     else:
-                        if self.check_current_predicates(None, data):
+                        if self.predicate is not None and not self.predicate.fill_get(data[1]):
                             continue
                     for name, valuer in self.schema.items():
                         if name not in data or not isinstance(data[name], ContextRunner):
                             odata[name] = valuer.fill_get(data)
                         else:
                             odata[name] = data[name].get()
-                if check_intercepts is not None and check_intercepts(odata):
+                if self.intercept is not None and self.intercept.fill_get(odata):
                     continue
                 self.datas.append(odata)
             self.geted = True
@@ -148,7 +150,7 @@ class Loader(object):
                 data, odata, = datas.pop(), {}
                 if isinstance(data, ContextDataer):
                     data.use_values()
-                    if get_check_predicates is not None and get_check_predicates():
+                    if self.predicate is not None and not self.predicate.get():
                         continue
                     for name, valuer in self.schema.items():
                         value = valuer.get()
@@ -159,11 +161,14 @@ class Loader(object):
                             odata[name] = value
                 else:
                     if isinstance(data, tuple):
-                        if self.check_current_predicates(data[0], data[1]):
+                        if isinstance(data[0], ContextRunner):
+                            if not data[0].get():
+                                continue
+                        elif self.predicate is not None and not self.predicate.fill_get(data[1]):
                             continue
                         data = data[1]
                     else:
-                        if self.check_current_predicates(None, data):
+                        if self.predicate is not None and not self.predicate.fill_get(data[1]):
                             continue
                     for name, valuer in self.schema.items():
                         if name not in data or not isinstance(data[name], ContextRunner):
@@ -185,12 +190,12 @@ class Loader(object):
                             has_func_data = False
                             continue
                     if has_func_data:
-                        if check_intercepts is not None and check_intercepts(odata):
+                        if self.intercept is not None and self.intercept.fill_get(odata):
                             continue
                         self.datas.append(odata)
                     ofuncs.clear()
                 else:
-                    if check_intercepts is not None and check_intercepts(odata):
+                    if self.intercept is not None and self.intercept.fill_get(odata):
                         continue
                     self.datas.append(odata)
             self.geted = True
@@ -203,7 +208,7 @@ class Loader(object):
                 data, odata, = datas.pop(), {}
                 if isinstance(data, ContextDataer):
                     data.use_values()
-                    if get_check_predicates is not None and get_check_predicates():
+                    if self.predicate is not None and not self.predicate.get():
                         continue
                     for name, valuer in self.schema.items():
                         value = valuer.get()
@@ -217,11 +222,14 @@ class Loader(object):
                             odata[name] = value
                 else:
                     if isinstance(data, tuple):
-                        if self.check_current_predicates(data[0], data[1]):
+                        if isinstance(data[0], ContextRunner):
+                            if not data[0].get():
+                                continue
+                        elif self.predicate is not None and not self.predicate.fill_get(data[1]):
                             continue
                         data = data[1]
                     else:
-                        if self.check_current_predicates(None, data):
+                        if self.predicate is not None and not self.predicate.fill_get(data[1]):
                             continue
                     for name, valuer in self.schema.items():
                         if name not in data or not isinstance(data[name], ContextRunner):
@@ -273,12 +281,12 @@ class Loader(object):
                                             has_func_data = False
                                             continue
                                     if has_func_data:
-                                        if check_intercepts is not None and check_intercepts(odata):
+                                        if self.intercept is not None and self.intercept.fill_get(odata):
                                             continue
                                         self.datas.append(oyield_odata)
                                     oyield_ofuncs.clear()
                                 else:
-                                    if check_intercepts is not None and check_intercepts(odata):
+                                    if self.intercept is not None and self.intercept.fill_get(odata):
                                         continue
                                     self.datas.append(oyield_odata)
 
@@ -297,12 +305,12 @@ class Loader(object):
                                 has_func_data = False
                                 continue
                         if has_func_data:
-                            if check_intercepts is not None and check_intercepts(odata):
+                            if self.intercept is not None and self.intercept.fill_get(odata):
                                 continue
                             self.datas.append(odata)
                         ofuncs.clear()
                     else:
-                        if check_intercepts is not None and check_intercepts(odata):
+                        if self.intercept is not None and self.intercept.fill_get(odata):
                             continue
                         self.datas.append(odata)
             self.geted = True
@@ -314,7 +322,7 @@ class Loader(object):
             data, odata,  = datas.pop(), {}
             if isinstance(data, ContextDataer):
                 data.use_values()
-                if get_check_predicates is not None and get_check_predicates():
+                if self.predicate is not None and not self.predicate.get():
                     continue
                 for name, valuer in self.schema.items():
                     value = valuer.get()
@@ -328,11 +336,14 @@ class Loader(object):
                         odata[name] = value
             else:
                 if isinstance(data, tuple):
-                    if self.check_current_predicates(data[0], data[1]):
+                    if isinstance(data[0], ContextRunner):
+                        if not data[0].get():
+                            continue
+                    elif self.predicate is not None and not self.predicate.fill_get(data[1]):
                         continue
                     data = data[1]
                 else:
-                    if self.check_current_predicates(None, data):
+                    if self.predicate is not None and not self.predicate.fill_get(data[1]):
                         continue
                 for name, valuer in self.schema.items():
                     if name not in data or not isinstance(data[name], ContextRunner):
@@ -436,66 +447,11 @@ class Loader(object):
             if getter_funcs:
                 for name, getter_func in getter_funcs.items():
                     odata[name] = getter_func()
-            if check_intercepts is not None and check_intercepts(odata):
+            if self.intercept is not None and self.intercept.fill_get(odata):
                 continue
             self.datas.append(odata)
         self.geted = True
         return self.datas
-
-    def check_current_predicates(self, predicates, data):
-        if predicates is None:
-            for predicate in self.predicates:
-                if not predicate.fill_get(data):
-                    return True
-            return False
-        else:
-            for predicate in predicates:
-                if not isinstance(predicate, ContextRunner):
-                    if not predicate.fill_get(data):
-                        return True
-                else:
-                    if not predicate.get():
-                        return True
-            return False
-
-    def create_get_check_predicates(self):
-        if not self.predicates:
-            return None
-        if len(self.predicates) == 1:
-            current_predicate = self.predicates[0]
-            return current_predicate.get
-        def _():
-            for predicate in self.predicates:
-                if not predicate.get():
-                    return True
-            return False
-        return _
-
-    def create_check_predicates(self):
-        if not self.predicates:
-            return None
-        if len(self.predicates) == 1:
-            current_predicate = self.predicates[0]
-            return lambda data: not current_predicate.fill_get(data)
-        def _(data):
-            for predicate in self.predicates:
-                if not predicate.fill_get(data):
-                    return True
-            return False
-        return _
-
-    def create_check_intercepts(self):
-        if not self.intercepts:
-            return None
-        if len(self.intercepts) == 1:
-            current_intercept = self.intercepts[0]
-            return lambda data: not current_intercept.fill_get(data)
-        def _(data):
-            for intercept in self.intercepts:
-                if not intercept.fill_get(data):
-                    return True
-            return False
-        return _
 
     def add_filter(self, key, exp, value):
         self.filters.append([key, exp, value])

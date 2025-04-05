@@ -27,8 +27,8 @@ class CalculaterDBLoader(DBLoader):
         loader.schema = schema
         loader.filters = [filter for filter in self.filters]
         loader.orders = [order for order in self.orders]
-        loader.predicates = [predicate.clone() for predicate in self.predicates]
-        loader.intercepts = [intercept.clone() for intercept in self.intercepts]
+        loader.predicate = self.predicate
+        loader.intercept = self.intercept
         loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
         return loader
 
@@ -51,6 +51,9 @@ class CalculaterDBLoader(DBLoader):
             return
 
         fields = set([])
+        if self.predicate is not None:
+            for field in self.predicate.get_fields():
+                fields.add(field)
         if not self.key_matchers:
             try:
                 for name, valuer in self.schema.items():
