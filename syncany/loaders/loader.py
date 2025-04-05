@@ -201,11 +201,11 @@ class Loader(object):
             self.geted = True
             return self.datas
 
-        if self.valuer_type in (0x01, 0x03):
+        if self.valuer_type in (0x01, 0x08, 0x03, 0x09, 0x0b):
             GeneratorType, GeneratorFunctionTypes = types.GeneratorType, (types.FunctionType, types.GeneratorType)
             oyield_generates, oyields, ofuncs = deque(), {}, {}
             while datas:
-                data, odata, = datas.pop(), {}
+                data, odata = datas.pop(), {}
                 if isinstance(data, ContextDataer):
                     data.use_values()
                     if self.predicate is not None and not self.predicate.get():
@@ -246,7 +246,6 @@ class Loader(object):
                             odata[name] = value
 
                 if oyields:
-                    has_append_data = False
                     while True:
                         while oyields:
                             oyield_odata, oyield_oyields, oyield_ofuncs = dict.copy(odata), {}, dict.copy(ofuncs)
@@ -270,8 +269,7 @@ class Loader(object):
                                 odata, oyields, ofuncs = oyield_odata, oyield_oyields, oyield_ofuncs
                                 continue
 
-                            if has_oyield_data or not has_append_data:
-                                has_append_data = True
+                            if has_oyield_data:
                                 if oyield_ofuncs:
                                     has_func_data = True
                                     for name, ofunc in oyield_ofuncs.items():
@@ -281,12 +279,12 @@ class Loader(object):
                                             has_func_data = False
                                             continue
                                     if has_func_data:
-                                        if self.intercept is not None and self.intercept.fill_get(odata):
+                                        if self.intercept is not None and self.intercept.fill_get(oyield_odata):
                                             continue
                                         self.datas.append(oyield_odata)
                                     oyield_ofuncs.clear()
                                 else:
-                                    if self.intercept is not None and self.intercept.fill_get(odata):
+                                    if self.intercept is not None and self.intercept.fill_get(oyield_odata):
                                         continue
                                     self.datas.append(oyield_odata)
 
@@ -319,7 +317,7 @@ class Loader(object):
         GeneratorType, GeneratorFunctionTypes, FunctionType = types.GeneratorType, (types.FunctionType, types.GeneratorType), types.FunctionType
         oyield_generates, oyields, ofuncs, getter_datas = deque(), {}, {}, deque()
         while datas:
-            data, odata,  = datas.pop(), {}
+            data, odata = datas.pop(), {}
             if isinstance(data, ContextDataer):
                 data.use_values()
                 if self.predicate is not None and not self.predicate.get():
@@ -360,7 +358,6 @@ class Loader(object):
                         odata[name] = value
 
             if oyields:
-                has_append_data = False
                 while True:
                     while oyields:
                         oyield_odata, oyield_oyields, oyield_ofuncs = dict.copy(odata), {}, dict.copy(ofuncs)
@@ -384,8 +381,7 @@ class Loader(object):
                             odata, oyields, ofuncs = oyield_odata, oyield_oyields, oyield_ofuncs
                             continue
 
-                        if has_oyield_data or not has_append_data:
-                            has_append_data = True
+                        if has_oyield_data:
                             if oyield_ofuncs:
                                 has_func_data, ogetter_funcs = True, {}
                                 for name, ofunc in oyield_ofuncs.items():
@@ -399,7 +395,17 @@ class Loader(object):
                                         has_func_data = False
                                         continue
                                 if has_func_data:
-                                    getter_datas.append((oyield_odata, ogetter_funcs))
+                                    if ogetter_funcs:
+                                        fgetter_funcs = {}
+                                        for name, getter_func in ogetter_funcs.items():
+                                            value = getter_func()
+                                            if isinstance(value, FunctionType):
+                                                fgetter_funcs[name] = value
+                                            else:
+                                                oyield_odata[name] = value
+                                        getter_datas.append((oyield_odata, fgetter_funcs))
+                                    else:
+                                        getter_datas.append((oyield_odata, None))
                                 oyield_ofuncs.clear()
                             else:
                                 getter_datas.append((oyield_odata, None))
@@ -423,27 +429,23 @@ class Loader(object):
                             has_func_data = False
                             continue
                     if has_func_data:
-                        getter_datas.append((odata, ogetter_funcs))
+                        if ogetter_funcs:
+                            fgetter_funcs = {}
+                            for name, getter_func in ogetter_funcs.items():
+                                value = getter_func()
+                                if isinstance(value, FunctionType):
+                                    fgetter_funcs[name] = value
+                                else:
+                                    odata[name] = value
+                            getter_datas.append((odata, fgetter_funcs))
+                        else:
+                            getter_datas.append((odata, None))
                     ofuncs.clear()
                 else:
                     self.datas.append((odata, None))
 
-        final_getter_datas = deque()
         while getter_datas:
             odata, getter_funcs = getter_datas.popleft()
-            if getter_funcs:
-                ogetter_funcs = {}
-                for name, getter_func in getter_funcs.items():
-                    value = getter_func()
-                    if isinstance(value, FunctionType):
-                        ogetter_funcs[name] = value
-                    else:
-                        odata[name] = value
-                final_getter_datas.append((odata, ogetter_funcs))
-            else:
-                final_getter_datas.append((odata, None))
-        while final_getter_datas:
-            odata, getter_funcs = final_getter_datas.popleft()
             if getter_funcs:
                 for name, getter_func in getter_funcs.items():
                     odata[name] = getter_func()

@@ -136,6 +136,8 @@ class DBLoader(Loader):
                     for key, field in self.schema.items():
                         field.fill(data)
                     self.datas[i] = context_dataer
+                if self.valuer_type == 0x01:
+                    return self.fast_join_get()
                 return super(DBLoader, self).get()
 
             contexter_schema = [(key, field, field.contexter if hasattr(field, "contexter") else None)
@@ -191,6 +193,69 @@ class DBLoader(Loader):
             if self.intercept is not None and not self.intercept.fill_get(odata):
                 continue
             self.datas.append(odata)
+        self.geted = True
+        return self.datas
+
+    def fast_join_get(self):
+        datas, self.datas = self.datas, []
+        datas.reverse()
+        GeneratorType = types.GeneratorType
+
+        oyields = {}
+        while datas:
+            data, odata, = datas.pop(), {}
+            if isinstance(data, ContextDataer):
+                data.use_values()
+                if self.predicate is not None and not self.predicate.get():
+                    continue
+                for name, valuer in self.schema.items():
+                    value = valuer.get()
+                    if isinstance(value, GeneratorType):
+                        oyields[name] = value
+                        odata[name] = None
+                    else:
+                        odata[name] = value
+            else:
+                if isinstance(data, tuple):
+                    if isinstance(data[0], ContextRunner):
+                        if not data[0].get():
+                            continue
+                    elif self.predicate is not None and not self.predicate.fill_get(data[1]):
+                        continue
+                    data = data[1]
+                else:
+                    if self.predicate is not None and not self.predicate.fill_get(data):
+                        continue
+                for name, valuer in self.schema.items():
+                    if name not in data or not isinstance(data[name], ContextRunner):
+                        value = valuer.fill_get(data)
+                    else:
+                        value = data[name].get()
+                    if isinstance(value, GeneratorType):
+                        oyields[name] = value
+                        odata[name] = None
+                    else:
+                        odata[name] = value
+
+            if oyields:
+                while oyields:
+                    oyield_odata = dict.copy(odata)
+                    has_oyield_data = False
+                    for name, oyield in tuple(oyields.items()):
+                        try:
+                            value = oyield.send(None)
+                            oyield_odata[name] = value
+                            has_oyield_data = True
+                        except StopIteration:
+                            oyields.pop(name)
+                    if has_oyield_data:
+                        if self.intercept is not None and self.intercept.fill_get(oyield_odata):
+                            continue
+                        self.datas.append(oyield_odata)
+            else:
+                if self.intercept is not None and self.intercept.fill_get(odata):
+                    continue
+                self.datas.append(odata)
         self.geted = True
         return self.datas
 
@@ -287,27 +352,23 @@ class DBLoader(Loader):
                             has_func_data = False
                             continue
                     if has_func_data:
-                        getter_datas.append((odata, ogetter_funcs))
+                        if ogetter_funcs:
+                            fgetter_funcs = {}
+                            for name, getter_func in ogetter_funcs.items():
+                                value = getter_func()
+                                if isinstance(value, FunctionType):
+                                    fgetter_funcs[name] = value
+                                else:
+                                    odata[name] = value
+                            getter_datas.append((odata, fgetter_funcs))
+                        else:
+                            getter_datas.append((odata, None))
                     ofuncs.clear()
                 else:
                     getter_datas.append((odata, None))
 
-            final_getter_datas = deque()
             while getter_datas:
                 odata, getter_funcs = getter_datas.popleft()
-                if getter_funcs:
-                    ogetter_funcs = {}
-                    for name, getter_func in getter_funcs.items():
-                        value = getter_func()
-                        if isinstance(value, FunctionType):
-                            ogetter_funcs[name] = value
-                        else:
-                            odata[name] = value
-                    final_getter_datas.append((odata, ogetter_funcs))
-                else:
-                    final_getter_datas.append((odata, None))
-            while final_getter_datas:
-                odata, getter_funcs = final_getter_datas.popleft()
                 if getter_funcs:
                     for name, getter_func in getter_funcs.items():
                         odata[name] = getter_func()
@@ -340,27 +401,23 @@ class DBLoader(Loader):
                         has_func_data = False
                         continue
                 if has_func_data:
-                    getter_datas.append((odata, ogetter_funcs))
+                    if ogetter_funcs:
+                        fgetter_funcs = {}
+                        for name, getter_func in ogetter_funcs.items():
+                            value = getter_func()
+                            if isinstance(value, FunctionType):
+                                fgetter_funcs[name] = value
+                            else:
+                                odata[name] = value
+                        getter_datas.append((odata, fgetter_funcs))
+                    else:
+                        getter_datas.append((odata, None))
                 ofuncs.clear()
             else:
                 getter_datas.append((odata, None))
 
-        final_getter_datas = deque()
         while getter_datas:
             odata, getter_funcs = getter_datas.popleft()
-            if getter_funcs:
-                ogetter_funcs = {}
-                for name, getter_func in getter_funcs.items():
-                    value = getter_func()
-                    if isinstance(value, FunctionType):
-                        ogetter_funcs[name] = value
-                    else:
-                        odata[name] = value
-                final_getter_datas.append((odata, ogetter_funcs))
-            else:
-                final_getter_datas.append((odata, None))
-        while final_getter_datas:
-            odata, getter_funcs = final_getter_datas.popleft()
             if getter_funcs:
                 for name, getter_func in getter_funcs.items():
                     odata[name] = getter_func()

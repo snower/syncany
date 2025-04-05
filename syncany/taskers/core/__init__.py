@@ -869,7 +869,7 @@ class CoreTasker(Tasker):
                             continue
                         raise OverflowError( " inherit out of range")
                 if yield_valuers:
-                    loader_config["valuer_type"] |= 0x01
+                    loader_config["valuer_type"] |= 0x08
         if require_loaded and self.schema == ".*":
             raise SyncanyException("predicate unknown schema")
 
@@ -893,7 +893,7 @@ class CoreTasker(Tasker):
                             continue
                         raise OverflowError(name + " inherit out of range")
                 if yield_valuers:
-                    loader_config["valuer_type"] |= 0x01
+                    loader_config["valuer_type"] |= 0x08
         elif self.schema == ".*":
             self.loader.add_key_matcher(".*", self.create_valuer(self.valuer_compiler.compile_data_valuer("", None)))
 
