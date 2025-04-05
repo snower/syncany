@@ -131,7 +131,7 @@ class Loader(object):
                             continue
                         data = data[1]
                     else:
-                        if self.predicate is not None and not self.predicate.fill_get(data[1]):
+                        if self.predicate is not None and not self.predicate.fill_get(data):
                             continue
                     for name, valuer in self.schema.items():
                         if name not in data or not isinstance(data[name], ContextRunner):
@@ -168,7 +168,7 @@ class Loader(object):
                             continue
                         data = data[1]
                     else:
-                        if self.predicate is not None and not self.predicate.fill_get(data[1]):
+                        if self.predicate is not None and not self.predicate.fill_get(data):
                             continue
                     for name, valuer in self.schema.items():
                         if name not in data or not isinstance(data[name], ContextRunner):
@@ -229,7 +229,7 @@ class Loader(object):
                             continue
                         data = data[1]
                     else:
-                        if self.predicate is not None and not self.predicate.fill_get(data[1]):
+                        if self.predicate is not None and not self.predicate.fill_get(data):
                             continue
                     for name, valuer in self.schema.items():
                         if name not in data or not isinstance(data[name], ContextRunner):
@@ -343,7 +343,7 @@ class Loader(object):
                         continue
                     data = data[1]
                 else:
-                    if self.predicate is not None and not self.predicate.fill_get(data[1]):
+                    if self.predicate is not None and not self.predicate.fill_get(data):
                         continue
                 for name, valuer in self.schema.items():
                     if name not in data or not isinstance(data[name], ContextRunner):
