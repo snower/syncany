@@ -867,9 +867,9 @@ class CoreTasker(Tasker):
                             if hasattr(predicate_valuer, "add_inherit_valuer"):
                                 predicate_valuer.add_inherit_valuer(inherit_valuer)
                             continue
-                        raise OverflowError( " inherit out of range")
-                if yield_valuers:
-                    loader_config["valuer_type"] |= 0x08
+                        raise OverflowError( "predicate inherit out of range")
+                if aggregate_valuers or partition_managers or yield_valuers:
+                    raise SyncanyException("predicate unsupported aggregate or yield calculate")
         if require_loaded and self.schema == ".*":
             raise SyncanyException("predicate unknown schema")
 
@@ -960,12 +960,16 @@ class CoreTasker(Tasker):
                 self.loader.order_by(primary_key, 1)
 
         if self.config["intercept"]:
-            inherit_valuers, yield_valuers = [], []
+            inherit_valuers, aggregate_valuers, partition_managers, yield_valuers = [], {}, [], []
             intercept_valuer = self.create_valuer(self.compile_valuer(self.config["intercept"]), schema_field_name="", inherit_valuers=inherit_valuers,
                                     join_loaders=self.join_loaders, yield_valuers=yield_valuers,
                                     aggregate_valuers=aggregate_valuers, partition_managers=partition_managers, define_valuers={},
                                     global_variables=dict(**self.config["variables"]), global_states=self.states)
             self.loader.update_intercept(intercept_valuer)
+            if inherit_valuers:
+                raise SyncanyException("intercept unknown inherit valuer")
+            if aggregate_valuers or partition_managers or yield_valuers:
+                raise SyncanyException("intercept unsupported aggregate or yield calculate")
 
     def compile_outputer(self):
         outputer_config = {}
