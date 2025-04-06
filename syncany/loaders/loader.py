@@ -146,6 +146,7 @@ class Loader(object):
 
         if self.valuer_type == 0x02:
             FunctionType, ofuncs = types.FunctionType, {}
+            intercept_datas = deque() if self.intercept is not None else None
             while datas:
                 data, odata, = datas.pop(), {}
                 if isinstance(data, ContextDataer):
@@ -190,20 +191,29 @@ class Loader(object):
                             has_func_data = False
                             continue
                     if has_func_data:
-                        if self.intercept is not None and not self.intercept.fill_get(odata):
-                            continue
-                        self.datas.append(odata)
+                        if self.intercept is None:
+                            self.datas.append(odata)
+                        else:
+                            intercept_datas.append(odata)
                     ofuncs.clear()
                 else:
-                    if self.intercept is not None and not self.intercept.fill_get(odata):
-                        continue
-                    self.datas.append(odata)
+                    if self.intercept is None:
+                        self.datas.append(odata)
+                    else:
+                        intercept_datas.append(odata)
+
+            while intercept_datas:
+                data = intercept_datas.popleft()
+                if self.intercept is not None and not self.intercept.fill_get(data):
+                    continue
+                self.datas.append(data)
             self.geted = True
             return self.datas
 
         if self.valuer_type in (0x01, 0x08, 0x03, 0x09, 0x0b):
             GeneratorType, GeneratorFunctionTypes = types.GeneratorType, (types.FunctionType, types.GeneratorType)
             oyield_generates, oyields, ofuncs = deque(), {}, {}
+            intercept_datas = deque() if self.intercept is not None else None
             while datas:
                 data, odata = datas.pop(), {}
                 if isinstance(data, ContextDataer):
@@ -278,14 +288,16 @@ class Loader(object):
                                             has_func_data = False
                                             continue
                                     if has_func_data:
-                                        if self.intercept is not None and not self.intercept.fill_get(oyield_odata):
-                                            continue
-                                        self.datas.append(oyield_odata)
+                                        if self.intercept is None:
+                                            self.datas.append(oyield_odata)
+                                        else:
+                                            intercept_datas.append(oyield_odata)
                                     oyield_ofuncs.clear()
                                 else:
-                                    if self.intercept is not None and not self.intercept.fill_get(oyield_odata):
-                                        continue
-                                    self.datas.append(oyield_odata)
+                                    if self.intercept is None:
+                                        self.datas.append(oyield_odata)
+                                    else:
+                                        intercept_datas.append(oyield_odata)
 
                         oyields.clear()
                         ofuncs.clear()
@@ -302,14 +314,22 @@ class Loader(object):
                                 has_func_data = False
                                 continue
                         if has_func_data:
-                            if self.intercept is not None and not self.intercept.fill_get(odata):
-                                continue
-                            self.datas.append(odata)
+                            if self.intercept is None:
+                                self.datas.append(odata)
+                            else:
+                                intercept_datas.append(odata)
                         ofuncs.clear()
                     else:
-                        if self.intercept is not None and not self.intercept.fill_get(odata):
-                            continue
-                        self.datas.append(odata)
+                        if self.intercept is None:
+                            self.datas.append(odata)
+                        else:
+                            intercept_datas.append(odata)
+
+            while intercept_datas:
+                data = intercept_datas.popleft()
+                if self.intercept is not None and not self.intercept.fill_get(data):
+                    continue
+                self.datas.append(data)
             self.geted = True
             return self.datas
 
@@ -438,7 +458,7 @@ class Loader(object):
                             getter_datas.append((odata, None))
                     ofuncs.clear()
                 else:
-                    self.datas.append((odata, None))
+                    getter_datas.append((odata, None))
 
         while getter_datas:
             odata, getter_funcs = getter_datas.popleft()

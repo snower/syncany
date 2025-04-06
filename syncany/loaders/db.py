@@ -321,6 +321,7 @@ class DBLoader(Loader):
             self.geted = True
             return self.datas
 
+        intercept_datas = deque() if self.intercept is not None else None
         while datas:
             data, odata, = datas.pop(), {}
             if self.predicate is not None and not self.predicate.fill_get(data):
@@ -342,14 +343,22 @@ class DBLoader(Loader):
                         has_func_data = False
                         continue
                 if has_func_data:
-                    if self.intercept is not None and not self.intercept.fill_get(odata):
-                        continue
-                    self.datas.append(odata)
+                    if self.intercept is None:
+                        self.datas.append(odata)
+                    else:
+                        intercept_datas.append(odata)
                 ofuncs.clear()
             else:
-                if self.intercept is not None and not self.intercept.fill_get(odata):
-                    continue
-                self.datas.append(odata)
+                if self.intercept is None:
+                    self.datas.append(odata)
+                else:
+                    intercept_datas.append(odata)
+
+        while intercept_datas:
+            data = intercept_datas.popleft()
+            if self.intercept is not None and not self.intercept.fill_get(data):
+                continue
+            self.datas.append(data)
         self.geted = True
         return self.datas
 
