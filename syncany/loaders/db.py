@@ -202,12 +202,10 @@ class DBLoader(Loader):
         GeneratorType = types.GeneratorType
 
         oyield_generates, oyields = deque(), {}
-        while datas:
-            data, odata, = datas.pop(), {}
-            if isinstance(data, ContextDataer):
+        if self.predicate is None and self.intercept is None:
+            while datas:
+                data, odata, = datas.pop(), {}
                 data.use_values()
-                if self.predicate is not None and not self.predicate.get():
-                    continue
                 for name, valuer in self.schema.items():
                     value = valuer.get()
                     if isinstance(value, GeneratorType):
@@ -215,27 +213,48 @@ class DBLoader(Loader):
                         odata[name] = None
                     else:
                         odata[name] = value
-            else:
-                if isinstance(data, tuple):
-                    if isinstance(data[0], ContextRunner):
-                        if not data[0].get():
-                            continue
-                    elif self.predicate is not None and not self.predicate.fill_get(data[1]):
-                        continue
-                    data = data[1]
+
+                if oyields:
+                    while True:
+                        while oyields:
+                            oyield_odata, oyield_oyields = dict.copy(odata), {}
+                            has_oyield_data = False
+                            for name, oyield in tuple(oyields.items()):
+                                try:
+                                    value = oyield.send(None)
+                                    if isinstance(value, GeneratorType):
+                                        oyield_oyields[name] = value
+                                    else:
+                                        oyield_odata[name] = value
+                                    has_oyield_data = True
+                                except StopIteration:
+                                    oyields.pop(name)
+                            if oyield_oyields:
+                                oyield_generates.appendleft((odata, oyields))
+                                odata, oyields = oyield_odata, oyield_oyields
+                                continue
+                            if has_oyield_data:
+                                self.datas.append(oyield_odata)
+                        if not oyield_generates:
+                            break
+                        odata, oyields = oyield_generates.popleft()
                 else:
-                    if self.predicate is not None and not self.predicate.fill_get(data):
-                        continue
-                for name, valuer in self.schema.items():
-                    if name not in data or not isinstance(data[name], ContextRunner):
-                        value = valuer.fill_get(data)
-                    else:
-                        value = data[name].get()
-                    if isinstance(value, GeneratorType):
-                        oyields[name] = value
-                        odata[name] = None
-                    else:
-                        odata[name] = value
+                    self.datas.append(odata)
+            self.geted = True
+            return self.datas
+
+        while datas:
+            data, odata, = datas.pop(), {}
+            data.use_values()
+            if self.predicate is not None and not self.predicate.get():
+                continue
+            for name, valuer in self.schema.items():
+                value = valuer.get()
+                if isinstance(value, GeneratorType):
+                    oyields[name] = value
+                    odata[name] = None
+                else:
+                    odata[name] = value
 
             if oyields:
                 while True:
