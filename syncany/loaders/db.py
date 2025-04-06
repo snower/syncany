@@ -276,14 +276,14 @@ class DBLoader(Loader):
                             odata, oyields = oyield_odata, oyield_oyields
                             continue
                         if has_oyield_data:
-                            if self.intercept is not None and self.intercept.fill_get(oyield_odata):
+                            if self.intercept is not None and not self.intercept.fill_get(oyield_odata):
                                 continue
                             self.datas.append(oyield_odata)
                     if not oyield_generates:
                         break
                     odata, oyields = oyield_generates.popleft()
             else:
-                if self.intercept is not None and self.intercept.fill_get(odata):
+                if self.intercept is not None and not self.intercept.fill_get(odata):
                     continue
                 self.datas.append(odata)
         self.geted = True

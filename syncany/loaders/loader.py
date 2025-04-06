@@ -138,7 +138,7 @@ class Loader(object):
                             odata[name] = valuer.fill_get(data)
                         else:
                             odata[name] = data[name].get()
-                if self.intercept is not None and self.intercept.fill_get(odata):
+                if self.intercept is not None and not self.intercept.fill_get(odata):
                     continue
                 self.datas.append(odata)
             self.geted = True
@@ -190,12 +190,12 @@ class Loader(object):
                             has_func_data = False
                             continue
                     if has_func_data:
-                        if self.intercept is not None and self.intercept.fill_get(odata):
+                        if self.intercept is not None and not self.intercept.fill_get(odata):
                             continue
                         self.datas.append(odata)
                     ofuncs.clear()
                 else:
-                    if self.intercept is not None and self.intercept.fill_get(odata):
+                    if self.intercept is not None and not self.intercept.fill_get(odata):
                         continue
                     self.datas.append(odata)
             self.geted = True
@@ -278,12 +278,12 @@ class Loader(object):
                                             has_func_data = False
                                             continue
                                     if has_func_data:
-                                        if self.intercept is not None and self.intercept.fill_get(oyield_odata):
+                                        if self.intercept is not None and not self.intercept.fill_get(oyield_odata):
                                             continue
                                         self.datas.append(oyield_odata)
                                     oyield_ofuncs.clear()
                                 else:
-                                    if self.intercept is not None and self.intercept.fill_get(oyield_odata):
+                                    if self.intercept is not None and not self.intercept.fill_get(oyield_odata):
                                         continue
                                     self.datas.append(oyield_odata)
 
@@ -302,12 +302,12 @@ class Loader(object):
                                 has_func_data = False
                                 continue
                         if has_func_data:
-                            if self.intercept is not None and self.intercept.fill_get(odata):
+                            if self.intercept is not None and not self.intercept.fill_get(odata):
                                 continue
                             self.datas.append(odata)
                         ofuncs.clear()
                     else:
-                        if self.intercept is not None and self.intercept.fill_get(odata):
+                        if self.intercept is not None and not self.intercept.fill_get(odata):
                             continue
                         self.datas.append(odata)
             self.geted = True
@@ -445,7 +445,7 @@ class Loader(object):
             if getter_funcs:
                 for name, getter_func in getter_funcs.items():
                     odata[name] = getter_func()
-            if self.intercept is not None and self.intercept.fill_get(odata):
+            if self.intercept is not None and not self.intercept.fill_get(odata):
                 continue
             self.datas.append(odata)
         self.geted = True
