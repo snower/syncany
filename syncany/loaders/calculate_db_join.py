@@ -3,8 +3,7 @@
 # create by: snower
 
 from collections import defaultdict
-from ..loaders import Loader
-from ..loaders import DBJoinLoader
+from ..loaders import Loader, DBJoinLoader
 from ..valuers.valuer import LoadAllFieldsException
 
 
@@ -21,6 +20,23 @@ class CalculaterDBJoinLoader(DBJoinLoader):
         self.unload_primary_keys = set([])
         self.load_primary_keys = set([])
         self.matchers = defaultdict(list)
+
+    def clone(self):
+        loader = self.__class__(self.calculater, self.calculater_kwargs, self.primary_keys, self.valuer_type)
+        loader.contexter = self.contexter
+        schema = {}
+        for key, valuer in self.schema.items():
+            schema[key] = valuer.clone()
+        loader.schema = schema
+        loader.filters = [filter for filter in self.filters]
+        loader.orders = [order for order in self.orders]
+        loader.predicate = self.predicate
+        loader.intercept = self.intercept
+        loader.key_matchers = [matcher.clone() for matcher in self.key_matchers]
+        loader.join_batch = self.join_batch
+        if len(self.data_keys) < self.join_batch:
+            loader.data_keys = self.data_keys
+        return loader
 
     def load_join(self):
         if self.loaded:
