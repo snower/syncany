@@ -244,10 +244,14 @@ class DBLoader(Loader):
             return self.datas
 
         while datas:
-            data, odata, = datas.pop(), {}
+            data, odata, predicate_yield = datas.pop(), {}, None
             data.use_values()
-            if self.predicate is not None and not self.predicate.get():
-                continue
+            if self.predicate is not None:
+                predicate_value = self.predicate.get()
+                if isinstance(predicate_value, GeneratorType):
+                    predicate_yield = predicate_value
+                elif not predicate_value:
+                    continue
             for name, valuer in self.schema.items():
                 value = valuer.get()
                 if isinstance(value, GeneratorType):
@@ -256,10 +260,21 @@ class DBLoader(Loader):
                 else:
                     odata[name] = value
 
-            if oyields:
+            if predicate_yield or oyields:
                 while True:
-                    while oyields:
-                        oyield_odata, oyield_oyields = dict.copy(odata), {}
+                    predicate_continue = False
+                    while predicate_yield or oyields:
+                        oyield_odata, oyield_oyields, predicate_oyield = dict.copy(odata), {}, None
+                        if predicate_yield:
+                            try:
+                                predicate_value = predicate_yield.send(None)
+                                if isinstance(predicate_value, GeneratorType):
+                                    predicate_oyield, predicate_continue = predicate_value, False
+                                else:
+                                    predicate_continue = True if not predicate_value else False
+                            except StopIteration:
+                                predicate_yield, predicate_continue = None, True
+
                         has_oyield_data = False
                         for name, oyield in tuple(oyields.items()):
                             try:
@@ -271,9 +286,11 @@ class DBLoader(Loader):
                                 has_oyield_data = True
                             except StopIteration:
                                 oyields.pop(name)
-                        if oyield_oyields:
-                            oyield_generates.appendleft((odata, oyields))
-                            odata, oyields = oyield_odata, oyield_oyields
+                        if predicate_continue:
+                            continue
+                        if oyield_oyields or predicate_oyield:
+                            oyield_generates.appendleft((odata, oyields, predicate_yield))
+                            odata, oyields, predicate_yield = oyield_odata, oyield_oyields, predicate_oyield
                             continue
                         if has_oyield_data:
                             if self.intercept is not None and not self.intercept.fill_get(oyield_odata):
@@ -281,7 +298,7 @@ class DBLoader(Loader):
                             self.datas.append(oyield_odata)
                     if not oyield_generates:
                         break
-                    odata, oyields = oyield_generates.popleft()
+                    odata, oyields, predicate_yield = oyield_generates.popleft()
             else:
                 if self.intercept is not None and not self.intercept.fill_get(odata):
                     continue

@@ -215,11 +215,15 @@ class Loader(object):
             oyield_generates, oyields, ofuncs = deque(), {}, {}
             intercept_datas = deque() if self.intercept is not None else None
             while datas:
-                data, odata = datas.pop(), {}
+                data, odata, predicate_yield = datas.pop(), {}, None
                 if isinstance(data, ContextDataer):
                     data.use_values()
-                    if self.predicate is not None and not self.predicate.get():
-                        continue
+                    if self.predicate is not None:
+                        predicate_value = self.predicate.get()
+                        if isinstance(predicate_value, GeneratorType):
+                            predicate_yield = predicate_value
+                        elif not predicate_value:
+                            continue
                     for name, valuer in self.schema.items():
                         value = valuer.get()
                         if isinstance(value, GeneratorFunctionTypes):
@@ -233,7 +237,10 @@ class Loader(object):
                 else:
                     if isinstance(data, tuple):
                         if isinstance(data[0], ContextRunner):
-                            if not data[0].get():
+                            predicate_value = data[0].get()
+                            if isinstance(predicate_value, GeneratorType):
+                                predicate_yield = predicate_value
+                            elif not predicate_value:
                                 continue
                         elif self.predicate is not None and not self.predicate.fill_get(data[1]):
                             continue
@@ -255,10 +262,21 @@ class Loader(object):
                         else:
                             odata[name] = value
 
-                if oyields:
+                if predicate_yield or oyields:
                     while True:
+                        predicate_continue = False
                         while oyields:
-                            oyield_odata, oyield_oyields, oyield_ofuncs = dict.copy(odata), {}, dict.copy(ofuncs)
+                            oyield_odata, oyield_oyields, oyield_ofuncs, predicate_oyield = dict.copy(odata), {}, dict.copy(ofuncs), None
+                            if predicate_yield:
+                                try:
+                                    predicate_value = predicate_yield.send(None)
+                                    if isinstance(predicate_value, GeneratorType):
+                                        predicate_oyield, predicate_continue = predicate_value, False
+                                    else:
+                                        predicate_continue = True if not predicate_value else False
+                                except StopIteration:
+                                    predicate_yield, predicate_continue = None, True
+
                             has_oyield_data = False
                             for name, oyield in tuple(oyields.items()):
                                 try:
@@ -273,9 +291,11 @@ class Loader(object):
                                     has_oyield_data = True
                                 except StopIteration:
                                     oyields.pop(name)
+                            if predicate_continue:
+                                continue
                             if oyield_oyields:
-                                oyield_generates.appendleft((odata, oyields, ofuncs))
-                                odata, oyields, ofuncs = oyield_odata, oyield_oyields, oyield_ofuncs
+                                oyield_generates.appendleft((odata, oyields, ofuncs, predicate_yield))
+                                odata, oyields, ofuncs, predicate_yield = oyield_odata, oyield_oyields, oyield_ofuncs, predicate_oyield
                                 continue
 
                             if has_oyield_data:
@@ -303,7 +323,7 @@ class Loader(object):
                         ofuncs.clear()
                         if not oyield_generates:
                             break
-                        odata, oyields, ofuncs = oyield_generates.popleft()
+                        odata, oyields, ofuncs, predicate_yield = oyield_generates.popleft()
                 else:
                     if ofuncs:
                         has_func_data = True
@@ -336,11 +356,15 @@ class Loader(object):
         GeneratorType, GeneratorFunctionTypes, FunctionType = types.GeneratorType, (types.FunctionType, types.GeneratorType), types.FunctionType
         oyield_generates, oyields, ofuncs, getter_datas = deque(), {}, {}, deque()
         while datas:
-            data, odata = datas.pop(), {}
+            data, odata, predicate_yield = datas.pop(), {}, None
             if isinstance(data, ContextDataer):
                 data.use_values()
-                if self.predicate is not None and not self.predicate.get():
-                    continue
+                if self.predicate is not None:
+                    predicate_value = self.predicate.get()
+                    if isinstance(predicate_value, GeneratorType):
+                        predicate_yield = predicate_value
+                    elif not predicate_value:
+                        continue
                 for name, valuer in self.schema.items():
                     value = valuer.get()
                     if isinstance(value, GeneratorFunctionTypes):
@@ -353,7 +377,10 @@ class Loader(object):
             else:
                 if isinstance(data, tuple):
                     if isinstance(data[0], ContextRunner):
-                        if not data[0].get():
+                        predicate_value = data[0].get()
+                        if isinstance(predicate_value, GeneratorType):
+                            predicate_yield = predicate_value
+                        elif not predicate_value:
                             continue
                     elif self.predicate is not None and not self.predicate.fill_get(data[1]):
                         continue
@@ -374,10 +401,21 @@ class Loader(object):
                     else:
                         odata[name] = value
 
-            if oyields:
+            if predicate_yield or oyields:
                 while True:
+                    predicate_continue = False
                     while oyields:
-                        oyield_odata, oyield_oyields, oyield_ofuncs = dict.copy(odata), {}, dict.copy(ofuncs)
+                        oyield_odata, oyield_oyields, oyield_ofuncs, predicate_oyield = dict.copy(odata), {}, dict.copy(ofuncs), None
+                        if predicate_yield:
+                            try:
+                                predicate_value = predicate_yield.send(None)
+                                if isinstance(predicate_value, GeneratorType):
+                                    predicate_oyield, predicate_continue = predicate_value, False
+                                else:
+                                    predicate_continue = True if not predicate_value else False
+                            except StopIteration:
+                                predicate_yield, predicate_continue = None, True
+
                         has_oyield_data = False
                         for name, oyield in tuple(oyields.items()):
                             try:
@@ -392,9 +430,11 @@ class Loader(object):
                                 has_oyield_data = True
                             except StopIteration:
                                 oyields.pop(name)
+                        if predicate_continue:
+                            continue
                         if oyield_oyields:
-                            oyield_generates.appendleft((odata, oyields, ofuncs))
-                            odata, oyields, ofuncs = oyield_odata, oyield_oyields, oyield_ofuncs
+                            oyield_generates.appendleft((odata, oyields, ofuncs, predicate_yield))
+                            odata, oyields, ofuncs, predicate_yield = oyield_odata, oyield_oyields, oyield_ofuncs, predicate_oyield
                             continue
 
                         if has_oyield_data:
@@ -430,7 +470,7 @@ class Loader(object):
                     ofuncs.clear()
                     if not oyield_generates:
                         break
-                    odata, oyields, ofuncs = oyield_generates.popleft()
+                    odata, oyields, ofuncs, predicate_yield = oyield_generates.popleft()
             else:
                 if ofuncs:
                     has_func_data, ogetter_funcs = True, {}
