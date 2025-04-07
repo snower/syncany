@@ -79,24 +79,36 @@ class DBJoinYieldMatcher(object):
             if self.data_valuers is None:
                 return self.valuer.get()
             value = self.valuer.get()
+            if not is_in_depth_citation:
+                return value
             if value is not None:
                 return value
-            values = []
-        else:
+            def gen_empty_iter():
+                for _ in []:
+                    yield None
+            return gen_empty_iter()
+
+        if len(self.data_valuers) == 1:
+            valuer, contexter_values = self.data_valuers[0]
+            if contexter_values is not None:
+                valuer.contexter.values = contexter_values
+            return valuer.get()
+        if not is_in_depth_citation:
+            if self.data_valuers:
+                return None
             values = []
             for valuer, contexter_values in self.data_valuers:
                 if contexter_values is not None:
                     valuer.contexter.values = contexter_values
                 values.append(valuer.get())
-            if len(values) == 1:
-                return values[0]
-        if not is_in_depth_citation:
-            return values or None
+            return values
 
-        def gen_iter(iter_datas):
-            for value in iter_datas:
-                yield value
-        return gen_iter(values)
+        def gen_iter(data_valuers):
+            for valuer, contexter_values in data_valuers:
+                if contexter_values is not None:
+                    valuer.contexter.values = contexter_values
+                yield valuer.get()
+        return gen_iter(self.data_valuers)
 
     def fill_values(self, values):
         if isinstance(values, list):
@@ -184,25 +196,28 @@ class GroupDBJoinYieldMatcher(object):
         self.matchers.append(matcher)
 
     def get(self, is_in_depth_citation=True):
-        datas = [matcher.get() for matcher in self.matchers]
-        if len(datas) == 1:
-            return datas[0]
+        if len(self.matchers) == 1:
+            return self.matchers[0].get()
         if not is_in_depth_citation:
-            return datas or None
+            if not self.matchers:
+                return None
+            datas = [matcher.get() for matcher in self.matchers]
+            return datas
 
-        def gen_iter(iter_datas):
-            for value in iter_datas:
-                yield value
-        return gen_iter(datas)
+        def gen_iter(matchers):
+            for matcher in matchers:
+                yield matcher.get()
+        return gen_iter(self.matchers)
 
 
 class GroupDBJoinMatcher(object):
-    return_value_wait_loaded = None
+    return_value_wait_loaded = True
 
     def __init__(self, return_valuer, contexter_values, return_value_wait_loaded=True):
         self.return_valuer = return_valuer
         self.contexter_values = contexter_values
-        self.return_value_wait_loaded = return_value_wait_loaded
+        if not return_value_wait_loaded:
+            self.return_value_wait_loaded = return_value_wait_loaded
         self.matcher_count = 0
         self.values = []
 
