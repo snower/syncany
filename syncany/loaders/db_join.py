@@ -73,20 +73,10 @@ class DBJoinYieldMatcher(object):
         if not self.return_value_wait_loaded:
             self.values = self.fill_values(self.values)
 
-        if not self.data_valuers:
+        if self.data_valuers is None:
             if self.contexter_values is not None:
                 self.valuer.contexter.values = self.contexter_values
-            if self.data_valuers is None:
-                return self.valuer.get()
-            value = self.valuer.get()
-            if not is_in_depth_citation:
-                return value
-            if value is not None:
-                return value
-            def gen_empty_iter():
-                for _ in []:
-                    yield None
-            return gen_empty_iter()
+            return self.valuer.get()
 
         if len(self.data_valuers) == 1:
             valuer, contexter_values = self.data_valuers[0]
@@ -126,8 +116,6 @@ class DBJoinYieldMatcher(object):
             if self.contexter_values is not None:
                 self.valuer.contexter.values = self.contexter_values
             self.valuer.fill(values)
-            if values is None:
-                self.data_valuers = False
 
 
 class DBJoinMatcher(object):
