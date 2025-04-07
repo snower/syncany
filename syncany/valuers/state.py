@@ -17,10 +17,14 @@ class StateValuer(Valuer):
     def new_init(self):
         super(StateValuer, self).new_init()
         self.calculate_wait_loaded = self.calculate_valuer and self.calculate_valuer.require_loaded()
+        self.default_wait_loaded = True if self.default_valuer and self.default_valuer.require_loaded() else False
+        self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
     def clone_init(self, from_valuer):
         super(StateValuer, self).clone_init(from_valuer)
         self.calculate_wait_loaded = from_valuer.calculate_wait_loaded
+        self.default_wait_loaded = from_valuer.default_wait_loaded
+        self.wait_loaded = from_valuer.wait_loaded
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
@@ -156,6 +160,10 @@ class ContextStateValuer(StateValuer):
         self.value_context_id = (id(self), "value")
         super(ContextStateValuer, self).__init__(*args, **kwargs)
 
+        if not self.calculate_wait_loaded and not self.default_wait_loaded and not self.wait_loaded:
+            self.fill = self.defer_fill
+            self.get = self.defer_get
+
     @property
     def value(self):
         try:
@@ -170,3 +178,18 @@ class ContextStateValuer(StateValuer):
                 self.contexter.values.pop(self.value_context_id)
             return
         self.contexter.values[self.value_context_id] = v
+
+    def defer_fill(self, data):
+        if data is None:
+            if self.value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.value_context_id)
+            return self
+        self.contexter.values[self.value_context_id] = data
+        return self
+
+    def defer_get(self):
+        try:
+            data = self.contexter.values[self.value_context_id]
+        except KeyError:
+            data = None
+        return self.fill_get(data)

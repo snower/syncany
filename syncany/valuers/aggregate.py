@@ -198,6 +198,10 @@ class ContextAggregateValuer(AggregateValuer):
         self.value_context_id = (id(self), "value")
         super(ContextAggregateValuer, self).__init__(*args, **kwargs)
 
+        if not self.key_wait_loaded:
+            self.fill = self.defer_fill
+            self.get = self.defer_get
+
     @property
     def value(self):
         try:
@@ -213,3 +217,17 @@ class ContextAggregateValuer(AggregateValuer):
             return
         self.contexter.values[self.value_context_id] = v
 
+    def defer_fill(self, data):
+        if data is None:
+            if self.value_context_id in self.contexter.values:
+                self.contexter.values.pop(self.value_context_id)
+            return self
+        self.contexter.values[self.value_context_id] = data
+        return self
+
+    def defer_get(self):
+        try:
+            data = self.contexter.values[self.value_context_id]
+        except KeyError:
+            data = None
+        return self.fill_get(data)
