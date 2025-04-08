@@ -124,7 +124,7 @@ class DBLoader(Loader):
                 if self.valuer_type == 0x02:
                     return self.fast_aggregate_get()
                 if self.valuer_type in (0x04, 0x06):
-                    return self.fast_patition_aggregate_get()
+                    return self.fast_partition_aggregate_get()
                 return super(DBLoader, self).get()
 
             if loader_contexter is not None:
@@ -575,7 +575,7 @@ class DBLoader(Loader):
         self.geted = True
         return self.datas
 
-    def fast_patition_aggregate_get(self):
+    def fast_partition_aggregate_get(self):
         datas, self.datas = self.datas, []
         datas.reverse()
         FunctionType, ofuncs, getter_datas = types.FunctionType, {}, deque()
