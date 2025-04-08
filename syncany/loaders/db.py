@@ -136,6 +136,8 @@ class DBLoader(Loader):
                     for key, field in self.schema.items():
                         field.fill(data)
                     self.datas[i] = context_dataer
+                if self.valuer_type == 0x03:
+                    return self.fast_join_aggregate_get()
                 if self.valuer_type == 0x01:
                     return self.fast_join_get()
                 return super(DBLoader, self).get()
@@ -370,6 +372,200 @@ class DBLoader(Loader):
                     self.datas.append(odata)
                 else:
                     intercept_datas.append(odata)
+
+        while intercept_datas:
+            data = intercept_datas.popleft()
+            if self.intercept is not None and not self.intercept.fill_get(data):
+                continue
+            self.datas.append(data)
+        self.geted = True
+        return self.datas
+
+    def fast_join_aggregate_get(self):
+        datas, self.datas = self.datas, []
+        datas.reverse()
+
+        GeneratorType, GeneratorFunctionTypes = types.GeneratorType, (types.FunctionType, types.GeneratorType)
+        oyield_generates, oyields, ofuncs = deque(), {}, {}
+        if self.predicate is None and self.intercept is None:
+            while datas:
+                data, odata = datas.pop(), {}
+                data.use_values()
+                for name, valuer in self.schema.items():
+                    value = valuer.get()
+                    if isinstance(value, GeneratorFunctionTypes):
+                        if isinstance(value, GeneratorType):
+                            oyields[name] = value
+                        else:
+                            ofuncs[name] = value
+                        odata[name] = None
+                    else:
+                        odata[name] = value
+
+                if oyields:
+                    while True:
+                        while oyields:
+                            oyield_odata, oyield_oyields, oyield_ofuncs = dict.copy(odata), {}, dict.copy(ofuncs)
+                            has_oyield_data = False
+                            for name, oyield in tuple(oyields.items()):
+                                try:
+                                    value = oyield.send(None)
+                                    if isinstance(value, GeneratorFunctionTypes):
+                                        if isinstance(value, GeneratorType):
+                                            oyield_oyields[name] = value
+                                        else:
+                                            oyield_ofuncs[name] = value
+                                    else:
+                                        oyield_odata[name] = value
+                                    has_oyield_data = True
+                                except StopIteration:
+                                    oyields.pop(name)
+                            if oyield_oyields:
+                                oyield_generates.appendleft((odata, oyields, ofuncs))
+                                odata, oyields, ofuncs = oyield_odata, oyield_oyields, oyield_ofuncs
+                                continue
+
+                            if has_oyield_data:
+                                if oyield_ofuncs:
+                                    has_func_data = True
+                                    for name, ofunc in oyield_ofuncs.items():
+                                        try:
+                                            oyield_odata[name] = ofunc(oyield_odata)
+                                        except StopIteration:
+                                            has_func_data = False
+                                            continue
+                                    if has_func_data:
+                                        self.datas.append(oyield_odata)
+                                    oyield_ofuncs.clear()
+                                else:
+                                    self.datas.append(oyield_odata)
+
+                        oyields.clear()
+                        ofuncs.clear()
+                        if not oyield_generates:
+                            break
+                        odata, oyields, ofuncs = oyield_generates.popleft()
+                else:
+                    if ofuncs:
+                        has_func_data = True
+                        for name, ofunc in ofuncs.items():
+                            try:
+                                odata[name] = ofunc(odata)
+                            except StopIteration:
+                                has_func_data = False
+                                continue
+                        if has_func_data:
+                            self.datas.append(odata)
+                        ofuncs.clear()
+                    else:
+                        self.datas.append(odata)
+            self.geted = True
+            return self.datas
+
+        intercept_datas = deque() if self.intercept is not None else None
+        while datas:
+            data, odata, predicate_yield = datas.pop(), {}, None
+            data.use_values()
+            if self.predicate is not None:
+                predicate_value = self.predicate.get()
+                if isinstance(predicate_value, GeneratorType):
+                    predicate_yield = predicate_value
+                elif not predicate_value:
+                    continue
+            for name, valuer in self.schema.items():
+                value = valuer.get()
+                if isinstance(value, GeneratorFunctionTypes):
+                    if isinstance(value, GeneratorType):
+                        oyields[name] = value
+                    else:
+                        ofuncs[name] = value
+                    odata[name] = None
+                else:
+                    odata[name] = value
+
+            if predicate_yield or oyields:
+                while True:
+                    predicate_continue = False
+                    while oyields:
+                        oyield_odata, oyield_oyields, oyield_ofuncs, predicate_oyield = dict.copy(odata), {}, dict.copy(
+                            ofuncs), None
+                        if predicate_yield:
+                            try:
+                                predicate_value = predicate_yield.send(None)
+                                if isinstance(predicate_value, GeneratorType):
+                                    predicate_oyield, predicate_continue = predicate_value, False
+                                else:
+                                    predicate_continue = True if not predicate_value else False
+                            except StopIteration:
+                                predicate_yield, predicate_continue = None, True
+
+                        has_oyield_data = False
+                        for name, oyield in tuple(oyields.items()):
+                            try:
+                                value = oyield.send(None)
+                                if isinstance(value, GeneratorFunctionTypes):
+                                    if isinstance(value, GeneratorType):
+                                        oyield_oyields[name] = value
+                                    else:
+                                        oyield_ofuncs[name] = value
+                                else:
+                                    oyield_odata[name] = value
+                                has_oyield_data = True
+                            except StopIteration:
+                                oyields.pop(name)
+                        if predicate_continue:
+                            continue
+                        if oyield_oyields:
+                            oyield_generates.appendleft((odata, oyields, ofuncs, predicate_yield))
+                            odata, oyields, ofuncs, predicate_yield = oyield_odata, oyield_oyields, oyield_ofuncs, predicate_oyield
+                            continue
+
+                        if has_oyield_data:
+                            if oyield_ofuncs:
+                                has_func_data = True
+                                for name, ofunc in oyield_ofuncs.items():
+                                    try:
+                                        oyield_odata[name] = ofunc(oyield_odata)
+                                    except StopIteration:
+                                        has_func_data = False
+                                        continue
+                                if has_func_data:
+                                    if self.intercept is None:
+                                        self.datas.append(oyield_odata)
+                                    else:
+                                        intercept_datas.append(oyield_odata)
+                                oyield_ofuncs.clear()
+                            else:
+                                if self.intercept is None:
+                                    self.datas.append(oyield_odata)
+                                else:
+                                    intercept_datas.append(oyield_odata)
+
+                    oyields.clear()
+                    ofuncs.clear()
+                    if not oyield_generates:
+                        break
+                    odata, oyields, ofuncs, predicate_yield = oyield_generates.popleft()
+            else:
+                if ofuncs:
+                    has_func_data = True
+                    for name, ofunc in ofuncs.items():
+                        try:
+                            odata[name] = ofunc(odata)
+                        except StopIteration:
+                            has_func_data = False
+                            continue
+                    if has_func_data:
+                        if self.intercept is None:
+                            self.datas.append(odata)
+                        else:
+                            intercept_datas.append(odata)
+                    ofuncs.clear()
+                else:
+                    if self.intercept is None:
+                        self.datas.append(odata)
+                    else:
+                        intercept_datas.append(odata)
 
         while intercept_datas:
             data = intercept_datas.popleft()
