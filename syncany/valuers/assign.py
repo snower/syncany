@@ -150,7 +150,7 @@ class AssignValuer(Valuer):
 class ContextAssignValuer(AssignValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = (id(self), "value")
+        self.value_context_id = "%d:value" % id(self)
         super(ContextAssignValuer, self).__init__(*args, **kwargs)
 
         if not self.calculate_wait_loaded and not self.wait_loaded:

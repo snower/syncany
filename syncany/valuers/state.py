@@ -157,7 +157,7 @@ class StateValuer(Valuer):
 class ContextStateValuer(StateValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = (id(self), "value")
+        self.value_context_id = "%d:value" % id(self)
         super(ContextStateValuer, self).__init__(*args, **kwargs)
 
         if not self.calculate_wait_loaded and not self.default_wait_loaded and not self.wait_loaded:

@@ -332,7 +332,7 @@ class Valuer(object):
 class ContextValuer(Valuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = (id(self), "value")
+        self.value_context_id = "%d:value" % id(self)
         super(ContextValuer, self).__init__(*args, **kwargs)
 
     @property

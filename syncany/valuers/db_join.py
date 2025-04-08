@@ -279,8 +279,8 @@ class DBJoinValuer(Valuer):
 class ContextDBJoinValuer(DBJoinValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = (id(self), "value")
-        self.matcher_context_id = (id(self), "matcher")
+        self.value_context_id = "%d:value" % id(self)
+        self.matcher_context_id = "%d:matcher" % id(self)
         super(ContextDBJoinValuer, self).__init__(*args, **kwargs)
 
     @property

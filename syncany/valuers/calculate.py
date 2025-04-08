@@ -254,7 +254,7 @@ class CalculateValuer(Valuer):
 class ContextCalculateValuer(CalculateValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = (id(self), "value")
+        self.value_context_id = "%d:value" % id(self)
         super(ContextCalculateValuer, self).__init__(*args, **kwargs)
 
         if not self.args_wait_loaded and not self.wait_loaded:

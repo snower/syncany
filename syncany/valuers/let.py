@@ -130,8 +130,8 @@ class LetValuer(Valuer):
 class ContextLetValuer(LetValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = (id(self), "value")
-        self.filled_data_context_id = (id(self), "filled_data")
+        self.value_context_id = "%d:value" % id(self)
+        self.filled_data_context_id = "%d:filled_data" % id(self)
         super(ContextLetValuer, self).__init__(*args, **kwargs)
 
         if not self.key_wait_loaded and not self.wait_loaded:

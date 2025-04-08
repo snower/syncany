@@ -433,7 +433,7 @@ class MakeValuer(Valuer):
 class ContextMakeValuer(MakeValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = (id(self), "value")
+        self.value_context_id = "%d:value" % id(self)
         super(ContextMakeValuer, self).__init__(*args, **kwargs)
 
         if not self.value_wait_loaded and not self.wait_loaded:

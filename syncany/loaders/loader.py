@@ -117,7 +117,7 @@ class Loader(object):
             while datas:
                 data, odata = datas.pop(), {}
                 if isinstance(data, ContextDataer):
-                    data.use_values()
+                    data.contexter.values = data.values
                     if self.predicate is not None and not self.predicate.get():
                         continue
                     for name, valuer in self.schema.items():
@@ -150,7 +150,7 @@ class Loader(object):
             while datas:
                 data, odata, = datas.pop(), {}
                 if isinstance(data, ContextDataer):
-                    data.use_values()
+                    data.contexter.values = data.values
                     if self.predicate is not None and not self.predicate.get():
                         continue
                     for name, valuer in self.schema.items():
@@ -217,7 +217,7 @@ class Loader(object):
             while datas:
                 data, odata, predicate_yield = datas.pop(), {}, None
                 if isinstance(data, ContextDataer):
-                    data.use_values()
+                    data.contexter.values = data.values
                     if self.predicate is not None:
                         predicate_value = self.predicate.get()
                         if isinstance(predicate_value, GeneratorType):
@@ -358,7 +358,7 @@ class Loader(object):
         while datas:
             data, odata, predicate_yield = datas.pop(), {}, None
             if isinstance(data, ContextDataer):
-                data.use_values()
+                data.contexter.values = data.values
                 if self.predicate is not None:
                     predicate_value = self.predicate.get()
                     if isinstance(predicate_value, GeneratorType):

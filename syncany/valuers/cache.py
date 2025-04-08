@@ -191,8 +191,8 @@ class CacheValuer(Valuer):
 class ContextCacheValuer(CacheValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = (id(self), "value")
-        self.cache_key_context_id = (id(self), "cache_key")
+        self.value_context_id = "%d:value" % id(self)
+        self.cache_key_context_id = "%d:cache_key" % id(self)
         super(ContextCacheValuer, self).__init__(*args, **kwargs)
 
         if not self.key_wait_loaded and not self.calculate_wait_loaded and not self.wait_loaded:

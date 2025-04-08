@@ -78,7 +78,7 @@ class LambdaValuer(Valuer):
 class ContextLambdaValuer(LambdaValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = (id(self), "value")
+        self.value_context_id = "%d:value" % id(self)
         super(ContextLambdaValuer, self).__init__(*args, **kwargs)
 
         if not self.calculate_valuer or not self.calculate_valuer.require_loaded():

@@ -336,8 +336,8 @@ class MatchValuer(Valuer):
 class ContextMatchValuer(MatchValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = (id(self), "value")
-        self.matched_value_context_id = (id(self), "matched_value")
+        self.value_context_id = "%d:value" % id(self)
+        self.matched_value_context_id = "%d:matched_value" % id(self)
         super(ContextMatchValuer, self).__init__(*args, **kwargs)
 
         if not self.value_wait_loaded and not self.match_wait_loaded and not self.wait_loaded:

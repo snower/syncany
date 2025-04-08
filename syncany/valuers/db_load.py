@@ -179,7 +179,7 @@ class DBLoadValuer(Valuer):
 class ContextDBLoadValuer(DBLoadValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = (id(self), "value")
+        self.value_context_id = "%d:value" % id(self)
         super(ContextDBLoadValuer, self).__init__(*args, **kwargs)
 
     @property

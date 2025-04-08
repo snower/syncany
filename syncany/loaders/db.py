@@ -207,7 +207,7 @@ class DBLoader(Loader):
         if self.predicate is None and self.intercept is None:
             while datas:
                 data, odata, = datas.pop(), {}
-                data.use_values()
+                data.contexter.values = data.values
                 for name, valuer in self.schema.items():
                     value = valuer.get()
                     if isinstance(value, GeneratorType):
@@ -247,7 +247,7 @@ class DBLoader(Loader):
 
         while datas:
             data, odata, predicate_yield = datas.pop(), {}, None
-            data.use_values()
+            data.contexter.values = data.values
             if self.predicate is not None:
                 predicate_value = self.predicate.get()
                 if isinstance(predicate_value, GeneratorType):
@@ -390,7 +390,7 @@ class DBLoader(Loader):
         if self.predicate is None and self.intercept is None:
             while datas:
                 data, odata = datas.pop(), {}
-                data.use_values()
+                data.contexter.values = data.values
                 for name, valuer in self.schema.items():
                     value = valuer.get()
                     if isinstance(value, GeneratorFunctionTypes):
@@ -465,7 +465,7 @@ class DBLoader(Loader):
         intercept_datas = deque() if self.intercept is not None else None
         while datas:
             data, odata, predicate_yield = datas.pop(), {}, None
-            data.use_values()
+            data.contexter.values = data.values
             if self.predicate is not None:
                 predicate_value = self.predicate.get()
                 if isinstance(predicate_value, GeneratorType):

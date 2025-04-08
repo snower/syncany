@@ -195,7 +195,7 @@ class AggregateValuer(Valuer):
 class ContextAggregateValuer(AggregateValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = (id(self), "value")
+        self.value_context_id = "%d:value" % id(self)
         super(ContextAggregateValuer, self).__init__(*args, **kwargs)
 
         if not self.key_wait_loaded:
