@@ -21,11 +21,19 @@ class IfValuer(Valuer):
         self.condition_wait_loaded = self.check_wait_loaded()
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
+        if (self.value_valuer and self.true_valuer and self.false_valuer and
+                not self.inherit_valuers and not self.return_valuer and not self.filter):
+            self.fill_get = self.fast_fill_get
+
     def clone_init(self, from_valuer):
         super(IfValuer, self).clone_init(from_valuer)
         self.value_wait_loaded = from_valuer.value_wait_loaded
         self.condition_wait_loaded = from_valuer.condition_wait_loaded
         self.wait_loaded = from_valuer.wait_loaded
+
+        if (self.value_valuer and self.true_valuer and self.false_valuer and
+                not self.inherit_valuers and not self.return_valuer and not self.filter):
+            self.fill_get = self.fast_fill_get
 
     def check_wait_loaded(self):
         if self.true_valuer and self.true_valuer.require_loaded():
@@ -142,6 +150,11 @@ class IfValuer(Valuer):
             return self.return_valuer.fill_get(value)
         return value
 
+    def fast_fill_get(self, data):
+        if self.value_valuer.fill_get(data):
+            return self.true_valuer.fill_get(data)
+        return self.false_valuer.fill_get(data)
+
     def childs(self):
         childs = [self.true_valuer]
         if self.false_valuer:
@@ -191,7 +204,7 @@ class IfValuer(Valuer):
 class ContextIfValuer(IfValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = "%d:value" % id(self)
+        self.value_context_id = id(self) * 10
         super(ContextIfValuer, self).__init__(*args, **kwargs)
 
         if not self.value_wait_loaded and not self.condition_wait_loaded and not self.wait_loaded:

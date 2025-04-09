@@ -302,7 +302,7 @@ class DataValuer(Valuer):
 class ContextDataValuer(DataValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = "%d:value" % id(self)
+        self.value_context_id = id(self) * 10
         super(ContextDataValuer, self).__init__(*args, **kwargs)
 
     @property

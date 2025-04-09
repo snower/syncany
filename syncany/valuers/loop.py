@@ -306,8 +306,8 @@ class ForeachValuer(Valuer):
 class ContextForeachValuer(ForeachValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = "%d:value" % id(self)
-        self.calculated_values_context_id = "%d:calculated_values" % id(self)
+        self.value_context_id = id(self) * 10
+        self.calculated_values_context_id = id(self) * 10 + 1
         super(ContextForeachValuer, self).__init__(*args, **kwargs)
 
         if not self.value_wait_loaded and not self.calculate_wait_loaded and not self.wait_loaded:
@@ -440,7 +440,7 @@ class BreakValuer(Valuer):
 class ContextBreakValuer(BreakValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = "%d:value" % id(self)
+        self.value_context_id = id(self) * 10
         super(ContextBreakValuer, self).__init__(*args, **kwargs)
 
         if not self.return_valuer or not self.return_valuer.require_loaded():
@@ -558,7 +558,7 @@ class ContinueValuer(Valuer):
 class ContextContinueValuer(ContinueValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = "%d:value" % id(self)
+        self.value_context_id = id(self) * 10
         super(ContextContinueValuer, self).__init__(*args, **kwargs)
 
         if not self.return_valuer or not self.return_valuer.require_loaded():

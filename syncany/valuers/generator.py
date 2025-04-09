@@ -267,9 +267,9 @@ class YieldValuer(Valuer):
 class ContextYieldValuer(YieldValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = "%d:value" % id(self)
-        self.iter_valuers_context_id = "%d:iter_valuers" % id(self)
-        self.iter_datas_context_id = "%d:iter_datas" % id(self)
+        self.value_context_id = id(self) * 10
+        self.iter_valuers_context_id = id(self) * 10 + 1
+        self.iter_datas_context_id = id(self) * 10 + 2
         super(ContextYieldValuer, self).__init__(*args, **kwargs)
 
         if not self.value_wait_loaded and not self.wait_loaded:

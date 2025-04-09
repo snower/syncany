@@ -63,7 +63,7 @@ class SchemaValuer(Valuer):
 class ContextSchemaValuer(SchemaValuer):
     def __init__(self, *args, **kwargs):
         self.contexter = kwargs.pop("contexter")
-        self.value_context_id = "%d:value" % id(self)
+        self.value_context_id = id(self) * 10
         super(ContextSchemaValuer, self).__init__(*args, **kwargs)
 
     @property
