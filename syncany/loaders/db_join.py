@@ -345,17 +345,19 @@ class DBJoinLoader(DBLoader):
             if not self.key_matchers:
                 for i in range(len(datas)):
                     data = datas[i]
-                    primary_key = self.get_data_primary_key(data)
-                    values = {key: field.fill_get(data) for key, field in self.schema.items()}
+                    if len(self.primary_keys) == 1:
+                        primary_key = data.get(self.primary_keys[0], '')
+                    else:
+                        primary_key = tuple(data.get(pk, '') for pk in self.primary_keys)
 
                     if primary_key not in self.data_keys:
-                        self.data_keys[primary_key] = values
+                        self.data_keys[primary_key] = data
                     elif primary_key in self.unload_primary_keys:
                         if isinstance(self.data_keys[primary_key], list):
-                            self.data_keys[primary_key].append(values)
+                            self.data_keys[primary_key].append(data)
                         else:
-                            self.data_keys[primary_key] = [self.data_keys[primary_key], values]
-                    datas[i] = values
+                            self.data_keys[primary_key] = [self.data_keys[primary_key], data]
+                    datas[i] = data
             else:
                 for i in range(len(datas)):
                     data, values = datas[i], {}
