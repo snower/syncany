@@ -72,21 +72,26 @@ class CalculaterDBJoinLoader(DBJoinLoader):
             datas, query = self.calculater.calculate(self.primary_keys, query, **self.calculater_kwargs), None
 
             if not self.key_matchers:
-                for i in range(len(datas)):
-                    data = datas[i]
-                    if len(self.primary_keys) == 1:
+                if len(self.primary_keys) == 1:
+                    for data in datas:
                         primary_key = data.get(self.primary_keys[0], '')
-                    else:
+                        if primary_key not in self.data_keys:
+                            self.data_keys[primary_key] = data
+                        elif primary_key in self.unload_primary_keys:
+                            if isinstance(self.data_keys[primary_key], list):
+                                self.data_keys[primary_key].append(data)
+                            else:
+                                self.data_keys[primary_key] = [self.data_keys[primary_key], data]
+                else:
+                    for data in datas:
                         primary_key = tuple(data.get(pk, '') for pk in self.primary_keys)
-
-                    if primary_key not in self.data_keys:
-                        self.data_keys[primary_key] = data
-                    elif primary_key in self.unload_primary_keys:
-                        if isinstance(self.data_keys[primary_key], list):
-                            self.data_keys[primary_key].append(data)
-                        else:
-                            self.data_keys[primary_key] = [self.data_keys[primary_key], data]
-                    datas[i] = data
+                        if primary_key not in self.data_keys:
+                            self.data_keys[primary_key] = data
+                        elif primary_key in self.unload_primary_keys:
+                            if isinstance(self.data_keys[primary_key], list):
+                                self.data_keys[primary_key].append(data)
+                            else:
+                                self.data_keys[primary_key] = [self.data_keys[primary_key], data]
             else:
                 for i in range(len(datas)):
                     data, values = datas[i], {}
@@ -110,7 +115,6 @@ class CalculaterDBJoinLoader(DBJoinLoader):
                             self.data_keys[primary_key] = [self.data_keys[primary_key], values]
                     datas[i] = values
 
-            self.datas = datas
             self.loader_state["query_count"] += 1
             self.loader_state["load_count"] += len(datas)
 
