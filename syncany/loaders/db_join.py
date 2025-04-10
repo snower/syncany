@@ -88,6 +88,17 @@ class DBJoinYieldMatcher(object):
         if not self.return_value_wait_loaded:
             values, self.values = self.values, None
             if isinstance(values, list):
+                if len(values) == 1:
+                    if self.contexter_values is not None:
+                        self.valuer.contexter.values = self.contexter_values
+                    return self.valuer.fill_get(values[0])
+                if not is_in_depth_citation:
+                    if not values:
+                        return None
+                    if self.contexter_values is not None:
+                        self.valuer.contexter.values = self.contexter_values
+                    return [self.valuer.fill_get(value) for value in values]
+
                 def fast_gen_iter():
                     for value in values:
                         if self.contexter_values is not None:
