@@ -1107,6 +1107,8 @@ class CoreTasker(Tasker):
         get_logger().info("%s loader: %s <- %s %s", self.name, loader.__class__.__name__, self.input, " ".join(statistics))
 
     def print_loaded_statistics(self, join_loaders, join_loader_statistics=None):
+        if not join_loaders:
+            return
         statistics = {}
         for join_loader in join_loaders:
             self.merge_statistics(statistics, join_loader.statistics())
