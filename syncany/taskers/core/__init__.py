@@ -978,7 +978,7 @@ class CoreTasker(Tasker):
         if " use " in self.config["output"]:
             output_info = self.config["output"].split(" use ")
             if len(output_info) == 2:
-                short_names = {"I": "insert", "UI": "update_insert", "UDI": "update_delete_insert", "DI": "delete_insert"}
+                short_names = {"I": "insert", "U": "update", "UI": "update_insert", "UDI": "update_delete_insert", "DI": "delete_insert"}
                 if output_info[1] in short_names:
                     output_info[1] = short_names[output_info[1]]
                 self.config["output"], self.config["outputer"] = output_info[0].strip(), ("db_" + output_info[1] + "_outputer").strip()

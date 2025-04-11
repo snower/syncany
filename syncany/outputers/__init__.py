@@ -7,6 +7,7 @@ from .db_update_delete_insert import DBUpdateDeleteInsertOutputer
 from .db_update_insert import DBUpdateInsertOutputer
 from .db_delete_insert import DBDeleteInsertOutputer
 from .db_insert import DBInsertOutputer
+from .db_update import DBUpdateOutputer
 from ..errors import OutputerUnknownException
 
 OUTPUTERS = {
@@ -14,6 +15,7 @@ OUTPUTERS = {
     "db_update_insert_outputer": DBUpdateInsertOutputer,
     "db_delete_insert_outputer": DBDeleteInsertOutputer,
     "db_insert_outputer": DBInsertOutputer,
+    "db_update_outputer": DBUpdateOutputer,
 }
 
 def find_outputer(name):
