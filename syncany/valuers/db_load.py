@@ -127,11 +127,21 @@ class DBLoadValuer(Valuer):
                 if len(values) == 1:
                     values = values[0] if values else None
                 return self.return_valuer.fill_get(values)
-            values = [self.return_valuer.fill_get(value) for value in values]
-        else:
-            if not self.require_yield_values:
-                return self.return_valuer.get()
-            values = [valuer.get() for valuer in self.value]
+            if len(values) == 1:
+                return self.return_valuer.fill_get(values[0])
+            if not self.is_in_depth_citation:
+                if not values:
+                    return None
+                return [self.return_valuer.fill_get(value) for value in values]
+
+            def fast_gen_iter():
+                for value in values:
+                    yield self.return_valuer.fill_get(value)
+            return fast_gen_iter()
+
+        if not self.require_yield_values:
+            return self.return_valuer.get()
+        values = [valuer.get() for valuer in self.value]
         if len(values) == 1:
             return values[0]
         if not self.is_in_depth_citation:
@@ -267,19 +277,31 @@ class ContextDBLoadValuer(DBLoadValuer):
                 if len(values) == 1:
                     values = values[0] if values else None
                 return self.return_valuer.fill_get(values)
-            values = [self.return_valuer.fill_get(value) for value in values]
-        else:
-            if not self.require_yield_values:
-                contexter_values = self.contexter.values
-                try:
-                    return self.return_valuer.get()
-                finally:
-                    self.contexter.values = contexter_values
+            if len(values) == 1:
+                return self.return_valuer.fill_get(values[0])
+            if not self.is_in_depth_citation:
+                if not values:
+                    return None
+                return [self.return_valuer.fill_get(value) for value in values]
 
-            contexter_values, value_valuers, values = self.contexter.values, self.value, []
+            def fast_gen_iter():
+                for value in values:
+                    yield self.return_valuer.fill_get(value)
+            return fast_gen_iter()
+
+        if not self.require_yield_values:
+            contexter_values = self.contexter.values
+            try:
+                return self.return_valuer.get()
+            finally:
+                self.contexter.values = contexter_values
+
+        contexter_values, value_valuers, values = self.contexter.values, self.value, []
+        try:
             for valuer, contexter_values in value_valuers:
                 valuer.contexter.values = contexter_values
                 values.append(valuer.get())
+        finally:
             self.contexter.values = contexter_values
         if len(values) == 1:
             return values[0]
