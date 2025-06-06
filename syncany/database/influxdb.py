@@ -2,6 +2,7 @@
 # 2020/11/27
 # create by: snower
 
+import copy
 import re
 import datetime
 import pytz
@@ -272,35 +273,11 @@ class InfluxDBUpdateBuilder(UpdateBuilder):
     def __init__(self, *args, **kwargs):
         super(InfluxDBUpdateBuilder, self).__init__(*args, **kwargs)
 
-        self.query_values = []
-
-    def filter_gt(self, key, value):
-        self.query.append('"' + key + '">%s')
-        self.query_values.append(value)
-
-    def filter_gte(self, key, value):
-        self.query.append('"' + key + '">=%s')
-        self.query_values.append(value)
-
-    def filter_lt(self, key, value):
-        self.query.append('"' + key + '"<%s')
-        self.query_values.append(value)
-
-    def filter_lte(self, key, value):
-        self.query.append('"' + key + '"<=%s')
-        self.query_values.append(value)
-
     def filter_eq(self, key, value):
-        self.query.append('"' + key + '"=%s')
-        self.query_values.append(value)
-
-    def filter_ne(self, key, value):
-        self.query.append('"' + key + '"!=%s')
-        self.query_values.append(value)
+        self.query.append((key, "eq", value))
 
     def filter_in(self, key, value):
-        self.query.append('"' + key + '" in %s')
-        self.query_values.append(value)
+        self.query.append((key, "in", value))
 
     def commit(self):
         fields = list(self.update.keys()) if not self.fields else self.fields
@@ -311,34 +288,56 @@ class InfluxDBUpdateBuilder(UpdateBuilder):
         else:
             tags = None
 
-        json_body = {"measurement": table_name, "tags": {}, "time": None, "fields": {}}
-        for field in fields:
-            value = escape_param(self.update[field]) if isinstance(self.update[field], datetime.date) else self.update[field]
-            if field == "time":
-                json_body["time"] = value
-            elif tags:
-                if field in tags:
-                    json_body["tags"][field] = value
+        update_datas, json_body_datas = self.expand_query_update(), []
+        for update_data in update_datas:
+            json_body = {"measurement": table_name, "tags": {}, "time": None, "fields": {}}
+            for field in fields:
+                value = escape_param(update_data[field]) if isinstance(update_data[field], datetime.date) else update_data[field]
+                if field == "time":
+                    json_body["time"] = value
+                elif tags:
+                    if field in tags:
+                        json_body["tags"][field] = value
+                    else:
+                        json_body["fields"][field] = value
                 else:
-                    json_body["fields"][field] = value
-            else:
-                if isinstance(self.update[field], (str, datetime.date)) or field in self.primary_keys:
-                    json_body["tags"][field] = value
-                else:
-                    json_body["fields"][field] = value
-        if not json_body["time"]:
-            json_body["time"] = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+                    if isinstance(self.update[field], (str, datetime.date)) or field in self.primary_keys:
+                        json_body["tags"][field] = value
+                    else:
+                        json_body["fields"][field] = value
+            if not json_body["time"]:
+                json_body["time"] = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+            json_body_datas.append(json_body)
 
         connection = self.db.ensure_connection()
         try:
-            return connection.write_points([json_body])
+            return connection.write_points(json_body_datas)
         finally:
             self.db.release_connection()
 
+    def expand_query_update(self):
+        if not self.primary_keys or not self.query:
+            raise ValueError("Update condition error")
+        update_datas = [copy.copy(self.update)]
+        for key, exp, value in self.query:
+            if exp == "eq" and key in self.primary_keys:
+                for update_data in update_datas:
+                    update_data[key] = value
+            elif exp == "in" and key in self.primary_keys:
+                expand_update_datas = []
+                for update_data in update_datas:
+                    for qvalue in value:
+                        expand_update_data = copy.copy(update_data)
+                        expand_update_data[key] = qvalue
+                        expand_update_datas.append(expand_update_data)
+                update_datas = expand_update_datas
+            else:
+                raise ValueError("Update condition error")
+        return update_datas
+
     def verbose(self):
-        return "filters: %s\nupdateDatas: %s" % (
-            human_repr_object([(self.query[i], self.query_values[i]) for i in range(len(self.query))]),
-            human_repr_object(self.diff_data))
+        return "filters: %s\nupdateDatas: %s" % (human_repr_object(self.query),
+                                                 human_repr_object({key: self.update[key] for key in self.diff_data}))
 
 
 class InfluxDBDeleteBuilder(DeleteBuilder):

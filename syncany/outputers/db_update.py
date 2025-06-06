@@ -13,6 +13,7 @@ class DBUpdateOutputer(DBOutputer):
         super(DBUpdateOutputer, self).__init__(*args, **kwargs)
 
         self.load_data_keys = {}
+        self.bulk_update_datas = {} if self.primary_keys and len(self.primary_keys) == 1 else None
 
     def clone(self):
         outputer = super(DBUpdateOutputer, self).clone()
@@ -69,11 +70,44 @@ class DBUpdateOutputer(DBOutputer):
 
         if not require_update:
             return
+        if self.bulk_update_datas is not None:
+            if self.add_bulk_update_data(self.primary_keys[0], data, diff_data):
+                return
+            self.bulk_update_datas = None
         update = self.db.update(self.name, self.primary_keys, list(self.schema.keys()), data, diff_data)
         for primary_key in self.primary_keys:
             update.filter_eq(primary_key, data[primary_key])
         update.commit()
         self.outputer_state["update_count"] += 1
+
+    def add_bulk_update_data(self, primary_key, data, diff_data):
+        primary_value = data.pop(primary_key)
+        try:
+            data_update_key = tuple(((key, value) for key, value in data.items()))
+            if data_update_key not in self.bulk_update_datas:
+                self.bulk_update_datas[data_update_key] = (primary_key, data, diff_data, [])
+            self.bulk_update_datas[data_update_key][3].append(primary_value)
+        except TypeError:
+            data[primary_key] = primary_value
+            return False
+        return True
+
+    def execute_bulk_update(self):
+        try:
+            for primary_key, data, diff_data, primary_values in self.bulk_update_datas.values():
+                if len(primary_values) == 1:
+                    update = self.db.update(self.name, self.primary_keys, list(self.schema.keys()), data, diff_data)
+                    update.filter_eq(primary_key, primary_values[0])
+                    update.commit()
+                    self.outputer_state["update_count"] += 1
+                else:
+                    for i in range(math.ceil(float(len(primary_values)) / float(self.join_batch))):
+                        update = self.db.update(self.name, self.primary_keys, list(self.schema.keys()), data, diff_data)
+                        update.filter_in(primary_key, primary_values[i * self.join_batch: (i + 1) * self.join_batch])
+                        update.commit()
+                        self.outputer_state["update_count"] += 1
+        finally:
+            self.bulk_update_datas = {}
 
     def store(self, datas):
         super(DBUpdateOutputer, self).store(datas)
@@ -85,3 +119,5 @@ class DBUpdateOutputer(DBOutputer):
             primary_key = self.get_data_primary_key(data)
             if primary_key in self.load_data_keys:
                 self.update(data, self.load_data_keys[primary_key])
+        if self.bulk_update_datas:
+            self.execute_bulk_update()

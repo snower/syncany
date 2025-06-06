@@ -2,6 +2,7 @@
 # 18/8/15
 # create by: snower
 
+import copy
 import datetime
 import json
 from ..utils import human_repr_object
@@ -225,13 +226,16 @@ class ElasticsearchUpdateBuilder(UpdateBuilder):
         super(ElasticsearchUpdateBuilder, self).__init__(*args, **kwargs)
 
         self.index_name = "".join(self.name.split(".")[1:])
-        if isinstance(self.datas, dict):
-            self.datas = [self.datas]
-        self.sql = None
 
-    def get_fields(self):
+    def filter_eq(self, key, value):
+        self.query.append((key, "eq", value))
+
+    def filter_in(self, key, value):
+        self.query.append((key, "in", value))
+
+    def get_fields(self, datas):
         fields = None
-        for data in self.datas:
+        for data in datas:
             if fields is None:
                 fields = set(data.keys())
             else:
@@ -244,21 +248,42 @@ class ElasticsearchUpdateBuilder(UpdateBuilder):
         return ".".join([data.get(pk, '') for pk in self.primary_keys])
 
     def commit(self):
-        fields = self.get_fields()
-        datas = []
-        for data in self.datas:
+        update_datas, datas = self.expand_query_update(), []
+        fields = self.get_fields(update_datas)
+        for update_data in update_datas:
             datas.append({
                 "_index": self.index_name,
                 "_type": self.index_name,
-                "_id": self.get_data_primary_key(data),
-                "_source": {field: data[field] for field in fields}
+                "_id": self.get_data_primary_key(update_data),
+                "_source": {field: update_data[field] for field in fields}
             })
 
         connection = self.db.ensure_connection()
         return self.db.helpers().bulk(connection, datas, raise_on_exception=False, raise_on_error=False)
 
+    def expand_query_update(self):
+        if not self.primary_keys or not self.query:
+            raise ValueError("Update condition error")
+        update_datas = [copy.copy(self.update)]
+        for key, exp, value in self.query:
+            if exp == "eq" and key in self.primary_keys:
+                for update_data in update_datas:
+                    update_data[key] = value
+            elif exp == "in" and key in self.primary_keys:
+                expand_update_datas = []
+                for update_data in update_datas:
+                    for qvalue in value:
+                        expand_update_data = copy.copy(update_data)
+                        expand_update_data[key] = qvalue
+                        expand_update_datas.append(expand_update_data)
+                update_datas = expand_update_datas
+            else:
+                raise ValueError("Update condition error")
+        return update_datas
+
     def verbose(self):
-        return "datas(%d): \n%s" % (len(self.datas), human_repr_object(self.datas))
+        return "filters: %s\nupdateDatas: %s" % (human_repr_object(self.query),
+                                                 human_repr_object({key: self.update[key] for key in self.diff_data}))
 
 
 class ElasticsearchDeleteBuilder(DeleteBuilder):

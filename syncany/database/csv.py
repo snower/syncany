@@ -207,7 +207,6 @@ class CsvUpdateBuilder(UpdateBuilder):
     def commit(self):
         csv_file = self.db.ensure_open_file(self.name)
         csv_file.fields = self.fields
-        datas = []
         for data in csv_file.datas:
             succed = True
             for key, exp, value, cmp in self.query:
@@ -217,23 +216,19 @@ class CsvUpdateBuilder(UpdateBuilder):
                 if not cmp(data[key], value):
                     succed = False
                     break
-
             if succed:
-                datas.append(self.update)
-            else:
-                datas.append(data)
+                data.update(self.update)
 
-        csv_file.datas = datas
         csv_file.changed = True
         tasker_context = TaskerContext.current()
         if tasker_context:
             tasker_context.remove_iterator("csv::" + self.name)
-        return datas
+        return csv_file.datas
 
     def verbose(self):
         return "filters: %s\nupdateDatas: %s" % (
             human_repr_object([(key, exp, value) for key, exp, value, cmp in self.query]),
-            human_repr_object(self.diff_data))
+            human_repr_object({key: self.update[key] for key in self.diff_data}))
 
 
 class CsvDeleteBuilder(DeleteBuilder):

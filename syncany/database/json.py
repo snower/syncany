@@ -149,7 +149,6 @@ class JsonUpdateBuilder(UpdateBuilder):
 
     def commit(self):
         json_file = self.db.ensure_open_file(self.name)
-        datas = []
         for data in json_file.datas:
             succed = True
             for key, exp, value, cmp in self.query:
@@ -159,23 +158,19 @@ class JsonUpdateBuilder(UpdateBuilder):
                 if not cmp(data[key], value):
                     succed = False
                     break
-
             if succed:
-                datas.append(self.update)
-            else:
-                datas.append(data)
+                data.update(self.update)
 
-        json_file.datas = datas
         json_file.changed = True
         tasker_context = TaskerContext.current()
         if tasker_context:
             tasker_context.remove_iterator("json::" + self.name)
-        return datas
+        return json_file.datas
 
     def verbose(self):
         return "filters: %s\nupdateDatas: %s" % (
             human_repr_object([(key, exp, value) for key, exp, value, cmp in self.query]),
-            human_repr_object(self.diff_data))
+            human_repr_object({key: self.update[key] for key in self.diff_data}))
 
 
 class JsonDeleteBuilder(DeleteBuilder):

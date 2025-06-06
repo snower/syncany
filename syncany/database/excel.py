@@ -155,7 +155,6 @@ class ExeclUpdateBuilder(UpdateBuilder):
     def commit(self):
         execl_sheet = self.db.ensure_open_file(self.name)
         execl_sheet.sheet_descriptions = self.fields
-        datas = []
         for data in execl_sheet.sheet_datas:
             succed = True
             for key, exp, value, cmp in self.query:
@@ -165,23 +164,19 @@ class ExeclUpdateBuilder(UpdateBuilder):
                 if not cmp(data[key], value):
                     succed = False
                     break
-
             if succed:
-                datas.append(self.update)
-            else:
-                datas.append(data)
+                data.update(self.update)
 
-        execl_sheet.sheet_datas = datas
         execl_sheet.changed = True
         tasker_context = TaskerContext.current()
         if tasker_context:
             tasker_context.remove_iterator("excel::" + self.name)
-        return datas
+        return execl_sheet.sheet_datas
 
     def verbose(self):
         return "filters: %s\nupdateDatas: %s" % (
             human_repr_object([(key, exp, value) for key, exp, value, cmp in self.query]),
-            human_repr_object(self.diff_data))
+            human_repr_object({key: self.update[key] for key in self.diff_data}))
 
 
 class ExeclDeleteBuilder(DeleteBuilder):

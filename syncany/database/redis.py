@@ -296,8 +296,8 @@ class RedisUpdateBuilder(UpdateBuilder, RedisCommand):
     def commit(self):
         try:
             connection = self.db.ensure_connection()
-            datas = []
-            for data in self.load_datas(connection):
+            datas = self.load_datas(connection)
+            for data in datas:
                 succed = True
                 for key, exp, value, cmp in self.query:
                     if key not in data:
@@ -306,11 +306,9 @@ class RedisUpdateBuilder(UpdateBuilder, RedisCommand):
                     if not cmp(data[key], value):
                         succed = False
                         break
-
                 if succed:
-                    datas.append(self.update)
-                else:
-                    datas.append(data)
+                    data.update(self.update)
+
             self.delete_datas(connection)
             if datas:
                 self.save_datas(connection, self.primary_keys, datas, self.db.expire_seconds)
@@ -323,7 +321,7 @@ class RedisUpdateBuilder(UpdateBuilder, RedisCommand):
     def verbose(self):
         return "filters: %s\nupdateDatas: %s" % (
             human_repr_object([(key, exp, value) for key, exp, value, cmp in self.query]),
-            human_repr_object(self.diff_data))
+            human_repr_object({key: self.update[key] for key in self.diff_data}))
 
 
 class RedisDeleteBuilder(DeleteBuilder, RedisCommand):

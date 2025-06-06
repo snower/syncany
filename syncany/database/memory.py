@@ -164,8 +164,8 @@ class MemoryUpdateBuilder(UpdateBuilder):
             if len(cache_keys) == 2 or cache_keys[1][:2] == "--":
                 return
 
-        datas = []
-        for data in self.db.memory_databases.get(self.name, []):
+        datas = self.db.memory_databases.get(self.name, [])
+        for data in datas:
             succed = True
             for key, exp, value, cmp in self.query:
                 if key not in data:
@@ -174,11 +174,8 @@ class MemoryUpdateBuilder(UpdateBuilder):
                 if not cmp(data[key], value):
                     succed = False
                     break
-
             if succed:
-                datas.append(self.update)
-            else:
-                datas.append(data)
+                data.update(self.update)
 
         self.db.memory_databases[self.name] = datas
         tasker_context = TaskerContext.current()
@@ -189,7 +186,7 @@ class MemoryUpdateBuilder(UpdateBuilder):
     def verbose(self):
         return "filters: %s\nupdateDatas: %s" % (
             human_repr_object([(key, exp, value) for key, exp, value, cmp in self.query]),
-            human_repr_object(self.diff_data))
+            human_repr_object({key: self.update[key] for key in self.diff_data}))
 
 
 class MemoryDeleteBuilder(DeleteBuilder):
