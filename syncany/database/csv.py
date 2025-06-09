@@ -72,6 +72,8 @@ class CsvQueryBuilder(QueryBuilder):
         reader = csv.reader(fp, dialect=self.db.config.get("dialect", "excel"), quotechar=self.db.config.get("quotechar", '"'),
                             delimiter=self.db.config.get("delimiter", ','))
         fields, datas = (set(self.fields) if self.fields else None), []
+        for key, _, _, _ in self.query:
+            fields.add(key)
         for row in reader:
             if not descriptions:
                 descriptions.extend(row)

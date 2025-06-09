@@ -134,6 +134,8 @@ class TextLineQueryBuilder(QueryBuilder):
 
     def text_read(self, fp, limit=0):
         fields, datas = (set(self.fields) if self.fields else None), []
+        for key, _, _, _ in self.query:
+            fields.add(key)
         try:
             if self.db.config.get("sep"):
                 escapes = (c for c in self.db.config.get("escape", "\"'"))
@@ -159,6 +161,8 @@ class TextLineQueryBuilder(QueryBuilder):
     def csv_read(self, fp, descriptions, limit=0):
         reader = csv.reader(fp, quotechar='"')
         fields, datas = (set(self.fields) if self.fields else None), []
+        for key, _, _, _ in self.query:
+            fields.add(key)
         for row in reader:
             if not descriptions:
                 descriptions.extend(row)
