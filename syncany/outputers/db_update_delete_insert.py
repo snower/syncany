@@ -16,6 +16,11 @@ class DBUpdateDeleteInsertOutputer(DBOutputer):
         self.load_data_keys = {}
         self.bulk_update_datas = {} if self.primary_keys and len(self.primary_keys) == 1 else None
 
+    def clone(self):
+        outputer = super(DBUpdateDeleteInsertOutputer, self).clone()
+        outputer.join_batch = self.join_batch
+        return outputer
+
     def load(self):
         fields = set([])
         try:

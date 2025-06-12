@@ -1288,6 +1288,8 @@ class CoreTasker(Tasker):
         run_count = 0
 
         try:
+            self.loader.config(self)
+            self.outputer.config(self)
             for init_executer in self.init_executers:
                 init_executer()
 

@@ -56,6 +56,9 @@ class Loader(object):
         self.geted = False
         self.loader_state = defaultdict(int)
 
+    def config(self, tasker):
+        pass
+
     def clone(self):
         loader = self.__class__(self.primary_keys, self.valuer_type)
         schema = {}

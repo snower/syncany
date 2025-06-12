@@ -363,6 +363,12 @@ class DataBase(object):
             return "db_update_delete_insert_outputer"
         return outputer
 
+    def config_loader(self, loader):
+        pass
+
+    def config_outputer(self, outputer):
+        pass
+
     def verbose(self):
         return self.name
 

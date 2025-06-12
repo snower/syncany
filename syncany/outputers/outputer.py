@@ -25,6 +25,9 @@ class Outputer(object):
         self.datas = []
         self.outputer_state = defaultdict(int)
 
+    def config(self, tasker):
+        pass
+
     def clone(self):
         outputer = self.__class__(self.primary_keys)
         schema = {}

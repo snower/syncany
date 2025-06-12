@@ -13,6 +13,10 @@ class DBOutputer(Outputer):
         self.db = db
         self.name = name
 
+    def config(self, tasker):
+        super(DBOutputer, self).config(tasker)
+        self.db.config_outputer(self)
+
     def clone(self):
         outputer = self.__class__(self.db, self.name, self.primary_keys)
         schema = {}

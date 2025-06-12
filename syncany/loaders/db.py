@@ -18,6 +18,10 @@ class DBLoader(Loader):
         self.contexter = False
         self.last_data = None
 
+    def config(self, tasker):
+        super(DBLoader, self).config(tasker)
+        self.db.config_loader(self)
+
     def clone(self):
         loader = self.__class__(self.db, self.name, self.primary_keys, self.valuer_type)
         loader.contexter = self.contexter

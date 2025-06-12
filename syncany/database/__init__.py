@@ -24,6 +24,7 @@ DATABASES = {
     "redis": ".redis.RedisDB",
     "http": ".http.HttpDataBase",
     "sqlite": ".sqlite.SqliteDB",
+    "oracle": ".oracle.OracleDB",
 }
 
 
