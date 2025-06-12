@@ -2,6 +2,7 @@
 # 2025/3/24
 # create by: snower
 
+import math
 from collections import defaultdict
 from ..loaders import Loader, DBJoinLoader
 from ..valuers.valuer import LoadAllFieldsException
@@ -20,6 +21,9 @@ class CalculaterDBJoinLoader(DBJoinLoader):
         self.unload_primary_keys = set([])
         self.load_primary_keys = set([])
         self.matchers = defaultdict(list)
+
+    def config(self, tasker):
+        Loader.config(self, tasker)
 
     def clone(self):
         loader = self.__class__(self.calculater, self.calculater_kwargs, self.primary_keys, self.valuer_type)
@@ -63,13 +67,27 @@ class CalculaterDBJoinLoader(DBJoinLoader):
                 else:
                     query["filters"][exp].append((key, value))
 
-            if len(self.primary_keys) == 1:
-                query["filters"]["in"].append((self.primary_keys[0], list(self.unload_primary_keys)))
+            if len(self.unload_primary_keys) <= self.join_batch:
+                if len(self.primary_keys) == 1:
+                    query["filters"]["in"].append((self.primary_keys[0], list(self.unload_primary_keys)))
+                else:
+                    for j in range(len(self.primary_keys)):
+                        query["filters"]["in"].append((self.primary_keys[j], list({primary_value[j] for primary_value
+                                                                                   in self.unload_primary_keys})))
+                datas, query = self.calculater.calculate(self.primary_keys, query, **self.calculater_kwargs), None
             else:
-                for j in range(len(self.primary_keys)):
-                    query["filters"]["in"].append((self.primary_keys[j], list({primary_value[j] for primary_value
-                                                                          in self.unload_primary_keys})))
-            datas, query = self.calculater.calculate(self.primary_keys, query, **self.calculater_kwargs), None
+                unload_primary_keys, datas = list(self.unload_primary_keys), []
+                for i in range(math.ceil(float(len(unload_primary_keys)) / float(self.join_batch))):
+                    current_unload_primary_keys = unload_primary_keys[i * self.join_batch: (i + 1) * self.join_batch]
+                    if not current_unload_primary_keys:
+                        break
+                    if len(self.primary_keys) == 1:
+                        query["filters"]["in"].append((self.primary_keys[0], current_unload_primary_keys))
+                    else:
+                        for j in range(len(self.primary_keys)):
+                            query["filters"]["in"].append((self.primary_keys[j], list({primary_value[j] for primary_value
+                                                                                       in current_unload_primary_keys})))
+                    query = datas.extend(self.calculater.calculate(self.primary_keys, query, **self.calculater_kwargs))
 
             if not self.key_matchers:
                 if len(self.primary_keys) == 1:

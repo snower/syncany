@@ -1289,6 +1289,8 @@ class CoreTasker(Tasker):
 
         try:
             self.loader.config(self)
+            for join_loader in self.join_loaders.values():
+                join_loader.config(self)
             self.outputer.config(self)
             for init_executer in self.init_executers:
                 init_executer()

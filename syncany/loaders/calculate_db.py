@@ -18,6 +18,9 @@ class CalculaterDBLoader(DBLoader):
         self.contexter = False
         self.last_data = None
 
+    def config(self, tasker):
+        Loader.config(self, tasker)
+
     def clone(self):
         loader = self.__class__(self.calculater, self.calculater_kwargs, self.name, self.primary_keys, self.valuer_type)
         loader.contexter = self.contexter

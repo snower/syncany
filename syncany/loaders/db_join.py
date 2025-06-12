@@ -2,6 +2,7 @@
 # 18/8/6
 # create by: snower
 
+import math
 from collections import defaultdict
 from .db import DBLoader
 from ..valuers.valuer import LoadAllFieldsException
@@ -338,20 +339,40 @@ class DBJoinLoader(DBLoader):
                 except LoadAllFieldsException:
                     fields = []
 
-            query = self.db.query(self.name, self.primary_keys, list(fields))
-            for key, exp, value in self.filters:
-                if key is None:
-                    getattr(query, "filter_%s" % exp)(value)
-                else:
-                    getattr(query, "filter_%s" % exp)(key, value)
+            if len(self.unload_primary_keys) <= self.join_batch:
+                query = self.db.query(self.name, self.primary_keys, list(fields))
+                for key, exp, value in self.filters:
+                    if key is None:
+                        getattr(query, "filter_%s" % exp)(value)
+                    else:
+                        getattr(query, "filter_%s" % exp)(key, value)
 
-            if len(self.primary_keys) == 1:
-                query.filter_in(self.primary_keys[0], list(self.unload_primary_keys))
+                if len(self.primary_keys) == 1:
+                    query.filter_in(self.primary_keys[0], list(self.unload_primary_keys))
+                else:
+                    for j in range(len(self.primary_keys)):
+                        query.filter_in(self.primary_keys[j], list({primary_value[j] for primary_value
+                                                                    in self.unload_primary_keys}))
+                datas, query = query.commit(), None
             else:
-                for j in range(len(self.primary_keys)):
-                    query.filter_in(self.primary_keys[j], list({primary_value[j] for primary_value
-                                                                in self.unload_primary_keys}))
-            datas, query = query.commit(), None
+                unload_primary_keys, datas = list(self.unload_primary_keys), []
+                for i in range(math.ceil(float(len(unload_primary_keys)) / float(self.join_batch))):
+                    current_unload_primary_keys = unload_primary_keys[i * self.join_batch: (i + 1) * self.join_batch]
+                    if not current_unload_primary_keys:
+                        break
+                    query = self.db.query(self.name, self.primary_keys, list(fields))
+                    for key, exp, value in self.filters:
+                        if key is None:
+                            getattr(query, "filter_%s" % exp)(value)
+                        else:
+                            getattr(query, "filter_%s" % exp)(key, value)
+
+                    if len(self.primary_keys) == 1:
+                        query.filter_in(self.primary_keys[0], current_unload_primary_keys)
+                    else:
+                        for j in range(len(self.primary_keys)):
+                            query.filter_in(self.primary_keys[j], list({primary_value[j] for primary_value in current_unload_primary_keys}))
+                    query = datas.extend(query.commit())
 
             if not self.key_matchers:
                 if len(self.primary_keys) == 1:
