@@ -136,8 +136,11 @@ class DBUpdateDeleteInsertOutputer(DBOutputer):
                     self.outputer_state["update_count"] += 1
                 else:
                     for i in range(math.ceil(float(len(primary_values)) / float(self.join_batch))):
+                        current_primary_values = primary_values[i * self.join_batch: (i + 1) * self.join_batch]
+                        if not current_primary_values:
+                            break
                         update = self.db.update(self.name, self.primary_keys, list(self.schema.keys()), data, diff_data)
-                        update.filter_in(primary_key, primary_values[i * self.join_batch: (i + 1) * self.join_batch])
+                        update.filter_in(primary_key, current_primary_values)
                         update.commit()
                         self.outputer_state["update_count"] += 1
         finally:

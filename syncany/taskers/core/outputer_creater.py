@@ -30,7 +30,8 @@ class OutputerCreater(object):
             raise OutputerUnknownException(config["name"] + " is unknown")
         db_name = config["database"].split(".")[0]
         return outputer_cls(self.databases.instance(db_name), config["database"], primary_keys,
-                            insert_batch=self.tasker.arguments.get("@insert_batch", 0))
+                            insert_batch=self.tasker.arguments.get("@insert_batch", 0),
+                            join_batch=self.tasker.arguments.get("@join_batch", 10000))
 
     def create_db_update_insert_outputer(self, config, primary_keys):
         outputer_cls = self.find_outputer_driver(config["name"])
