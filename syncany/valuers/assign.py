@@ -34,6 +34,7 @@ class AssignValuer(Valuer):
             self.calculate_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
         if self.return_valuer:
             self.return_valuer.mount_scoper(scoper=self, is_return_getter=is_return_getter and True, **kwargs)
+        self.optimize()
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
@@ -153,9 +154,11 @@ class ContextAssignValuer(AssignValuer):
         self.value_context_id = id(self) * 10
         super(ContextAssignValuer, self).__init__(*args, **kwargs)
 
+    def optimize(self):
         if not self.calculate_wait_loaded and not self.wait_loaded:
             self.fill = self.defer_fill
             self.get = self.defer_get
+            self.optimized = True
 
     @property
     def value(self):

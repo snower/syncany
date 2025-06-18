@@ -30,6 +30,7 @@ class InheritValuer(Valuer):
     def mount_scoper(self, scoper=None, is_return_getter=True,**kwargs):
         if self.value_valuer:
             self.value_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
+        self.optimize()
 
     def clone(self, contexter=None, **kwargs):
         if self.child_valuer.cloned_inherit_valuer:
@@ -158,8 +159,8 @@ class InheritChildValuer(Valuer):
         super(InheritChildValuer, self).clone_init(from_valuer)
         self.value_wait_loaded = from_valuer.value_wait_loaded
 
-    def mount_scoper(self, scoper=None, is_return_getter=True,**kwargs):
-        pass
+    def mount_scoper(self, scoper=None, is_return_getter=True, **kwargs):
+        self.optimize()
 
     def clone(self, contexter=None, **kwargs):
         if self.inherit_valuer.cloned_child_valuer:

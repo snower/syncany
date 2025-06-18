@@ -62,6 +62,7 @@ class AggregateValuer(Valuer):
             self.key_valuer.mount_scoper(scoper=scoper, is_return_getter=False,aggreagte_valuers=aggreagte_valuers, **kwargs)
         if self.calculate_valuer:
             self.calculate_valuer.mount_scoper(scoper=scoper, is_return_getter=False,aggreagte_valuers=aggreagte_valuers, **kwargs)
+        self.optimize()
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
@@ -198,9 +199,11 @@ class ContextAggregateValuer(AggregateValuer):
         self.value_context_id = id(self) * 10
         super(ContextAggregateValuer, self).__init__(*args, **kwargs)
 
+    def optimize(self):
         if not self.key_wait_loaded:
             self.fill = self.defer_fill
             self.get = self.defer_get
+            self.optimized = True
 
     @property
     def value(self):

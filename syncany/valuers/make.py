@@ -19,7 +19,6 @@ class MakeValuer(Valuer):
         self.value_is_yield = True if self.value_wait_loaded else self.check_is_yield()
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
         self.return_is_aggregate = True if self.return_valuer and self.return_valuer.is_aggregate() else False
-        self.optimize_fast_make()
 
     def clone_init(self, from_valuer):
         super(MakeValuer, self).clone_init(from_valuer)
@@ -27,9 +26,8 @@ class MakeValuer(Valuer):
         self.value_is_yield = from_valuer.value_is_yield
         self.wait_loaded = from_valuer.wait_loaded
         self.return_is_aggregate = from_valuer.return_is_aggregate
-        self.optimize_fast_make()
 
-    def optimize_fast_make(self):
+    def optimize(self):
         if self.value_wait_loaded or self.value_is_yield or self.wait_loaded:
             return
         if not isinstance(self.value_valuer, dict):
@@ -51,6 +49,7 @@ class MakeValuer(Valuer):
             self.fill_get = self.fill_get_dict2
         else:
             self.fill_get = self.fill_get_dict
+        self.optimized = True
 
     def check_wait_loaded(self):
         if isinstance(self.value_valuer, dict):
@@ -100,6 +99,7 @@ class MakeValuer(Valuer):
             self.value_valuer.mount_scoper(scoper=scoper, is_return_getter=is_return_getter and True, **kwargs)
         if self.return_valuer:
             self.return_valuer.mount_scoper(scoper=self, is_return_getter=is_return_getter and True, **kwargs)
+        self.optimize()
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
@@ -436,9 +436,12 @@ class ContextMakeValuer(MakeValuer):
         self.value_context_id = id(self) * 10
         super(ContextMakeValuer, self).__init__(*args, **kwargs)
 
+    def optimize(self):
+        super(ContextMakeValuer, self).optimize()
         if not self.value_wait_loaded and not self.wait_loaded:
             self.fill = self.defer_fill
             self.get = self.defer_get
+            self.optimized = True
 
     @property
     def value(self):

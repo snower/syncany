@@ -59,6 +59,7 @@ class DBJoinValuer(Valuer):
         if self.return_valuer:
             self.return_valuer.mount_scoper(scoper=self.loader, is_return_getter=is_return_getter and True,
                                             db_join_valuers=db_join_valuers, **kwargs)
+        self.optimize()
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)

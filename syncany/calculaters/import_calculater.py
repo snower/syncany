@@ -29,7 +29,7 @@ def parse_final_filter(module_or_func):
     else:
         if hasattr(module_or_func, "__call__") and hasattr(module_or_func.__call__, "__annotations__"):
             return_type = module_or_func.__annotations__.get("return")
-    if return_type is None:
+    if return_type is None or not isinstance(return_type, type):
         return None
     if return_type is int or issubclass(return_type, int):
         final_filter = IntFilter.default()
@@ -53,7 +53,7 @@ def parse_final_filter(module_or_func):
         final_filter = SetFilter.default()
     elif return_type is dict or issubclass(return_type, dict):
         final_filter = MapFilter.default()
-    elif ObjectId is not None and return_type is ObjectId or issubclass(return_type, ObjectId):
+    elif ObjectId is not None and (return_type is ObjectId or issubclass(return_type, ObjectId)):
         final_filter = ObjectIdFilter.default()
     elif return_type is uuid.UUID or issubclass(return_type, uuid.UUID):
         final_filter = UUIDFilter.default()

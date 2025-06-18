@@ -59,11 +59,38 @@ class LoadOutputDataValuer(DataValuer):
         return final_filter
 
     def clone(self, contexter=None, **kwargs):
-        valuer = self.__class__(self.load_valuer, self.return_valuer, self.inherit_valuers, self.key,
-                                self._cached_loader_filter if hasattr(self, "_cached_loader_filter") else None,
-                                from_valuer=self)
+        valuer = self.__class__(self.load_valuer, self.return_valuer, self.inherit_valuers, self.key, None, from_valuer=self)
         valuer.option = self.option
+        if hasattr(self, "_cached_loader_filter"):
+            setattr(valuer, "_cached_loader_filter", self._cached_loader_filter)
         return valuer
+
+    def optimize(self):
+        if not self.key:
+            self.fill = self.fill_none
+            self.fill_get = self.fill_get_none
+        elif self.key == "*":
+            self.fill = self.fill_star
+            if not self.inherit_valuers and not self.return_valuer:
+                self.fill_get = self.do_filter
+            else:
+                self.fill_get = self.fill_get_star
+        elif not self.inherit_valuers and not self.return_valuer and "." not in self.key:
+            if self.data_scoper is None:
+                self.fill = self.fill_dict_key
+                self.fill_get = self.fill_get_dict_key
+            else:
+                from ...outputers.db import DBOutputer
+                if isinstance(self.data_scoper, DBOutputer):
+                    self.fill = self.fast_fill_dict_key
+                    self.fill_get = self.fast_fill_get_dict_key
+                else:
+                    self.fill = self.fill_dict_key
+                    self.fill_get = self.fill_get_dict_key
+
+        if not self.return_valuer:
+            self.get = self.fast_get
+        self.optimized = True
 
 
 class CoreTasker(Tasker):

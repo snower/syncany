@@ -13,6 +13,7 @@ class SchemaValuer(Valuer):
     def mount_scoper(self, scoper=None, is_return_getter=True,**kwargs):
         for name, valuer in self.schema_valuers.items():
             valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
+        self.optimize()
 
     def clone(self, contexter=None, **kwargs):
         schema_valuers = {}

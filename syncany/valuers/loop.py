@@ -69,6 +69,7 @@ class ForeachValuer(Valuer):
             self.calculate_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
         if self.return_valuer:
             self.return_valuer.mount_scoper(scoper=self, is_return_getter=is_return_getter and True, **kwargs)
+        self.optimize()
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
@@ -310,9 +311,11 @@ class ContextForeachValuer(ForeachValuer):
         self.calculated_values_context_id = id(self) * 10 + 1
         super(ContextForeachValuer, self).__init__(*args, **kwargs)
 
+    def optimize(self):
         if not self.value_wait_loaded and not self.calculate_wait_loaded and not self.wait_loaded:
             self.fill = self.defer_fill
             self.get = self.defer_get
+            self.optimized = True
 
     @property
     def value(self):
@@ -375,6 +378,7 @@ class BreakValuer(Valuer):
                 inherit_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
         if self.return_valuer:
             self.return_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
+        self.optimize()
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
@@ -443,9 +447,11 @@ class ContextBreakValuer(BreakValuer):
         self.value_context_id = id(self) * 10
         super(ContextBreakValuer, self).__init__(*args, **kwargs)
 
+    def optimize(self):
         if not self.return_valuer or not self.return_valuer.require_loaded():
             self.fill = self.defer_fill
             self.get = self.defer_get
+            self.optimized = True
 
     @property
     def value(self):
@@ -493,6 +499,7 @@ class ContinueValuer(Valuer):
                 inherit_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
         if self.return_valuer:
             self.return_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
+        self.optimize()
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
@@ -561,9 +568,11 @@ class ContextContinueValuer(ContinueValuer):
         self.value_context_id = id(self) * 10
         super(ContextContinueValuer, self).__init__(*args, **kwargs)
 
+    def optimize(self):
         if not self.return_valuer or not self.return_valuer.require_loaded():
             self.fill = self.defer_fill
             self.get = self.defer_get
+            self.optimized = True
 
     @property
     def value(self):

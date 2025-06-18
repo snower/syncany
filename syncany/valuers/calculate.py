@@ -21,17 +21,15 @@ class CalculateValuer(Valuer):
                 self.args_wait_loaded = True
                 break
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
-        if not self.args_wait_loaded and not self.wait_loaded and not self.filter:
-            self.optimize_fast_calculate()
 
     def clone_init(self, from_valuer):
         super(CalculateValuer, self).clone_init(from_valuer)
         self.args_wait_loaded = from_valuer.args_wait_loaded
         self.wait_loaded = from_valuer.wait_loaded
-        if not self.args_wait_loaded and not self.wait_loaded and not self.filter:
-            self.optimize_fast_calculate()
 
-    def optimize_fast_calculate(self):
+    def optimize(self):
+        if self.args_wait_loaded or self.wait_loaded or self.filter:
+            return
         args_count = len(self.args_valuers)
         if args_count == 0:
             if not self.inherit_valuers and not self.return_valuer:
@@ -70,6 +68,7 @@ class CalculateValuer(Valuer):
                                                                        self.args_fill_get2(data), self.args_fill_get3(data))
             else:
                 self.fill_get = self.fill_get4
+        self.optimized = True
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
@@ -82,6 +81,7 @@ class CalculateValuer(Valuer):
             valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
         if self.return_valuer:
             self.return_valuer.mount_scoper(scoper=self, is_return_getter=is_return_getter and True, **kwargs)
+        self.optimize()
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
@@ -257,9 +257,12 @@ class ContextCalculateValuer(CalculateValuer):
         self.value_context_id = id(self) * 10
         super(ContextCalculateValuer, self).__init__(*args, **kwargs)
 
+    def optimize(self):
+        super(ContextCalculateValuer, self).optimize()
         if not self.args_wait_loaded and not self.wait_loaded:
             self.fill = self.defer_fill
             self.get = self.defer_get
+            self.optimized = True
 
     @property
     def value(self):

@@ -142,6 +142,7 @@ class Valuer(object):
     key = None
     filter = None
     value = None
+    optimized = False
 
     def __init__(self, key, filter=None, from_valuer=None):
         if key is not None:
@@ -154,6 +155,8 @@ class Valuer(object):
         else:
             self.valuer_id = from_valuer.valuer_id
             self.clone_init(from_valuer)
+            if self.optimized:
+                self.optimize()
 
     def update_key(self, key):
         if self.key is None and key is None:
@@ -202,6 +205,10 @@ class Valuer(object):
     def mount_scoper(self, scoper=None, is_return_getter=False,**kwargs):
         for valuer in self.childs():
             valuer.mount_scoper(scoper=scoper, **kwargs)
+        self.optimize()
+
+    def optimize(self):
+        pass
 
     def clone(self, contexter=None, **kwargs):
         if contexter is not None:

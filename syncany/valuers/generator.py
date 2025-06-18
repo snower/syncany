@@ -41,6 +41,7 @@ class YieldValuer(Valuer):
             self.value_valuer.mount_scoper(scoper=scoper, is_return_getter=False,yield_valuers=yield_valuers, **kwargs)
         if self.return_valuer:
             self.return_valuer.mount_scoper(scoper=self, is_return_getter=is_return_getter and True, yield_valuers=yield_valuers, **kwargs)
+        self.optimize()
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
@@ -272,9 +273,11 @@ class ContextYieldValuer(YieldValuer):
         self.iter_datas_context_id = id(self) * 10 + 2
         super(ContextYieldValuer, self).__init__(*args, **kwargs)
 
+    def optimize(self):
         if not self.value_wait_loaded and not self.wait_loaded:
             self.fill = self.defer_fill
             self.get = self.defer_get
+            self.optimized = True
 
     @property
     def value(self):

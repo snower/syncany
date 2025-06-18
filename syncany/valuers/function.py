@@ -28,6 +28,7 @@ class LambdaValuer(Valuer):
                 inherit_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
         if self.calculate_valuer:
             self.calculate_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
+        self.optimize()
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
@@ -81,9 +82,11 @@ class ContextLambdaValuer(LambdaValuer):
         self.value_context_id = id(self) * 10
         super(ContextLambdaValuer, self).__init__(*args, **kwargs)
 
+    def optimize(self):
         if not self.calculate_valuer or not self.calculate_valuer.require_loaded():
             self.fill = self.defer_fill
             self.get = self.defer_get
+            self.optimized = True
 
     @property
     def value(self):

@@ -21,19 +21,11 @@ class IfValuer(Valuer):
         self.condition_wait_loaded = self.check_wait_loaded()
         self.wait_loaded = True if self.return_valuer and self.return_valuer.require_loaded() else False
 
-        if (self.value_valuer and self.true_valuer and self.false_valuer and
-                not self.inherit_valuers and not self.return_valuer and not self.filter):
-            self.fill_get = self.fast_fill_get
-
     def clone_init(self, from_valuer):
         super(IfValuer, self).clone_init(from_valuer)
         self.value_wait_loaded = from_valuer.value_wait_loaded
         self.condition_wait_loaded = from_valuer.condition_wait_loaded
         self.wait_loaded = from_valuer.wait_loaded
-
-        if (self.value_valuer and self.true_valuer and self.false_valuer and
-                not self.inherit_valuers and not self.return_valuer and not self.filter):
-            self.fill_get = self.fast_fill_get
 
     def check_wait_loaded(self):
         if self.true_valuer and self.true_valuer.require_loaded():
@@ -56,6 +48,13 @@ class IfValuer(Valuer):
             self.value_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
         if self.return_valuer:
             self.return_valuer.mount_scoper(scoper=self, is_return_getter=is_return_getter and True, **kwargs)
+        self.optimize()
+
+    def optimize(self):
+        if (self.value_valuer and self.true_valuer and self.false_valuer and
+                not self.inherit_valuers and not self.return_valuer and not self.filter):
+            self.fill_get = self.fast_fill_get
+            self.optimized = True
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
@@ -207,9 +206,12 @@ class ContextIfValuer(IfValuer):
         self.value_context_id = id(self) * 10
         super(ContextIfValuer, self).__init__(*args, **kwargs)
 
+    def optimize(self):
+        super(ContextIfValuer, self).optimize()
         if not self.value_wait_loaded and not self.condition_wait_loaded and not self.wait_loaded:
             self.fill = self.defer_fill
             self.get = self.defer_get
+            self.optimized = True
 
     @property
     def value(self):
