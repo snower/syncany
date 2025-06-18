@@ -248,9 +248,9 @@ class CoreTasker(Tasker):
                 if len(self.loader.primary_keys) > 1:
                     if isinstance(self.states["@cursor"], dict):
                         self.batch_cursor = self.states["@cursor"]
-                    else:
+                    elif self.loader.primary_keys:
                         self.batch_cursor = {[self.loader.primary_keys[0]]: self.states["@cursor"]}
-                else:
+                elif self.loader.primary_keys:
                     self.batch_cursor = {[self.loader.primary_keys[0]]: self.states["@cursor"]}
             return
         self.batch_cursor = {}
@@ -258,9 +258,9 @@ class CoreTasker(Tasker):
             if isinstance(self.config["cursor"], dict):
                 for key, value in self.config["cursor"].items():
                     self.batch_cursor[key] = self.run_valuer(value, {})
-            else:
+            elif self.loader.primary_keys:
                 self.batch_cursor = {[self.loader.primary_keys[0]]: self.config["cursor"]}
-        else:
+        elif self.loader.primary_keys:
             self.batch_cursor[self.loader.primary_keys[0]] = self.run_valuer(self.config["cursor"], self.arguments)
 
     def config_logging(self):
@@ -1405,7 +1405,7 @@ class CoreTasker(Tasker):
         status["arguments"] = dict(**self.arguments)
         status["variables"] = dict(**self.global_variables)
         status["states"] = dict(**self.states)
-        if self.loader and isinstance(self.batch_cursor, dict):
+        if self.loader and self.loader.primary_keys and isinstance(self.batch_cursor, dict):
             if len(self.loader.primary_keys) > 1:
                 status["cursor"] = self.batch_cursor
             else:
