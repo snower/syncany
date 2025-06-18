@@ -10,9 +10,9 @@ class SchemaValuer(Valuer):
         self.schema_valuers = schema_valuers
         super(SchemaValuer, self).__init__(*args, **kwargs)
 
-    def mount_loader(self, is_return_getter=True, **kwargs):
+    def mount_scoper(self, scoper=None, is_return_getter=True,**kwargs):
         for name, valuer in self.schema_valuers.items():
-            valuer.mount_loader(is_return_getter=False, **kwargs)
+            valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
 
     def clone(self, contexter=None, **kwargs):
         schema_valuers = {}

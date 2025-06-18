@@ -906,20 +906,20 @@ class CoreTasker(Tasker):
             if predicate_valuer is not None:
                 predicate_valuer = predicate_valuer.clone(contexter)
                 self.loader.update_predicate(predicate_valuer)
-                predicate_valuer.mount_loader(loader=self.loader, is_return_getter=True)
+                predicate_valuer.mount_scoper(scoper=self.loader, loader=self.loader, is_return_getter=True)
             for name, valuer in loader_schema.items():
                 valuer = valuer.clone(contexter)
                 self.loader.add_valuer(name, valuer)
-                valuer.mount_loader(loader=self.loader, is_return_getter=True)
+                valuer.mount_scoper(scoper=self.loader, loader=self.loader, is_return_getter=True)
             if hasattr(self.loader, "contexter"):
                 self.loader.contexter = contexter
         else:
             if predicate_valuer is not None:
                 self.loader.update_predicate(predicate_valuer)
-                predicate_valuer.mount_loader(loader=self.loader, is_return_getter=True)
+                predicate_valuer.mount_scoper(scoper=self.loader, loader=self.loader, is_return_getter=True)
             for name, valuer in loader_schema.items():
                 self.loader.add_valuer(name, valuer)
-                valuer.mount_loader(loader=self.loader, is_return_getter=True)
+                valuer.mount_scoper(scoper=self.loader, loader=self.loader, is_return_getter=True)
         for join_loader in self.join_loaders.values():
             if join_loader.primary_loader:
                 loader_config["valuer_type"] |= 0x01
@@ -1002,6 +1002,7 @@ class CoreTasker(Tasker):
         self.outputer = self.create_outputer(outputer_config, output_outputer["foreign_keys"])
 
         if isinstance(self.schema, dict):
+            outputer_schema = {}
             for name, valuer in self.schema.items():
                 if not name or (name.startswith("__") and name.endswith("__")):
                     continue
@@ -1013,6 +1014,10 @@ class CoreTasker(Tasker):
                 if name in self.config["options"]["schema"] and \
                         self.config["options"]["schema"][name].get("chaned_require_update"):
                     valuer.option = DataValuerOutputerOption(True)
+                outputer_schema[name] = valuer
+
+            for name, valuer in outputer_schema.items():
+                valuer.mount_scoper(scoper=self.outputer, outputer=self, is_return_getter=True)
                 self.outputer.add_valuer(name, valuer)
         elif self.schema == ".*":
             def on_key_event(name, valuer):

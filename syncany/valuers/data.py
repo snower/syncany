@@ -3,6 +3,7 @@
 # create by: snower
 
 import datetime
+import weakref
 from ..utils import ensure_timezone
 from ..filters import ArrayFilter
 from .valuer import Valuer, LoadAllFieldsException
@@ -12,6 +13,10 @@ class DataValuer(Valuer):
     def __init__(self, return_valuer, inherit_valuers, *args, **kwargs):
         self.return_valuer = return_valuer
         self.inherit_valuers = inherit_valuers
+        if "source_scoper" in kwargs:
+            self.source_scoper = (weakref.proxy(kwargs.pop("source_scoper")) if kwargs["source_scoper"] else kwargs.pop("source_scoper"))
+        else:
+            self.source_scoper = None
         super(DataValuer, self).__init__(*args, **kwargs)
 
         self.option = None
@@ -30,6 +35,7 @@ class DataValuer(Valuer):
 
     def clone_init(self, from_valuer):
         super(DataValuer, self).clone_init(from_valuer)
+        self.source_scoper = from_valuer.source_scoper
         self.optimize_fast_get_value()
 
     def optimize_fast_get_value(self):
@@ -49,12 +55,12 @@ class DataValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def mount_loader(self, is_return_getter=True, **kwargs):
+    def mount_scoper(self, scoper=None, is_return_getter=True, **kwargs):
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
-                inherit_valuer.mount_loader(is_return_getter=False, **kwargs)
+                inherit_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
         if self.return_valuer:
-            self.return_valuer.mount_loader(is_return_getter=is_return_getter and True, **kwargs)
+            self.return_valuer.mount_scoper(scoper=self, is_return_getter=is_return_getter and True, **kwargs)
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)

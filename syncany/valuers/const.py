@@ -16,7 +16,7 @@ class ConstValuer(Valuer):
         super(ConstValuer, self).new_init()
         self.value = self.do_filter(self.value)
 
-    def mount_loader(self, is_return_getter=False, **kwargs):
+    def mount_scoper(self, scoper=None, is_return_getter=False,**kwargs):
         pass
 
     def clone(self, contexter=None, **kwargs):

@@ -29,18 +29,18 @@ class YieldValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def mount_loader(self, is_return_getter=True, yield_valuers=None, **kwargs):
+    def mount_scoper(self, scoper=None, is_return_getter=True,yield_valuers=None, **kwargs):
         if yield_valuers is None:
             yield_valuers = []
         yield_valuers.append(self)
 
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
-                inherit_valuer.mount_loader(is_return_getter=False, yield_valuers=yield_valuers, **kwargs)
+                inherit_valuer.mount_scoper(scoper=scoper, is_return_getter=False,yield_valuers=yield_valuers, **kwargs)
         if self.value_valuer:
-            self.value_valuer.mount_loader(is_return_getter=False, yield_valuers=yield_valuers, **kwargs)
+            self.value_valuer.mount_scoper(scoper=scoper, is_return_getter=False,yield_valuers=yield_valuers, **kwargs)
         if self.return_valuer:
-            self.return_valuer.mount_loader(is_return_getter=is_return_getter and True, yield_valuers=yield_valuers, **kwargs)
+            self.return_valuer.mount_scoper(scoper=self, is_return_getter=is_return_getter and True, yield_valuers=yield_valuers, **kwargs)
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)

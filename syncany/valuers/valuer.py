@@ -199,9 +199,9 @@ class Valuer(object):
                 self.KEY_GETTER_CACHES.pop(cache_key, None)
         self.KEY_GETTER_CACHES[self.key] = self.key_getters
 
-    def mount_loader(self, is_return_getter=False, **kwargs):
+    def mount_scoper(self, scoper=None, is_return_getter=False,**kwargs):
         for valuer in self.childs():
-            valuer.mount_loader(**kwargs)
+            valuer.mount_scoper(scoper=scoper, **kwargs)
 
     def clone(self, contexter=None, **kwargs):
         if contexter is not None:

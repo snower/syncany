@@ -85,21 +85,21 @@ class MakeValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def mount_loader(self, is_return_getter=True, **kwargs):
+    def mount_scoper(self, scoper=None, is_return_getter=True,**kwargs):
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
-                inherit_valuer.mount_loader(is_return_getter=False, **kwargs)
+                inherit_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
         if isinstance(self.value_valuer, dict):
             for key_valuer, value_valuer in self.value_valuer.values():
-                key_valuer.mount_loader(is_return_getter=False, **kwargs)
-                value_valuer.mount_loader(is_return_getter=is_return_getter and True, **kwargs)
+                key_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
+                value_valuer.mount_scoper(scoper=scoper, is_return_getter=is_return_getter and True, **kwargs)
         elif isinstance(self.value_valuer, list):
             for valuer in self.value_valuer:
-                valuer.mount_loader(is_return_getter=is_return_getter and True, **kwargs)
+                valuer.mount_scoper(scoper=scoper, is_return_getter=is_return_getter and True, **kwargs)
         elif isinstance(self.value_valuer, Valuer):
-            self.value_valuer.mount_loader(is_return_getter=is_return_getter and True, **kwargs)
+            self.value_valuer.mount_scoper(scoper=scoper, is_return_getter=is_return_getter and True, **kwargs)
         if self.return_valuer:
-            self.return_valuer.mount_loader(is_return_getter=is_return_getter and True, **kwargs)
+            self.return_valuer.mount_scoper(scoper=self, is_return_getter=is_return_getter and True, **kwargs)
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)

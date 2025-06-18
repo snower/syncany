@@ -40,7 +40,7 @@ class DBJoinValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def mount_loader(self, is_return_getter=True, db_join_valuers=None, loader=None, **kwargs):
+    def mount_scoper(self, scoper=None, is_return_getter=True,db_join_valuers=None, loader=None, **kwargs):
         self.loader.primary_loader = loader
         if is_return_getter:
             self.require_yield_values = True
@@ -50,15 +50,15 @@ class DBJoinValuer(Valuer):
 
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
-                inherit_valuer.mount_loader(is_return_getter=False, db_join_valuers=db_join_valuers, **kwargs)
+                inherit_valuer.mount_scoper(scoper=scoper, is_return_getter=False,db_join_valuers=db_join_valuers, **kwargs)
         if self.args_valuers:
             for args_valuer in self.args_valuers:
-                args_valuer.mount_loader(is_return_getter=False, db_join_valuers=db_join_valuers, **kwargs)
+                args_valuer.mount_scoper(scoper=scoper, is_return_getter=False,db_join_valuers=db_join_valuers, **kwargs)
         if self.intercept_valuer:
-            self.intercept_valuer.mount_loader(is_return_getter=False, db_join_valuers=db_join_valuers, **kwargs)
+            self.intercept_valuer.mount_scoper(scoper=scoper, is_return_getter=False,db_join_valuers=db_join_valuers, **kwargs)
         if self.return_valuer:
-            self.return_valuer.mount_loader(is_return_getter=is_return_getter and True, db_join_valuers=db_join_valuers,
-                                            **kwargs)
+            self.return_valuer.mount_scoper(scoper=self.loader, is_return_getter=is_return_getter and True,
+                                            db_join_valuers=db_join_valuers, **kwargs)
 
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)

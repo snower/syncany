@@ -274,24 +274,24 @@ class PartitionValuer(Valuer):
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
 
-    def mount_loader(self, is_return_getter=False, partition_valuers=None, **kwargs):
+    def mount_scoper(self, scoper=None, is_return_getter=False,partition_valuers=None, **kwargs):
         if partition_valuers is None:
             partition_valuers = []
         partition_valuers.append(self)
 
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
-                inherit_valuer.mount_loader(is_return_getter=False, partition_valuers=partition_valuers, **kwargs)
+                inherit_valuer.mount_scoper(scoper=scoper, is_return_getter=False,partition_valuers=partition_valuers, **kwargs)
         if self.key_valuer:
-            self.key_valuer.mount_loader(is_return_getter=False, partition_valuers=partition_valuers, **kwargs)
+            self.key_valuer.mount_scoper(scoper=scoper, is_return_getter=False,partition_valuers=partition_valuers, **kwargs)
         if self.order_valuer:
-            self.order_valuer.mount_loader(is_return_getter=False, partition_valuers=partition_valuers, **kwargs)
+            self.order_valuer.mount_scoper(scoper=scoper, is_return_getter=False,partition_valuers=partition_valuers, **kwargs)
         if self.value_valuer:
-            self.value_valuer.mount_loader(is_return_getter=False, partition_valuers=partition_valuers, **kwargs)
+            self.value_valuer.mount_scoper(scoper=scoper, is_return_getter=False,partition_valuers=partition_valuers, **kwargs)
         if self.calculate_valuer:
-            self.calculate_valuer.mount_loader(is_return_getter=False, partition_valuers=partition_valuers, **kwargs)
+            self.calculate_valuer.mount_scoper(scoper=scoper, is_return_getter=False,partition_valuers=partition_valuers, **kwargs)
         if self.return_valuer:
-            self.return_valuer.mount_loader(is_return_getter=is_return_getter and True,
+            self.return_valuer.mount_scoper(scoper=self, is_return_getter=is_return_getter and True,
                                             partition_valuers=partition_valuers, **kwargs)
 
     def clone(self, contexter=None, **kwargs):
