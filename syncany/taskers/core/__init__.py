@@ -460,7 +460,7 @@ class CoreTasker(Tasker):
         foreign_key_info = foreign_key.split(".")
         foreign_key = ".".join(foreign_key_info[1:])
         foreign_key = foreign_key.split("::")
-        database, foreign_keys = foreign_key[0], foreign_key[1].split("+")
+        database, foreign_keys = foreign_key[0], [k for k in foreign_key[1].split("+") if k != "-"]
         foreign_key_filters = []
         for i in range(len(foreign_keys)):
             key_filters = foreign_keys[i].split("|")
