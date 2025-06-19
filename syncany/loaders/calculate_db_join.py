@@ -43,9 +43,6 @@ class CalculaterDBJoinLoader(DBJoinLoader):
         return loader
 
     def load_join(self):
-        if self.loaded:
-            return
-
         if self.unload_primary_keys:
             fields = set([])
             if not self.key_matchers:

@@ -322,9 +322,6 @@ class DBJoinLoader(DBLoader):
         return matcher
 
     def load_join(self):
-        if self.loaded:
-            return
-
         if self.unload_primary_keys:
             fields = set([])
             if not self.key_matchers:
@@ -463,6 +460,8 @@ class DBJoinLoader(DBLoader):
             self.loaded = True
 
     def load(self, timeout=None):
+        if self.loaded:
+            return
         self.load_join()
         if len(self.data_keys) >= self.join_batch:
             self.data_keys = {}
