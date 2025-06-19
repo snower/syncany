@@ -2,7 +2,7 @@
 # 18/8/6
 # create by: snower
 
-import datetime
+from datetime import datetime as datetime_datetime
 from ..utils import ensure_timezone
 from .valuer import Valuer
 
@@ -33,7 +33,7 @@ class ConstValuer(Valuer):
 
     def do_filter(self, value):
         if not self.filter:
-            if value.__class__ == datetime.datetime:
+            if value.__class__ == datetime_datetime:
                 value = ensure_timezone(value)
             return value
         return self.filter.filter(value)

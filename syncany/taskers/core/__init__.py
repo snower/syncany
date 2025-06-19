@@ -3,7 +3,7 @@
 # create by: snower
 
 import time
-import datetime
+from datetime import datetime as datetime_datetime
 import pytz
 import copy
 import types
@@ -46,7 +46,7 @@ class LoadOutputDataValuer(DataValuer):
 
         def do_filter(value):
             if not final_filter:
-                if value.__class__ == datetime.datetime:
+                if value.__class__ == datetime_datetime:
                     value = ensure_timezone(value)
                 return value
 
@@ -1401,7 +1401,7 @@ class CoreTasker(Tasker):
             self.status["runner_id"] = gen_runner_id()
         status = {key: value for key, value in self.status.items()}
         status["name"] = self.name
-        status["start_time"] = datetime.datetime.fromtimestamp(self.status.start_time, pytz.UTC)
+        status["start_time"] = datetime_datetime.fromtimestamp(self.status.start_time, pytz.UTC)
         status["arguments"] = dict(**self.arguments)
         status["variables"] = dict(**self.global_variables)
         status["states"] = dict(**self.states)

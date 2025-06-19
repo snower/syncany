@@ -3,7 +3,7 @@
 # create by: snower
 
 import os
-import datetime
+from datetime import datetime as datetime_datetime, date as datetime_date, time as datetime_time
 import random
 import string
 from decimal import Decimal
@@ -23,11 +23,11 @@ class CmpValue(object):
         self.reverse = reverse
 
     def format_value(self, other):
-        if isinstance(self.value, datetime.date):
-            if isinstance(self.value, datetime.datetime):
+        if isinstance(self.value, datetime_date):
+            if isinstance(self.value, datetime_datetime):
                 return parse_datetime(other.value, None, get_timezone())
             return parse_date(other.value, None, get_timezone())
-        if isinstance(self.value, datetime.time):
+        if isinstance(self.value, datetime_time):
             return parse_time(other.value, None, get_timezone())
         type_cls = type(self.value)
         return type_cls(other.value)
@@ -134,7 +134,7 @@ def gen_runner_id():
     _runner_index += 1
     if _runner_index >= 100:
         _runner_index = 0
-    return datetime.datetime.now().strftime("%Y%m%d%H%M%S") + \
+    return datetime_datetime.now().strftime("%Y%m%d%H%M%S") + \
            "".join([random.choice(string.digits) for i in range(8)]) + ("%02d" % _runner_index)
 
 _timezone = None
@@ -174,67 +174,67 @@ def parse_datetime(value, fmt, tz):
         try:
             if "." in value:
                 if len(value.split(".")[0]) == 6:
-                    dt = datetime.datetime.strptime(value, "%H%M%S.%f")
-                    now = datetime.datetime.now()
-                    return datetime.datetime(now.year, now.month, now.day, dt.hour, dt.minute, dt.second,
+                    dt = datetime_datetime.strptime(value, "%H%M%S.%f")
+                    now = datetime_datetime.now()
+                    return datetime_datetime(now.year, now.month, now.day, dt.hour, dt.minute, dt.second,
                                              dt.microsecond, tzinfo=tz)
-                dt = datetime.datetime.strptime(value, "%Y%m%d%H%M%S.%f")
+                dt = datetime_datetime.strptime(value, "%Y%m%d%H%M%S.%f")
             elif len(value) == 8:
-                dt = datetime.datetime.strptime(value, "%Y%m%d%H%M%S.%f")
+                dt = datetime_datetime.strptime(value, "%Y%m%d%H%M%S.%f")
             elif len(value) == 6:
-                dt = datetime.datetime.strptime(value, "%H%M%S")
-                now = datetime.datetime.now()
-                return datetime.datetime(now.year, now.month, now.day, dt.hour, dt.minute, dt.second, dt.microsecond,
+                dt = datetime_datetime.strptime(value, "%H%M%S")
+                now = datetime_datetime.now()
+                return datetime_datetime(now.year, now.month, now.day, dt.hour, dt.minute, dt.second, dt.microsecond,
                                          tzinfo=tz)
             else:
-                dt = datetime.datetime.strptime(value, "%Y%m%d%H%M%S")
+                dt = datetime_datetime.strptime(value, "%Y%m%d%H%M%S")
         except:
-            return datetime.datetime.strptime(value, fmt or "%Y-%m-%d %H:%M:%S")
+            return datetime_datetime.strptime(value, fmt or "%Y-%m-%d %H:%M:%S")
 
-    if isinstance(dt, datetime.datetime):
+    if isinstance(dt, datetime_datetime):
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=tz)
         elif tz != dt.tzinfo:
             dt = dt.astimezone(tz=tz)
         return dt
-    if isinstance(dt, datetime.date):
-        return datetime.datetime(dt.year, dt.month, dt.day, tzinfo=tz)
-    if isinstance(dt, datetime.time):
-        now = datetime.datetime.now()
-        return datetime.datetime(now.year, now.month, now.day, dt.hour, dt.minute, dt.second, dt.microsecond, tzinfo=tz)
-    return datetime.datetime.strptime(value, fmt or "%Y-%m-%d %H:%M:%S")
+    if isinstance(dt, datetime_date):
+        return datetime_datetime(dt.year, dt.month, dt.day, tzinfo=tz)
+    if isinstance(dt, datetime_time):
+        now = datetime_datetime.now()
+        return datetime_datetime(now.year, now.month, now.day, dt.hour, dt.minute, dt.second, dt.microsecond, tzinfo=tz)
+    return datetime_datetime.strptime(value, fmt or "%Y-%m-%d %H:%M:%S")
 
 def parse_date(value, fmt, tz):
     try:
         dt = parse_datetime(value, fmt, tz)
-        if isinstance(dt, datetime.datetime):
+        if isinstance(dt, datetime_datetime):
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=tz)
             elif tz != dt.tzinfo:
                 dt = dt.astimezone(tz=tz)
-            return datetime.date(dt.year, dt.month, dt.day)
-        if isinstance(dt, datetime.date):
+            return datetime_date(dt.year, dt.month, dt.day)
+        if isinstance(dt, datetime_date):
             return dt
     except ParserError:
         pass
-    dt = datetime.datetime.strptime(value, fmt or "%Y-%m-%d")
-    return datetime.date(dt.year, dt.month, dt.day)
+    dt = datetime_datetime.strptime(value, fmt or "%Y-%m-%d")
+    return datetime_date(dt.year, dt.month, dt.day)
 
 def parse_time(value, fmt, tz):
     try:
         dt = parse_datetime(value, fmt, tz)
-        if isinstance(dt, datetime.time):
+        if isinstance(dt, datetime_time):
             return dt
-        if isinstance(dt, datetime.datetime):
+        if isinstance(dt, datetime_datetime):
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=tz)
             elif tz != dt.tzinfo:
                 dt = dt.astimezone(tz=tz)
-            return datetime.time(dt.hour, dt.minute, dt.second, dt.microsecond, tzinfo=tz)
+            return datetime_time(dt.hour, dt.minute, dt.second, dt.microsecond, tzinfo=tz)
     except ParserError:
         pass
-    dt = datetime.datetime.strptime("2000-01-01 " + value, "%Y-%m-%d " + (fmt or "%H:%M:%S"))
-    return datetime.time(dt.hour, dt.minute, dt.second, dt.microsecond, tzinfo=tz)
+    dt = datetime_datetime.strptime("2000-01-01 " + value, "%Y-%m-%d " + (fmt or "%H:%M:%S"))
+    return datetime_time(dt.hour, dt.minute, dt.second, dt.microsecond, tzinfo=tz)
 
 def get_rich():
     if os.environ.get("USE_RICH", 'true').lower() != "true":
@@ -334,11 +334,11 @@ def human_format_object(value):
             fvalues.append(human_format_object(v))
         return fvalues
 
-    if isinstance(value, datetime.date):
-        if isinstance(value, datetime.datetime):
+    if isinstance(value, datetime_date):
+        if isinstance(value, datetime_datetime):
             return HumanRepr('datetime.datetime("%s")' % value.isoformat())
         return HumanRepr('datetime.date("%s")' % value.isoformat())
-    if isinstance(value, datetime.time):
+    if isinstance(value, datetime_time):
         return HumanRepr('datetime.time("%s")' % value.isoformat())
     return value
 
@@ -358,10 +358,10 @@ def human_repr_object(value):
             return "[\n    " + ",\n    ".join(fvalues) + "\n]"
         return "[" + ", ".join(fvalues) + "]"
 
-    if isinstance(value, datetime.date):
-        if isinstance(value, datetime.datetime):
+    if isinstance(value, datetime_date):
+        if isinstance(value, datetime_datetime):
             return 'datetime.datetime("%s")' % value.isoformat()
         return 'datetime.date("%s")' % value.isoformat()
-    if isinstance(value, datetime.time):
+    if isinstance(value, datetime_time):
         return 'datetime.time("%s")' % value.isoformat()
     return repr(value)
