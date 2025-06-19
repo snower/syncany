@@ -33,7 +33,7 @@ class ConstValuer(Valuer):
 
     def do_filter(self, value):
         if not self.filter:
-            if isinstance(value, datetime.datetime):
+            if value.__class__ == datetime.datetime:
                 value = ensure_timezone(value)
             return value
         return self.filter.filter(value)

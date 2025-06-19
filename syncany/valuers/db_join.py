@@ -28,6 +28,8 @@ class DBJoinValuer(Valuer):
             setattr(self.intercept_valuer, "intercept_wait_loaded", self.intercept_valuer.require_loaded())
         self.return_wait_loaded = self.return_valuer.require_loaded() if self.return_valuer else False
         self.is_in_depth_citation = self.is_in_depth_citation if self.is_in_depth_citation is not None else False
+        self.join_batch = self.loader.join_batch
+        self.wait_try_load_count = 0
 
     def clone_init(self, from_valuer):
         super(DBJoinValuer, self).clone_init(from_valuer)
@@ -36,6 +38,8 @@ class DBJoinValuer(Valuer):
             self.intercept_valuer.intercept_wait_loaded = from_valuer.intercept_valuer.intercept_wait_loaded
         self.return_wait_loaded = from_valuer.return_wait_loaded
         self.is_in_depth_citation = from_valuer.is_in_depth_citation
+        self.join_batch = from_valuer.join_batch
+        self.wait_try_load_count = 0
 
     def add_inherit_valuer(self, valuer):
         self.inherit_valuers.append(valuer)
@@ -182,10 +186,10 @@ class DBJoinValuer(Valuer):
         if isinstance(data, list):
             if len(data) > 1:
                 self.matcher = self.create_matcher(data)
-                self.loader.wait_try_load_count += 1
-                if self.loader.wait_try_load_count >= 64:
+                self.wait_try_load_count += 1
+                if self.wait_try_load_count >= self.join_batch:
                     self.loader.try_load()
-                    self.loader.wait_try_load_count = 0
+                    self.wait_try_load_count = 0
                 return self
             data = data[0] if data else None
 
@@ -226,10 +230,10 @@ class DBJoinValuer(Valuer):
                                                       contexter_values=None,
                                                       return_value_wait_loaded=self.return_wait_loaded)
 
-        self.loader.wait_try_load_count += 1
-        if self.loader.wait_try_load_count >= 64:
+        self.wait_try_load_count += 1
+        if self.wait_try_load_count >= self.join_batch:
             self.loader.try_load()
-            self.loader.wait_try_load_count = 0
+            self.wait_try_load_count = 0
         return self
 
     def get(self):
@@ -423,14 +427,14 @@ class ContextDBJoinValuer(DBJoinValuer):
         if isinstance(data, list):
             if len(data) > 1:
                 self.contexter.values[self.matcher_context_id] = self.create_matcher(data)
-                self.loader.wait_try_load_count += 1
-                if self.loader.wait_try_load_count >= 64:
+                self.wait_try_load_count += 1
+                if self.wait_try_load_count >= self.join_batch:
                     contexter_values = self.contexter.values
                     try:
                         self.loader.try_load()
                     finally:
                         self.contexter.values = contexter_values
-                    self.loader.wait_try_load_count = 0
+                    self.wait_try_load_count = 0
                 return self
             data = data[0] if data else None
 
@@ -471,14 +475,14 @@ class ContextDBJoinValuer(DBJoinValuer):
                                                                                         contexter_values=self.contexter.values,
                                                                                         return_value_wait_loaded=self.return_wait_loaded)
 
-        self.loader.wait_try_load_count += 1
-        if self.loader.wait_try_load_count >= 64:
+        self.wait_try_load_count += 1
+        if self.wait_try_load_count >= self.join_batch:
             contexter_values = self.contexter.values
             try:
                 self.loader.try_load()
             finally:
                 self.contexter.values = contexter_values
-            self.loader.wait_try_load_count = 0
+            self.wait_try_load_count = 0
         return self
 
     def get(self):

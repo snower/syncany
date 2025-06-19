@@ -158,7 +158,7 @@ class DataValuer(Valuer):
                 self.value = self.do_filter(data[self.key])
             else:
                 value = data[self.key]
-                if isinstance(value, datetime.datetime):
+                if value.__class__ == datetime.datetime:
                     self.value = ensure_timezone(value)
                 else:
                     self.value = value
@@ -188,7 +188,7 @@ class DataValuer(Valuer):
 
     def fast_fill_dict_key(self, data):
         value = data.get(self.key)
-        if isinstance(value, datetime.datetime):
+        if value.__class__ == datetime.datetime:
             self.value = ensure_timezone(value)
         else:
             self.value = value
@@ -198,7 +198,7 @@ class DataValuer(Valuer):
         if data is None:
             return None
         value = data.get(self.key)
-        if isinstance(value, datetime.datetime):
+        if value.__class__ == datetime.datetime:
             self.value = ensure_timezone(value)
         else:
             self.value = value
@@ -268,7 +268,7 @@ class DataValuer(Valuer):
                 value = self.do_filter(data[self.key])
             else:
                 value = data[self.key]
-                if isinstance(value, datetime.datetime):
+                if value.__class__ == datetime.datetime:
                     value = ensure_timezone(value)
         except (TypeError, KeyError):
             if data is None or not self.key:
@@ -295,7 +295,7 @@ class DataValuer(Valuer):
 
     def fast_fill_get_dict_key(self, data):
         value = data.get(self.key)
-        if isinstance(value, datetime.datetime):
+        if value.__class__ == datetime.datetime:
             return ensure_timezone(value)
         return value
 
@@ -303,13 +303,13 @@ class DataValuer(Valuer):
         if data is None:
             return None
         value = data.get(self.key)
-        if isinstance(value, datetime.datetime):
+        if value.__class__ == datetime.datetime:
             return ensure_timezone(value)
         return value
 
     def do_filter(self, value):
         if not self.filter:
-            if isinstance(value, datetime.datetime):
+            if value.__class__ == datetime.datetime:
                 value = ensure_timezone(value)
             return value
 

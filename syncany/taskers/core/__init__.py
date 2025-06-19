@@ -46,7 +46,7 @@ class LoadOutputDataValuer(DataValuer):
 
         def do_filter(value):
             if not final_filter:
-                if isinstance(value, datetime.datetime):
+                if value.__class__ == datetime.datetime:
                     value = ensure_timezone(value)
                 return value
 
