@@ -93,7 +93,7 @@ class CalculaterDBJoinLoader(DBJoinLoader):
                         if primary_key not in self.data_keys:
                             self.data_keys[primary_key] = data
                         elif primary_key in self.unload_primary_keys:
-                            if isinstance(self.data_keys[primary_key], list):
+                            if self.data_keys[primary_key].__class__ is list:
                                 self.data_keys[primary_key].append(data)
                             else:
                                 self.data_keys[primary_key] = [self.data_keys[primary_key], data]
@@ -103,7 +103,7 @@ class CalculaterDBJoinLoader(DBJoinLoader):
                         if primary_key not in self.data_keys:
                             self.data_keys[primary_key] = data
                         elif primary_key in self.unload_primary_keys:
-                            if isinstance(self.data_keys[primary_key], list):
+                            if self.data_keys[primary_key].__class__ is list:
                                 self.data_keys[primary_key].append(data)
                             else:
                                 self.data_keys[primary_key] = [self.data_keys[primary_key], data]
@@ -124,7 +124,7 @@ class CalculaterDBJoinLoader(DBJoinLoader):
                     if primary_key not in self.data_keys:
                         self.data_keys[primary_key] = values
                     elif primary_key in self.unload_primary_keys:
-                        if isinstance(self.data_keys[primary_key], list):
+                        if self.data_keys[primary_key].__class__ is list:
                             self.data_keys[primary_key].append(values)
                         else:
                             self.data_keys[primary_key] = [self.data_keys[primary_key], values]

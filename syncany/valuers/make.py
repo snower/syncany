@@ -28,26 +28,50 @@ class MakeValuer(Valuer):
         self.return_is_aggregate = from_valuer.return_is_aggregate
 
     def optimize(self):
-        if self.value_wait_loaded or self.value_is_yield or self.wait_loaded:
-            return
         if not isinstance(self.value_valuer, dict):
             return
         value_valuer_count = len(self.value_valuer)
         if value_valuer_count == 0:
+            self.fill = self.fill_dict0
+            self.get = self.get_dict0
             self.fill_get = self.fill_get_dict0
         elif value_valuer_count == 1:
             value_valuer_values = list(self.value_valuer.values())
-            self.value_valuer_key0 = value_valuer_values[0][0].fill_get
-            self.value_valuer_value0 = value_valuer_values[0][1].fill_get
+            self.value_valuer_key0_fill = value_valuer_values[0][0].fill
+            self.value_valuer_value0_fill = value_valuer_values[0][1].fill
+            
+            self.value_valuer_key0_get = value_valuer_values[0][0].get
+            self.value_valuer_value0_get = value_valuer_values[0][1].get
+            
+            self.value_valuer_key0_fill_get = value_valuer_values[0][0].fill_get
+            self.value_valuer_value0_fill_get = value_valuer_values[0][1].fill_get
+            
+            self.fill = self.fill_dict1
+            self.get = self.get_dict
             self.fill_get = self.fill_get_dict1
         elif value_valuer_count == 2:
             value_valuer_values = list(self.value_valuer.values())
-            self.value_valuer_key0 = value_valuer_values[0][0].fill_get
-            self.value_valuer_value0 = value_valuer_values[0][1].fill_get
-            self.value_valuer_key1 = value_valuer_values[1][0].fill_get
-            self.value_valuer_value1 = value_valuer_values[1][1].fill_get
+            self.value_valuer_key0_fill = value_valuer_values[0][0].fill
+            self.value_valuer_value0_fill = value_valuer_values[0][1].fill
+            self.value_valuer_key1_fill = value_valuer_values[1][0].fill
+            self.value_valuer_value1_fill = value_valuer_values[1][1].fill
+            
+            self.value_valuer_key0_get = value_valuer_values[0][0].get
+            self.value_valuer_value0_get = value_valuer_values[0][1].get
+            self.value_valuer_key1_get = value_valuer_values[1][0].get
+            self.value_valuer_value1_get = value_valuer_values[1][1].get
+            
+            self.value_valuer_key0_fill_get = value_valuer_values[0][0].fill_get
+            self.value_valuer_value0_fill_get = value_valuer_values[0][1].fill_get
+            self.value_valuer_key1_fill_get = value_valuer_values[1][0].fill_get
+            self.value_valuer_value1_fill_get = value_valuer_values[1][1].fill_get
+            
+            self.fill = self.fill_dict2
+            self.get = self.get_dict
             self.fill_get = self.fill_get_dict2
         else:
+            self.fill = self.fill_dict
+            self.get = self.get_dict
             self.fill_get = self.fill_get_dict
         self.optimized = True
 
@@ -157,6 +181,78 @@ class MakeValuer(Valuer):
         elif isinstance(self.value_valuer, Valuer):
             self.value_valuer.fill(data)
         return self
+    
+    def fill_dict0(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+        return self
+    
+    def fill_dict1(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if not self.value_wait_loaded and not self.value_is_yield:
+            if self.return_valuer:
+                if not self.wait_loaded:
+                    self.value = self.return_valuer.fill_get({self.value_valuer_key0_fill_get(data): self.value_valuer_value0_fill_get(data)})
+                else:
+                    self.return_valuer.fill({self.value_valuer_key0_fill_get(data): self.value_valuer_value0_fill_get(data)})
+            else:
+                self.value = {self.value_valuer_key0_fill_get(data): self.value_valuer_value0_fill_get(data)}
+            return self
+
+        self.value_valuer_key0_fill(data)
+        self.value_valuer_value0_fill(data)
+        return self
+    
+    def fill_dict2(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if not self.value_wait_loaded and not self.value_is_yield:
+            if self.return_valuer:
+                if not self.wait_loaded:
+                    self.value = self.return_valuer.fill_get({self.value_valuer_key0_fill_get(data): self.value_valuer_value0_fill_get(data),
+                                                              self.value_valuer_key1_fill_get(data): self.value_valuer_value1_fill_get(data)})
+                else:
+                    self.return_valuer.fill({self.value_valuer_key0_fill_get(data): self.value_valuer_value0_fill_get(data),
+                                            self.value_valuer_key1_fill_get(data): self.value_valuer_value1_fill_get(data)})
+            else:
+                self.value = {self.value_valuer_key0_fill_get(data): self.value_valuer_value0_fill_get(data),
+                              self.value_valuer_key1_fill_get(data): self.value_valuer_value1_fill_get(data)}
+            return self
+
+        self.value_valuer_key0_fill(data)
+        self.value_valuer_value0_fill(data)
+        self.value_valuer_key1_fill(data)
+        self.value_valuer_value1_fill(data)
+        return self
+    
+    def fill_dict(self, data):
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        if not self.value_wait_loaded and not self.value_is_yield:
+            if self.return_valuer:
+                if not self.wait_loaded:
+                    self.value = self.return_valuer.fill_get({key_valuer.fill_get(data): value_valuer.fill_get(data) 
+                                                              for key_valuer, value_valuer in self.value_valuer.values()})
+                else:
+                    self.return_valuer.fill({key_valuer.fill_get(data): value_valuer.fill_get(data) 
+                                             for key_valuer, value_valuer in self.value_valuer.values()})
+            else:
+                self.value = {key_valuer.fill_get(data): value_valuer.fill_get(data) 
+                              for key_valuer, value_valuer in self.value_valuer.values()}
+            return self
+
+        for key_valuer, value_valuer in self.value_valuer.values():
+            key_valuer.fill(data)
+            value_valuer.fill(data)
+        return self
 
     def get(self):
         if self.value_wait_loaded or self.value_is_yield:
@@ -198,7 +294,42 @@ class MakeValuer(Valuer):
                 return self.value
             return self.return_valuer.get()
         return self.value
+    
+    def get_dict0(self):
+        if self.value_wait_loaded or self.value_is_yield:
+            if self.return_valuer:
+                return self.return_valuer.fill_get({})
+            return {}
 
+        if self.return_valuer:
+            if not self.wait_loaded:
+                return self.value
+            return self.return_valuer.get()
+        return self.value
+    
+    def get_dict(self):
+        if self.value_wait_loaded or self.value_is_yield:
+            GeneratorType = types.GeneratorType
+            value, yield_value = {}, {}
+            for key, (key_valuer, value_valuer) in self.value_valuer.items():
+                key_value, value_value = key_valuer.get(), value_valuer.get()
+                if isinstance(value_value, GeneratorType):
+                    yield_value[key] = (key_value, value_value)
+                    value[key_value] = None
+                else:
+                    value[key_value] = value_value
+            if yield_value:
+                return self.get_yield(value, yield_value, False)
+            if self.return_valuer:
+                return self.return_valuer.fill_get(value)
+            return value
+
+        if self.return_valuer:
+            if not self.wait_loaded:
+                return self.value
+            return self.return_valuer.get()
+        return self.value
+    
     def fill_get(self, data):
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
@@ -266,8 +397,8 @@ class MakeValuer(Valuer):
                 inherit_valuer.fill(data)
 
         if self.return_valuer:
-            return self.return_valuer.fill_get({self.value_valuer_key0(data): self.value_valuer_value0(data)})
-        return {self.value_valuer_key0(data): self.value_valuer_value0(data)}
+            return self.return_valuer.fill_get({self.value_valuer_key0_fill_get(data): self.value_valuer_value0_fill_get(data)})
+        return {self.value_valuer_key0_fill_get(data): self.value_valuer_value0_fill_get(data)}
 
     def fill_get_dict2(self, data):
         if self.inherit_valuers:
@@ -275,10 +406,10 @@ class MakeValuer(Valuer):
                 inherit_valuer.fill(data)
 
         if self.return_valuer:
-            return self.return_valuer.fill_get({self.value_valuer_key0(data): self.value_valuer_value0(data),
-                                                self.value_valuer_key1(data): self.value_valuer_value1(data)})
-        return {self.value_valuer_key0(data): self.value_valuer_value0(data),
-                self.value_valuer_key1(data): self.value_valuer_value1(data)}
+            return self.return_valuer.fill_get({self.value_valuer_key0_fill_get(data): self.value_valuer_value0_fill_get(data),
+                                                self.value_valuer_key1_fill_get(data): self.value_valuer_value1_fill_get(data)})
+        return {self.value_valuer_key0_fill_get(data): self.value_valuer_value0_fill_get(data),
+                self.value_valuer_key1_fill_get(data): self.value_valuer_value1_fill_get(data)}
 
     def fill_get_dict(self, data):
         if self.inherit_valuers:

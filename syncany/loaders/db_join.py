@@ -27,7 +27,7 @@ class DBJoinYieldMatcher(object):
 
     def fill(self, values):
         if self.intercept_valuer:
-            if isinstance(values, list):
+            if values.__class__ is list:
                 ovalues = []
                 if self.intercept_valuer.intercept_wait_loaded:
                     if self.contexter_values is not None:
@@ -66,7 +66,7 @@ class DBJoinYieldMatcher(object):
                     values = None
 
         if self.return_value_wait_loaded:
-            if isinstance(values, list):
+            if values.__class__ is list:
                 self.data_valuers = []
                 if self.contexter_values is not None:
                     for value in values:
@@ -88,7 +88,7 @@ class DBJoinYieldMatcher(object):
     def get(self, is_in_depth_citation=True):
         if not self.return_value_wait_loaded:
             values, self.values = self.values, None
-            if isinstance(values, list):
+            if values.__class__ is list:
                 if len(values) == 1:
                     if self.contexter_values is not None:
                         self.valuer.contexter.values = self.contexter_values
@@ -161,7 +161,7 @@ class DBJoinMatcher(object):
             if self.contexter_values is not None:
                 self.intercept_valuer.contexter.values = self.contexter_values
 
-            if isinstance(values, list):
+            if values.__class__ is list:
                 ovalues = []
                 for value in values:
                     if not self.intercept_valuer.fill_get(value):
@@ -242,7 +242,7 @@ class GroupDBJoinMatcher(object):
         if self.return_value_wait_loaded and len(self.values) >= self.matcher_count:
             values = []
             for value in self.values:
-                if isinstance(value, list):
+                if value.__class__ is list:
                     values.extend(value)
                 else:
                     values.append(value)
@@ -254,7 +254,7 @@ class GroupDBJoinMatcher(object):
         if not self.return_value_wait_loaded or len(self.values) < self.matcher_count:
             values = []
             for value in self.values:
-                if isinstance(value, list):
+                if value.__class__ is list:
                     values.extend(value)
                 else:
                     values.append(value)
@@ -378,7 +378,7 @@ class DBJoinLoader(DBLoader):
                         if primary_key not in self.data_keys:
                             self.data_keys[primary_key] = data
                         elif primary_key in self.unload_primary_keys:
-                            if isinstance(self.data_keys[primary_key], list):
+                            if self.data_keys[primary_key].__class__ is list:
                                 self.data_keys[primary_key].append(data)
                             else:
                                 self.data_keys[primary_key] = [self.data_keys[primary_key], data]
@@ -388,7 +388,7 @@ class DBJoinLoader(DBLoader):
                         if primary_key not in self.data_keys:
                             self.data_keys[primary_key] = data
                         elif primary_key in self.unload_primary_keys:
-                            if isinstance(self.data_keys[primary_key], list):
+                            if self.data_keys[primary_key].__class__ is list:
                                 self.data_keys[primary_key].append(data)
                             else:
                                 self.data_keys[primary_key] = [self.data_keys[primary_key], data]
@@ -409,7 +409,7 @@ class DBJoinLoader(DBLoader):
                     if primary_key not in self.data_keys:
                         self.data_keys[primary_key] = values
                     elif primary_key in self.unload_primary_keys:
-                        if isinstance(self.data_keys[primary_key], list):
+                        if self.data_keys[primary_key].__class__ is list:
                             self.data_keys[primary_key].append(values)
                         else:
                             self.data_keys[primary_key] = [self.data_keys[primary_key], values]

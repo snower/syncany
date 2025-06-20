@@ -65,6 +65,11 @@ class DBJoinValuer(Valuer):
                                             db_join_valuers=db_join_valuers, **kwargs)
         self.optimize()
 
+    def optimize(self):
+        if self.args_valuers and len(self.args_valuers) == 1:
+            self.args_valuer0_fill_get = self.args_valuers[0].fill_get
+            self.fill = self.fill_args1
+
     def clone(self, contexter=None, **kwargs):
         inherit_valuers = [inherit_valuer.clone(contexter, **kwargs)
                            for inherit_valuer in self.inherit_valuers] if self.inherit_valuers else None
@@ -110,7 +115,7 @@ class DBJoinValuer(Valuer):
         if self.args_valuers:
             for args_valuer in self.args_valuers:
                 value = args_valuer.fill_get(data)
-                if isinstance(value, list):
+                if value.__class__ is list:
                     if len(value) == 1:
                         value = value[0]
                     else:
@@ -118,7 +123,7 @@ class DBJoinValuer(Valuer):
                 join_values.append(value)
         else:
             value = super(DBJoinValuer, self).fill_get(data)
-            if isinstance(value, list):
+            if value.__class__ is list:
                 if len(value) == 1:
                     value = value[0]
                 else:
@@ -182,15 +187,18 @@ class DBJoinValuer(Valuer):
             group_macther.add_matcher(matcher)
         return group_macther
 
+    def fill_list_data(self, data):
+        self.matcher = self.create_matcher(data)
+        self.wait_try_load_count += 1
+        if self.wait_try_load_count >= self.join_batch:
+            self.loader.try_load()
+            self.wait_try_load_count = 0
+        return self
+
     def fill(self, data):
-        if isinstance(data, list):
+        if data.__class__ is not dict and isinstance(data, list):
             if len(data) > 1:
-                self.matcher = self.create_matcher(data)
-                self.wait_try_load_count += 1
-                if self.wait_try_load_count >= self.join_batch:
-                    self.loader.try_load()
-                    self.wait_try_load_count = 0
-                return self
+                return self.fill_list_data(data)
             data = data[0] if data else None
 
         if self.inherit_valuers:
@@ -201,7 +209,7 @@ class DBJoinValuer(Valuer):
         if self.args_valuers:
             for args_valuer in self.args_valuers:
                 value = args_valuer.fill_get(data)
-                if isinstance(value, list):
+                if value.__class__ is list:
                     if len(value) == 1:
                         value = value[0]
                     else:
@@ -209,7 +217,7 @@ class DBJoinValuer(Valuer):
                 join_values.append(value)
         else:
             value = super(DBJoinValuer, self).fill_get(data)
-            if isinstance(value, list):
+            if value.__class__ is list:
                 if len(value) == 1:
                     value = value[0]
                 else:
@@ -224,6 +232,45 @@ class DBJoinValuer(Valuer):
                     if foreign_key_filter:
                         join_values[i] = foreign_key_filter.filter(join_values[i])
             self.matcher = self.loader.create_matcher(self.foreign_keys, join_values,
+                                                      is_yield=self.require_yield_values,
+                                                      intercept_valuer=self.intercept_valuer,
+                                                      valuer=self.return_valuer,
+                                                      contexter_values=None,
+                                                      return_value_wait_loaded=self.return_wait_loaded)
+
+        self.wait_try_load_count += 1
+        if self.wait_try_load_count >= self.join_batch:
+            self.loader.try_load()
+            self.wait_try_load_count = 0
+        return self
+
+    def fill_args1(self, data):
+        if data.__class__ is not dict and isinstance(data, list):
+            if len(data) > 1:
+                return self.fill_list_data(data)
+            data = data[0] if data else None
+
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        value = self.args_valuer0_fill_get(data)
+        if value.__class__ is list:
+            if len(value) == 1:
+                if self.foreign_key_filters is not None and self.foreign_key_filters and self.foreign_key_filters[0]:
+                    value = [self.foreign_key_filters[0].filter(value[0])]
+                self.matcher = self.loader.create_matcher(self.foreign_keys, value,
+                                                          is_yield=self.require_yield_values,
+                                                          intercept_valuer=self.intercept_valuer,
+                                                          valuer=self.return_valuer,
+                                                          contexter_values=None,
+                                                          return_value_wait_loaded=self.return_wait_loaded)
+            else:
+                self.matcher = self.create_group_matcher([value])
+        else:
+            if self.foreign_key_filters is not None and self.foreign_key_filters and self.foreign_key_filters[0]:
+                value = self.foreign_key_filters[0].filter(value)
+            self.matcher = self.loader.create_matcher(self.foreign_keys, [value],
                                                       is_yield=self.require_yield_values,
                                                       intercept_valuer=self.intercept_valuer,
                                                       valuer=self.return_valuer,
@@ -288,6 +335,11 @@ class ContextDBJoinValuer(DBJoinValuer):
         self.matcher_context_id = id(self) * 10 + 1
         super(ContextDBJoinValuer, self).__init__(*args, **kwargs)
 
+    def optimize(self):
+        if self.args_valuers and len(self.args_valuers) == 1:
+            self.args_valuer0_fill_get = self.args_valuers[0].fill_get
+            self.fill = self.fill_args1
+
     @property
     def value(self):
         try:
@@ -348,7 +400,7 @@ class ContextDBJoinValuer(DBJoinValuer):
         if self.args_valuers:
             for args_valuer in self.args_valuers:
                 value = args_valuer.fill_get(data)
-                if isinstance(value, list):
+                if value.__class__ is list:
                     if len(value) == 1:
                         value = value[0]
                     else:
@@ -356,7 +408,7 @@ class ContextDBJoinValuer(DBJoinValuer):
                 join_values.append(value)
         else:
             value = super(DBJoinValuer, self).fill_get(data)
-            if isinstance(value, list):
+            if value.__class__ is list:
                 if len(value) == 1:
                     value = value[0]
                 else:
@@ -423,19 +475,22 @@ class ContextDBJoinValuer(DBJoinValuer):
         self.contexter.values = contexter_values
         return group_macther
 
+    def fill_list_data(self, data):
+        self.contexter.values[self.matcher_context_id] = self.create_matcher(data)
+        self.wait_try_load_count += 1
+        if self.wait_try_load_count >= self.join_batch:
+            contexter_values = self.contexter.values
+            try:
+                self.loader.try_load()
+            finally:
+                self.contexter.values = contexter_values
+            self.wait_try_load_count = 0
+        return self
+
     def fill(self, data):
-        if isinstance(data, list):
+        if data.__class__ is not dict and isinstance(data, list):
             if len(data) > 1:
-                self.contexter.values[self.matcher_context_id] = self.create_matcher(data)
-                self.wait_try_load_count += 1
-                if self.wait_try_load_count >= self.join_batch:
-                    contexter_values = self.contexter.values
-                    try:
-                        self.loader.try_load()
-                    finally:
-                        self.contexter.values = contexter_values
-                    self.wait_try_load_count = 0
-                return self
+                return self.fill_list_data(data)
             data = data[0] if data else None
 
         if self.inherit_valuers:
@@ -446,7 +501,7 @@ class ContextDBJoinValuer(DBJoinValuer):
         if self.args_valuers:
             for args_valuer in self.args_valuers:
                 value = args_valuer.fill_get(data)
-                if isinstance(value, list):
+                if value.__class__ is list:
                     if len(value) == 1:
                         value = value[0]
                     else:
@@ -454,7 +509,7 @@ class ContextDBJoinValuer(DBJoinValuer):
                 join_values.append(value)
         else:
             value = super(DBJoinValuer, self).fill_get(data)
-            if isinstance(value, list):
+            if value.__class__ is list:
                 if len(value) == 1:
                     value = value[0]
                 else:
@@ -469,6 +524,49 @@ class ContextDBJoinValuer(DBJoinValuer):
                     if foreign_key_filter:
                         join_values[i] = foreign_key_filter.filter(join_values[i])
             self.contexter.values[self.matcher_context_id] = self.loader.create_matcher(self.foreign_keys, join_values,
+                                                                                        is_yield=self.require_yield_values,
+                                                                                        intercept_valuer=self.intercept_valuer,
+                                                                                        valuer=self.return_valuer,
+                                                                                        contexter_values=self.contexter.values,
+                                                                                        return_value_wait_loaded=self.return_wait_loaded)
+
+        self.wait_try_load_count += 1
+        if self.wait_try_load_count >= self.join_batch:
+            contexter_values = self.contexter.values
+            try:
+                self.loader.try_load()
+            finally:
+                self.contexter.values = contexter_values
+            self.wait_try_load_count = 0
+        return self
+
+    def fill_args1(self, data):
+        if data.__class__ is not dict and isinstance(data, list):
+            if len(data) > 1:
+                return self.fill_list_data(data)
+            data = data[0] if data else None
+
+        if self.inherit_valuers:
+            for inherit_valuer in self.inherit_valuers:
+                inherit_valuer.fill(data)
+
+        value = self.args_valuer0_fill_get(data)
+        if value.__class__ is list:
+            if len(value) == 1:
+                if self.foreign_key_filters is not None and self.foreign_key_filters and self.foreign_key_filters[0]:
+                    value = [self.foreign_key_filters[0].filter(value[0])]
+                self.contexter.values[self.matcher_context_id] = self.loader.create_matcher(self.foreign_keys, value,
+                                                                                            is_yield=self.require_yield_values,
+                                                                                            intercept_valuer=self.intercept_valuer,
+                                                                                            valuer=self.return_valuer,
+                                                                                            contexter_values=self.contexter.values,
+                                                                                            return_value_wait_loaded=self.return_wait_loaded)
+            else:
+                self.contexter.values[self.matcher_context_id] = self.create_group_matcher([value])
+        else:
+            if self.foreign_key_filters is not None and self.foreign_key_filters and self.foreign_key_filters[0]:
+                value = self.foreign_key_filters[0].filter(value)
+            self.contexter.values[self.matcher_context_id] = self.loader.create_matcher(self.foreign_keys, [value],
                                                                                         is_yield=self.require_yield_values,
                                                                                         intercept_valuer=self.intercept_valuer,
                                                                                         valuer=self.return_valuer,
