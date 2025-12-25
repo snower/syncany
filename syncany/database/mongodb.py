@@ -229,7 +229,7 @@ class MongoUpdateBuilder(UpdateBuilder):
                 continue
             update[key] = value
         try:
-            return connection[self.db_name][self.collection_name].update_one({"$and": self.query} if self.query else {},
+            return connection[self.db_name][self.collection_name].update_many({"$and": self.query} if self.query else {},
                                                                              {"$set": update})
         finally:
             self.db.release_connection()
