@@ -327,7 +327,7 @@ class CoreTasker(Tasker):
                 self.config["schema"].pop(key)
 
     def compile_querys(self, config_querys):
-        def parse_exps(exps):
+        def parse_exps(exps, query_filter=None):
             result = []
             if isinstance(exps, dict):
                 for exp, value in exps.items():
@@ -336,13 +336,17 @@ class CoreTasker(Tasker):
                     except KeyError:
                         continue
                     ref_argument_name = value[1:] if isinstance(value, str) and value[:1] == "?" else None
-                    result.append({"exp": exp, "exp_name": exp_name,
-                                   "valuer": self.compile_valuer(value) if not ref_argument_name else None,
-                                   "ref_argument_name": ref_argument_name})
+                    if not ref_argument_name:
+                        valuer = self.compile_valuer(value)
+                        if valuer and query_filter:
+                            valuer["filter"] = query_filter
+                    else:
+                        valuer = None
+                    result.append({"exp": exp, "exp_name": exp_name, "valuer": valuer, "ref_argument_name": ref_argument_name})
             elif isinstance(exps, list):
                 for cexp in exps:
                     if isinstance(cexp, dict):
-                        result.extend(parse_exps(cexp))
+                        result.extend(parse_exps(cexp, query_filter))
                     else:
                         try:
                             exp_name = get_expression_name(cexp)
@@ -351,25 +355,30 @@ class CoreTasker(Tasker):
                         result.append({"exp": cexp, "exp_name": exp_name, "valuer": None, "ref_argument_name": None})
             else:
                 ref_argument_name = exps[1:] if isinstance(exps, str) and exps[:1] == "?" else None
-                result.append({"exp": "==", "exp_name": "eq",
-                               "valuer": self.compile_valuer(exps) if ref_argument_name else None,
-                               "ref_argument_name": ref_argument_name})
+                if not ref_argument_name:
+                    valuer = self.compile_valuer(exps)
+                    if valuer and query_filter:
+                        valuer["filter"] = query_filter
+                else:
+                    valuer = None
+                result.append({"exp": "==", "exp_name": "eq", "valuer": valuer, "ref_argument_name": ref_argument_name})
             return result
 
         if isinstance(config_querys, str):
-            keys = config_querys.split("|")
-            filters = (keys[1] if len(keys) >= 2 else "").split(" ")
+            key = self.compile_key("$." + config_querys)
+            if not key or key["instance"] != "$" or not key["key"]:
+                return []
             return [{
-                "name": keys[0],
+                "name": key["key"],
                 "exps": {"exp": "==", "exp_name": "eq", "valuer": None, "ref_argument_name": None},
-                "type": filters[0],
-                'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
+                "type": key["filter"]["name"] if key["filter"] else None,
+                'type_args': key["filter"]["args"] if key["filter"] else None
             }]
 
         if isinstance(config_querys, dict):
             if len(config_querys) == 4 and "name" in config_querys and "exps" in config_querys \
                     and "type" in config_querys and "type_args" in config_querys:
-                exps = parse_exps(config_querys["exps"])
+                exps = parse_exps(config_querys["exps"], {"name": config_querys["type"], "args": config_querys["type_args"]} if config_querys["type"] else None)
                 if not exps:
                     return []
                 config_querys["exps"] = exps
@@ -377,16 +386,17 @@ class CoreTasker(Tasker):
 
             querys = []
             for name, exps in config_querys.items():
-                keys = name.split("|")
-                exps = parse_exps(exps)
+                key = self.compile_key("$." + name)
+                if not key or key["instance"] != "$" or not key["key"]:
+                    continue
+                exps = parse_exps(exps, key["filter"])
                 if not exps:
                     continue
-                filters = (keys[1] if len(keys) >= 2 else "").split(" ")
                 querys.append({
-                    "name": keys[0],
+                    "name": key["key"],
                     "exps": exps,
-                    "type": filters[0],
-                    'type_args': (" ".join(filters[1:]) + "|".join(keys[2:])) if len(filters) >= 2 else None
+                    "type": key["filter"]["name"] if key["filter"] else None,
+                    'type_args': key["filter"]["args"] if key["filter"] else None
                 })
             return querys
 
@@ -397,7 +407,7 @@ class CoreTasker(Tasker):
                     querys.extend(self.compile_querys(cq))
                 elif isinstance(cq, dict) and len(cq) == 4 and "name" in cq \
                     and "exps" in cq and "type" in cq and "type_args" in cq:
-                    exps = parse_exps(cq["exps"])
+                    exps = parse_exps(cq["exps"], {"name": cq["type"], "args": cq["type_args"]} if cq["type"] else None)
                     if not exps:
                         continue
                     cq["exps"] = exps
