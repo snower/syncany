@@ -365,3 +365,10 @@ def human_repr_object(value):
     if isinstance(value, datetime_time):
         return 'datetime.time("%s")' % value.isoformat()
     return repr(value)
+
+def beautify_print(*args, **kwargs):
+    rich = get_rich()
+    if rich:
+        rich.get_console().print(markup=False, *args, **kwargs)
+    else:
+        print_object(*args, **kwargs)

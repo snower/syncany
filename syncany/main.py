@@ -9,8 +9,8 @@ import datetime
 import argparse
 import traceback
 import signal
-from .utils import print_object, get_rich, human_format_object, human_repr_object
-from .logger import get_logger
+from .utils import human_format_object, human_repr_object
+from .logger import get_logger, get_verbose_logger
 from .taskers.manager import TaskerManager
 from .taskers.core import CoreTasker
 from .database.database import DatabaseManager
@@ -18,12 +18,6 @@ from .database.database import DatabaseManager
 class TaskerYieldNext(object):
     pass
 
-def beautify_print(*args, **kwargs):
-    rich = get_rich()
-    if rich:
-        rich.get_console().print(markup=False, *args, **kwargs)
-    else:
-        print_object(*args, **kwargs)
 
 def warp_database_logging(tasker):
     def commit_warper(database, builder, func):
@@ -34,15 +28,15 @@ def warp_database_logging(tasker):
             finally:
                 database_verbose = database.verbose()
                 builder_verbose = builder.verbose()
-                beautify_print("%s %s %s -> %s<%s> %.2fms" % (datetime.datetime.now(), database.__class__.__name__,
+                get_verbose_logger()("%s %s %s -> %s<%s> %.2fms" % (datetime.datetime.now(), database.__class__.__name__,
                                                           database_verbose, builder.__class__.__name__, builder.name,
                                                           (time.time() - start_time) * 1000))
                 if builder_verbose:
                     if isinstance(builder_verbose, tuple):
                         for v in builder_verbose:
-                            beautify_print(v)
+                            get_verbose_logger()(v)
                     else:
-                        beautify_print(builder_verbose)
+                        get_verbose_logger()(builder_verbose)
                     print()
             return result
         return _
@@ -61,11 +55,11 @@ def warp_database_logging(tasker):
                 result = func(*args, **kwargs)
             finally:
                 database_verbose = database.verbose()
-                beautify_print("%s %s %s -> %s::%s<%s> %.2fms" % (datetime.datetime.now(), database.__class__.__name__,
+                get_verbose_logger()("%s %s %s -> %s::%s<%s> %.2fms" % (datetime.datetime.now(), database.__class__.__name__,
                                                           database_verbose, builder.__class__.__name__, name, builder.name,
                                                           (time.time() - start_time) * 1000))
-                beautify_print("args: " + human_repr_object(args + tuple(kwargs.items())))
-                beautify_print("result: " + human_repr_object(result))
+                get_verbose_logger()("args: " + human_repr_object(args + tuple(kwargs.items())))
+                get_verbose_logger()("result: " + human_repr_object(result))
                 print()
             return result
         return _
@@ -195,7 +189,7 @@ def fix_print_outputer(tasker, register_aps, arguments):
 def show_tasker(tasker):
     config = {key: value for key, value in tasker.config.items()}
     config["schema"] = tasker.schema
-    beautify_print(human_format_object(config))
+    get_verbose_logger()(human_format_object(config))
 
 def show_dependency_tasker(tasker, dependency_taskers):
     for dependency_tasker in dependency_taskers:
