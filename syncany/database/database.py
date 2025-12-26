@@ -301,7 +301,16 @@ class DataBase(object):
     def get_config_key(self):
         if self.config_key is not None:
             return self.config_key
-        self.config_key = "%s::%s" % (self.__class__.__name__, self.name)
+        if self.config and isinstance(self.config, dict):
+            def format_sorted_key(value):
+                if isinstance(value, (list, tuple, set)):
+                    return "".join([format_sorted_key(v) for v in value])
+                if isinstance(value, dict):
+                    return "&".join(["%s=%s" % (key, format_sorted_key(self.config[key])) for key in sorted(self.config.keys())])
+                return str(value)
+            self.config_key = self.__class__.__name__ + "://" + format_sorted_key(self.config)
+        else:
+            self.config_key = self.__class__.__name__ + "://name=" + self.name
         return self.config_key
 
     def build_factory(self):
@@ -421,7 +430,7 @@ class DatabaseFactory(object):
 
 
 class DatabaseManager(object):
-    def __init__(self, idle_timeout=7200, ping_idle_timeout=300):
+    def __init__(self, idle_timeout=900, ping_idle_timeout=300):
         self.factorys = {}
         self.states = {}
         self.lock = threading.Lock()

@@ -319,9 +319,6 @@ class MongoDB(DataBase):
         "host": "127.0.0.1",
         "port": 27017,
         "tz_aware": True,
-        "maxPoolSize": 4,
-        "maxIdleTimeMS": 7200000,
-        "readPreference": "secondaryPreferred",
     }
 
     def __init__(self, manager, config):
