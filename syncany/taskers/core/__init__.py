@@ -1302,7 +1302,7 @@ class CoreTasker(Tasker):
             datas = self.loader.datas
         else:
             datas = self.loader.get()
-        datas = self.run_loaded_hooks(datas)
+        datas = self.run_loaded_hooks(datas) or []
         self.print_loaded_statistics(self.join_loaders.values(), self.status["statistics"]["join_loaders"])
 
         self.outputer.store(datas)
