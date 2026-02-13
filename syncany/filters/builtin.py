@@ -25,10 +25,13 @@ class IntFilter(Filter):
         if isinstance(value, float):
             return int(value)
 
+        if value is None:
+            return None
+
         if value is True:
             return 1
 
-        if value is None or value is False:
+        if value is False:
             return 0
 
         if isinstance(value, datetime.datetime):
@@ -78,10 +81,13 @@ class FloatFilter(Filter):
         if isinstance(value, int):
             return float(value)
 
+        if value is None:
+            return None
+
         if value is True:
             return 1.0
 
-        if value is None or value is False:
+        if value is False:
             return 0.0
 
         if isinstance(value, datetime.datetime):
@@ -134,10 +140,13 @@ class DecimalFilter(Filter):
         if isinstance(value, int):
             return Decimal(value)
 
+        if value is None:
+            return None
+
         if value is True:
             return Decimal(1.0)
 
-        if value is None or value is False:
+        if value is False:
             return Decimal(0.0)
 
         if isinstance(value, datetime.datetime):
@@ -185,7 +194,7 @@ class StringFilter(Filter):
             return value
 
         if value is None:
-            return ""
+            return None
 
         if value is True:
             return "true"
@@ -267,7 +276,7 @@ class BytesFilter(Filter):
             return value
 
         if value is None:
-            return b""
+            return None
 
         if value is True:
             return b"true"
@@ -344,6 +353,9 @@ class BytesFilter(Filter):
 
 class BooleanFilter(Filter):
     def filter(self, value):
+        if value is None:
+            return None
+
         if value is True or value is False:
             return value
 
@@ -388,7 +400,7 @@ class ArrayFilter(Filter):
             return list(value)
 
         if value is None:
-            return []
+            return None
 
         if isinstance(value, types.GeneratorType):
             values = []
@@ -410,13 +422,16 @@ class SetFilter(Filter):
             return set(value)
 
         if value is None:
-            return set([])
+            return None
 
         return {value}
 
 
 class MapFilter(Filter):
     def filter(self, value):
+        if value is None:
+            return None
+
         if not value:
             return {}
 
@@ -478,7 +493,7 @@ class ObjectIdFilter(Filter):
             return value
 
         if value is None:
-            return ObjectId("000000000000000000000000")
+            return None
 
         if value is True:
             return ObjectId("ffffffffffffffffffffffff")
@@ -525,7 +540,7 @@ class UUIDFilter(Filter):
             return value
 
         if value is None:
-            return uuid.UUID("00000000-0000-0000-0000-000000000000")
+            return None
 
         if value is True:
             return uuid.UUID("ffffffff-ffff-ffff-ffff-ffffffffffff")

@@ -19,14 +19,16 @@ class ConvertIntCalculater(Calculater):
         if isinstance(args[0], list):
             result = []
             for data in args[0]:
+                if data is None:
+                    continue
                 try:
                     value = int(data)
                 except:
                     value = self.filter.filter(data)
-                    if value == 0:
-                        continue
                 result.append(value)
             return result if result else [0]
+        if args[0] is None:
+            return 0
         return self.filter.filter(args[0])
 
     def get_final_filter(self):
@@ -47,14 +49,16 @@ class ConvertFloatCalculater(Calculater):
         if isinstance(args[0], list):
             result = []
             for data in args[0]:
+                if data is None:
+                    continue
                 try:
                     value = float(data)
                 except:
                     value = self.filter.filter(data)
-                    if value == 0:
-                        continue
                 result.append(value)
             return result if result else [0.0]
+        if args[0] is None:
+            return 0.0
         return self.filter.filter(args[0])
 
     def get_final_filter(self):
@@ -75,14 +79,16 @@ class ConvertDecimalCalculater(Calculater):
         if isinstance(args[0], list):
             result = []
             for data in args[0]:
+                if data is None:
+                    continue
                 try:
                     value = Decimal(data)
                 except:
                     value = self.filter.filter(data)
-                    if value == 0:
-                        continue
                 result.append(value)
             return result if result else [Decimal(0.0)]
+        if args[0] is None:
+            return Decimal(0.0)
         return self.filter.filter(args[0])
 
     def get_final_filter(self):
@@ -101,7 +107,9 @@ class ConvertStringCalculater(Calculater):
 
         self.filter.args = args[1] if len(args) >= 2 else None
         if isinstance(args[0], list):
-            return [self.filter.filter(data) for data in args[0]]
+            return [self.filter.filter(data) for data in args[0] if data is not None]
+        if args[0] is None:
+            return ''
         return self.filter.filter(args[0])
 
     def get_final_filter(self):
@@ -120,7 +128,9 @@ class ConvertBytesCalculater(Calculater):
 
         self.filter.args = args[1] if len(args) >= 2 else None
         if isinstance(args[0], list):
-            return [self.filter.filter(data) for data in args[0]]
+            return [self.filter.filter(data) for data in args[0] if data is not None]
+        if args[0] is None:
+            return b''
         return self.filter.filter(args[0])
 
     def get_final_filter(self):
@@ -139,7 +149,9 @@ class ConvertBooleanCalculater(Calculater):
 
         self.filter.args = args[1] if len(args) >= 2 else None
         if isinstance(args[0], list):
-            return [self.filter.filter(data) for data in args[0]]
+            return [self.filter.filter(data) for data in args[0] if data is not None]
+        if args[0] is None:
+            return False
         return self.filter.filter(args[0])
 
     def get_final_filter(self):
@@ -156,6 +168,8 @@ class ConvertArrayCalculater(Calculater):
         if not args:
             return []
         self.filter.args = args[1] if len(args) >= 2 else None
+        if args[0] is None:
+            return []
         return self.filter.filter(args[0])
 
     def get_final_filter(self):
@@ -170,8 +184,10 @@ class ConvertSetCalculater(Calculater):
 
     def calculate(self, *args):
         if not args:
-            return []
+            return set([])
         self.filter.args = args[1] if len(args) >= 2 else None
+        if args[0] is None:
+            return set([])
         return self.filter.filter(args[0])
 
     def get_final_filter(self):
@@ -188,6 +204,8 @@ class ConvertMapCalculater(Calculater):
         if not args:
             return {}
         self.filter.args = args[1] if len(args) >= 2 else None
+        if args[0] is None:
+            return {}
         return self.filter.filter(args[0])
 
     def get_final_filter(self):
@@ -211,14 +229,16 @@ class ConvertObjectIdCalculater(Calculater):
         if isinstance(args[0], list):
             result = []
             for data in args[0]:
+                if data is None:
+                    continue
                 try:
                     value = ObjectId(data)
                 except:
                     value = self.filter.filter(data)
-                    if value == default_value:
-                        continue
                 result.append(value)
             return result if result else [default_value]
+        if args[0] is None:
+            return default_value
         return self.filter.filter(args[0])
 
     def get_final_filter(self):
@@ -240,14 +260,16 @@ class ConvertUUIDCalculater(Calculater):
         if isinstance(args[0], list):
             result = []
             for data in args[0]:
+                if data is None:
+                    continue
                 try:
                     value = uuid.UUID(data)
                 except:
                     value = self.filter.filter(data)
-                    if value == default_value:
-                        continue
                 result.append(value)
             return result if result else [default_value]
+        if args[0] is None:
+            return default_value
         return self.filter.filter(args[0])
 
     def get_final_filter(self):
@@ -268,11 +290,13 @@ class ConvertDateTimeCalculater(Calculater):
         if isinstance(args[0], list):
             result = []
             for data in args[0]:
-                value = self.filter.filter(data)
-                if value is None:
+                if data is None:
                     continue
+                value = self.filter.filter(data)
                 result.append(value)
             return result if result else [None]
+        if args[0] is None:
+            return None
         return self.filter.filter(args[0])
 
     def get_final_filter(self):
@@ -293,11 +317,13 @@ class ConvertDateCalculater(Calculater):
         if isinstance(args[0], list):
             result = []
             for data in args[0]:
-                value = self.filter.filter(data)
-                if value is None:
+                if data is None:
                     continue
+                value = self.filter.filter(data)
                 result.append(value)
             return result if result else [None]
+        if args[0] is None:
+            return None
         return self.filter.filter(args[0])
 
     def get_final_filter(self):
@@ -318,11 +344,13 @@ class ConvertTimeCalculater(Calculater):
         if isinstance(args[0], list):
             result = []
             for data in args[0]:
-                value = self.filter.filter(data)
-                if value is None:
+                if data is None:
                     continue
+                value = self.filter.filter(data)
                 result.append(value)
             return result if result else [None]
+        if args[0] is None:
+            return None
         return self.filter.filter(args[0])
 
     def get_final_filter(self):
