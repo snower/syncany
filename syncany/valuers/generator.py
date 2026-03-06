@@ -260,9 +260,11 @@ class YieldValuer(Valuer):
 
         if self.filter:
             return self.filter
-        return None
+        return self.get_child_filter()
 
     def get_child_filter(self):
+        if self.value_valuer:
+            return self.value_valuer.get_child_filter()
         return None
 
     def is_yield(self):
