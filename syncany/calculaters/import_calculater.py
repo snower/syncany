@@ -19,11 +19,20 @@ except ImportError:
 IMPORT_MODULES = {}
 
 
+def typing_return(return_type):
+    def _(module_or_func):
+        setattr(module_or_func, "return_type", return_type)
+        return module_or_func
+    return _
+
+
 def parse_final_filter(module_or_func):
     if not callable(module_or_func):
         return None
     return_type = None
-    if isinstance(module_or_func, (types.FunctionType, types.BuiltinFunctionType, types.LambdaType)):
+    if hasattr(module_or_func, "return_type"):
+        return_type = module_or_func.return_type
+    elif isinstance(module_or_func, (types.FunctionType, types.BuiltinFunctionType, types.LambdaType)):
         if hasattr(module_or_func, "__annotations__"):
             return_type = module_or_func.__annotations__.get("return")
     else:
