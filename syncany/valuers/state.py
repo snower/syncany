@@ -30,6 +30,7 @@ class StateValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def mount_scoper(self, scoper=None, is_return_getter=False,**kwargs):
+        self.optimize_filter()
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
@@ -144,7 +145,9 @@ class StateValuer(Valuer):
 
         if self.filter:
             return self.filter
+        return self.get_child_filter()
 
+    def get_child_filter(self):
         if self.calculate_valuer:
             return self.calculate_valuer.get_final_filter()
         if self.default_valuer:
@@ -162,6 +165,7 @@ class ContextStateValuer(StateValuer):
         super(ContextStateValuer, self).__init__(*args, **kwargs)
 
     def optimize(self):
+        Valuer.optimize(self)
         if not self.calculate_wait_loaded and not self.default_wait_loaded and not self.wait_loaded:
             self.fill = self.defer_fill
             self.get = self.defer_get

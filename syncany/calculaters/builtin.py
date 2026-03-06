@@ -62,6 +62,9 @@ class MakeCalculater(Calculater):
     def calculate(self, *args):
         return args
 
+    def get_final_filter(self):
+        return ArrayFilter.default()
+
 
 class IsNullCalculater(Calculater):
     def calculate(self, data=None):
@@ -73,6 +76,9 @@ class IsNullCalculater(Calculater):
                     return False
             return True
         return data is None
+
+    def get_final_filter(self):
+        return BooleanFilter.default()
 
 
 class IsIntCalculater(Calculater):
@@ -90,6 +96,9 @@ class IsIntCalculater(Calculater):
             return default_result
         return isinstance(data, int)
 
+    def get_final_filter(self):
+        return BooleanFilter.default()
+
 
 class IsFloatCalculater(Calculater):
     def calculate(self, data=None):
@@ -105,6 +114,9 @@ class IsFloatCalculater(Calculater):
                     return False
             return default_result
         return isinstance(data, float)
+
+    def get_final_filter(self):
+        return BooleanFilter.default()
 
 
 class IsDecimalCalculater(Calculater):
@@ -122,6 +134,9 @@ class IsDecimalCalculater(Calculater):
             return default_result
         return isinstance(data, Decimal)
 
+    def get_final_filter(self):
+        return BooleanFilter.default()
+
 
 class IsNumberCalculater(Calculater):
     def calculate(self, data=None):
@@ -137,6 +152,9 @@ class IsNumberCalculater(Calculater):
                     return False
             return default_result
         return isinstance(data, NumberDecimalTypes)
+
+    def get_final_filter(self):
+        return BooleanFilter.default()
 
 
 class IsStringCalculater(Calculater):
@@ -154,6 +172,9 @@ class IsStringCalculater(Calculater):
             return default_result
         return isinstance(data, str)
 
+    def get_final_filter(self):
+        return BooleanFilter.default()
+
 
 class IsBytesCalculater(Calculater):
     def calculate(self, data=None):
@@ -169,6 +190,9 @@ class IsBytesCalculater(Calculater):
                     return False
             return default_result
         return isinstance(data, bytes)
+
+    def get_final_filter(self):
+        return BooleanFilter.default()
 
 
 class IsBooleanCalculater(Calculater):
@@ -186,6 +210,9 @@ class IsBooleanCalculater(Calculater):
             return default_result
         return isinstance(data, bool)
 
+    def get_final_filter(self):
+        return BooleanFilter.default()
+
 
 class IsArrayCalculater(Calculater):
     def calculate(self, data=None):
@@ -193,12 +220,18 @@ class IsArrayCalculater(Calculater):
             return False
         return isinstance(data, list)
 
+    def get_final_filter(self):
+        return BooleanFilter.default()
+
 
 class IsSetCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
             return False
         return isinstance(data, set)
+
+    def get_final_filter(self):
+        return BooleanFilter.default()
 
 
 class IsMapCalculater(Calculater):
@@ -215,6 +248,9 @@ class IsMapCalculater(Calculater):
                     return False
             return default_result
         return isinstance(data, dict)
+
+    def get_final_filter(self):
+        return BooleanFilter.default()
 
 
 class IsObjectIdCalculater(Calculater):
@@ -235,6 +271,9 @@ class IsObjectIdCalculater(Calculater):
             return default_result
         return isinstance(data, ObjectId)
 
+    def get_final_filter(self):
+        return BooleanFilter.default()
+
 
 class IsUUIDCalculater(Calculater):
     def calculate(self, data=None):
@@ -250,6 +289,9 @@ class IsUUIDCalculater(Calculater):
                     return False
             return default_result
         return isinstance(data, uuid.UUID)
+
+    def get_final_filter(self):
+        return BooleanFilter.default()
 
 
 class IsDateTimeCalculater(Calculater):
@@ -267,6 +309,9 @@ class IsDateTimeCalculater(Calculater):
             return default_result
         return isinstance(data, datetime.datetime)
 
+    def get_final_filter(self):
+        return BooleanFilter.default()
+
 
 class IsDateCalculater(Calculater):
     def calculate(self, data=None):
@@ -282,6 +327,9 @@ class IsDateCalculater(Calculater):
                     return False
             return default_result
         return isinstance(data, datetime.date)
+
+    def get_final_filter(self):
+        return BooleanFilter.default()
 
 
 class IsTimeCalculater(Calculater):
@@ -299,6 +347,9 @@ class IsTimeCalculater(Calculater):
             return default_result
         return isinstance(data, datetime.time)
 
+    def get_final_filter(self):
+        return BooleanFilter.default()
+
 
 class IsCalculater(MathematicalCalculater):
     def calculate(self, *args):
@@ -309,6 +360,9 @@ class IsCalculater(MathematicalCalculater):
 
     def mathematical_calculate(self, left_value, right_value, args):
         return left_value is right_value
+
+    def get_final_filter(self):
+        return BooleanFilter.default()
 
 
 class RangeCalculater(Calculater):
@@ -327,6 +381,9 @@ class AddCalculater(MathematicalCalculater):
             return 0 if left_value is None else left_value
         return left_value + right_value
 
+    def is_same_filter(self):
+        return True
+
 
 class SubCalculater(MathematicalCalculater):
     def mathematical_calculate(self, left_value, right_value, args):
@@ -336,6 +393,9 @@ class SubCalculater(MathematicalCalculater):
             return 0 if left_value is None else left_value
         return left_value - right_value
 
+    def is_same_filter(self):
+        return True
+
 
 class MulCalculater(MathematicalCalculater):
     def mathematical_calculate(self, left_value, right_value, args):
@@ -344,6 +404,9 @@ class MulCalculater(MathematicalCalculater):
         if right_value is None:
             return 0 if left_value is None else left_value
         return left_value * right_value
+
+    def is_same_filter(self):
+        return True
 
 
 class DivCalculater(MathematicalCalculater):
@@ -356,6 +419,9 @@ class DivCalculater(MathematicalCalculater):
             return 0
         return left_value / right_value
 
+    def is_same_filter(self):
+        return True
+
 
 class ModCalculater(MathematicalCalculater):
     def mathematical_calculate(self, left_value, right_value, args):
@@ -366,6 +432,9 @@ class ModCalculater(MathematicalCalculater):
         if right_value == 0:
             return 0
         return left_value % right_value
+
+    def is_same_filter(self):
+        return True
 
 
 class BitCalculater(MathematicalCalculater):
@@ -402,6 +471,9 @@ class BitCalculater(MathematicalCalculater):
             return left_value ^ right_value
         return None
 
+    def is_same_filter(self):
+        return True
+
 
 class NegCalculater(TypingCalculater):
     def typing_calculate(self, value, args):
@@ -415,10 +487,16 @@ class NegCalculater(TypingCalculater):
             return True if value is False else False
         return value
 
+    def is_same_filter(self):
+        return True
+
 
 class NotCalculater(TypingCalculater):
     def typing_calculate(self, value, args):
         return not value
+
+    def get_final_filter(self):
+        return BooleanFilter.default()
 
 
 class SubstringCalculater(TypingCalculater):
@@ -534,6 +612,9 @@ class EmptyCalculater(Calculater):
             return True
         return bool(args[0])
 
+    def get_final_filter(self):
+        return BooleanFilter.default()
+
 
 class ContainCalculater(Calculater):
     def calculate(self, *args):
@@ -551,6 +632,9 @@ class ContainCalculater(Calculater):
         if args[0] is None:
             return False
         return args[1] in args[0]
+
+    def get_final_filter(self):
+        return BooleanFilter.default()
 
 
 class GtCalculater(TypeFormatCalculater):
@@ -578,6 +662,9 @@ class GtCalculater(TypeFormatCalculater):
             left_value, right_value = right_value, None
         return True
 
+    def get_final_filter(self):
+        return BooleanFilter.default()
+
 
 class GteCalculater(TypeFormatCalculater):
     def cmp(self, left_value, right_value):
@@ -603,6 +690,9 @@ class GteCalculater(TypeFormatCalculater):
                 return False
             left_value, right_value = right_value, None
         return True
+
+    def get_final_filter(self):
+        return BooleanFilter.default()
 
 
 class LtCalculater(TypeFormatCalculater):
@@ -630,6 +720,9 @@ class LtCalculater(TypeFormatCalculater):
             left_value, right_value = right_value, None
         return True
 
+    def get_final_filter(self):
+        return BooleanFilter.default()
+
 
 class LteCalculater(TypeFormatCalculater):
     def cmp(self, left_value, right_value):
@@ -655,6 +748,9 @@ class LteCalculater(TypeFormatCalculater):
                 return False
             left_value, right_value = right_value, None
         return True
+
+    def get_final_filter(self):
+        return BooleanFilter.default()
 
 
 class EqCalculater(TypeFormatCalculater):
@@ -682,6 +778,9 @@ class EqCalculater(TypeFormatCalculater):
             left_value, right_value = right_value, None
         return True
 
+    def get_final_filter(self):
+        return BooleanFilter.default()
+
 
 class NeqCalculater(TypeFormatCalculater):
     def cmp(self, left_value, right_value):
@@ -708,6 +807,9 @@ class NeqCalculater(TypeFormatCalculater):
             left_value, right_value = right_value, None
         return True
 
+    def get_final_filter(self):
+        return BooleanFilter.default()
+
 
 class AndCalculater(Calculater):
     def calculate(self, *args):
@@ -720,6 +822,9 @@ class AndCalculater(Calculater):
             result = value if result is None else (result and value)
         return result
 
+    def is_same_filter(self):
+        return True
+
 
 class OrCalculater(Calculater):
     def calculate(self, *args):
@@ -731,6 +836,9 @@ class OrCalculater(Calculater):
                 continue
             result = value if result is None else (result or value)
         return result
+
+    def is_same_filter(self):
+        return True
 
 
 class InCalculater(Calculater):
@@ -745,6 +853,9 @@ class InCalculater(Calculater):
         except:
             return False
         return True
+
+    def get_final_filter(self):
+        return BooleanFilter.default()
 
 
 class MaxCalculater(TypeFormatCalculater):
@@ -797,6 +908,9 @@ class MaxCalculater(TypeFormatCalculater):
             return self.max([max_key_value] + list(args[1:]))
         return max_key_value
 
+    def is_same_filter(self):
+        return True
+
 
 class MinCalculater(TypeFormatCalculater):
     def min(self, values):
@@ -848,6 +962,9 @@ class MinCalculater(TypeFormatCalculater):
             return self.min([min_key_value] + list(args[1:]))
         return min_key_value
 
+    def is_same_filter(self):
+        return True
+
 
 class LenCalculater(Calculater):
     def calculate(self, *args):
@@ -857,6 +974,9 @@ class LenCalculater(Calculater):
         if isinstance(args[0], list):
             return [len(value) for value in args[0]]
         return len(args[0])
+
+    def get_final_filter(self):
+        return IntFilter.default()
 
 
 class AbsCalculater(Calculater):
@@ -879,6 +999,9 @@ class AbsCalculater(Calculater):
         if not args:
             return 0
         return self.abs(args[0])
+
+    def get_final_filter(self):
+        return FloatFilter.default()
 
 
 class IndexCalculater(Calculater):
@@ -912,6 +1035,9 @@ class IndexCalculater(Calculater):
 
         return None
 
+    def is_same_filter(self):
+        return True
+
 
 class FilterCalculater(Calculater):
     def calculate(self, *args):
@@ -939,6 +1065,9 @@ class FilterCalculater(Calculater):
         elif args[1] == args[0]:
             result.append(args[0])
         return result
+
+    def is_same_filter(self):
+        return True
 
 
 class SumCalculater(Calculater):
@@ -976,6 +1105,9 @@ class SumCalculater(Calculater):
         else:
             result += self.add(args[0])
         return result
+
+    def is_same_filter(self):
+        return True
 
 
 class SortCalculater(Calculater):
@@ -1018,6 +1150,9 @@ class StringCalculater(Calculater):
                     return ''
         return ''
 
+    def get_final_filter(self):
+        return StringFilter.default()
+
 
 class ObjectIdCalculater(Calculater):
     def __init__(self, *args, **kwargs):
@@ -1035,6 +1170,9 @@ class ObjectIdCalculater(Calculater):
                 return getattr(args[0], func_name)(*tuple(args[1:]))
             return None
         return ObjectId(*args)
+
+    def get_final_filter(self):
+        return ObjectIdFilter.default()
 
     def is_realtime_calculater(self):
         return True
@@ -1060,6 +1198,9 @@ class UUIDCalculater(Calculater):
             if func_name == "uuid5":
                 return uuid.uuid5(*args)
         return uuid.UUID(*args)
+
+    def get_final_filter(self):
+        return UUIDFilter.default()
 
     def is_realtime_calculater(self):
         return True
@@ -1117,6 +1258,9 @@ class SnowflakeIdCalculater(Calculater):
         if len(args) <= 3:
             return self.next_id(*args)
         return self.next_id(args[:3])
+
+    def get_final_filter(self):
+        return IntFilter.default()
 
     def is_realtime_calculater(self):
         return True
@@ -1239,6 +1383,9 @@ class ArrayCalculater(Calculater):
         except:
             return None
 
+    def get_final_filter(self):
+        return ArrayFilter.default()
+
 
 class MapCalculater(Calculater):
     def calculate(self, *args):
@@ -1260,6 +1407,9 @@ class MapCalculater(Calculater):
             except:
                 return None
         return None
+
+    def get_final_filter(self):
+        return MapFilter.default()
 
 
 class MathCalculater(Calculater):
@@ -1286,6 +1436,9 @@ class MathCalculater(Calculater):
                 return 0
         return 0
 
+    def get_final_filter(self):
+        return FloatFilter.default()
+
 
 class HashCalculater(Calculater):
     def calculate(self, *args):
@@ -1307,6 +1460,9 @@ class HashCalculater(Calculater):
         if self.name == "hash::sha512":
             return hashlib.sha512(b).hexdigest()
         return None
+
+    def get_final_filter(self):
+        return StringFilter.default()
 
 
 class JsonCalculater(Calculater):

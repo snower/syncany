@@ -30,6 +30,7 @@ class YieldValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def mount_scoper(self, scoper=None, is_return_getter=True,yield_valuers=None, **kwargs):
+        self.optimize_filter()
         if yield_valuers is None:
             yield_valuers = []
         yield_valuers.append(self)
@@ -261,6 +262,9 @@ class YieldValuer(Valuer):
             return self.filter
         return None
 
+    def get_child_filter(self):
+        return None
+
     def is_yield(self):
         return True
 
@@ -274,6 +278,7 @@ class ContextYieldValuer(YieldValuer):
         super(ContextYieldValuer, self).__init__(*args, **kwargs)
 
     def optimize(self):
+        Valuer.optimize(self)
         if not self.value_wait_loaded and not self.wait_loaded:
             self.fill = self.defer_fill
             self.get = self.defer_get

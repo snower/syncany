@@ -28,6 +28,7 @@ class LetValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def mount_scoper(self, scoper=None, is_return_getter=True,**kwargs):
+        self.optimize_filter()
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
@@ -127,6 +128,9 @@ class LetValuer(Valuer):
             return self.filter
         return None
 
+    def get_child_filter(self):
+        return None
+
 
 class ContextLetValuer(LetValuer):
     def __init__(self, *args, **kwargs):
@@ -136,6 +140,7 @@ class ContextLetValuer(LetValuer):
         super(ContextLetValuer, self).__init__(*args, **kwargs)
 
     def optimize(self):
+        Valuer.optimize(self)
         if not self.key_wait_loaded and not self.wait_loaded:
             self.fill = self.defer_fill
             self.get = self.defer_get

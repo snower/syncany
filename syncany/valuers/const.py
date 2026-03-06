@@ -17,6 +17,7 @@ class ConstValuer(Valuer):
         self.value = self.do_filter(self.value)
 
     def mount_scoper(self, scoper=None, is_return_getter=False,**kwargs):
+        self.optimize_filter()
         self.optimize()
 
     def clone(self, contexter=None, **kwargs):
@@ -37,6 +38,9 @@ class ConstValuer(Valuer):
                 value = ensure_timezone(value)
             return value
         return self.filter.filter(value)
+
+    def get_child_filter(self):
+        return None
 
     def require_loaded(self):
         return False

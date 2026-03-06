@@ -45,6 +45,7 @@ class DBJoinValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def mount_scoper(self, scoper=None, is_return_getter=True,db_join_valuers=None, loader=None, **kwargs):
+        self.optimize_filter()
         self.loader.primary_loader = loader
         if is_return_getter:
             self.require_yield_values = True
@@ -66,6 +67,7 @@ class DBJoinValuer(Valuer):
         self.optimize()
 
     def optimize(self):
+        Valuer.optimize(self)
         if self.args_valuers and len(self.args_valuers) == 1:
             self.args_valuer0_fill_get = self.args_valuers[0].fill_get
             self.fill = self.fill_args1
@@ -321,6 +323,9 @@ class DBJoinValuer(Valuer):
             return self.return_valuer.get_final_filter()
         return None
 
+    def get_child_filter(self):
+        return None
+
     def is_const(self):
         return False
 
@@ -336,6 +341,7 @@ class ContextDBJoinValuer(DBJoinValuer):
         super(ContextDBJoinValuer, self).__init__(*args, **kwargs)
 
     def optimize(self):
+        Valuer.optimize(self)
         if self.args_valuers and len(self.args_valuers) == 1:
             self.args_valuer0_fill_get = self.args_valuers[0].fill_get
             self.fill = self.fill_args1

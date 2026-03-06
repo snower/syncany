@@ -28,6 +28,7 @@ class InheritValuer(Valuer):
         return self.child_valuer
 
     def mount_scoper(self, scoper=None, is_return_getter=True,**kwargs):
+        self.optimize_filter()
         if self.value_valuer:
             self.value_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
         self.optimize()
@@ -84,6 +85,9 @@ class InheritValuer(Valuer):
         return self.value_valuer.get_fields()
 
     def get_final_filter(self):
+        return None
+
+    def get_child_filter(self):
         return None
 
     def require_loaded(self):
@@ -160,6 +164,7 @@ class InheritChildValuer(Valuer):
         self.value_wait_loaded = from_valuer.value_wait_loaded
 
     def mount_scoper(self, scoper=None, is_return_getter=True, **kwargs):
+        self.optimize_filter()
         self.optimize()
 
     def clone(self, contexter=None, **kwargs):
@@ -211,6 +216,9 @@ class InheritChildValuer(Valuer):
             if self.filter:
                 return self.filter
             return None
+        return self.get_child_filter()
+
+    def get_child_filter(self):
         return self.value_valuer.get_final_filter()
 
     def require_loaded(self):

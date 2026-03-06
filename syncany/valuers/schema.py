@@ -11,6 +11,7 @@ class SchemaValuer(Valuer):
         super(SchemaValuer, self).__init__(*args, **kwargs)
 
     def mount_scoper(self, scoper=None, is_return_getter=True,**kwargs):
+        self.optimize_filter()
         for name, valuer in self.schema_valuers.items():
             valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
         self.optimize()
@@ -58,6 +59,9 @@ class SchemaValuer(Valuer):
         return fields
 
     def get_final_filter(self):
+        return None
+
+    def get_child_filter(self):
         return None
 
 

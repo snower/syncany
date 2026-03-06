@@ -121,6 +121,11 @@ class ImportCalculater(Calculater):
             return self.module_or_func.get_final_filter()
         return parse_final_filter(self.module_or_func)
 
+    def is_same_filter(self):
+        if hasattr(self.module_or_func, "is_same_filter"):
+            return self.module_or_func.is_same_filter()
+        return None
+
 
 def create_import_calculater(name, module_or_func):
     module_id = (name, id(module_or_func))

@@ -28,6 +28,7 @@ class MakeValuer(Valuer):
         self.return_is_aggregate = from_valuer.return_is_aggregate
 
     def optimize(self):
+        Valuer.optimize(self)
         if not isinstance(self.value_valuer, dict):
             return
         value_valuer_count = len(self.value_valuer)
@@ -109,6 +110,7 @@ class MakeValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def mount_scoper(self, scoper=None, is_return_getter=True,**kwargs):
+        self.optimize_filter()
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
@@ -554,10 +556,11 @@ class MakeValuer(Valuer):
 
         if self.filter:
             return self.filter
+        return self.get_child_filter()
 
+    def get_child_filter(self):
         if isinstance(self.value_valuer, Valuer):
             return self.value_valuer.get_final_filter()
-
         return None
 
 

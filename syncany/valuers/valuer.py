@@ -156,6 +156,7 @@ class Valuer(object):
             self.valuer_id = from_valuer.valuer_id
             self.clone_init(from_valuer)
             if self.optimized:
+                self.optimize_filter()
                 self.optimize()
 
     def update_key(self, key):
@@ -203,12 +204,22 @@ class Valuer(object):
         self.KEY_GETTER_CACHES[self.key] = self.key_getters
 
     def mount_scoper(self, scoper=None, is_return_getter=False,**kwargs):
+        self.optimize_filter()
         for valuer in self.childs():
             valuer.mount_scoper(scoper=scoper, **kwargs)
         self.optimize()
 
     def optimize(self):
         pass
+
+    def optimize_filter(self):
+        if self.filter is None:
+            return
+        child_filter = self.get_child_filter()
+        if child_filter is None:
+            return
+        if child_filter.__class__ == self.filter.__class__:
+            self.filter = None
 
     def clone(self, contexter=None, **kwargs):
         if contexter is not None:
@@ -294,6 +305,17 @@ class Valuer(object):
 
     def get_final_filter(self):
         return self.filter
+
+    def get_child_filter(self):
+        final_filter = None
+        for valuer in self.get_fields():
+            filter = valuer.get_final_filter()
+            if filter is None:
+                return None
+            if final_filter is not None and final_filter.__class__ != filter.__class__:
+                return None
+            final_filter = filter
+        return final_filter
 
     def require_loaded(self):
         if hasattr(self, "_cached_require_loaded"):

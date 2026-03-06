@@ -28,6 +28,7 @@ class CalculateValuer(Valuer):
         self.wait_loaded = from_valuer.wait_loaded
 
     def optimize(self):
+        Valuer.optimize(self)
         if self.args_wait_loaded or self.wait_loaded or self.filter:
             return
         args_count = len(self.args_valuers)
@@ -74,6 +75,7 @@ class CalculateValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def mount_scoper(self, scoper=None, is_return_getter=True,**kwargs):
+        self.optimize_filter()
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
@@ -228,15 +230,18 @@ class CalculateValuer(Valuer):
 
         if self.filter:
             return self.filter
+        return self.get_child_filter()
 
+    def get_child_filter(self):
         final_filter = self.calculater.get_final_filter()
         if final_filter is not None:
             return final_filter
+        if self.calculater.is_same_filter() is not True:
+            return None
         for valuer in self.args_valuers:
             filter = valuer.get_final_filter()
             if filter is None:
                 continue
-
             if final_filter is not None and final_filter.__class__ != filter.__class__:
                 return None
             final_filter = filter

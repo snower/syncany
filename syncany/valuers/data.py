@@ -21,6 +21,7 @@ class DataValuer(Valuer):
     def update_key(self, key):
         super(DataValuer, self).update_key(key)
         if self.optimized:
+            self.optimize_filter()
             self.optimize()
 
     def new_init(self):
@@ -35,6 +36,7 @@ class DataValuer(Valuer):
         self.data_scoper = from_valuer.data_scoper
 
     def optimize(self):
+        Valuer.optimize(self)
         if not self.key:
             self.fill = self.fill_none
             self.fill_get = self.fill_get_none
@@ -72,6 +74,7 @@ class DataValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def mount_scoper(self, scoper=None, is_return_getter=True, **kwargs):
+        self.optimize_filter()
         if scoper is not None:
             self.data_scoper = weakref.proxy(scoper)
         if self.inherit_valuers:
@@ -339,6 +342,9 @@ class DataValuer(Valuer):
         if self.return_valuer:
             return self.return_valuer.get_final_filter()
         return self.filter
+
+    def get_child_filter(self):
+        return None
 
     def require_loaded(self):
         if self.return_valuer:

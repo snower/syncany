@@ -162,6 +162,7 @@ class MatchValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def mount_scoper(self, scoper=None, is_return_getter=True,**kwargs):
+        self.optimize_filter()
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
@@ -313,13 +314,14 @@ class MatchValuer(Valuer):
 
         if self.filter:
             return self.filter
+        return self.get_child_filter()
 
+    def get_child_filter(self):
         final_filter = None
         for _, valuer in self.match_valuers.items():
             filter = valuer.get_final_filter()
             if filter is None:
                 continue
-
             if final_filter is not None and final_filter.__class__ != filter.__class__:
                 return None
             final_filter = filter
@@ -328,7 +330,6 @@ class MatchValuer(Valuer):
             filter = self.default_match_valuer.get_final_filter()
             if filter is None:
                 return final_filter
-
             if final_filter is not None and final_filter.__class__ != filter.__class__:
                 return None
         return final_filter
@@ -342,6 +343,7 @@ class ContextMatchValuer(MatchValuer):
         super(ContextMatchValuer, self).__init__(*args, **kwargs)
 
     def optimize(self):
+        Valuer.optimize(self)
         if not self.value_wait_loaded and not self.match_wait_loaded and not self.wait_loaded:
             self.fill = self.defer_fill
             self.get = self.defer_get

@@ -36,6 +36,7 @@ class DBLoadValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def mount_scoper(self, scoper=None, is_return_getter=True,db_load_valuers=None, loader=None, **kwargs):
+        self.optimize_filter()
         self.loader.primary_loader = loader
         if is_return_getter:
             self.require_yield_values = True
@@ -178,6 +179,9 @@ class DBLoadValuer(Valuer):
     def get_final_filter(self):
         if self.return_valuer:
             return self.return_valuer.get_final_filter()
+        return None
+
+    def get_child_filter(self):
         return None
 
     def require_loaded(self):

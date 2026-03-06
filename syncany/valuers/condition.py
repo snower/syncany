@@ -38,6 +38,7 @@ class IfValuer(Valuer):
         self.inherit_valuers.append(valuer)
 
     def mount_scoper(self, scoper=None, is_return_getter=True,**kwargs):
+        self.optimize_filter()
         if self.inherit_valuers:
             for inherit_valuer in self.inherit_valuers:
                 inherit_valuer.mount_scoper(scoper=scoper, is_return_getter=False,**kwargs)
@@ -51,6 +52,7 @@ class IfValuer(Valuer):
         self.optimize()
 
     def optimize(self):
+        Valuer.optimize(self)
         if (self.value_valuer and self.true_valuer and self.false_valuer and
                 not self.inherit_valuers and not self.return_valuer and not self.filter):
             self.fill_get = self.fast_fill_get
@@ -188,13 +190,14 @@ class IfValuer(Valuer):
 
         if self.filter:
             return self.filter
+        return self.get_child_filter()
 
+    def get_child_filter(self):
         true_filter = self.true_valuer.get_final_filter()
         if self.false_valuer:
             false_filter = self.false_valuer.get_final_filter()
             if false_filter is None:
                 return true_filter
-
             if false_filter is not None and true_filter.__class__ != false_filter.__class__:
                 return None
         return true_filter

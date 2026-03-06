@@ -30,6 +30,9 @@ class Calculater(object):
     def get_final_filter(self):
         return None
 
+    def is_same_filter(self):
+        return None
+
     def is_realtime_calculater(self):
         return False
 
@@ -135,6 +138,9 @@ class MathematicalCalculater(TypeFormatCalculater):
 
     def mathematical_calculate(self, left_value, right_value, args):
         return left_value
+
+    def is_same_filter(self):
+        return True
 
 
 class LoaderCalculater(Calculater):
