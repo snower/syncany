@@ -7,6 +7,8 @@ from .valuer import Valuer
 
 
 class PartitionCalculaterContext(object):
+    __slots__ = ("datas", "current_index", "partition_calculater")
+
     def __init__(self):
         self.datas = None
         self.current_index = 0
@@ -25,6 +27,8 @@ class PartitionCalculaterContext(object):
 
 
 class OrderPartitionCalculaterContext(PartitionCalculaterContext):
+    __slots__ = ("datas", "current_index", "partition_calculater")
+
     @property
     def current_data(self):
         return self.datas[self.current_index][1]

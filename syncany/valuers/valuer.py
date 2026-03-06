@@ -77,6 +77,8 @@ def slice_key(key):
 
 
 class ContextRunner(object):
+    __slots__ = ("contexter", "valuer", "values")
+
     def __init__(self, contexter, valuer, values=None):
         self.contexter = contexter
         self.valuer = valuer
@@ -93,6 +95,8 @@ class ContextRunner(object):
 
 
 class ContextDataer(object):
+    __slots__ = ("contexter", "values")
+
     def __init__(self, contexter):
         self.contexter = contexter
         self.values = {}
@@ -115,6 +119,8 @@ class ContextDataer(object):
 
 
 class ContexterInheritValues(dict):
+    __slots__ = ("inherit_values",)
+
     def __init__(self, inherit_values, *args, **kwargs):
         super(ContexterInheritValues, self).__init__(*args, **kwargs)
         self.inherit_values = inherit_values
@@ -127,6 +133,8 @@ class ContexterInheritValues(dict):
 
 
 class Contexter(object):
+    __slots__ = ("values",)
+
     def __init__(self):
         self.values = {}
 

@@ -6,6 +6,8 @@ from .valuer import Valuer, LoadAllFieldsException
 
 
 class CallReturnManager(object):
+    __slots__ = ("datas",)
+
     def __init__(self):
         self.datas = {}
 

@@ -6,6 +6,8 @@ from .valuer import Valuer
 
 
 class AggregateData(object):
+    __slots__ = ("data", "state")
+
     def __init__(self, data, state):
         self.data = data
         self.state = state
