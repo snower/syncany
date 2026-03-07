@@ -227,7 +227,10 @@ class Valuer(object):
         if child_filter is None:
             return
         if child_filter.__class__ == self.filter.__class__:
+            final_filter = self.get_final_filter()
             self.filter = None
+            self.get_final_filter = lambda : final_filter
+            self.get_child_filter = lambda : child_filter
 
     def clone(self, contexter=None, **kwargs):
         if contexter is not None:
