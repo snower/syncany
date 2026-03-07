@@ -69,188 +69,188 @@ class MakeCalculater(Calculater):
 class IsNullCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return True
+            return 1
         if isinstance(data, list):
             for value in data:
                 if value is not None:
-                    return False
-            return True
-        return data is None
+                    return 0
+            return 1
+        return 1 if data is None else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsIntCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return False
+            return None
         if isinstance(data, list):
-            default_result = True
+            default_result = None
             for value in data:
                 if value is None:
-                    default_result = False
                     continue
                 if not isinstance(value, int):
-                    return False
+                    return 0
+                default_result = 1
             return default_result
-        return isinstance(data, int)
+        return 1 if isinstance(data, int) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsFloatCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return False
+            return None
         if isinstance(data, list):
-            default_result = True
+            default_result = None
             for value in data:
                 if value is None:
-                    default_result = False
                     continue
                 if not isinstance(value, float):
-                    return False
+                    return 0
+                default_result = 1
             return default_result
-        return isinstance(data, float)
+        return 1 if isinstance(data, float) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsDecimalCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return False
+            return None
         if isinstance(data, list):
-            default_result = True
+            default_result = None
             for value in data:
                 if value is None:
-                    default_result = False
                     continue
                 if not isinstance(value, Decimal):
-                    return False
+                    return 0
+                default_result = 1
             return default_result
-        return isinstance(data, Decimal)
+        return 1 if isinstance(data, Decimal) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsNumberCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return False
+            return None
         if isinstance(data, list):
-            default_result = True
+            default_result = None
             for value in data:
                 if value is None:
-                    default_result = False
                     continue
                 if not isinstance(value, NumberDecimalTypes):
-                    return False
+                    return 0
+                default_result = 1
             return default_result
-        return isinstance(data, NumberDecimalTypes)
+        return 1 if isinstance(data, NumberDecimalTypes) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsStringCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return False
+            return None
         if isinstance(data, list):
-            default_result = True
+            default_result = None
             for value in data:
                 if value is None:
-                    default_result = False
                     continue
                 if not isinstance(value, str):
-                    return False
+                    return 0
+                default_result = 1
             return default_result
-        return isinstance(data, str)
+        return 1 if isinstance(data, str) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsBytesCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return False
+            return None
         if isinstance(data, list):
-            default_result = True
+            default_result = None
             for value in data:
                 if value is None:
-                    default_result = False
                     continue
                 if not isinstance(value, bytes):
-                    return False
+                    return 0
+                default_result = 1
             return default_result
-        return isinstance(data, bytes)
+        return 1 if isinstance(data, bytes) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsBooleanCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return False
+            return 0
         if isinstance(data, list):
-            default_result = True
+            default_result = None
             for value in data:
                 if value is None:
-                    default_result = False
                     continue
                 if not isinstance(value, bool):
-                    return False
+                    return 0
+                default_result = 1
             return default_result
-        return isinstance(data, bool)
+        return 1 if isinstance(data, bool) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsArrayCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return False
-        return isinstance(data, list)
+            return None
+        return 1 if isinstance(data, list) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsSetCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return False
-        return isinstance(data, set)
+            return None
+        return 1 if isinstance(data, set) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsMapCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return False
+            return None
         if isinstance(data, list):
-            default_result = True
+            default_result = None
             for value in data:
                 if value is None:
-                    default_result = False
                     continue
                 if not isinstance(value, dict):
-                    return False
+                    return 0
+                default_result = 1
             return default_result
-        return isinstance(data, dict)
+        return 1 if isinstance(data, dict) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsObjectIdCalculater(Calculater):
@@ -259,110 +259,110 @@ class IsObjectIdCalculater(Calculater):
             raise ImportError(u"bson required")
 
         if data is None:
-            return False
+            return None
         if isinstance(data, list):
-            default_result = True
+            default_result = None
             for value in data:
                 if value is None:
-                    default_result = False
                     continue
                 if not isinstance(value, ObjectId):
-                    return False
+                    return 0
+                default_result = 1
             return default_result
-        return isinstance(data, ObjectId)
+        return 1 if isinstance(data, ObjectId) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsUUIDCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return False
+            return None
         if isinstance(data, list):
-            default_result = True
+            default_result = None
             for value in data:
                 if value is None:
-                    default_result = False
                     continue
                 if not isinstance(value, uuid.UUID):
-                    return False
+                    return 0
+                default_result = 1
             return default_result
-        return isinstance(data, uuid.UUID)
+        return 1 if isinstance(data, uuid.UUID) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsDateTimeCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return False
+            return None
         if isinstance(data, list):
-            default_result = True
+            default_result = None
             for value in data:
                 if value is None:
-                    default_result = False
                     continue
                 if not isinstance(value, datetime.datetime):
-                    return False
+                    return 0
+                default_result = 1
             return default_result
-        return isinstance(data, datetime.datetime)
+        return 1 if isinstance(data, datetime.datetime) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsDateCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return False
+            return None
         if isinstance(data, list):
-            default_result = True
+            default_result = None
             for value in data:
                 if value is None:
-                    default_result = False
                     continue
                 if not isinstance(value, datetime.date):
-                    return False
+                    return 0
+                default_result = 1
             return default_result
-        return isinstance(data, datetime.date)
+        return 1 if isinstance(data, datetime.date) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsTimeCalculater(Calculater):
     def calculate(self, data=None):
         if data is None:
-            return False
+            return None
         if isinstance(data, list):
-            default_result = True
+            default_result = None
             for value in data:
                 if value is None:
-                    default_result = False
                     continue
                 if not isinstance(value, datetime.time):
-                    return False
+                    return 0
+                default_result = 1
             return default_result
-        return isinstance(data, datetime.time)
+        return 1 if isinstance(data, datetime.time) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class IsCalculater(MathematicalCalculater):
     def calculate(self, *args):
         if args and len(args) == 2:
             if args[0] is None and args[1] is None:
-                return True
+                return None
         return super(IsCalculater, self).calculate(*args)
 
     def mathematical_calculate(self, left_value, right_value, args):
-        return left_value is right_value
+        return 1 if left_value is right_value else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class RangeCalculater(Calculater):
@@ -600,41 +600,43 @@ class NowCalculater(Calculater):
 class EmptyCalculater(Calculater):
     def calculate(self, *args):
         if not args:
-            return True
+            return 1
         if isinstance(args[0], list):
+            default_result = None
             for value in args[0]:
                 if value is None:
                     continue
                 if not bool(value):
-                    return False
-            return True
+                    return 0
+                default_result = 1
+            return default_result
         if args[0] is None:
-            return True
-        return bool(args[0])
+            return None
+        return 1 if bool(args[0]) else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class ContainCalculater(Calculater):
     def calculate(self, *args):
         if not args:
-            return True
+            return 1
         if isinstance(args[0], list):
-            default_result = True
+            default_result = None
             for value in args[0]:
                 if value is None:
-                    default_result = False
                     continue
                 if args[1] not in value:
-                    return False
+                    return 0
+                default_result = 1
             return default_result
         if args[0] is None:
-            return False
-        return args[1] in args[0]
+            return None
+        return 1 if args[1] in args[0] else 0
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class GtCalculater(TypeFormatCalculater):
@@ -649,21 +651,21 @@ class GtCalculater(TypeFormatCalculater):
 
     def calculate(self, *args):
         if not args:
-            return False
+            return 0
         if isinstance(args[0], list):
-            return False
+            return 0
 
         self.type_cls = None
         left_value, right_value = self.format_type(args[0]), None
         for value in args[1:]:
             right_value = self.format_type(value)
             if not self.cmp(left_value, right_value):
-                return False
+                return 0
             left_value, right_value = right_value, None
-        return True
+        return 1
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class GteCalculater(TypeFormatCalculater):
@@ -678,21 +680,21 @@ class GteCalculater(TypeFormatCalculater):
 
     def calculate(self, *args):
         if not args:
-            return False
+            return 0
         if isinstance(args[0], list):
-            return False
+            return 0
 
         self.type_cls = None
         left_value, right_value = self.format_type(args[0]), None
         for value in args[1:]:
             right_value = self.format_type(value)
             if not self.cmp(left_value, right_value):
-                return False
+                return 0
             left_value, right_value = right_value, None
-        return True
+        return 1
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class LtCalculater(TypeFormatCalculater):
@@ -707,21 +709,21 @@ class LtCalculater(TypeFormatCalculater):
 
     def calculate(self, *args):
         if not args:
-            return False
+            return 0
         if isinstance(args[0], list):
-            return False
+            return 0
 
         self.type_cls = None
         left_value, right_value = self.format_type(args[0]), None
         for value in args[1:]:
             right_value = self.format_type(value)
             if not self.cmp(left_value, right_value):
-                return False
+                return 0
             left_value, right_value = right_value, None
-        return True
+        return 1
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class LteCalculater(TypeFormatCalculater):
@@ -736,21 +738,21 @@ class LteCalculater(TypeFormatCalculater):
 
     def calculate(self, *args):
         if not args:
-            return False
+            return 0
         if isinstance(args[0], list):
-            return False
+            return 0
 
         self.type_cls = None
         left_value, right_value = self.format_type(args[0]), None
         for value in args[1:]:
             right_value = self.format_type(value)
             if not self.cmp(left_value, right_value):
-                return False
+                return 0
             left_value, right_value = right_value, None
-        return True
+        return 1
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class EqCalculater(TypeFormatCalculater):
@@ -765,21 +767,21 @@ class EqCalculater(TypeFormatCalculater):
 
     def calculate(self, *args):
         if not args:
-            return False
+            return 0
         if isinstance(args[0], list):
-            return False
+            return 0
 
         self.type_cls = None
         left_value, right_value = self.format_type(args[0]), None
         for value in args[1:]:
             right_value = self.format_type(value)
             if not self.cmp(left_value, right_value):
-                return False
+                return 0
             left_value, right_value = right_value, None
-        return True
+        return 1
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class NeqCalculater(TypeFormatCalculater):
@@ -794,21 +796,21 @@ class NeqCalculater(TypeFormatCalculater):
 
     def calculate(self, *args):
         if not args:
-            return False
+            return 0
         if isinstance(args[0], list):
-            return False
+            return 0
 
         self.type_cls = None
         left_value, right_value = self.format_type(args[0]), None
         for value in args[1:]:
             right_value = self.format_type(value)
             if not self.cmp(left_value, right_value):
-                return False
+                return 0
             left_value, right_value = right_value, None
-        return True
+        return 1
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class AndCalculater(Calculater):
@@ -844,18 +846,18 @@ class OrCalculater(Calculater):
 class InCalculater(Calculater):
     def calculate(self, *args):
         if not args:
-            return False
+            return 0
         try:
             result = args[0]
             for i in range(1, len(args)):
                 if result not in args[i]:
-                    return False
+                    return 0
         except:
-            return False
-        return True
+            return 0
+        return 1
 
     def get_final_filter(self):
-        return BooleanFilter.default()
+        return IntFilter.default()
 
 
 class MaxCalculater(TypeFormatCalculater):
@@ -1150,9 +1152,6 @@ class StringCalculater(Calculater):
                     return ''
         return ''
 
-    def get_final_filter(self):
-        return StringFilter.default()
-
 
 class ObjectIdCalculater(Calculater):
     def __init__(self, *args, **kwargs):
@@ -1170,9 +1169,6 @@ class ObjectIdCalculater(Calculater):
                 return getattr(args[0], func_name)(*tuple(args[1:]))
             return None
         return ObjectId(*args)
-
-    def get_final_filter(self):
-        return ObjectIdFilter.default()
 
     def is_realtime_calculater(self):
         return True
@@ -1198,9 +1194,6 @@ class UUIDCalculater(Calculater):
             if func_name == "uuid5":
                 return uuid.uuid5(*args)
         return uuid.UUID(*args)
-
-    def get_final_filter(self):
-        return UUIDFilter.default()
 
     def is_realtime_calculater(self):
         return True
@@ -1383,9 +1376,6 @@ class ArrayCalculater(Calculater):
         except:
             return None
 
-    def get_final_filter(self):
-        return ArrayFilter.default()
-
 
 class MapCalculater(Calculater):
     def calculate(self, *args):
@@ -1407,9 +1397,6 @@ class MapCalculater(Calculater):
             except:
                 return None
         return None
-
-    def get_final_filter(self):
-        return MapFilter.default()
 
 
 class MathCalculater(Calculater):
